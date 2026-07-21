@@ -4,6 +4,7 @@
 各 Issue は原則 **1タスクあたり変更対象 1〜2 ファイル** に収めます。複数ファイルが必要な場合も、実装ファイル + 対応テストの 2 ファイルを上限にします。
 
 > 注意: 登録可能な環境では `GITHUB_REPOSITORY=owner/repo GITHUB_TOKEN=... node scripts/create-domain-modeler-issues.mjs` を実行してください。事前確認だけ行う場合は `DRY_RUN=1 node scripts/create-domain-modeler-issues.mjs` を使ってください。
+> Cursor GitHub App トークンではラベル作成・Issue 更新が 403 になることがあります。その場合は `SKIP_LABELS=1` で本文に intended labels を埋め込みつつ Issue のみ作成します。
 
 ## Epic
 
