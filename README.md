@@ -105,7 +105,10 @@ src-tauri/              # Tauri (Rust 側)。tauri init 標準構成を同梱
 ├── icons/              # アプリアイコン (デフォルト同梱)
 └── src/                # Rust エントリ (main.rs / lib.rs。greet コマンド)
 public/                 # 静的アセット (tauri.svg / vite.svg)
-index.html              # Vite エントリ HTML
+docs/                   # 公開用 HTML / ドキュメント
+├── index.html           # Vite エントリ HTML
+├── domain-modeler.html  # 公開用 HTML
+└── domain-modeler/      # 解凍済みドキュメント
 package.json            # 依存 / スクリプト
 vite.config.ts          # Vite + Vitest 設定 (ポート 14000/14001)
 tsconfig*.json          # TypeScript 設定
