@@ -8,6 +8,13 @@
  *
  * If GITHUB_TOKEN is unset, falls back to `gh api` (uses gh auth).
  * If GITHUB_REPOSITORY is unset, falls back to `gh repo view --json nameWithOwner`.
+ *
+ * Notes:
+ * - Cursor/GitHub App tokens may lack label write and issue update permissions.
+ *   This script therefore creates unlabeled issues and embeds intended labels in
+ *   the body. The Epic is created last so its checklist can include issue numbers.
+ * - SKIP_LABELS=1 (default when label API fails) skips label ensure.
+ * - SKIP_EXISTING=1 (default) skips titles that already exist.
  */
 
 import { spawnSync } from "node:child_process";
@@ -21,6 +28,7 @@ const BREAKDOWN = join(ROOT, "docs/domain-modeler/issues-breakdown.md");
 
 const DRY_RUN = process.env.DRY_RUN === "1" || process.env.DRY_RUN === "true";
 const SKIP_EXISTING = process.env.SKIP_EXISTING !== "0";
+const SKIP_LABELS = process.env.SKIP_LABELS === "1" || process.env.SKIP_LABELS === "true";
 
 const LABEL_DEFS = [
   { name: "type:chore", color: "cfd3d7", description: "Chore / maintenance" },
@@ -56,10 +64,7 @@ function parseBreakdown(markdown) {
 
   const epic = {
     title: epicMatch[1].trim(),
-    body: epicMatch[2]
-      .trim()
-      .replace(/\n## Phase[\s\S]*$/, "")
-      .trim(),
+    body: epicMatch[2].trim(),
     labels: ["type:epic", "area:shared", "priority:P1"],
   };
 
@@ -72,15 +77,11 @@ function parseBreakdown(markdown) {
   const children = [];
   for (const [, phaseNum, phaseName, block] of phaseBlocks) {
     const issueMatches = [
-      ...block.matchAll(
-        /### (\d{3})\. (.+?)\n((?:- \*\*[^\n]+\n)+)/g,
-      ),
+      ...block.matchAll(/### (\d{3})\. (.+?)\n((?:- \*\*[^\n]+\n)+)/g),
     ];
     for (const [, id, title, fields] of issueMatches) {
       const get = (key) => {
-        const m = fields.match(
-          new RegExp(`- \\*\\*${key}\\*\\*: (.+)`),
-        );
+        const m = fields.match(new RegExp(`- \\*\\*${key}\\*\\*: (.+)`));
         return m ? m[1].trim() : "";
       };
       const labels = get("Labels")
@@ -89,38 +90,45 @@ function parseBreakdown(markdown) {
         .filter(Boolean);
       labels.push(`phase:${phaseNum}`);
 
-      const body = [
-        `**Phase**: ${phaseNum} — ${phaseName.trim()}`,
-        "",
-        `**変更対象**: ${get("変更対象")}`,
-        "",
-        `**内容**: ${get("内容")}`,
-        "",
-        `**完了条件**: ${get("完了条件")}`,
-        "",
-        "---",
-        "",
-        `仕様: \`docs/domain-modeler/\``,
-        `分解案: \`docs/domain-modeler/issues-breakdown.md\` (#${id})`,
-      ].join("\n");
-
       children.push({
         id,
         title: `${id}. ${title.trim()}`,
-        body,
-        labels,
         phase: Number(phaseNum),
+        phaseName: phaseName.trim(),
+        targets: get("変更対象"),
+        content: get("内容"),
+        done: get("完了条件"),
+        labels,
       });
     }
   }
 
   if (children.length !== 63) {
-    throw new Error(
-      `Expected 63 child issues, parsed ${children.length}`,
-    );
+    throw new Error(`Expected 63 child issues, parsed ${children.length}`);
   }
 
   return { epic, children };
+}
+
+function childBody(child, epicTitle) {
+  return [
+    `**Phase**: ${child.phase} — ${child.phaseName}`,
+    "",
+    `**変更対象**: ${child.targets}`,
+    "",
+    `**内容**: ${child.content}`,
+    "",
+    `**完了条件**: ${child.done}`,
+    "",
+    `**Labels (intended)**: ${child.labels.map((l) => `\`${l}\``).join(", ")}`,
+    "",
+    `**Epic**: ${epicTitle}`,
+    "",
+    "---",
+    "",
+    "仕様: `docs/domain-modeler/`",
+    `分解案: \`docs/domain-modeler/issues-breakdown.md\` (#${child.id})`,
+  ].join("\n");
 }
 
 function resolveRepo() {
@@ -171,26 +179,27 @@ async function githubRequest(method, path, body) {
   }
 
   const args = ["api", "-X", method, path];
-  if (body) {
-    args.push("--input", "-");
-  }
+  if (body) args.push("--input", "-");
   const r = spawnSync("gh", args, {
     encoding: "utf8",
     input: body ? JSON.stringify(body) : undefined,
   });
   if (r.status !== 0) {
-    const err = new Error(
-      `gh api ${method} ${path} failed: ${r.stderr || r.stdout}`,
-    );
-    err.status = /HTTP (\d+)/.exec(r.stderr || "")?.[1]
-      ? Number(/HTTP (\d+)/.exec(r.stderr || "")[1])
-      : 500;
+    const combined = `${r.stderr || ""}\n${r.stdout || ""}`;
+    const err = new Error(`gh api ${method} ${path} failed: ${combined.trim()}`);
+    const m = /HTTP (\d+)/.exec(combined);
+    err.status = m ? Number(m[1]) : 500;
     throw err;
   }
   return r.stdout ? JSON.parse(r.stdout) : null;
 }
 
 async function ensureLabels(owner, repo) {
+  if (SKIP_LABELS) {
+    console.log("SKIP_LABELS=1 — skipping label ensure");
+    return false;
+  }
+  let applied = true;
   for (const label of LABEL_DEFS) {
     if (DRY_RUN) {
       console.log(`[dry-run] ensure label ${label.name}`);
@@ -201,24 +210,33 @@ async function ensureLabels(owner, repo) {
       console.log(`created label ${label.name}`);
     } catch (err) {
       if (err.status === 422) {
-        await githubRequest(
-          "PATCH",
-          `/repos/${owner}/${repo}/labels/${encodeURIComponent(label.name)}`,
-          {
-            color: label.color,
-            description: label.description,
-          },
+        try {
+          await githubRequest(
+            "PATCH",
+            `/repos/${owner}/${repo}/labels/${encodeURIComponent(label.name)}`,
+            { color: label.color, description: label.description },
+          );
+          console.log(`updated label ${label.name}`);
+        } catch (patchErr) {
+          console.warn(`label ensure failed for ${label.name}: ${patchErr.message}`);
+          applied = false;
+          break;
+        }
+      } else if (err.status === 403) {
+        console.warn(
+          "Label API not accessible (403). Continuing without labels; intended labels are written into issue bodies.",
         );
-        console.log(`updated label ${label.name}`);
+        return false;
       } else {
         throw err;
       }
     }
   }
+  return applied;
 }
 
-async function listOpenIssueTitles(owner, repo) {
-  const titles = new Set();
+async function listAllIssues(owner, repo) {
+  const all = [];
   let page = 1;
   while (true) {
     const items = await githubRequest(
@@ -226,25 +244,25 @@ async function listOpenIssueTitles(owner, repo) {
       `/repos/${owner}/${repo}/issues?state=all&per_page=100&page=${page}`,
     );
     if (!items.length) break;
-    for (const issue of items) {
-      if (!issue.pull_request) titles.add(issue.title);
-    }
+    all.push(...items.filter((i) => !i.pull_request));
     if (items.length < 100) break;
     page += 1;
   }
-  return titles;
+  return all;
 }
 
-async function createIssue(owner, repo, { title, body, labels }) {
+async function createIssue(owner, repo, { title, body, labels, attachLabels }) {
   if (DRY_RUN) {
     console.log(`[dry-run] create issue: ${title}`);
-    console.log(`  labels: ${labels.join(", ")}`);
+    if (labels?.length) console.log(`  labels: ${labels.join(", ")}`);
     return { number: 0, html_url: "(dry-run)", title };
   }
+  const payload = { title, body };
+  if (attachLabels && labels?.length) payload.labels = labels;
   const issue = await githubRequest(
     "POST",
     `/repos/${owner}/${repo}/issues`,
-    { title, body, labels },
+    payload,
   );
   console.log(`created #${issue.number}: ${title}`);
   return issue;
@@ -265,21 +283,51 @@ async function main() {
   console.log(`Dry run: ${DRY_RUN}`);
   console.log(`Child issues: ${children.length}`);
 
-  await ensureLabels(owner, repo);
+  const labelsOk = await ensureLabels(owner, repo);
 
-  const existing = SKIP_EXISTING && !DRY_RUN
-    ? await listOpenIssueTitles(owner, repo)
-    : new Set();
+  const existingIssues = DRY_RUN ? [] : await listAllIssues(owner, repo);
+  const byTitle = new Map(existingIssues.map((i) => [i.title, i]));
 
-  let epicIssue;
-  if (existing.has(epic.title)) {
-    console.log(`skip existing epic: ${epic.title}`);
-    // Find number for linking
-    const issues = await githubRequest(
-      "GET",
-      `/repos/${owner}/${repo}/issues?state=all&per_page=100`,
+  const createdOrExisting = [];
+  for (const child of children) {
+    const existing = byTitle.get(child.title);
+    if (existing && SKIP_EXISTING) {
+      console.log(`skip existing #${existing.number}: ${child.title}`);
+      createdOrExisting.push({
+        ...child,
+        number: existing.number,
+        url: existing.html_url,
+      });
+      continue;
+    }
+    const issue = await createIssue(owner, repo, {
+      title: child.title,
+      body: childBody(child, epic.title),
+      labels: child.labels,
+      attachLabels: labelsOk,
+    });
+    createdOrExisting.push({
+      ...child,
+      number: issue.number,
+      url: issue.html_url,
+    });
+    if (!DRY_RUN) await sleep(200);
+  }
+
+  const checklist = createdOrExisting
+    .map((c) =>
+      c.number
+        ? `- [ ] #${c.number} ${c.title}`
+        : `- [ ] ${c.title}`,
+    )
+    .join("\n");
+
+  let epicIssue = byTitle.get(epic.title);
+  if (epicIssue && SKIP_EXISTING) {
+    console.log(`skip existing epic #${epicIssue.number}: ${epic.title}`);
+    console.log(
+      "Note: existing Epic body was not updated (issue update may be forbidden).",
     );
-    epicIssue = issues.find((i) => i.title === epic.title && !i.pull_request);
   } else {
     epicIssue = await createIssue(owner, repo, {
       title: epic.title,
@@ -288,93 +336,24 @@ async function main() {
         "",
         "---",
         "",
-        "子 Issue 一覧はこの Issue 作成後に追記されます。",
+        `**Labels (intended)**: ${epic.labels.map((l) => `\`${l}\``).join(", ")}`,
+        "",
+        "## 子 Issue",
+        "",
+        checklist,
         "",
         "分解案: `docs/domain-modeler/issues-breakdown.md`",
       ].join("\n"),
       labels: epic.labels,
+      attachLabels: labelsOk,
     });
-  }
-
-  const created = [];
-  for (const child of children) {
-    if (existing.has(child.title)) {
-      console.log(`skip existing: ${child.title}`);
-      continue;
-    }
-    const body = [
-      child.body,
-      "",
-      epicIssue?.number
-        ? `**Epic**: #${epicIssue.number}`
-        : "**Epic**: (pending)",
-    ].join("\n");
-    const issue = await createIssue(owner, repo, {
-      title: child.title,
-      body,
-      labels: child.labels,
-    });
-    created.push({ ...child, number: issue.number, url: issue.html_url });
-    if (!DRY_RUN) await sleep(250);
-  }
-
-  if (!DRY_RUN && epicIssue?.number) {
-    const checklist = children
-      .map((c) => {
-        const found = created.find((x) => x.id === c.id);
-        if (found?.number) return `- [ ] #${found.number} ${c.title}`;
-        // may already exist
-        return `- [ ] ${c.title}`;
-      })
-      .join("\n");
-
-    // Rebuild checklist with all child issue numbers from API search by title prefix
-    const allIssues = [];
-    let page = 1;
-    while (true) {
-      const items = await githubRequest(
-        "GET",
-        `/repos/${owner}/${repo}/issues?state=all&per_page=100&page=${page}`,
-      );
-      if (!items.length) break;
-      allIssues.push(...items.filter((i) => !i.pull_request));
-      if (items.length < 100) break;
-      page += 1;
-    }
-    const byTitle = new Map(allIssues.map((i) => [i.title, i]));
-    const linkedChecklist = children
-      .map((c) => {
-        const issue = byTitle.get(c.title);
-        return issue
-          ? `- [ ] #${issue.number} ${c.title}`
-          : `- [ ] ${c.title}`;
-      })
-      .join("\n");
-
-    await githubRequest(
-      "PATCH",
-      `/repos/${owner}/${repo}/issues/${epicIssue.number}`,
-      {
-        body: [
-          epic.body,
-          "",
-          "---",
-          "",
-          "## 子 Issue",
-          "",
-          linkedChecklist,
-          "",
-          "分解案: `docs/domain-modeler/issues-breakdown.md`",
-        ].join("\n"),
-      },
-    );
-    console.log(`updated epic #${epicIssue.number} with child checklist`);
-    console.log(checklist.split("\n").slice(0, 3).join("\n") + " ...");
   }
 
   console.log("Done.");
   if (epicIssue?.html_url) console.log(`Epic: ${epicIssue.html_url}`);
-  console.log(`Created this run: ${created.length}`);
+  console.log(
+    `Children ready: ${createdOrExisting.filter((c) => c.number).length}/${children.length}`,
+  );
 }
 
 main().catch((err) => {
