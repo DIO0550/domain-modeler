@@ -3,7 +3,7 @@ import type { StorybookConfig } from "@storybook/react-vite";
 import { mergeConfig } from "vite";
 
 const config: StorybookConfig = {
-  stories: ["../src/**/*.stories.@(ts|tsx)"],
+  stories: ["../apps/desktop/src/**/*.stories.@(ts|tsx)"],
   addons: ["@storybook/addon-a11y", "@storybook/addon-themes"],
   framework: { name: "@storybook/react-vite", options: {} },
   typescript: { reactDocgen: "react-docgen-typescript" },
@@ -17,7 +17,7 @@ const config: StorybookConfig = {
         alias: [
           {
             find: /^@\//,
-            replacement: `${fileURLToPath(new URL("../src", import.meta.url))}/`,
+            replacement: `${fileURLToPath(new URL("../apps/desktop/src", import.meta.url))}/`,
           },
         ],
       },

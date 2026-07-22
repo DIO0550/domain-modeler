@@ -1,0 +1,16 @@
+{
+  "name": "@domain-modeler/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "test": "vitest",
+    "test:run": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  }
+}
