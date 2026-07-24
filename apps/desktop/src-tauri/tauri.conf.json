@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:14000",
-    "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build"
+    "beforeDevCommand": "pnpm --dir ../.. --filter @domain-modeler/desktop dev",
+    "beforeBuildCommand": "pnpm --dir ../.. --filter @domain-modeler/desktop build"
   },
   "app": {
     "windows": [
