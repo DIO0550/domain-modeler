@@ -17,5 +17,7 @@ export const Connection = {
     to: string,
     label: string,
     note: string,
-  ): Connection => ({ id, from, to, label, note }),
+    fromAnchor?: Anchor,
+    toAnchor?: Anchor,
+  ): Connection => ({ id, from, to, label, note, fromAnchor, toAnchor }),
 };
