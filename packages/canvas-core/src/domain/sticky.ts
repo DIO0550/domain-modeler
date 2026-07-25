@@ -1,3 +1,5 @@
+import type { Brand } from "./brand";
+
 export type StickyType =
   | "event"
   | "actor"
@@ -8,7 +10,7 @@ export type StickyType =
   | "externalSystem"
   | "hotspot";
 
-export type StickyId = string & { readonly _brand: "StickyId" };
+export type StickyId = Brand<string, "StickyId">;
 
 export const StickyId = {
   create: (raw: string): StickyId => raw as StickyId,
