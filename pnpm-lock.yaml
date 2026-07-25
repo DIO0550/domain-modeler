@@ -82,6 +82,19 @@ importers:
         specifier: ^4.1.4
         version: 4.1.4(@types/node@25.5.2)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(vite@8.0.5(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.5.2)(esbuild@0.27.7)(jiti@2.6.1))
 
+  apps/desktop:
+    dependencies:
+      '@domain-modeler/canvas-core':
+        specifier: workspace:*
+        version: link:../../packages/canvas-core
+      '@domain-modeler/model-core':
+        specifier: workspace:*
+        version: link:../../packages/model-core
+
+  packages/canvas-core: {}
+
+  packages/model-core: {}
+
 packages:
 
   '@adobe/css-tools@4.4.4':
