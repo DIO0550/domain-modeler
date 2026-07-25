@@ -10,8 +10,10 @@ export interface Document {
   readonly connections: readonly Connection[];
 }
 
+export const DEFAULT_TITLE = "Untitled";
+
 export const Document = {
-  empty: (title: string): Document => ({
+  empty: (title: string = DEFAULT_TITLE): Document => ({
     version: "1.0",
     title,
     viewport: Viewport.default(),

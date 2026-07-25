@@ -40,6 +40,10 @@ export default defineConfig(() => ({
     },
   },
   test: {
+    include: [
+      "src/**/*.{test,spec}.{ts,tsx}",
+      "../../packages/**/*.{test,spec}.{ts,tsx}",
+    ],
     environment: "happy-dom",
     coverage: {
       provider: "v8" as const,
