@@ -8,6 +8,12 @@ export type StickyType =
   | "externalSystem"
   | "hotspot";
 
+export type StickyId = string & { readonly _brand: "StickyId" };
+
+export const StickyId = {
+  create: (raw: string): StickyId => raw as StickyId,
+};
+
 export interface Point {
   readonly x: number;
   readonly y: number;
@@ -18,8 +24,12 @@ export interface Size {
   readonly height: number;
 }
 
+export const Size = {
+  isValid: (size: Size): boolean => size.width > 0 && size.height > 0,
+};
+
 export interface Sticky {
-  readonly id: string;
+  readonly id: StickyId;
   readonly type: StickyType;
   readonly text: string;
   readonly position: Point;
@@ -28,7 +38,7 @@ export interface Sticky {
 
 export const Sticky = {
   create: (
-    id: string,
+    id: StickyId,
     type: StickyType,
     text: string,
     position: Point,

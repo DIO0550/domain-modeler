@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_TITLE, Document } from "./document";
 import type { Connection } from "./connection";
+import { StickyId } from "./sticky";
 import type { Sticky } from "./sticky";
 
 describe("Document.empty", () => {
@@ -26,16 +27,20 @@ describe("Document.empty", () => {
 });
 
 describe("Document sticky CRUD", () => {
+  const idA = StickyId.create("stk_aaaaaaaaaaaa");
+  const idB = StickyId.create("stk_bbbbbbbbbbbb");
+  const idMissing = StickyId.create("stk_missing");
+
   const stickies: readonly Sticky[] = [
     {
-      id: "stk_aaaaaaaaaaaa",
+      id: idA,
       type: "event",
       text: "first",
       position: { x: 10, y: 20 },
       size: { width: 100, height: 80 },
     },
     {
-      id: "stk_bbbbbbbbbbbb",
+      id: idB,
       type: "actor",
       text: "second",
       position: { x: 30, y: 40 },
@@ -46,8 +51,8 @@ describe("Document sticky CRUD", () => {
   const connections: readonly Connection[] = [
     {
       id: "con_111111111111",
-      from: "stk_aaaaaaaaaaaa",
-      to: "stk_bbbbbbbbbbbb",
+      from: idA,
+      to: idB,
       label: "",
       note: "",
     },
@@ -84,7 +89,7 @@ describe("Document sticky CRUD", () => {
     expect(baseDocument).not.toBe(next);
     expect(next.stickies).toHaveLength(3);
     expect(next.stickies[next.stickies.length - 1]).toEqual({
-      id: "stk_1234567890ab",
+      id: StickyId.create("stk_1234567890ab"),
       type: "command",
       text: "new sticky",
       position: { x: 50, y: 60 },
@@ -95,11 +100,7 @@ describe("Document sticky CRUD", () => {
   });
 
   it("付箋本文を変更でき、入力を変更しない", () => {
-    const next = Document.updateStickyText(
-      baseDocument,
-      "stk_aaaaaaaaaaaa",
-      "updated",
-    );
+    const next = Document.updateStickyText(baseDocument, idA, "updated");
 
     expect(baseDocument.stickies[0].text).toBe("first");
     expect(baseDocument).not.toBe(next);
@@ -108,12 +109,12 @@ describe("Document sticky CRUD", () => {
   });
 
   it("存在しない付箋IDを本文変更した場合は内容を維持する", () => {
-    const next = Document.updateStickyText(baseDocument, "stk_missing", "updated");
+    const next = Document.updateStickyText(baseDocument, idMissing, "updated");
     expect(next).toEqual(baseDocument);
   });
 
   it("付箋を移動でき、入力を変更しない", () => {
-    const next = Document.moveSticky(baseDocument, "stk_aaaaaaaaaaaa", {
+    const next = Document.moveSticky(baseDocument, idA, {
       x: 111,
       y: 222,
     });
@@ -124,12 +125,12 @@ describe("Document sticky CRUD", () => {
   });
 
   it("存在しない付箋IDを移動した場合は内容を維持する", () => {
-    const next = Document.moveSticky(baseDocument, "stk_missing", { x: 1, y: 2 });
+    const next = Document.moveSticky(baseDocument, idMissing, { x: 1, y: 2 });
     expect(next).toEqual(baseDocument);
   });
 
   it("付箋をリサイズできる", () => {
-    const next = Document.resizeSticky(baseDocument, "stk_aaaaaaaaaaaa", {
+    const next = Document.resizeSticky(baseDocument, idA, {
       width: 200,
       height: 110,
     });
@@ -141,7 +142,7 @@ describe("Document sticky CRUD", () => {
 
   it("リサイズで不正サイズを拒否する", () => {
     expect(() =>
-      Document.resizeSticky(baseDocument, "stk_aaaaaaaaaaaa", {
+      Document.resizeSticky(baseDocument, idA, {
         width: 0,
         height: 110,
       }),
@@ -149,11 +150,7 @@ describe("Document sticky CRUD", () => {
   });
 
   it("付箋種別を変更できる", () => {
-    const next = Document.changeStickyType(
-      baseDocument,
-      "stk_aaaaaaaaaaaa",
-      "policy",
-    );
+    const next = Document.changeStickyType(baseDocument, idA, "policy");
 
     expect(baseDocument.stickies[0].type).toBe("event");
     expect(baseDocument).not.toBe(next);
@@ -161,40 +158,32 @@ describe("Document sticky CRUD", () => {
   });
 
   it("存在しない付箋IDの種別変更は内容を維持する", () => {
-    const next = Document.changeStickyType(baseDocument, "stk_missing", "policy");
+    const next = Document.changeStickyType(baseDocument, idMissing, "policy");
     expect(next).toEqual(baseDocument);
   });
 
   it("付箋を前面化すると配列末尾へ移動する", () => {
-    const next = Document.bringStickyToFront(baseDocument, "stk_aaaaaaaaaaaa");
+    const next = Document.bringStickyToFront(baseDocument, idA);
 
-    expect(baseDocument.stickies.map((sticky) => sticky.id)).toEqual([
-      "stk_aaaaaaaaaaaa",
-      "stk_bbbbbbbbbbbb",
-    ]);
+    expect(baseDocument.stickies.map((sticky) => sticky.id)).toEqual([idA, idB]);
     expect(baseDocument).not.toBe(next);
-    expect(next.stickies.map((sticky) => sticky.id)).toEqual([
-      "stk_bbbbbbbbbbbb",
-      "stk_aaaaaaaaaaaa",
-    ]);
+    expect(next.stickies.map((sticky) => sticky.id)).toEqual([idB, idA]);
   });
 
   it("すでに最前面の付箋を前面化した場合は同一インスタンスを返す", () => {
-    const next = Document.bringStickyToFront(baseDocument, "stk_bbbbbbbbbbbb");
+    const next = Document.bringStickyToFront(baseDocument, idB);
     expect(next).toBe(baseDocument);
   });
 
   it("存在しない付箋IDを前面化した場合は同一インスタンスを返す", () => {
-    const next = Document.bringStickyToFront(baseDocument, "stk_missing");
+    const next = Document.bringStickyToFront(baseDocument, idMissing);
     expect(next).toBe(baseDocument);
   });
 
   it("付箋削除時に関連接続をカスケード削除する", () => {
-    const next = Document.removeSticky(baseDocument, "stk_aaaaaaaaaaaa");
+    const next = Document.removeSticky(baseDocument, idA);
 
-    expect(next.stickies.map((sticky) => sticky.id)).toEqual([
-      "stk_bbbbbbbbbbbb",
-    ]);
+    expect(next.stickies.map((sticky) => sticky.id)).toEqual([idB]);
     expect(next.connections.map((connection) => connection.id)).toEqual([
       "con_222222222222",
     ]);
@@ -202,7 +191,7 @@ describe("Document sticky CRUD", () => {
   });
 
   it("存在しない付箋IDを削除した場合は内容を維持する", () => {
-    const next = Document.removeSticky(baseDocument, "stk_missing");
+    const next = Document.removeSticky(baseDocument, idMissing);
     expect(next).toEqual(baseDocument);
   });
 
