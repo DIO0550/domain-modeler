@@ -1,13 +1,7 @@
 // canvas-core public API
-export type {
-  Anchor,
-  Connection,
-  Document,
-  Error,
-  Point,
-  Result,
-  Size,
-  Sticky,
-  StickyType,
-  Viewport,
-} from "./types";
+export * from "./domain/error";
+export * from "./domain/result";
+export * from "./domain/viewport";
+export * from "./domain/sticky";
+export * from "./domain/connection";
+export * from "./domain/document";
