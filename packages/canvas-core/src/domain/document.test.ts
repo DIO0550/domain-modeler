@@ -107,6 +107,11 @@ describe("Document sticky CRUD", () => {
     expect(next.stickies[1]).toEqual(baseDocument.stickies[1]);
   });
 
+  it("存在しない付箋IDを本文変更した場合は内容を維持する", () => {
+    const next = Document.updateStickyText(baseDocument, "stk_missing", "updated");
+    expect(next).toEqual(baseDocument);
+  });
+
   it("付箋を移動でき、入力を変更しない", () => {
     const next = Document.moveSticky(baseDocument, "stk_aaaaaaaaaaaa", {
       x: 111,
@@ -116,6 +121,11 @@ describe("Document sticky CRUD", () => {
     expect(baseDocument.stickies[0].position).toEqual({ x: 10, y: 20 });
     expect(baseDocument).not.toBe(next);
     expect(next.stickies[0].position).toEqual({ x: 111, y: 222 });
+  });
+
+  it("存在しない付箋IDを移動した場合は内容を維持する", () => {
+    const next = Document.moveSticky(baseDocument, "stk_missing", { x: 1, y: 2 });
+    expect(next).toEqual(baseDocument);
   });
 
   it("付箋をリサイズできる", () => {
@@ -150,6 +160,11 @@ describe("Document sticky CRUD", () => {
     expect(next.stickies[0].type).toBe("policy");
   });
 
+  it("存在しない付箋IDの種別変更は内容を維持する", () => {
+    const next = Document.changeStickyType(baseDocument, "stk_missing", "policy");
+    expect(next).toEqual(baseDocument);
+  });
+
   it("付箋を前面化すると配列末尾へ移動する", () => {
     const next = Document.bringStickyToFront(baseDocument, "stk_aaaaaaaaaaaa");
 
@@ -169,6 +184,11 @@ describe("Document sticky CRUD", () => {
     expect(next).toBe(baseDocument);
   });
 
+  it("存在しない付箋IDを前面化した場合は同一インスタンスを返す", () => {
+    const next = Document.bringStickyToFront(baseDocument, "stk_missing");
+    expect(next).toBe(baseDocument);
+  });
+
   it("付箋削除時に関連接続をカスケード削除する", () => {
     const next = Document.removeSticky(baseDocument, "stk_aaaaaaaaaaaa");
 
@@ -179,6 +199,11 @@ describe("Document sticky CRUD", () => {
       "con_222222222222",
     ]);
     expect(baseDocument.connections).toHaveLength(2);
+  });
+
+  it("存在しない付箋IDを削除した場合は内容を維持する", () => {
+    const next = Document.removeSticky(baseDocument, "stk_missing");
+    expect(next).toEqual(baseDocument);
   });
 
   it("追加時に不正サイズを拒否する", () => {

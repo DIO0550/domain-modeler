@@ -14,9 +14,21 @@ export const DEFAULT_TITLE = "Untitled";
 
 const STICKY_ID_PREFIX = "stk_";
 const STICKY_RANDOM_PART_LENGTH = 12;
+const createRandomUuid = (): string => {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  const randomHex = (): string =>
+    Math.floor(Math.random() * 0xffffffff)
+      .toString(16)
+      .padStart(8, "0");
+
+  return `${randomHex()}${randomHex()}${randomHex()}${randomHex()}`;
+};
 
 const createStickyId = (): string =>
-  `${STICKY_ID_PREFIX}${crypto.randomUUID().replace(/-/g, "").slice(0, STICKY_RANDOM_PART_LENGTH)}`;
+  `${STICKY_ID_PREFIX}${createRandomUuid().replace(/-/g, "").slice(0, STICKY_RANDOM_PART_LENGTH)}`;
 
 const isValidSize = (size: Size): boolean =>
   size.width > 0 && size.height > 0;
