@@ -80,6 +80,8 @@ describe("Document sticky CRUD", () => {
     );
 
     expect(baseDocument.stickies).toHaveLength(2);
+    expect(baseDocument.stickies).toBe(stickies);
+    expect(baseDocument).not.toBe(next);
     expect(next.stickies).toHaveLength(3);
     expect(next.stickies[next.stickies.length - 1]).toEqual({
       id: "stk_1234567890ab",
@@ -100,6 +102,7 @@ describe("Document sticky CRUD", () => {
     );
 
     expect(baseDocument.stickies[0].text).toBe("first");
+    expect(baseDocument).not.toBe(next);
     expect(next.stickies[0].text).toBe("updated");
     expect(next.stickies[1]).toEqual(baseDocument.stickies[1]);
   });
@@ -111,6 +114,7 @@ describe("Document sticky CRUD", () => {
     });
 
     expect(baseDocument.stickies[0].position).toEqual({ x: 10, y: 20 });
+    expect(baseDocument).not.toBe(next);
     expect(next.stickies[0].position).toEqual({ x: 111, y: 222 });
   });
 
