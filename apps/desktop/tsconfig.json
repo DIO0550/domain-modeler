@@ -7,7 +7,9 @@
     "skipLibCheck": true,
     "baseUrl": "./",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@domain-modeler/canvas-core": ["../../packages/canvas-core/src/index.ts"],
+      "@domain-modeler/model-core": ["../../packages/model-core/src/index.ts"]
     },
 
     /* Bundler mode */
@@ -25,5 +27,9 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "references": [
+    { "path": "./tsconfig.node.json" },
+    { "path": "../../packages/canvas-core" },
+    { "path": "../../packages/model-core" }
+  ]
 }

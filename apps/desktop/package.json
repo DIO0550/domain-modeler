@@ -12,5 +12,9 @@
     "test:coverage": "vitest run --coverage",
     "preview": "vite preview",
     "tauri": "tauri"
+  },
+  "dependencies": {
+    "@domain-modeler/canvas-core": "workspace:*",
+    "@domain-modeler/model-core": "workspace:*"
   }
 }

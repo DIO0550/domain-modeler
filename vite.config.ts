@@ -10,6 +10,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./apps/desktop/src", import.meta.url)),
+      "@domain-modeler/canvas-core": fileURLToPath(
+        new URL("./packages/canvas-core/src/index.ts", import.meta.url),
+      ),
+      "@domain-modeler/model-core": fileURLToPath(
+        new URL("./packages/model-core/src/index.ts", import.meta.url),
+      ),
     },
   },
 });

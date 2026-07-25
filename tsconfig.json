@@ -1,6 +1,8 @@
 {
   "files": [],
   "references": [
+    { "path": "./packages/canvas-core" },
+    { "path": "./packages/model-core" },
     { "path": "./apps/desktop" }
   ]
 }

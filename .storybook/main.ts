@@ -19,6 +19,18 @@ const config: StorybookConfig = {
             find: /^@\//,
             replacement: `${fileURLToPath(new URL("../apps/desktop/src", import.meta.url))}/`,
           },
+          {
+            find: "@domain-modeler/canvas-core",
+            replacement: fileURLToPath(
+              new URL("../packages/canvas-core/src/index.ts", import.meta.url),
+            ),
+          },
+          {
+            find: "@domain-modeler/model-core",
+            replacement: fileURLToPath(
+              new URL("../packages/model-core/src/index.ts", import.meta.url),
+            ),
+          },
         ],
       },
     });
