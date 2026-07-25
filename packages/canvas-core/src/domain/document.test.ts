@@ -124,6 +124,8 @@ describe("Document sticky CRUD", () => {
       height: 110,
     });
 
+    expect(baseDocument.stickies[0].size).toEqual({ width: 100, height: 80 });
+    expect(baseDocument).not.toBe(next);
     expect(next.stickies[0].size).toEqual({ width: 200, height: 110 });
   });
 
@@ -143,16 +145,28 @@ describe("Document sticky CRUD", () => {
       "policy",
     );
 
+    expect(baseDocument.stickies[0].type).toBe("event");
+    expect(baseDocument).not.toBe(next);
     expect(next.stickies[0].type).toBe("policy");
   });
 
   it("付箋を前面化すると配列末尾へ移動する", () => {
     const next = Document.bringStickyToFront(baseDocument, "stk_aaaaaaaaaaaa");
 
+    expect(baseDocument.stickies.map((sticky) => sticky.id)).toEqual([
+      "stk_aaaaaaaaaaaa",
+      "stk_bbbbbbbbbbbb",
+    ]);
+    expect(baseDocument).not.toBe(next);
     expect(next.stickies.map((sticky) => sticky.id)).toEqual([
       "stk_bbbbbbbbbbbb",
       "stk_aaaaaaaaaaaa",
     ]);
+  });
+
+  it("すでに最前面の付箋を前面化した場合は同一インスタンスを返す", () => {
+    const next = Document.bringStickyToFront(baseDocument, "stk_bbbbbbbbbbbb");
+    expect(next).toBe(baseDocument);
   });
 
   it("付箋削除時に関連接続をカスケード削除する", () => {
@@ -175,6 +189,18 @@ describe("Document sticky CRUD", () => {
         "new sticky",
         { x: 50, y: 60 },
         { width: 140, height: 0 },
+      ),
+    ).toThrowError("Sticky size must be positive");
+  });
+
+  it("追加時に負のサイズを拒否する", () => {
+    expect(() =>
+      Document.addSticky(
+        baseDocument,
+        "command",
+        "new sticky",
+        { x: 50, y: 60 },
+        { width: -1, height: 10 },
       ),
     ).toThrowError("Sticky size must be positive");
   });
