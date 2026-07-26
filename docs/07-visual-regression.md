@@ -16,6 +16,10 @@ baseline は `gh-pages/visual-baseline/` に保存する。PR では `gh-pages/v
 - `.github/workflows/deploy-storybook-main.yml` — `main` で Storybook と baseline を更新
 - `.github/workflows/storybook-pr-preview.yml` — PR ごとの Storybook preview
 
+## GitHub Pages
+
+リッチレポート URL と Storybook preview を公開するには、リポジトリ Settings → Pages で `gh-pages` ブランチを Source に設定する必要がある。Pages 未設定でも artifact へのレポートアップロードと compare 自体は動作する。
+
 ## ローカル実行
 
 ```bash
