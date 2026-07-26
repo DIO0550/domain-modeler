@@ -181,30 +181,39 @@ jobs:
           [ "$success" = "true" ]
 
           if [ "$pushed" = "true" ]; then
-            build_ok=false
             pages_configured=true
-            for attempt in 1 2 3; do
-              if out=$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pages/builds" 2>&1); then
-                build_ok=true
-                break
-              fi
-              echo "$out"
-              # Pages 未設定(404)や token 権限不足(403)では公開 URL は到達不能なので待機をスキップする
-              if echo "$out" | grep -Eq "HTTP (403|404)"; then
-                echo "Pages is unavailable; skipping public report availability wait (Settings → Pages). Detail: $out"
-                pages_configured=false
-                build_ok=true
-                break
-              fi
-              if echo "$out" | grep -q "HTTP 409"; then
-                echo "Pages build already in progress; waiting for the public revision"
-                build_ok=true
-                break
-              fi
-              echo "Pages build request failed (attempt $attempt), retrying..."
-              sleep $((attempt * 2))
-            done
-            [ "$build_ok" = "true" ]
+            if ! gh api "repos/${GITHUB_REPOSITORY}/pages" >/tmp/pages-site.json 2>/tmp/pages-site.err; then
+              echo "Pages site is not configured; skipping public report availability wait"
+              cat /tmp/pages-site.err || true
+              pages_configured=false
+            fi
+
+            build_ok=false
+            if [ "$pages_configured" = "true" ]; then
+              for attempt in 1 2 3; do
+                if out=$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pages/builds" 2>&1); then
+                  build_ok=true
+                  break
+                fi
+                echo "$out"
+                if echo "$out" | grep -Eq "HTTP (403|404)"; then
+                  echo "Pages build request unavailable; skipping public report availability wait. Detail: $out"
+                  pages_configured=false
+                  build_ok=true
+                  break
+                fi
+                if echo "$out" | grep -q "HTTP 409"; then
+                  echo "Pages build already in progress; waiting for the public revision"
+                  build_ok=true
+                  break
+                fi
+                echo "Pages build request failed (attempt $attempt), retrying..."
+                sleep $((attempt * 2))
+              done
+              [ "$build_ok" = "true" ]
+            else
+              build_ok=true
+            fi
 
             if [ "$CLOSED" != "true" ] && [ "$pages_configured" = "true" ]; then
               OWNER="${GITHUB_REPOSITORY%%/*}"
