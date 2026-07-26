@@ -182,14 +182,21 @@ jobs:
 
           if [ "$pushed" = "true" ]; then
             build_ok=false
+            pages_configured=true
             for attempt in 1 2 3; do
               if out=$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pages/builds" 2>&1); then
                 build_ok=true
                 break
               fi
               echo "$out"
-              if echo "$out" | grep -Eq "HTTP (404|409)"; then
-                echo "Pages build request is unavailable or already in progress; waiting for the public revision instead"
+              if echo "$out" | grep -q "HTTP 404"; then
+                echo "Pages is not configured; skipping public report availability wait (Settings → Pages)"
+                pages_configured=false
+                build_ok=true
+                break
+              fi
+              if echo "$out" | grep -q "HTTP 409"; then
+                echo "Pages build already in progress; waiting for the public revision"
                 build_ok=true
                 break
               fi
@@ -198,7 +205,7 @@ jobs:
             done
             [ "$build_ok" = "true" ]
 
-            if [ "$CLOSED" != "true" ]; then
+            if [ "$CLOSED" != "true" ] && [ "$pages_configured" = "true" ]; then
               OWNER="${GITHUB_REPOSITORY%%/*}"
               REPO_NAME="${GITHUB_REPOSITORY#*/}"
               PUBLIC_SUMMARY="https://${OWNER}.github.io/${REPO_NAME}/visual-regression/pr-${PR}/summary.json?revision=${REPORT_VERSION}"
