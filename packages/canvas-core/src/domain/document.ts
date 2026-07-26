@@ -21,6 +21,7 @@ export const DEFAULT_TITLE = "Untitled";
 const STICKY_ID_PREFIX = "stk_";
 const STICKY_RANDOM_PART_LENGTH = 12;
 const CONNECTION_ID_PREFIX = "con_";
+const CONNECTION_RANDOM_PART_LENGTH = 12;
 
 const createStickyId = (): StickyId =>
   StickyId.create(
@@ -29,7 +30,7 @@ const createStickyId = (): StickyId =>
 
 const createConnectionId = (): ConnectionId =>
   ConnectionId.create(
-    `${CONNECTION_ID_PREFIX}${crypto.randomUUID().replace(/-/g, "").slice(0, STICKY_RANDOM_PART_LENGTH)}`,
+    `${CONNECTION_ID_PREFIX}${crypto.randomUUID().replace(/-/g, "").slice(0, CONNECTION_RANDOM_PART_LENGTH)}`,
   );
 
 export const Document = {
