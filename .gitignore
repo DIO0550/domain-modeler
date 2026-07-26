@@ -156,3 +156,8 @@ src-tauri/gen/
 # TypeScript composite project emit artifacts
 vite.config.js
 vite.config.d.ts
+
+# Visual regression
+visual-actual/
+visual-baseline/
+visual-report/

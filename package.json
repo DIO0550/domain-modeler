@@ -20,7 +20,9 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint": "oxlint",
-    "lint:fix": "oxlint --fix"
+    "lint:fix": "oxlint --fix",
+    "visual:capture": "node ./scripts/storybook-visual-regression.mjs capture",
+    "visual:compare": "node ./scripts/storybook-visual-regression.mjs compare"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -48,6 +50,12 @@
     "storybook": "^10.3.5",
     "typescript": "~5.8.3",
     "vite": "^8.0.5",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.4",
+    "odiff-bin": "4.5.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "odiff-bin"
+    ]
   }
 }
