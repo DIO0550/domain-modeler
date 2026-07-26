@@ -189,8 +189,9 @@ jobs:
                 break
               fi
               echo "$out"
-              if echo "$out" | grep -q "HTTP 404"; then
-                echo "Pages is not configured; skipping public report availability wait (Settings → Pages)"
+              # Pages 未設定(404)や token 権限不足(403)では公開 URL は到達不能なので待機をスキップする
+              if echo "$out" | grep -Eq "HTTP (403|404)"; then
+                echo "Pages is unavailable; skipping public report availability wait (Settings → Pages). Detail: $out"
                 pages_configured=false
                 build_ok=true
                 break
