@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { expect, it, vi } from "vitest";
 import { DEFAULT_TITLE, Document } from "./document";
-import type { Connection } from "./connection";
+import { type Connection, ConnectionId } from "./connection";
 import { StickyId } from "./sticky";
 import type { Sticky } from "./sticky";
 
-describe("Document.empty", () => {
+{
   it("タイトルを指定した場合、指定したタイトルでドキュメントを生成する", () => {
     const doc = Document.empty("My Canvas");
 
@@ -24,9 +24,9 @@ describe("Document.empty", () => {
     expect(doc.stickies).toEqual([]);
     expect(doc.connections).toEqual([]);
   });
-});
+}
 
-describe("Document sticky CRUD", () => {
+{
   const idA = StickyId.create("stk_aaaaaaaaaaaa");
   const idB = StickyId.create("stk_bbbbbbbbbbbb");
   const idMissing = StickyId.create("stk_missing");
@@ -50,16 +50,16 @@ describe("Document sticky CRUD", () => {
 
   const connections: readonly Connection[] = [
     {
-      id: "con_111111111111",
+      id: ConnectionId.create("con_111111111111"),
       from: idA,
       to: idB,
       label: "",
       note: "",
     },
     {
-      id: "con_222222222222",
-      from: "stk_xxxxxxxxxxxx",
-      to: "stk_yyyyyyyyyyyy",
+      id: ConnectionId.create("con_222222222222"),
+      from: StickyId.create("stk_xxxxxxxxxxxx"),
+      to: StickyId.create("stk_yyyyyyyyyyyy"),
       label: "",
       note: "",
     },
@@ -76,13 +76,16 @@ describe("Document sticky CRUD", () => {
       .spyOn(crypto, "randomUUID")
       .mockReturnValue("12345678-90ab-cdef-1234-567890abcdef");
 
-    const next = Document.addSticky(
+    const result = Document.addSticky(
       baseDocument,
       "command",
       "new sticky",
       { x: 50, y: 60 },
       { width: 140, height: 100 },
     );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const next = result.value;
 
     expect(baseDocument.stickies).toHaveLength(2);
     expect(baseDocument.stickies).toBe(stickies);
@@ -130,10 +133,13 @@ describe("Document sticky CRUD", () => {
   });
 
   it("付箋をリサイズできる", () => {
-    const next = Document.resizeSticky(baseDocument, idA, {
+    const result = Document.resizeSticky(baseDocument, idA, {
       width: 200,
       height: 110,
     });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const next = result.value;
 
     expect(baseDocument.stickies[0].size).toEqual({ width: 100, height: 80 });
     expect(baseDocument).not.toBe(next);
@@ -141,12 +147,18 @@ describe("Document sticky CRUD", () => {
   });
 
   it("リサイズで不正サイズを拒否する", () => {
-    expect(() =>
-      Document.resizeSticky(baseDocument, idA, {
-        width: 0,
-        height: 110,
-      }),
-    ).toThrowError("Sticky size must be positive");
+    const result = Document.resizeSticky(baseDocument, idA, {
+      width: 0,
+      height: 110,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: "INVALID_STICKY_SIZE",
+        message: "Sticky size must be positive",
+      },
+    });
   });
 
   it("付箋種別を変更できる", () => {
@@ -196,26 +208,169 @@ describe("Document sticky CRUD", () => {
   });
 
   it("追加時に不正サイズを拒否する", () => {
-    expect(() =>
-      Document.addSticky(
-        baseDocument,
-        "command",
-        "new sticky",
-        { x: 50, y: 60 },
-        { width: 140, height: 0 },
-      ),
-    ).toThrowError("Sticky size must be positive");
+    const result = Document.addSticky(
+      baseDocument,
+      "command",
+      "new sticky",
+      { x: 50, y: 60 },
+      { width: 140, height: 0 },
+    );
+
+    expect(result.ok).toBe(false);
   });
 
   it("追加時に負のサイズを拒否する", () => {
-    expect(() =>
-      Document.addSticky(
-        baseDocument,
-        "command",
-        "new sticky",
-        { x: 50, y: 60 },
-        { width: -1, height: 10 },
-      ),
-    ).toThrowError("Sticky size must be positive");
+    const result = Document.addSticky(
+      baseDocument,
+      "command",
+      "new sticky",
+      { x: 50, y: 60 },
+      { width: -1, height: 10 },
+    );
+
+    expect(result.ok).toBe(false);
   });
+}
+
+const connectionSourceId = StickyId.create("stk_aaaaaaaaaaaa");
+const connectionTargetId = StickyId.create("stk_bbbbbbbbbbbb");
+const connectionId = ConnectionId.create("con_111111111111");
+const missingConnectionId = ConnectionId.create("con_missing");
+const connectionDocument = {
+  ...Document.empty(),
+  stickies: [
+    {
+      id: connectionSourceId,
+      type: "event" as const,
+      text: "A",
+      position: { x: 0, y: 0 },
+      size: { width: 1, height: 1 },
+    },
+    {
+      id: connectionTargetId,
+      type: "actor" as const,
+      text: "B",
+      position: { x: 1, y: 1 },
+      size: { width: 1, height: 1 },
+    },
+  ],
+  connections: [
+    {
+      id: connectionId,
+      from: connectionSourceId,
+      to: connectionTargetId,
+      label: "old",
+      note: "",
+    },
+  ],
+};
+
+it("Document.addConnectionは接続を採番して追加し、入力を変更しない", () => {
+  const randomUUIDSpy = vi
+    .spyOn(crypto, "randomUUID")
+    .mockReturnValue("abcdef12-3456-7890-abcd-ef1234567890");
+  const result = Document.addConnection(
+    connectionDocument,
+    connectionTargetId,
+    connectionSourceId,
+    "new",
+  );
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  const next = result.value;
+
+  expect(next.connections[1]).toEqual({
+    id: ConnectionId.create("con_abcdef123456"),
+    from: connectionTargetId,
+    to: connectionSourceId,
+    label: "new",
+    note: "",
+  });
+  expect(connectionDocument.connections).toHaveLength(1);
+  randomUUIDSpy.mockRestore();
+});
+
+it("Document.addConnectionは自己参照と存在しない端点を拒否する", () => {
+  expect(
+    Document.addConnection(
+      connectionDocument,
+      connectionSourceId,
+      connectionSourceId,
+    ),
+  ).toMatchObject(
+    { ok: false, error: { code: "SELF_REFERENTIAL_CONNECTION" } },
+  );
+  expect(
+    Document.addConnection(
+      connectionDocument,
+      StickyId.create("stk_missing"),
+      connectionSourceId,
+    ),
+  ).toMatchObject({
+    ok: false,
+    error: { code: "CONNECTION_SOURCE_NOT_FOUND" },
+  });
+  expect(
+    Document.addConnection(
+      connectionDocument,
+      connectionSourceId,
+      StickyId.create("stk_missing"),
+    ),
+  ).toMatchObject({
+    ok: false,
+    error: { code: "CONNECTION_TARGET_NOT_FOUND" },
+  });
+});
+
+it("Document.addConnectionは同一ペアの複数接続を許容する", () => {
+  const result = Document.addConnection(
+    connectionDocument,
+    connectionSourceId,
+    connectionTargetId,
+  );
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.value.connections).toHaveLength(2);
+});
+
+it("Document.updateConnectionLabelはラベルを変更する", () => {
+  const next = Document.updateConnectionLabel(
+    connectionDocument,
+    connectionId,
+    "updated",
+  );
+  expect(next.connections[0].label).toBe("updated");
+  expect(connectionDocument.connections[0].label).toBe("old");
+  expect(
+    Document.updateConnectionLabel(
+      connectionDocument,
+      missingConnectionId,
+      "x",
+    ),
+  ).toEqual(connectionDocument);
+});
+
+it("Document.updateConnectionAnchorsはアンカーを指定および解除する", () => {
+  const anchored = Document.updateConnectionAnchors(
+    connectionDocument,
+    connectionId,
+    "right",
+    "left",
+  );
+  expect(anchored.connections[0]).toMatchObject({
+    fromAnchor: "right",
+    toAnchor: "left",
+  });
+  const automatic = Document.updateConnectionAnchors(anchored, connectionId);
+  expect(automatic.connections[0].fromAnchor).toBeUndefined();
+  expect(automatic.connections[0].toAnchor).toBeUndefined();
+});
+
+it("Document.removeConnectionは接続を削除する", () => {
+  const next = Document.removeConnection(connectionDocument, connectionId);
+  expect(next.connections).toEqual([]);
+  expect(connectionDocument.connections).toHaveLength(1);
+  expect(
+    Document.removeConnection(connectionDocument, missingConnectionId),
+  ).toEqual(connectionDocument);
 });

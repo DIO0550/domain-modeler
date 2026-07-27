@@ -2,6 +2,7 @@
 export * from "./domain/brand";
 export * from "./domain/error";
 export * from "./domain/result";
+export * from "./domain/option";
 export * from "./domain/viewport";
 export * from "./domain/sticky";
 export * from "./domain/connection";
