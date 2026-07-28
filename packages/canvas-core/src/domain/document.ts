@@ -8,6 +8,7 @@ import {
 import { CanvasError } from "./error";
 import { Result } from "./result";
 
+/** キャンバスの付箋、接続、表示範囲を保持する文書。 */
 export interface Document {
   readonly version: string;
   readonly title: string;
@@ -16,6 +17,7 @@ export interface Document {
   readonly connections: readonly Connection[];
 }
 
+/** タイトルが指定されない文書に使用する名称。 */
 export const DEFAULT_TITLE = "Untitled";
 
 const STICKY_ID_PREFIX = "stk_";
@@ -33,7 +35,13 @@ const createConnectionId = (): ConnectionId =>
     `${CONNECTION_ID_PREFIX}${crypto.randomUUID().replace(/-/g, "").slice(0, CONNECTION_RANDOM_PART_LENGTH)}`,
   );
 
+/** `Document` を生成、更新する関数群。 */
 export const Document = {
+  /**
+   * 付箋と接続を持たない文書を生成する。
+   * @param title 文書タイトル。
+   * @returns デフォルトの表示範囲を持つ空の文書。
+   */
   empty: (title: string = DEFAULT_TITLE): Document => ({
     version: "1.0",
     title,
