@@ -252,49 +252,79 @@ export const Document = {
    * @param doc 変更対象の文書。
    * @param connectionId 変更する接続のID。
    * @param label 変更後のラベル。
-   * @returns 接続のラベルを変更した文書。
+   * @returns 接続のラベルを変更した文書。接続が存在しない場合は入力文書。
    */
   updateConnectionLabel: (
     doc: Document,
     connectionId: ConnectionId,
     label: string,
-  ): Document => ({
-    ...doc,
-    connections: doc.connections.map((connection) =>
-      connection.id === connectionId ? { ...connection, label } : connection,
-    ),
-  }),
+  ): Document => {
+    const index = doc.connections.findIndex(
+      (connection) => connection.id === connectionId,
+    );
+    if (index < 0) {
+      return doc;
+    }
+
+    return {
+      ...doc,
+      connections: [
+        ...doc.connections.slice(0, index),
+        { ...doc.connections[index], label },
+        ...doc.connections.slice(index + 1),
+      ],
+    };
+  },
   /**
    * 接続のアンカーを指定する。省略したアンカーは自動配置に戻す。
    * @param doc 変更対象の文書。
    * @param connectionId 変更する接続のID。
    * @param fromAnchor 始点側のアンカー。
    * @param toAnchor 終点側のアンカー。
-   * @returns 接続のアンカーを変更した文書。
+   * @returns 接続のアンカーを変更した文書。接続が存在しない場合は入力文書。
    */
   updateConnectionAnchors: (
     doc: Document,
     connectionId: ConnectionId,
     fromAnchor?: Anchor,
     toAnchor?: Anchor,
-  ): Document => ({
-    ...doc,
-    connections: doc.connections.map((connection) =>
-      connection.id === connectionId
-        ? { ...connection, fromAnchor, toAnchor }
-        : connection,
-    ),
-  }),
+  ): Document => {
+    const index = doc.connections.findIndex(
+      (connection) => connection.id === connectionId,
+    );
+    if (index < 0) {
+      return doc;
+    }
+
+    return {
+      ...doc,
+      connections: [
+        ...doc.connections.slice(0, index),
+        { ...doc.connections[index], fromAnchor, toAnchor },
+        ...doc.connections.slice(index + 1),
+      ],
+    };
+  },
   /**
    * 接続を削除する。
    * @param doc 変更対象の文書。
    * @param connectionId 削除する接続のID。
-   * @returns 接続を削除した文書。
+   * @returns 接続を削除した文書。接続が存在しない場合は入力文書。
    */
-  removeConnection: (doc: Document, connectionId: ConnectionId): Document => ({
-    ...doc,
-    connections: doc.connections.filter(
-      (connection) => connection.id !== connectionId,
-    ),
-  }),
+  removeConnection: (doc: Document, connectionId: ConnectionId): Document => {
+    const index = doc.connections.findIndex(
+      (connection) => connection.id === connectionId,
+    );
+    if (index < 0) {
+      return doc;
+    }
+
+    return {
+      ...doc,
+      connections: [
+        ...doc.connections.slice(0, index),
+        ...doc.connections.slice(index + 1),
+      ],
+    };
+  },
 };

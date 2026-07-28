@@ -347,7 +347,7 @@ it("Document.updateConnectionLabelはラベルを変更する", () => {
       missingConnectionId,
       "x",
     ),
-  ).toEqual(connectionDocument);
+  ).toBe(connectionDocument);
 });
 
 it("Document.updateConnectionAnchorsはアンカーを指定および解除する", () => {
@@ -364,6 +364,14 @@ it("Document.updateConnectionAnchorsはアンカーを指定および解除す�
   const automatic = Document.updateConnectionAnchors(anchored, connectionId);
   expect(automatic.connections[0].fromAnchor).toBeUndefined();
   expect(automatic.connections[0].toAnchor).toBeUndefined();
+  expect(
+    Document.updateConnectionAnchors(
+      connectionDocument,
+      missingConnectionId,
+      "top",
+      "bottom",
+    ),
+  ).toBe(connectionDocument);
 });
 
 it("Document.removeConnectionは接続を削除する", () => {
@@ -372,5 +380,5 @@ it("Document.removeConnectionは接続を削除する", () => {
   expect(connectionDocument.connections).toHaveLength(1);
   expect(
     Document.removeConnection(connectionDocument, missingConnectionId),
-  ).toEqual(connectionDocument);
+  ).toBe(connectionDocument);
 });
