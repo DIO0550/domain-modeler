@@ -1,9 +1,10 @@
-# .claude/hooks — 実装規約の強制フック
+# hooks — 実装規約の強制フック
 
-Claude Code で `rules/` 配下の実装規約を**強制**するためのフックスクリプト置き場。
-同じスクリプトは Codex 向けに [`.codex/hooks/`](../../.codex/hooks/) にも配置している。
+Claude Code (`.claude/`) と Codex (`.codex/`) で `rules/` 配下の実装規約を**強制**するためのフックスクリプト置き場。
 [d-market-typescript の typescript-rules-plugin](https://github.com/DIO0550/d-market) の hooks から、
 このリポジトリの規約に合致するものを移植・適応したもの。
+
+`.claude/hooks/` と `.codex/hooks/` は同じスクリプトを保持する。配線だけが各ランタイム向けに分かれる。
 
 ## 強制している規約
 
@@ -24,10 +25,11 @@ Claude Code で `rules/` 配下の実装規約を**強制**するためのフッ
 
 ## 配線
 
-[`.claude/settings.json`](../settings.json) の `hooks.PreToolUse` / `hooks.PostToolUse` から参照。
-パスは `$CLAUDE_PROJECT_DIR` 基準。
-
-Codex 側は [`.codex/hooks.json`](../../.codex/hooks.json) を参照。
+- Claude Code: [`.claude/settings.json`](../../.claude/settings.json) の `hooks.PreToolUse` / `hooks.PostToolUse`
+  - パスは `$CLAUDE_PROJECT_DIR` 基準
+- Codex: [`.codex/hooks.json`](../hooks.json)（[`.codex/config.toml`](../config.toml) で `features.hooks = true`）
+  - パスは `$(git rev-parse --show-toplevel)/.codex/hooks/...` 基準
+  - ファイル編集は matcher `apply_patch|Edit|Write`（Codex の canonical tool は `apply_patch`）
 
 ## 例外(エスケープハッチ)
 
@@ -44,8 +46,8 @@ Codex 側は [`.codex/hooks.json`](../../.codex/hooks.json) を参照。
 
 ```bash
 # 拒否されること(deny が出力される)
-echo '{"tool_input":{"command":"npx create-vite"}}' | bash .claude/hooks/block-npx.sh
+echo '{"tool_input":{"command":"npx create-vite"}}' | bash .codex/hooks/block-npx.sh
 
 # 許可されること(出力なし・exit 0)
-echo '{"tool_input":{"command":"pnpm run lint"}}' | bash .claude/hooks/block-npx.sh
+echo '{"tool_input":{"command":"pnpm run lint"}}' | bash .codex/hooks/block-npx.sh
 ```
