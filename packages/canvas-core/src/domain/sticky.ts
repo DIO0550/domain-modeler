@@ -13,6 +13,11 @@ export type StickyType =
 export type StickyId = Brand<string, "StickyId">;
 
 export const StickyId = {
+  /**
+   * 永続化された文字列を付箋IDとして扱う。
+   * @param raw 付箋IDとして扱う文字列。
+   * @returns 付箋ID。
+   */
   create: (raw: string): StickyId => raw as StickyId,
 };
 
@@ -27,6 +32,11 @@ export interface Size {
 }
 
 export const Size = {
+  /**
+   * 付箋のサイズが有効か判定する。
+   * @param size 判定するサイズ。
+   * @returns 幅と高さがともに正の場合は `true`。
+   */
   isValid: (size: Size): boolean => size.width > 0 && size.height > 0,
 };
 
@@ -39,6 +49,15 @@ export interface Sticky {
 }
 
 export const Sticky = {
+  /**
+   * 指定された内容から付箋を生成する。
+   * @param id 付箋ID。
+   * @param type 付箋の種別。
+   * @param text 付箋の本文。
+   * @param position 付箋の位置。
+   * @param size 付箋のサイズ。
+   * @returns 指定内容で生成した付箋。
+   */
   create: (
     id: StickyId,
     type: StickyType,

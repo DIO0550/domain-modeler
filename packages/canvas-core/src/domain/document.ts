@@ -25,11 +25,19 @@ const STICKY_RANDOM_PART_LENGTH = 12;
 const CONNECTION_ID_PREFIX = "con_";
 const CONNECTION_RANDOM_PART_LENGTH = 12;
 
+/**
+ * ランダムな付箋IDを生成する。
+ * @returns 生成した付箋ID。
+ */
 const createStickyId = (): StickyId =>
   StickyId.create(
     `${STICKY_ID_PREFIX}${crypto.randomUUID().replace(/-/g, "").slice(0, STICKY_RANDOM_PART_LENGTH)}`,
   );
 
+/**
+ * ランダムな接続IDを生成する。
+ * @returns 生成した接続ID。
+ */
 const createConnectionId = (): ConnectionId =>
   ConnectionId.create(
     `${CONNECTION_ID_PREFIX}${crypto.randomUUID().replace(/-/g, "").slice(0, CONNECTION_RANDOM_PART_LENGTH)}`,
@@ -49,7 +57,15 @@ export const Document = {
     stickies: [],
     connections: [],
   }),
-  /** 付箋を追加する。 */
+  /**
+   * 付箋を追加する。
+   * @param doc 付箋を追加する文書。
+   * @param type 追加する付箋の種別。
+   * @param text 追加する付箋の本文。
+   * @param position 追加する付箋の位置。
+   * @param size 追加する付箋のサイズ。
+   * @returns 付箋を追加した文書。サイズが不正な場合はエラー。
+   */
   addSticky: (
     doc: Document,
     type: StickyType,
@@ -76,19 +92,39 @@ export const Document = {
       stickies: [...doc.stickies, sticky],
     });
   },
+  /**
+   * 付箋の本文を変更する。
+   * @param doc 変更対象の文書。
+   * @param stickyId 変更する付箋のID。
+   * @param text 変更後の本文。
+   * @returns 付箋の本文を変更した文書。
+   */
   updateStickyText: (doc: Document, stickyId: StickyId, text: string): Document => ({
     ...doc,
     stickies: doc.stickies.map((sticky) =>
       sticky.id === stickyId ? { ...sticky, text } : sticky,
     ),
   }),
+  /**
+   * 付箋を移動する。
+   * @param doc 変更対象の文書。
+   * @param stickyId 移動する付箋のID。
+   * @param position 移動後の位置。
+   * @returns 付箋を移動した文書。
+   */
   moveSticky: (doc: Document, stickyId: StickyId, position: Point): Document => ({
     ...doc,
     stickies: doc.stickies.map((sticky) =>
       sticky.id === stickyId ? { ...sticky, position } : sticky,
     ),
   }),
-  /** 付箋のサイズを変更する。 */
+  /**
+   * 付箋のサイズを変更する。
+   * @param doc 変更対象の文書。
+   * @param stickyId サイズを変更する付箋のID。
+   * @param size 変更後のサイズ。
+   * @returns サイズを変更した文書。サイズが不正な場合はエラー。
+   */
   resizeSticky: (
     doc: Document,
     stickyId: StickyId,
@@ -107,6 +143,13 @@ export const Document = {
       ),
     });
   },
+  /**
+   * 付箋の種別を変更する。
+   * @param doc 変更対象の文書。
+   * @param stickyId 種別を変更する付箋のID。
+   * @param type 変更後の付箋種別。
+   * @returns 付箋の種別を変更した文書。
+   */
   changeStickyType: (
     doc: Document,
     stickyId: StickyId,
@@ -117,6 +160,12 @@ export const Document = {
       sticky.id === stickyId ? { ...sticky, type } : sticky,
     ),
   }),
+  /**
+   * 付箋を最前面へ移動する。
+   * @param doc 変更対象の文書。
+   * @param stickyId 最前面へ移動する付箋のID。
+   * @returns 付箋の重なり順を変更した文書。
+   */
   bringStickyToFront: (doc: Document, stickyId: StickyId): Document => {
     const index = doc.stickies.findIndex((sticky) => sticky.id === stickyId);
     if (index < 0 || index === doc.stickies.length - 1) {
@@ -133,6 +182,12 @@ export const Document = {
       ],
     };
   },
+  /**
+   * 付箋とその付箋に関連する接続を削除する。
+   * @param doc 変更対象の文書。
+   * @param stickyId 削除する付箋のID。
+   * @returns 付箋と関連する接続を削除した文書。
+   */
   removeSticky: (doc: Document, stickyId: StickyId): Document => ({
     ...doc,
     stickies: doc.stickies.filter((sticky) => sticky.id !== stickyId),
@@ -140,7 +195,14 @@ export const Document = {
       (connection) => connection.from !== stickyId && connection.to !== stickyId,
     ),
   }),
-  /** 始点と終点を検証して接続を追加する。 */
+  /**
+   * 始点と終点を検証して接続を追加する。
+   * @param doc 接続を追加する文書。
+   * @param from 始点の付箋ID。
+   * @param to 終点の付箋ID。
+   * @param label 接続に表示するラベル。
+   * @returns 接続を追加した文書。接続できない場合はエラー。
+   */
   addConnection: (
     doc: Document,
     from: StickyId,
@@ -185,7 +247,13 @@ export const Document = {
       connections: [...doc.connections, connection],
     });
   },
-  /** 接続のラベルを変更する。 */
+  /**
+   * 接続のラベルを変更する。
+   * @param doc 変更対象の文書。
+   * @param connectionId 変更する接続のID。
+   * @param label 変更後のラベル。
+   * @returns 接続のラベルを変更した文書。
+   */
   updateConnectionLabel: (
     doc: Document,
     connectionId: ConnectionId,
@@ -196,7 +264,14 @@ export const Document = {
       connection.id === connectionId ? { ...connection, label } : connection,
     ),
   }),
-  /** 接続のアンカーを指定する。省略したアンカーは自動配置に戻す。 */
+  /**
+   * 接続のアンカーを指定する。省略したアンカーは自動配置に戻す。
+   * @param doc 変更対象の文書。
+   * @param connectionId 変更する接続のID。
+   * @param fromAnchor 始点側のアンカー。
+   * @param toAnchor 終点側のアンカー。
+   * @returns 接続のアンカーを変更した文書。
+   */
   updateConnectionAnchors: (
     doc: Document,
     connectionId: ConnectionId,
@@ -210,7 +285,12 @@ export const Document = {
         : connection,
     ),
   }),
-  /** 接続を削除する。 */
+  /**
+   * 接続を削除する。
+   * @param doc 変更対象の文書。
+   * @param connectionId 削除する接続のID。
+   * @returns 接続を削除した文書。
+   */
   removeConnection: (doc: Document, connectionId: ConnectionId): Document => ({
     ...doc,
     connections: doc.connections.filter(
