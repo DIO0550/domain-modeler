@@ -1,8 +1,7 @@
 import type { Brand } from "./brand";
-import type { StickyId } from "./sticky";
+import type { Anchor, StickyId } from "./sticky";
 
-/** 付箋の接続点を表す辺。 */
-export type Anchor = "top" | "right" | "bottom" | "left";
+export type { Anchor } from "./sticky";
 
 /** 接続を文書内で一意に識別するID。 */
 export type ConnectionId = Brand<string, "ConnectionId">;

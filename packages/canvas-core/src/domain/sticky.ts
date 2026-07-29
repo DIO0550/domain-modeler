@@ -1,4 +1,5 @@
 import type { Brand } from "./brand";
+import { type Option, Option as OptionValue } from "./option";
 
 export type StickyType =
   | "event"
@@ -25,6 +26,9 @@ export interface Point {
   readonly x: number;
   readonly y: number;
 }
+
+/** 付箋の接続点を表す辺。 */
+export type Anchor = "top" | "right" | "bottom" | "left";
 
 export interface Size {
   readonly width: number;
@@ -65,4 +69,62 @@ export const Sticky = {
     position: Point,
     size: Size,
   ): Sticky => ({ id, type, text, position, size }),
+  /**
+   * ワールド座標が付箋の矩形内にあるか判定する。
+   * @param sticky 判定対象の付箋。
+   * @param point 判定するワールド座標。
+   * @returns 座標が境界を含む付箋の矩形内にある場合は `true`。
+   */
+  contains: (sticky: Sticky, point: Point): boolean =>
+    point.x >= sticky.position.x &&
+    point.x <= sticky.position.x + sticky.size.width &&
+    point.y >= sticky.position.y &&
+    point.y <= sticky.position.y + sticky.size.height,
+  /**
+   * 付箋の中心座標を取得する。
+   * @param sticky 中心を求める付箋。
+   * @returns 付箋の中心座標。
+   */
+  center: (sticky: Sticky): Point => ({
+    x: sticky.position.x + sticky.size.width / 2,
+    y: sticky.position.y + sticky.size.height / 2,
+  }),
+  /**
+   * 付箋のアンカー座標を取得する。
+   * @param sticky アンカーを持つ付箋。
+   * @param anchor 座標を求める辺。
+   * @returns 指定した辺の中央座標。
+   */
+  anchorPoint: (sticky: Sticky, anchor: Anchor): Point => {
+    const center = Sticky.center(sticky);
+    const points = {
+      top: { x: center.x, y: sticky.position.y },
+      right: { x: sticky.position.x + sticky.size.width, y: center.y },
+      bottom: { x: center.x, y: sticky.position.y + sticky.size.height },
+      left: { x: sticky.position.x, y: center.y },
+    } as const;
+    return points[anchor];
+  },
+  /**
+   * 付箋の中心から指定方向へ伸ばした直線と矩形の交点を取得する。
+   * @param sticky 交点を求める付箋。
+   * @param direction 中心から伸ばす方向ベクトル。
+   * @returns 矩形の辺上の交点。方向ベクトルがゼロの場合は値なし。
+   */
+  boundaryPoint: (sticky: Sticky, direction: Point): Option<Point> => {
+    if (direction.x === 0 && direction.y === 0) {
+      return OptionValue.none();
+    }
+    const center = Sticky.center(sticky);
+    const scale =
+      1 /
+      Math.max(
+        Math.abs(direction.x) / (sticky.size.width / 2),
+        Math.abs(direction.y) / (sticky.size.height / 2),
+      );
+    return OptionValue.some({
+      x: center.x + direction.x * scale,
+      y: center.y + direction.y * scale,
+    });
+  },
 };
