@@ -82,6 +82,29 @@ test("明示したアンカーは自動アンカーより優先する", () => {
   });
 });
 
+test.each([
+  {
+    anchor: "top" as const,
+    expected: { x: 50, y: 0 },
+  },
+  {
+    anchor: "right" as const,
+    expected: { x: 100, y: 50 },
+  },
+  {
+    anchor: "bottom" as const,
+    expected: { x: 50, y: 100 },
+  },
+  {
+    anchor: "left" as const,
+    expected: { x: 0, y: 50 },
+  },
+])("明示した各アンカーは対応する辺の中央に解決する", ({ anchor, expected }) => {
+  const sticky = setupDocument().stickies[0];
+
+  expect(Sticky.anchorPoint(sticky, anchor)).toEqual(expected);
+});
+
 test("許容距離以内の座標では接続を取得する", () => {
   const document = setupDocument();
 
@@ -92,16 +115,43 @@ test("許容距離以内の座標では接続を取得する", () => {
 });
 
 test("許容距離を超える座標では接続を返さない", () => {
-  expect(DocumentValue.connectionAt(setupDocument(), { x: 75, y: 59 }, 8)).toEqual({
+  expect(
+    DocumentValue.connectionAt(setupDocument(), { x: 75, y: 59 }, 8),
+  ).toEqual({
     some: false,
   });
+});
+
+test("複数の接続が許容距離内にある場合は最後に追加した接続を取得する", () => {
+  const document = setupDocument();
+  const frontConnection = Connection.create(
+    ConnectionId.create("con_front"),
+    backId,
+    frontId,
+    "front",
+    "",
+  );
+  const documentWithOverlappingConnections = {
+    ...document,
+    connections: [...document.connections, frontConnection],
+  };
+
+  expect(
+    DocumentValue.connectionAt(
+      documentWithOverlappingConnections,
+      { x: 75, y: 50 },
+      8,
+    ),
+  ).toEqual({ some: true, value: frontConnection });
 });
 
 test("接続先の付箋が存在しない接続は判定対象にしない", () => {
   const document = setupDocument();
   const invalidDocument = { ...document, stickies: [document.stickies[0]] };
 
-  expect(DocumentValue.connectionAt(invalidDocument, { x: 75, y: 50 }, 8)).toEqual({
+  expect(
+    DocumentValue.connectionAt(invalidDocument, { x: 75, y: 50 }, 8),
+  ).toEqual({
     some: false,
   });
 });
