@@ -1,0 +1,59 @@
+{
+  "description": "domain-modeler implementation rule enforcement hooks (shared with .claude/hooks).",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/block-npx.sh\"",
+            "statusMessage": "Checking npx policy"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-push-typecheck.sh\"",
+            "statusMessage": "Typechecking before push"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-push-lint.sh\"",
+            "statusMessage": "Linting before push"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-push-test-rules.sh\"",
+            "statusMessage": "Checking test rules before push"
+          }
+        ]
+      },
+      {
+        "matcher": "apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/block-lint-suppress.sh\"",
+            "statusMessage": "Checking lint suppressions"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/post-edit-lint.sh\"",
+            "statusMessage": "Running post-edit lint"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/check-test-rules.sh\"",
+            "statusMessage": "Checking test rules"
+          }
+        ]
+      }
+    ]
+  }
+}

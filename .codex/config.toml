@@ -1,0 +1,5 @@
+# Project-local Codex config.
+# Hooks are defined in .codex/hooks.json (see .codex/hooks/README.md).
+
+[features]
+hooks = true
