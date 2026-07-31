@@ -1,29 +1,54 @@
 import { expect, test } from "vitest";
-import { type Document, Document as DocumentValue } from "./document";
-import { DocumentCommand, History } from "./history";
+import { Connection, ConnectionId } from "./connection";
+import { Document as DocumentValue } from "./document";
+import { AddConnectionCommand, ChangeTitleCommand, History } from "./history";
+import { Sticky, StickyId } from "./sticky";
 
-/**
- * 文書タイトルを変更し、元のタイトルへ戻せるコマンドを生成する。
- * @param titles 変更前後のタイトル。
- * @returns タイトル変更コマンド。
- */
-const changeTitle = (titles: {
-  readonly previous: string;
-  readonly next: string;
-}): DocumentCommand => DocumentCommand.create({
-  execute: (document: Document): Document => ({
-    ...document,
-    title: titles.next,
-  }),
-  inverse: (): DocumentCommand =>
-    changeTitle({ previous: titles.next, next: titles.previous }),
+test("接続追加コマンドを実行するとundoで接続を削除する", () => {
+  const fromId = StickyId.create("stk_from");
+  const toId = StickyId.create("stk_to");
+  const initial = {
+    ...DocumentValue.empty(),
+    stickies: [
+      Sticky.create(
+        fromId,
+        "actor",
+        "from",
+        { x: 0, y: 0 },
+        { width: 1, height: 1 },
+      ),
+      Sticky.create(
+        toId,
+        "command",
+        "to",
+        { x: 2, y: 0 },
+        { width: 1, height: 1 },
+      ),
+    ],
+  };
+  const connection = Connection.create(
+    ConnectionId.create("con_1"),
+    fromId,
+    toId,
+    "",
+    "",
+  );
+  const executed = History.execute(
+    History.create(initial),
+    AddConnectionCommand.create(connection),
+  );
+
+  const undone = History.undo(executed);
+
+  expect(executed.current.connections).toEqual([connection]);
+  expect(undone.some && undone.value.current.connections).toEqual([]);
 });
 
 test("文書コマンドを実行するとコマンド実行前の文書へ戻せる", () => {
   const initial = DocumentValue.empty("初期");
   const history = History.execute(
     History.create(initial),
-    changeTitle({ previous: "初期", next: "編集後" }),
+    ChangeTitleCommand.create({ previous: "初期", next: "編集後" }),
   );
 
   const result = History.undo(history);
@@ -36,7 +61,7 @@ test("文書コマンドを取り消した後は同じコマンドを再実行�
   const initial = DocumentValue.empty("初期");
   const executed = History.execute(
     History.create(initial),
-    changeTitle({ previous: "初期", next: "編集後" }),
+    ChangeTitleCommand.create({ previous: "初期", next: "編集後" }),
   );
   const undone = History.undo(executed);
 
@@ -50,9 +75,9 @@ test("複数の文書コマンドは新しいものから順に取り消せる",
   const history = History.execute(
     History.execute(
       History.create(initial),
-      changeTitle({ previous: "初期", next: "編集1" }),
+      ChangeTitleCommand.create({ previous: "初期", next: "編集1" }),
     ),
-    changeTitle({ previous: "編集1", next: "編集2" }),
+    ChangeTitleCommand.create({ previous: "編集1", next: "編集2" }),
   );
   const firstUndo = History.undo(history);
   const secondUndo = firstUndo.some ? History.undo(firstUndo.value) : firstUndo;
@@ -65,7 +90,7 @@ test("操作を取り消した後に別の操作を実行すると取り消す�
   const initial = DocumentValue.empty("初期");
   const executed = History.execute(
     History.create(initial),
-    changeTitle({ previous: "初期", next: "編集後" }),
+    ChangeTitleCommand.create({ previous: "初期", next: "編集後" }),
   );
   const undone = History.undo(executed);
   if (!undone.some) {
@@ -74,7 +99,7 @@ test("操作を取り消した後に別の操作を実行すると取り消す�
 
   const branched = History.execute(
     undone.value,
-    changeTitle({ previous: "初期", next: "別の編集" }),
+    ChangeTitleCommand.create({ previous: "初期", next: "別の編集" }),
   );
 
   expect(History.redo(branched)).toEqual({ some: false });
@@ -93,7 +118,10 @@ test("履歴が100件を超えると最も古いコマンドから破棄する",
     (current, index) =>
       History.execute(
         current,
-        changeTitle({ previous: String(index - 1), next: String(index) }),
+        ChangeTitleCommand.create({
+          previous: String(index - 1),
+          next: String(index),
+        }),
       ),
     History.create(initial),
   );
