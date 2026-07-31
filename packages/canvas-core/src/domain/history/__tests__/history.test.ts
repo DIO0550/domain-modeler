@@ -1,13 +1,13 @@
 import { expect, test } from "vitest";
-import { Connection, ConnectionId } from "./connection";
-import { Document as DocumentValue } from "./document";
+import { Connection, ConnectionId } from "../../connection";
+import { Document as DocumentValue } from "../../document";
 import {
   AddConnectionCommand,
   ChangeTitleCommand,
   CommandStack,
   History,
-} from "./history";
-import { Sticky, StickyId } from "./sticky";
+} from "..";
+import { Sticky, StickyId } from "../../sticky";
 
 test("スタックから最後に積んだコマンドを取り出す", () => {
   const first = ChangeTitleCommand.create({ previous: "0", next: "1" });
