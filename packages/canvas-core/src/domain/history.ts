@@ -141,11 +141,44 @@ export const DocumentCommand = {
   },
 } as const;
 
+/** 文書コマンドを後入れ先出しで保持するスタック。 */
+export type CommandStack = readonly DocumentCommand[];
+
+/** 文書コマンドスタックを生成、更新する関数群。 */
+export const CommandStack = {
+  /**
+   * 空の文書コマンドスタックを生成する。
+   * @returns コマンドを持たないスタック。
+   */
+  empty: (): CommandStack => [],
+  /**
+   * 文書コマンドをスタックの末尾へ積む。
+   * @param stack コマンドを積む前のスタック。
+   * @param command 積む文書コマンド。
+   * @returns コマンドを積み、上限を超えた古いコマンドを破棄したスタック。
+   */
+  push: (stack: CommandStack, command: DocumentCommand): CommandStack =>
+    [...stack, command].slice(-HISTORY_LIMIT),
+  /**
+   * スタックの末尾から文書コマンドを取り出す。
+   * @param stack コマンドを取り出すスタック。
+   * @returns 取り出したコマンドと残りのスタック。空の場合は値なし。
+   */
+  pop: (
+    stack: CommandStack,
+  ): Option<Readonly<{ command: DocumentCommand; remaining: CommandStack }>> => {
+    const command = stack[stack.length - 1];
+    return command === undefined
+      ? OptionValue.none()
+      : OptionValue.some({ command, remaining: stack.slice(0, -1) });
+  },
+} as const;
+
 /** 文書の現在値と undo / redo のコマンド履歴を保持する。 */
 export interface History {
   readonly current: Document;
-  readonly undoStack: readonly DocumentCommand[];
-  readonly redoStack: readonly DocumentCommand[];
+  readonly undoStack: CommandStack;
+  readonly redoStack: CommandStack;
 }
 
 /** 文書の履歴を生成、更新する関数群。 */
@@ -157,8 +190,8 @@ export const History = {
    */
   create: (document: Document): History => ({
     current: document,
-    undoStack: [],
-    redoStack: [],
+    undoStack: CommandStack.empty(),
+    redoStack: CommandStack.empty(),
   }),
   /**
    * 文書コマンドを実行して履歴へ記録する。
@@ -168,10 +201,11 @@ export const History = {
    */
   execute: (history: History, command: DocumentCommand): History => ({
     current: DocumentCommand.execute(command, history.current),
-    undoStack: [...history.undoStack, DocumentCommand.inverse(command)].slice(
-      -HISTORY_LIMIT,
+    undoStack: CommandStack.push(
+      history.undoStack,
+      DocumentCommand.inverse(command),
     ),
-    redoStack: [],
+    redoStack: CommandStack.empty(),
   }),
   /**
    * 直前の文書コマンドを逆操作で取り消す。
@@ -179,14 +213,17 @@ export const History = {
    * @returns 逆操作を実行して、再実行コマンドをredo stackへ積んだ履歴。取り消せるコマンドがない場合は値なし。
    */
   undo: (history: History): Option<History> => {
-    const command = history.undoStack[history.undoStack.length - 1];
-    if (command === undefined) {
+    const popped = CommandStack.pop(history.undoStack);
+    if (!popped.some) {
       return OptionValue.none();
     }
     return OptionValue.some({
-      current: DocumentCommand.execute(command, history.current),
-      undoStack: history.undoStack.slice(0, -1),
-      redoStack: [...history.redoStack, DocumentCommand.inverse(command)],
+      current: DocumentCommand.execute(popped.value.command, history.current),
+      undoStack: popped.value.remaining,
+      redoStack: CommandStack.push(
+        history.redoStack,
+        DocumentCommand.inverse(popped.value.command),
+      ),
     });
   },
   /**
@@ -195,14 +232,17 @@ export const History = {
    * @returns コマンドを実行して、その逆操作をundo stackへ積んだ履歴。再実行できるコマンドがない場合は値なし。
    */
   redo: (history: History): Option<History> => {
-    const command = history.redoStack[history.redoStack.length - 1];
-    if (command === undefined) {
+    const popped = CommandStack.pop(history.redoStack);
+    if (!popped.some) {
       return OptionValue.none();
     }
     return OptionValue.some({
-      current: DocumentCommand.execute(command, history.current),
-      undoStack: [...history.undoStack, DocumentCommand.inverse(command)],
-      redoStack: history.redoStack.slice(0, -1),
+      current: DocumentCommand.execute(popped.value.command, history.current),
+      undoStack: CommandStack.push(
+        history.undoStack,
+        DocumentCommand.inverse(popped.value.command),
+      ),
+      redoStack: popped.value.remaining,
     });
   },
 };
