@@ -1,27 +1,25 @@
 import { expect, test } from "vitest";
 import { type Document, Document as DocumentValue } from "./document";
-import { DocumentOperation, History } from "./history";
+import { DocumentCommand, History } from "./history";
 
 /**
- * 文書タイトルを変更し、元のタイトルへ戻せる操作を生成する。
- * @param titles 操作前後のタイトル。
- * @returns タイトル変更操作。
+ * 文書タイトルを変更し、元のタイトルへ戻せるコマンドを生成する。
+ * @param titles 変更前後のタイトル。
+ * @returns タイトル変更コマンド。
  */
 const changeTitle = (titles: {
   readonly previous: string;
   readonly next: string;
-}): DocumentOperation => DocumentOperation.create({
+}): DocumentCommand => DocumentCommand.create({
   execute: (document: Document): Document => ({
     ...document,
     title: titles.next,
   }),
-  undo: (document: Document): Document => ({
-    ...document,
-    title: titles.previous,
-  }),
+  inverse: (): DocumentCommand =>
+    changeTitle({ previous: titles.next, next: titles.previous }),
 });
 
-test("文書操作を実行すると操作前の文書へ戻せる", () => {
+test("文書コマンドを実行するとコマンド実行前の文書へ戻せる", () => {
   const initial = DocumentValue.empty("初期");
   const history = History.execute(
     History.create(initial),
@@ -34,7 +32,7 @@ test("文書操作を実行すると操作前の文書へ戻せる", () => {
   expect(result.some && result.value.current).toEqual(initial);
 });
 
-test("文書操作を取り消した後は同じ操作を再実行できる", () => {
+test("文書コマンドを取り消した後は同じコマンドを再実行できる", () => {
   const initial = DocumentValue.empty("初期");
   const executed = History.execute(
     History.create(initial),
@@ -47,7 +45,7 @@ test("文書操作を取り消した後は同じ操作を再実行できる", ()
   expect(redone.some && redone.value.current.title).toBe("編集後");
 });
 
-test("複数の文書操作は新しいものから順に取り消せる", () => {
+test("複数の文書コマンドは新しいものから順に取り消せる", () => {
   const initial = DocumentValue.empty("初期");
   const history = History.execute(
     History.execute(
@@ -71,7 +69,7 @@ test("操作を取り消した後に別の操作を実行すると取り消す�
   );
   const undone = History.undo(executed);
   if (!undone.some) {
-    expect.fail("文書操作を取り消せる必要がある");
+    expect.fail("文書コマンドを取り消せる必要がある");
   }
 
   const branched = History.execute(
@@ -89,7 +87,7 @@ test("履歴がない場合は取り消しも再実行もできない", () => {
   expect(History.redo(history)).toEqual({ some: false });
 });
 
-test("履歴が100件を超えると最も古い操作から破棄する", () => {
+test("履歴が100件を超えると最も古いコマンドから破棄する", () => {
   const initial = DocumentValue.empty("0");
   const history = Array.from({ length: 101 }, (_, index) => index + 1).reduce(
     (current, index) =>
