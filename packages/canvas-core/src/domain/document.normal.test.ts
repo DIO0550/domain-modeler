@@ -84,8 +84,7 @@ import type { Sticky } from "./sticky";
       { width: 140, height: 100 },
     );
     expect(result.ok).toBe(true);
-    if (!result.ok) {return;}
-    const next = result.value;
+    const next = (result as { ok: true; value: Document }).value;
 
     expect(baseDocument.stickies).toHaveLength(2);
     expect(baseDocument.stickies).toBe(stickies);
@@ -138,8 +137,7 @@ import type { Sticky } from "./sticky";
       height: 110,
     });
     expect(result.ok).toBe(true);
-    if (!result.ok) {return;}
-    const next = result.value;
+    const next = (result as { ok: true; value: Document }).value;
 
     expect(baseDocument.stickies[0].size).toEqual({ width: 100, height: 80 });
     expect(baseDocument).not.toBe(next);
@@ -276,8 +274,7 @@ it("Document.addConnectionは接続を採番して追加し、入力を変更し
     "new",
   );
   expect(result.ok).toBe(true);
-  if (!result.ok) {return;}
-  const next = result.value;
+  const next = (result as { ok: true; value: Document }).value;
 
   expect(next.connections[1]).toEqual({
     id: ConnectionId.create("con_abcdef123456"),
@@ -329,8 +326,9 @@ it("Document.addConnectionは同一ペアの複数接続を許容する", () => 
     connectionTargetId,
   );
   expect(result.ok).toBe(true);
-  if (!result.ok) {return;}
-  expect(result.value.connections).toHaveLength(2);
+  expect((result as { ok: true; value: Document }).value.connections).toHaveLength(
+    2,
+  );
 });
 
 it("Document.updateConnectionLabelはラベルを変更する", () => {

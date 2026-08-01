@@ -116,12 +116,10 @@ test("操作を取り消した後に別の操作を実行すると取り消す�
     ChangeTitleCommand.create({ previous: "初期", next: "編集後" }),
   );
   const undone = History.undo(executed);
-  if (!undone.some) {
-    expect.fail("文書コマンドを取り消せる必要がある");
-  }
+  expect(undone.some).toBe(true);
 
   const branched = History.execute(
-    undone.value,
+    (undone as { some: true; value: History }).value,
     ChangeTitleCommand.create({ previous: "初期", next: "別の編集" }),
   );
 

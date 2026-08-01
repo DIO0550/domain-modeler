@@ -54,10 +54,10 @@ test("付箋: 複数の付箋が重なる場合は最前面（配列後方）を
 
   const hit = HitTest.stickyAt(doc, overlappingPoint);
 
-  expect(hit.some).toBe(true);
-  if (hit.some) {
-    expect(hit.value.id).toBe(frontId);
-  }
+  expect(hit).toEqual({
+    some: true,
+    value: expect.objectContaining({ id: frontId }),
+  });
 });
 
 test("接続線: 許容距離以内の座標では接続を取得する", () => {
@@ -189,9 +189,7 @@ test("距離計算: 接続線からの最短距離を取得する", () => {
   const distance = HitTest.distanceToConnection(doc, connection, point);
 
   expect(distance.some).toBe(true);
-  if (distance.some) {
-    expect(distance.value).toBeLessThan(8);
-  }
+  expect((distance as { some: true; value: number }).value).toBeLessThan(8);
 });
 
 test("距離計算: 接続線が生成できない場合は値なし", () => {
