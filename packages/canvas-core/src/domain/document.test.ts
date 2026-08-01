@@ -84,7 +84,7 @@ import type { Sticky } from "./sticky";
       { width: 140, height: 100 },
     );
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {return;}
     const next = result.value;
 
     expect(baseDocument.stickies).toHaveLength(2);
@@ -138,7 +138,7 @@ import type { Sticky } from "./sticky";
       height: 110,
     });
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {return;}
     const next = result.value;
 
     expect(baseDocument.stickies[0].size).toEqual({ width: 100, height: 80 });
@@ -276,7 +276,7 @@ it("Document.addConnectionは接続を採番して追加し、入力を変更し
     "new",
   );
   expect(result.ok).toBe(true);
-  if (!result.ok) return;
+  if (!result.ok) {return;}
   const next = result.value;
 
   expect(next.connections[1]).toEqual({
@@ -329,7 +329,7 @@ it("Document.addConnectionは同一ペアの複数接続を許容する", () => 
     connectionTargetId,
   );
   expect(result.ok).toBe(true);
-  if (!result.ok) return;
+  if (!result.ok) {return;}
   expect(result.value.connections).toHaveLength(2);
 });
 
