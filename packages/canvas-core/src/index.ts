@@ -8,4 +8,5 @@ export * from "./domain/sticky";
 export * from "./domain/connection";
 export * from "./domain/document";
 export * from "./domain/connection-segment";
+export * from "./domain/hit-test";
 export * from "./domain/history";
