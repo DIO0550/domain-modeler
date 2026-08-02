@@ -86,7 +86,17 @@ export type CssProperty = "display" | "flex-direction" | "gap" | "padding" /* ..
 export type Px = `${number}px`; // "16" / "16rem" は代入不可
 ```
 
-- 仕様(`docs/`)が列挙している語彙はそのまま union にする。定数から導出できる場合は `as const satisfies` で導出し、二重管理しない
+- 仕様(`docs/`)が列挙している語彙はそのまま union にする。定数から導出できる場合は**オブジェクト + `as const`** とし、`ValueOf<typeof CONST>` で union を導出する(配列の `[number]` よりオブジェクトを優先)。二重管理しない
+
+```typescript
+// OK: オブジェクトから ValueOf で union を導出
+export const ANCHORS = { top: "top", right: "right", bottom: "bottom", left: "left" } as const;
+export type Anchor = ValueOf<typeof ANCHORS>; // "top" | "right" | "bottom" | "left"
+
+// NG: 配列から [number] で導出(オブジェクトの方がキー参照・存在判定しやすい)
+export const ANCHORS = ["top", "right", "bottom", "left"] as const;
+export type Anchor = (typeof ANCHORS)[number];
+```
 - 単位付きの値は単位を型に含める。合成順が決まっている値は並びを型に出す(`` `${Px} ${Px} ${Px} ${Px} ${string}` ``)
 - ただし、プロパティごとに値域が違うなど**対で縛るコストが釣り合わない場合は無理に縛らない**。縛らなかった理由をコメントに残す
 
