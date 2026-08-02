@@ -1,15 +1,31 @@
 import type { Brand } from "./brand";
 import { type Option, Option as OptionValue } from "./option";
 
-export type StickyType =
-  | "event"
-  | "actor"
-  | "command"
-  | "policy"
-  | "aggregate"
-  | "readModel"
-  | "externalSystem"
-  | "hotspot";
+/** 付箋種別の列挙値。 */
+export const STICKY_TYPES = [
+  "event",
+  "actor",
+  "command",
+  "policy",
+  "aggregate",
+  "readModel",
+  "externalSystem",
+  "hotspot",
+] as const;
+
+export type StickyType = (typeof STICKY_TYPES)[number];
+
+/** 付箋種別を判定する関数群。 */
+export const StickyType = {
+  /**
+   * 値が既知の付箋種別か判定する。
+   * @param value 判定する値。
+   * @returns 既知の付箋種別の場合は `true`。
+   */
+  is: (value: unknown): value is StickyType =>
+    typeof value === "string" &&
+    (STICKY_TYPES as readonly string[]).includes(value),
+} as const;
 
 export type StickyId = Brand<string, "StickyId">;
 
@@ -27,8 +43,22 @@ export interface Point {
   readonly y: number;
 }
 
+/** 付箋の接続点を表す辺の列挙値。 */
+export const ANCHORS = ["top", "right", "bottom", "left"] as const;
+
 /** 付箋の接続点を表す辺。 */
-export type Anchor = "top" | "right" | "bottom" | "left";
+export type Anchor = (typeof ANCHORS)[number];
+
+/** アンカーを判定する関数群。 */
+export const Anchor = {
+  /**
+   * 値が既知のアンカーか判定する。
+   * @param value 判定する値。
+   * @returns 既知のアンカーの場合は `true`。
+   */
+  is: (value: unknown): value is Anchor =>
+    typeof value === "string" && (ANCHORS as readonly string[]).includes(value),
+} as const;
 
 export interface Size {
   readonly width: number;
