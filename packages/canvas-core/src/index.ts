@@ -6,6 +6,7 @@ export * from "./domain/option";
 export * from "./domain/viewport";
 export * from "./domain/sticky";
 export * from "./domain/connection";
+export * from "./domain/connection-status";
 export * from "./domain/document";
 export * from "./domain/connection-segment";
 export * from "./domain/hit-test";
