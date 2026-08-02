@@ -11,3 +11,4 @@ export * from "./domain/document";
 export * from "./domain/connection-segment";
 export * from "./domain/hit-test";
 export * from "./domain/history";
+export * from "./serialize";
