@@ -1,4 +1,5 @@
 // canvas-core public API
+export * from "./types/value-of";
 export * from "./domain/brand";
 export * from "./domain/error";
 export * from "./domain/result";
