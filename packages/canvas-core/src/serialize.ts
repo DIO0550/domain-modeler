@@ -1,7 +1,6 @@
 import type { Document } from "./domain/document";
 import {
-  type Anchor,
-  Anchor as AnchorValue,
+  Anchor,
   Size,
   StickyId,
   StickyType,
@@ -126,7 +125,7 @@ const parseOptionalAnchor = (
   if (value === undefined) {
     return Result.ok(undefined);
   }
-  if (!AnchorValue.is(value)) {
+  if (!Anchor.is(value)) {
     return Result.err(
       CanvasError.create(
         "INVALID_ANCHOR",
