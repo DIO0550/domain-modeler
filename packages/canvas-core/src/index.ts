@@ -1,4 +1,5 @@
 // canvas-core public API
+export * from "./types/value-of";
 export * from "./domain/brand";
 export * from "./domain/error";
 export * from "./domain/result";
@@ -11,3 +12,5 @@ export * from "./domain/document";
 export * from "./domain/connection-segment";
 export * from "./domain/hit-test";
 export * from "./domain/history";
+export * from "./serialize";
+export * from "./utils/NumberEx";
