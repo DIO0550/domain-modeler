@@ -11,6 +11,7 @@ import { Connection, ConnectionId } from "./domain/connection";
 import { Viewport } from "./domain/viewport";
 import { CanvasError } from "./domain/error";
 import { Result } from "./domain/result";
+import { NumberEx } from "./utils/NumberEx";
 
 /** アプリが対応するスキーマの major バージョン。 */
 const SUPPORTED_MAJOR = 1;
@@ -27,14 +28,6 @@ const isPlainObject = (
   value: unknown,
 ): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
-
-/**
- * 値が有限の number か判定する。
- * @param value 判定する値。
- * @returns 有限の number の場合は `true`。
- */
-const isFiniteNumber = (value: unknown): value is number =>
-  typeof value === "number" && Number.isFinite(value);
 
 /**
  * JSON 文字列をパースする。失敗時は INVALID_JSON を返す。
@@ -101,9 +94,9 @@ const parseViewport = (viewport: unknown): Result<Viewport> => {
     );
   }
   if (
-    !isFiniteNumber(viewport.x) ||
-    !isFiniteNumber(viewport.y) ||
-    !isFiniteNumber(viewport.zoom)
+    !NumberEx.isFinite(viewport.x) ||
+    !NumberEx.isFinite(viewport.y) ||
+    !NumberEx.isFinite(viewport.zoom)
   ) {
     return Result.err(
       CanvasError.create(
@@ -179,8 +172,8 @@ const parseSticky = (value: unknown): Result<Sticky> => {
     );
   }
   if (
-    !isFiniteNumber(value.position.x) ||
-    !isFiniteNumber(value.position.y)
+    !NumberEx.isFinite(value.position.x) ||
+    !NumberEx.isFinite(value.position.y)
   ) {
     return Result.err(
       CanvasError.create(
@@ -195,8 +188,8 @@ const parseSticky = (value: unknown): Result<Sticky> => {
     );
   }
   if (
-    !isFiniteNumber(value.size.width) ||
-    !isFiniteNumber(value.size.height)
+    !NumberEx.isFinite(value.size.width) ||
+    !NumberEx.isFinite(value.size.height)
   ) {
     return Result.err(
       CanvasError.create(
