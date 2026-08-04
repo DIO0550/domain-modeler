@@ -457,40 +457,33 @@ const toStickyPlain = (sticky: Sticky): Sticky => ({
 
 /**
  * Connection を表順のプレーンオブジェクトにする。
- * note を再生成し、省略アンカーはキー自体を出さない。
+ * note を再生成する。省略アンカーは undefined とし、JSON 化時にキー自体を出さない。
  * @param connection 変換する Connection。
  * @param stickies note 派生用の付箋配列。
- * @returns キー順固定のプレーンオブジェクト。
+ * @returns キー順固定の Connection。
  */
 const toConnectionPlain = (
   connection: Connection,
   stickies: readonly Sticky[],
-): Record<string, unknown> => {
-  const plain: Record<string, unknown> = {
-    id: connection.id,
-    from: connection.from,
-    to: connection.to,
-  };
-  if (connection.fromAnchor !== undefined) {
-    plain.fromAnchor = connection.fromAnchor;
-  }
-  if (connection.toAnchor !== undefined) {
-    plain.toAnchor = connection.toAnchor;
-  }
-  plain.label = connection.label;
-  plain.note = Connection.buildNote(
+): Connection => ({
+  id: connection.id,
+  from: connection.from,
+  to: connection.to,
+  fromAnchor: connection.fromAnchor,
+  toAnchor: connection.toAnchor,
+  label: connection.label,
+  note: Connection.buildNote(
     stickyTextById(stickies, connection.from),
     stickyTextById(stickies, connection.to),
-  );
-  return plain;
-};
+  ),
+});
 
 /**
  * Document をキー順固定のプレーンオブジェクトにする。
  * @param document 変換する Document。
- * @returns キー順固定のプレーンオブジェクト。
+ * @returns キー順固定の Document。
  */
-const toDocumentPlain = (document: Document): Record<string, unknown> => ({
+const toDocumentPlain = (document: Document): Document => ({
   version: DOCUMENT_WRITE_VERSION,
   title: document.title,
   viewport: toViewportPlain(document.viewport),
