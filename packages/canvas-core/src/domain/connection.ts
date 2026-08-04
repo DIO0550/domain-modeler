@@ -27,6 +27,17 @@ export interface Connection {
   readonly note: string;
 }
 
+/** note 派生時に各付箋テキストから採用する最大文字数（UTF-16 コードユニット）。 */
+const NOTE_TEXT_MAX_LENGTH = 20;
+
+/**
+ * 付箋テキストを note 用に正規化する（改行スペース化 → 先頭切り詰め）。
+ * @param text 付箋の生テキスト。
+ * @returns note に埋め込む断片。
+ */
+const normalizeNoteFragment = (text: string): string =>
+  text.replace(/\r\n|\r|\n/g, " ").slice(0, NOTE_TEXT_MAX_LENGTH);
+
 /** `Connection` を生成する関数群。 */
 export const Connection = {
   /**
@@ -49,4 +60,15 @@ export const Connection = {
     fromAnchor?: Anchor,
     toAnchor?: Anchor,
   ): Connection => ({ id, from, to, label, note, fromAnchor, toAnchor }),
-};
+
+  /**
+   * 始点・終点付箋テキストから接続の note を派生する。
+   * 各テキストは改行をスペースに置換し先頭20文字に切り詰めたうえで
+   * `<始点> -> <終点>` 形式で結合する。
+   * @param fromText 始点付箋のテキスト（欠落時は呼び出し側が "" を渡す）。
+   * @param toText 終点付箋のテキスト（欠落時は呼び出し側が "" を渡す）。
+   * @returns 派生した note 文字列。
+   */
+  buildNote: (fromText: string, toText: string): string =>
+    `${normalizeNoteFragment(fromText)} -> ${normalizeNoteFragment(toText)}`,
+} as const;
