@@ -445,9 +445,9 @@ const toViewportPlain = (viewport: Viewport): Viewport => ({
 /**
  * Sticky を表順のプレーンオブジェクトにする。
  * @param sticky 変換する Sticky。
- * @returns キー順固定のプレーンオブジェクト。
+ * @returns キー順固定の Sticky。
  */
-const toStickyPlain = (sticky: Sticky): Record<string, unknown> => ({
+const toStickyPlain = (sticky: Sticky): Sticky => ({
   id: sticky.id,
   type: sticky.type,
   text: sticky.text,
