@@ -15,6 +15,9 @@ import { NumberEx } from "./utils/NumberEx";
 /** アプリが対応するスキーマの major バージョン。 */
 const SUPPORTED_MAJOR = 1;
 
+/** 書き出し時に用いるアプリ対応の最新スキーマバージョン。 */
+const DOCUMENT_WRITE_VERSION = "1.0";
+
 /** `version` フィールドの `<major>.<minor>` 形式。 */
 const VERSION_PATTERN = /^(\d+)\.(\d+)$/;
 
@@ -419,6 +422,86 @@ const parseDocumentObject = (raw: Record<string, unknown>): Result<Document> => 
   });
 };
 
+/**
+ * sticky ID に対応するテキストを返す。見つからなければ空文字。
+ * @param stickies 付箋配列。
+ * @param id 検索する sticky ID。
+ * @returns 付箋テキスト。欠落時は空文字。
+ */
+const stickyTextById = (stickies: readonly Sticky[], id: string): string =>
+  stickies.find((sticky) => sticky.id === id)?.text ?? "";
+
+/**
+ * Viewport を表順のプレーンオブジェクトにする。
+ * @param viewport 変換する Viewport。
+ * @returns キー順固定のプレーンオブジェクト。
+ */
+const toViewportPlain = (
+  viewport: Document["viewport"],
+): Record<string, number> => ({
+  x: viewport.x,
+  y: viewport.y,
+  zoom: viewport.zoom,
+});
+
+/**
+ * Sticky を表順のプレーンオブジェクトにする。
+ * @param sticky 変換する Sticky。
+ * @returns キー順固定のプレーンオブジェクト。
+ */
+const toStickyPlain = (sticky: Sticky): Record<string, unknown> => ({
+  id: sticky.id,
+  type: sticky.type,
+  text: sticky.text,
+  position: { x: sticky.position.x, y: sticky.position.y },
+  size: { width: sticky.size.width, height: sticky.size.height },
+});
+
+/**
+ * Connection を表順のプレーンオブジェクトにする。
+ * note を再生成し、省略アンカーはキー自体を出さない。
+ * @param connection 変換する Connection。
+ * @param stickies note 派生用の付箋配列。
+ * @returns キー順固定のプレーンオブジェクト。
+ */
+const toConnectionPlain = (
+  connection: Connection,
+  stickies: readonly Sticky[],
+): Record<string, unknown> => {
+  const plain: Record<string, unknown> = {
+    id: connection.id,
+    from: connection.from,
+    to: connection.to,
+  };
+  if (connection.fromAnchor !== undefined) {
+    plain.fromAnchor = connection.fromAnchor;
+  }
+  if (connection.toAnchor !== undefined) {
+    plain.toAnchor = connection.toAnchor;
+  }
+  plain.label = connection.label;
+  plain.note = Connection.buildNote(
+    stickyTextById(stickies, connection.from),
+    stickyTextById(stickies, connection.to),
+  );
+  return plain;
+};
+
+/**
+ * Document をキー順固定のプレーンオブジェクトにする。
+ * @param document 変換する Document。
+ * @returns キー順固定のプレーンオブジェクト。
+ */
+const toDocumentPlain = (document: Document): Record<string, unknown> => ({
+  version: DOCUMENT_WRITE_VERSION,
+  title: document.title,
+  viewport: toViewportPlain(document.viewport),
+  stickies: document.stickies.map(toStickyPlain),
+  connections: document.connections.map((connection) =>
+    toConnectionPlain(connection, document.stickies),
+  ),
+});
+
 /** `.dcanvas` JSON と Document を相互変換する関数群。 */
 export const Serialize = {
   /**
@@ -441,4 +524,14 @@ export const Serialize = {
 
     return parseDocumentObject(jsonResult.value);
   },
+
+  /**
+   * Document を `.dcanvas` JSON 文字列へ書き出す。
+   * 接続の note を sticky テキストから再生成し、インデント2・キー順固定で整形する。
+   * version はアプリ対応の最新（"1.0"）で書き出す。
+   * @param document 検証済みの Document。
+   * @returns 整形済み JSON 文字列。
+   */
+  stringify: (document: Document): string =>
+    JSON.stringify(toDocumentPlain(document), null, 2),
 } as const;

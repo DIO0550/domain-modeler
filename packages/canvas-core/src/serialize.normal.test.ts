@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { Serialize } from "./serialize";
 import { StickyId } from "./domain/sticky";
 import { ConnectionId } from "./domain/connection";
+import type { Document } from "./domain/document";
 import { Result } from "./domain/result";
 
 const validDocumentJson = (): string =>
@@ -193,4 +194,173 @@ test("アンカー省略の接続はアンカーなしで読み込む", () => {
     label: "",
     note: "",
   });
+});
+
+const sampleDocument = (): Document =>
+  Result.unwrap(Serialize.parse(validDocumentJson()));
+
+test("Document を書き出すとインデント2の JSON になる", () => {
+  const json = Serialize.stringify(sampleDocument());
+
+  expect(json.startsWith("{")).toBe(true);
+  expect(json).toContain('\n  "version"');
+});
+
+test("書き出し時に接続の note を sticky テキストから再生成する", () => {
+  const parsed = JSON.parse(Serialize.stringify(sampleDocument())) as {
+    connections: Array<{ note: string }>;
+  };
+
+  expect(parsed.connections[0]?.note).toBe("購入者 -> 注文が確定した");
+});
+
+test("空の stickies と connections を書き出せる", () => {
+  const document = Result.unwrap(
+    Serialize.parse(
+      JSON.stringify({
+        version: "1.0",
+        title: "",
+        viewport: { x: 0, y: 0, zoom: 1 },
+        stickies: [],
+        connections: [],
+      }),
+    ),
+  );
+
+  const parsed = JSON.parse(Serialize.stringify(document)) as {
+    stickies: unknown[];
+    connections: unknown[];
+  };
+
+  expect(parsed.stickies).toEqual([]);
+  expect(parsed.connections).toEqual([]);
+});
+
+test("Document トップレベルキーは version, title, viewport, stickies, connections の順になる", () => {
+  const parsed = JSON.parse(Serialize.stringify(sampleDocument())) as object;
+
+  expect(Object.keys(parsed)).toEqual([
+    "version",
+    "title",
+    "viewport",
+    "stickies",
+    "connections",
+  ]);
+});
+
+test("Viewport キーは x, y, zoom の順になる", () => {
+  const parsed = JSON.parse(Serialize.stringify(sampleDocument())) as {
+    viewport: object;
+  };
+
+  expect(Object.keys(parsed.viewport)).toEqual(["x", "y", "zoom"]);
+});
+
+test("Sticky キーは id, type, text, position, size の順になる", () => {
+  const parsed = JSON.parse(Serialize.stringify(sampleDocument())) as {
+    stickies: object[];
+  };
+
+  expect(Object.keys(parsed.stickies[0] ?? {})).toEqual([
+    "id",
+    "type",
+    "text",
+    "position",
+    "size",
+  ]);
+});
+
+test("Connection キーは id, from, to, fromAnchor?, toAnchor?, label, note の順になる", () => {
+  const parsed = JSON.parse(Serialize.stringify(sampleDocument())) as {
+    connections: object[];
+  };
+
+  expect(Object.keys(parsed.connections[0] ?? {})).toEqual([
+    "id",
+    "from",
+    "to",
+    "fromAnchor",
+    "label",
+    "note",
+  ]);
+});
+
+test("アンカー省略の接続は書き出し JSON にアンカーキーを含めない", () => {
+  const document = Result.unwrap(
+    Serialize.parse(
+      JSON.stringify({
+        version: "1.0",
+        title: "",
+        viewport: { x: 0, y: 0, zoom: 1 },
+        stickies: [
+          {
+            id: "stk_aaaaaaaaaaaa",
+            type: "command",
+            text: "a",
+            position: { x: 0, y: 0 },
+            size: { width: 10, height: 10 },
+          },
+          {
+            id: "stk_bbbbbbbbbbbb",
+            type: "event",
+            text: "b",
+            position: { x: 20, y: 0 },
+            size: { width: 10, height: 10 },
+          },
+        ],
+        connections: [
+          {
+            id: "con_cccccccccccc",
+            from: "stk_aaaaaaaaaaaa",
+            to: "stk_bbbbbbbbbbbb",
+            label: "",
+            note: "ignored",
+          },
+        ],
+      }),
+    ),
+  );
+
+  const parsed = JSON.parse(Serialize.stringify(document)) as {
+    connections: Array<Record<string, unknown>>;
+  };
+
+  expect(Object.keys(parsed.connections[0] ?? {})).toEqual([
+    "id",
+    "from",
+    "to",
+    "label",
+    "note",
+  ]);
+  expect(parsed.connections[0]).not.toHaveProperty("fromAnchor");
+  expect(parsed.connections[0]).not.toHaveProperty("toAnchor");
+});
+
+test("書き出し version は常にアプリ最新の 1.0 になる", () => {
+  const document = {
+    ...sampleDocument(),
+    version: "1.5",
+  };
+  const parsed = JSON.parse(Serialize.stringify(document)) as {
+    version: string;
+  };
+
+  expect(parsed.version).toBe("1.0");
+});
+
+test("書き出し→読み込みで Document 構造が同値になる", () => {
+  const original = sampleDocument();
+  const roundTripped = Result.unwrap(
+    Serialize.parse(Serialize.stringify(original)),
+  );
+
+  expect(roundTripped).toEqual(original);
+});
+
+test("往復後も接続の note は空文字になる", () => {
+  const roundTripped = Result.unwrap(
+    Serialize.parse(Serialize.stringify(sampleDocument())),
+  );
+
+  expect(roundTripped.connections[0]?.note).toBe("");
 });
