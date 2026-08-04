@@ -1,6 +1,9 @@
 import { expect, test } from "vitest";
 import { Serialize } from "./serialize";
+import { ConnectionId } from "./domain/connection";
+import type { Document } from "./domain/document";
 import { Result } from "./domain/result";
+import { StickyId } from "./domain/sticky";
 
 const baseDocument = (): Record<string, unknown> => ({
   version: "1.0",
@@ -245,4 +248,164 @@ test("必須フィールド欠落は INVALID_DOCUMENT になる", () => {
   );
 
   expect(error.code).toBe("INVALID_DOCUMENT");
+});
+
+test("付箋テキストが20文字を超えると note は先頭20文字になる", () => {
+  const twentyOne = "あいうえおかきくけこさしすせそたちつてとな";
+  const document = Result.unwrap(
+    Serialize.parse(
+      JSON.stringify({
+        ...baseDocument(),
+        stickies: [
+          {
+            id: "stk_aaaaaaaaaaaa",
+            type: "command",
+            text: twentyOne,
+            position: { x: 0, y: 0 },
+            size: { width: 10, height: 10 },
+          },
+          {
+            id: "stk_bbbbbbbbbbbb",
+            type: "event",
+            text: "b",
+            position: { x: 20, y: 0 },
+            size: { width: 10, height: 10 },
+          },
+        ],
+        connections: [
+          {
+            id: "con_cccccccccccc",
+            from: "stk_aaaaaaaaaaaa",
+            to: "stk_bbbbbbbbbbbb",
+            label: "",
+            note: "",
+          },
+        ],
+      }),
+    ),
+  );
+
+  const parsed = JSON.parse(Serialize.stringify(document)) as {
+    connections: Array<{ note: string }>;
+  };
+  const fromFragment = parsed.connections[0]?.note.split(" -> ")[0] ?? "";
+
+  expect(fromFragment).toHaveLength(20);
+  expect(parsed.connections[0]?.note).toBe(
+    "あいうえおかきくけこさしすせそたちつてと -> b",
+  );
+});
+
+test.each([
+  { text: "行1\n行2", expected: "行1 行2" },
+  { text: "行1\r\n行2", expected: "行1 行2" },
+])(
+  "付箋テキスト内の改行は note でスペースに置換される ($text)",
+  ({ text, expected }: { text: string; expected: string }) => {
+    const document = Result.unwrap(
+      Serialize.parse(
+        JSON.stringify({
+          ...baseDocument(),
+          stickies: [
+            {
+              id: "stk_aaaaaaaaaaaa",
+              type: "command",
+              text,
+              position: { x: 0, y: 0 },
+              size: { width: 10, height: 10 },
+            },
+            {
+              id: "stk_bbbbbbbbbbbb",
+              type: "event",
+              text: "b",
+              position: { x: 20, y: 0 },
+              size: { width: 10, height: 10 },
+            },
+          ],
+          connections: [
+            {
+              id: "con_cccccccccccc",
+              from: "stk_aaaaaaaaaaaa",
+              to: "stk_bbbbbbbbbbbb",
+              label: "",
+              note: "",
+            },
+          ],
+        }),
+      ),
+    );
+
+    const parsed = JSON.parse(Serialize.stringify(document)) as {
+      connections: Array<{ note: string }>;
+    };
+
+    expect(parsed.connections[0]?.note).toBe(`${expected} -> b`);
+  },
+);
+
+test("片方アンカーのみの接続は存在するアンカーキーだけを書き出す", () => {
+  const document = Result.unwrap(
+    Serialize.parse(
+      JSON.stringify({
+        ...baseDocument(),
+        connections: [
+          {
+            id: "con_cccccccccccc",
+            from: "stk_aaaaaaaaaaaa",
+            to: "stk_bbbbbbbbbbbb",
+            toAnchor: "left",
+            label: "",
+            note: "",
+          },
+        ],
+      }),
+    ),
+  );
+
+  const parsed = JSON.parse(Serialize.stringify(document)) as {
+    connections: Array<Record<string, unknown>>;
+  };
+
+  expect(Object.keys(parsed.connections[0] ?? {})).toEqual([
+    "id",
+    "from",
+    "to",
+    "toAnchor",
+    "label",
+    "note",
+  ]);
+});
+
+test("参照先 sticky が欠落していても note は空文字側で組み立て throw しない", () => {
+  const document: Document = {
+    version: "1.0",
+    title: "",
+    viewport: { x: 0, y: 0, zoom: 1 },
+    stickies: [
+      {
+        id: StickyId.create("stk_bbbbbbbbbbbb"),
+        type: "event",
+        text: "終点",
+        position: { x: 20, y: 0 },
+        size: { width: 10, height: 10 },
+      },
+    ],
+    connections: [
+      {
+        id: ConnectionId.create("con_cccccccccccc"),
+        from: StickyId.create("stk_missingxxxxx"),
+        to: StickyId.create("stk_bbbbbbbbbbbb"),
+        label: "",
+        note: "",
+      },
+    ],
+  };
+
+  expect(() => Serialize.stringify(document)).not.toThrow();
+
+  const parsed = JSON.parse(Serialize.stringify(document)) as {
+    connections: Array<{ note: string }>;
+  };
+
+  expect(parsed.connections[0]?.note).toBe(" -> 終点");
 });
