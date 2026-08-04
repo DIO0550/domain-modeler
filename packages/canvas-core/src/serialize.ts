@@ -434,11 +434,9 @@ const stickyTextById = (stickies: readonly Sticky[], id: string): string =>
 /**
  * Viewport を表順のプレーンオブジェクトにする。
  * @param viewport 変換する Viewport。
- * @returns キー順固定のプレーンオブジェクト。
+ * @returns キー順固定の Viewport。
  */
-const toViewportPlain = (
-  viewport: Document["viewport"],
-): Record<string, number> => ({
+const toViewportPlain = (viewport: Viewport): Viewport => ({
   x: viewport.x,
   y: viewport.y,
   zoom: viewport.zoom,
