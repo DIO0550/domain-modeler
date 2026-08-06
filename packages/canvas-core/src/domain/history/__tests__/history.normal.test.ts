@@ -119,7 +119,7 @@ test("操作を取り消した後に別の操作を実行すると取り消す�
   expect(undone.some).toBe(true);
 
   const branched = History.execute(
-    (undone as { some: true; value: History }).value,
+    (undone as { some: true; value: ReturnType<typeof History.create> }).value,
     ChangeTitleCommand.create({ previous: "初期", next: "別の編集" }),
   );
 
