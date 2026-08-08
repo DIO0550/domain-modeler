@@ -13,4 +13,5 @@ export * from "./domain/connection-segment";
 export * from "./domain/hit-test";
 export * from "./domain/history";
 export * from "./serialize";
+export * from "./externalChanges";
 export * from "./utils/NumberEx";
