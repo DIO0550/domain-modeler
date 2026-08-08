@@ -94,11 +94,42 @@ export const RemoveConnectionCommand = {
   }),
 } as const;
 
+/** 文書全体を置換するコマンド。 */
+export interface ReplaceDocumentCommand {
+  readonly type: "replace_document";
+  readonly previous: Document;
+  readonly next: Document;
+}
+
+/** 文書全体置換コマンドを生成、実行する関数群。 */
+export const ReplaceDocumentCommand = {
+  /**
+   * 置換前後の文書からコマンドを生成する。
+   * @param documents 置換前後の文書。
+   * @returns 文書全体置換コマンド。
+   */
+  create: (documents: {
+    readonly previous: Document;
+    readonly next: Document;
+  }): ReplaceDocumentCommand => ({ type: "replace_document", ...documents }),
+  /**
+   * 文書全体を next で置き換える。
+   * @param command 実行する文書全体置換コマンド。
+   * @param _document 変更前の文書（next で置換するため未使用）。
+   * @returns 置換後の文書。
+   */
+  execute: (
+    command: ReplaceDocumentCommand,
+    _document: Document,
+  ): Document => command.next,
+} as const;
+
 /** 履歴へ保存できる文書コマンド。 */
 export type DocumentCommand =
   | ChangeTitleCommand
   | AddConnectionCommand
-  | RemoveConnectionCommand;
+  | RemoveConnectionCommand
+  | ReplaceDocumentCommand;
 
 /** 文書コマンドを実行し、逆コマンドへ変換する関数群。 */
 export const DocumentCommand = {
@@ -116,6 +147,8 @@ export const DocumentCommand = {
         return AddConnectionCommand.execute(command, document);
       case "remove_connection":
         return RemoveConnectionCommand.execute(command, document);
+      case "replace_document":
+        return ReplaceDocumentCommand.execute(command, document);
     }
   },
   /**
@@ -134,6 +167,11 @@ export const DocumentCommand = {
         return RemoveConnectionCommand.create(command.connection);
       case "remove_connection":
         return AddConnectionCommand.create(command.connection);
+      case "replace_document":
+        return ReplaceDocumentCommand.create({
+          previous: command.next,
+          next: command.previous,
+        });
     }
   },
 } as const;
