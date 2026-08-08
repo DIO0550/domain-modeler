@@ -33,6 +33,8 @@ export const History = {
   }),
   /**
    * 文書コマンドを実行して履歴へ記録する。
+   * ドラッグ・リサイズ・編集セッションなどの連続操作は、中間状態を積まず確定時に1コマンドだけ渡す。
+   * viewport 変更・選択状態はコマンド化しない。
    * @param history コマンド実行前の履歴。
    * @param command 実行する文書コマンド。
    * @returns 逆操作を undo stackへ積み、redo stackを空にした履歴。
