@@ -16,3 +16,5 @@ export * from "./workflow-decl";
 export * from "./error-decl";
 export * from "./document";
 export * from "./diagnostic";
+export * from "./result";
+export * from "./parse";
