@@ -4,7 +4,7 @@ import {
   TOKEN_KINDS,
   Tokenizer,
   type Token,
-} from "./tokenizer";
+} from "..";
 
 const kindsOf = (tokens: readonly Token[]): readonly string[] =>
   tokens.map((token) => token.kind);

@@ -1,4 +1,4 @@
-import type { ValueOf } from "./types/value-of";
+import type { ValueOf } from "../types/value-of";
 
 /** ソース上の位置範囲。行・桁は 1 始まり、終端桁は排他的。 */
 export type SourceRange = Readonly<{
