@@ -17,5 +17,5 @@ export const TypeModifier = {
    * @returns 後置修飾の場合は `true`。
    */
   is: (value: string): value is TypeModifier =>
-    Object.hasOwn(TYPE_MODIFIERS, value),
+    Object.prototype.hasOwnProperty.call(TYPE_MODIFIERS, value),
 } as const;

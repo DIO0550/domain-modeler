@@ -20,5 +20,6 @@ export const Primitive = {
    * @param value 判定する値。
    * @returns プリミティブ型の場合は `true`。
    */
-  is: (value: string): value is Primitive => Object.hasOwn(PRIMITIVES, value),
+  is: (value: string): value is Primitive =>
+    Object.prototype.hasOwnProperty.call(PRIMITIVES, value),
 } as const;
