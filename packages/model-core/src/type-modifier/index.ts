@@ -16,5 +16,6 @@ export const TypeModifier = {
    * @param value 判定する値。
    * @returns 後置修飾の場合は `true`。
    */
-  is: (value: string): value is TypeModifier => value in TYPE_MODIFIERS,
+  is: (value: string): value is TypeModifier =>
+    Object.hasOwn(TYPE_MODIFIERS, value),
 } as const;
