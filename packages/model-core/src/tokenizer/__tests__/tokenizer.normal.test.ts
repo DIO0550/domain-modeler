@@ -1,11 +1,8 @@
 import { expect, test } from "vitest";
-import {
-  Identifier,
-  ReservedWord,
-  TOKEN_KINDS,
-  Tokenizer,
-  type Token,
-} from "..";
+import { ReservedWord } from "../../reserved-word";
+import { TOKEN_KINDS } from "../../token";
+import { Tokenizer } from "..";
+import type { Token } from "../../token";
 
 const kindsOf = (tokens: readonly Token[]): readonly string[] =>
   tokens.map((token) => token.kind);
@@ -95,22 +92,70 @@ test("予約語は identifier ではなく reserved になる", () => {
   );
 
   expect(
-    tokens.filter((token) => token.kind === TOKEN_KINDS.reserved).map(
-      (token) => token.text,
-    ),
+    tokens
+      .filter((token) => token.kind === TOKEN_KINDS.reserved)
+      .map((token) => token.text),
   ).toEqual(["workflow", "input:", "AND"]);
   expect(
     tokens.some(
       (token) =>
-        token.kind === TOKEN_KINDS.identifier &&
-        ReservedWord.is(token.text),
+        token.kind === TOKEN_KINDS.identifier && ReservedWord.is(token.text),
     ),
   ).toBe(false);
 });
 
-test("Identifier.isAcceptable は予約語を拒否する", () => {
-  expect(Identifier.isAcceptable("data")).toBe(false);
-  expect(Identifier.isAcceptable("workflow")).toBe(false);
-  expect(Identifier.isAcceptable("input:")).toBe(false);
-  expect(Identifier.isAcceptable("注文")).toBe(true);
+test("仕様例の文書全体を例外なくトークン列に分解する", () => {
+  const source = `// 注文ドメインのモデル
+
+data 注文 = 未検証の注文 OR 検証済みの注文
+
+data 検証済みの注文 =
+  注文ID
+  AND 顧客情報
+  AND 注文明細 list
+
+data 注文数量 = int constrained 1..100
+data 顧客名 = string constrained length 1..50
+data 割引コード = 文字列 option
+
+workflow 注文を確定する =
+  input: 未検証の注文 AND 在庫状況
+  output: 注文確定イベント OR 注文保留イベント
+  error: 検証エラー
+`;
+
+  const tokens = Tokenizer.tokenize(source);
+
+  expect(tokens.length).toBeGreaterThan(0);
+  expect(tokens.some((token) => token.kind === TOKEN_KINDS.comment)).toBe(
+    true,
+  );
+  expect(tokens.some((token) => token.kind === TOKEN_KINDS.blankLine)).toBe(
+    true,
+  );
+  expect(
+    tokens
+      .filter((token) => token.kind === TOKEN_KINDS.reserved)
+      .map((token) => token.text),
+  ).toEqual([
+    "data",
+    "OR",
+    "data",
+    "AND",
+    "AND",
+    "list",
+    "data",
+    "constrained",
+    "data",
+    "constrained",
+    "length",
+    "data",
+    "option",
+    "workflow",
+    "input:",
+    "AND",
+    "output:",
+    "OR",
+    "error:",
+  ]);
 });

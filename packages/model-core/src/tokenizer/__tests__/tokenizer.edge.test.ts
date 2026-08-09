@@ -1,16 +1,18 @@
 import { expect, test } from "vitest";
-import {
-  Identifier,
-  TOKEN_KINDS,
-  Tokenizer,
-  type Token,
-} from "..";
+import { TOKEN_KINDS } from "../../token";
+import { Tokenizer } from "..";
+import type { Token } from "../../token";
 
 const kindsOf = (tokens: readonly Token[]): readonly string[] =>
   tokens.map((token) => token.kind);
 
+const textsOf = (tokens: readonly Token[]): readonly string[] =>
+  tokens.map((token) => token.text);
+
 test("空行は blankLine トークンになる", () => {
-  const tokens = Tokenizer.tokenize("data 注文 = string\n\ndata 注文ID = string");
+  const tokens = Tokenizer.tokenize(
+    "data 注文 = string\n\ndata 注文ID = string",
+  );
 
   expect(kindsOf(tokens)).toEqual([
     TOKEN_KINDS.reserved,
@@ -36,7 +38,9 @@ test("空行は blankLine トークンになる", () => {
 });
 
 test("空白のみの行も blankLine になる", () => {
-  const tokens = Tokenizer.tokenize("data 注文 = string\n  \ndata 注文ID = string");
+  const tokens = Tokenizer.tokenize(
+    "data 注文 = string\n  \ndata 注文ID = string",
+  );
 
   expect(tokens[4]).toEqual({
     kind: TOKEN_KINDS.blankLine,
@@ -97,9 +101,10 @@ test("制約の範囲は number と rangeDots に分解する", () => {
 
   expect(
     tokens
-      .filter((token) =>
-        token.kind === TOKEN_KINDS.number ||
-        token.kind === TOKEN_KINDS.rangeDots
+      .filter(
+        (token) =>
+          token.kind === TOKEN_KINDS.number ||
+          token.kind === TOKEN_KINDS.rangeDots,
       )
       .map((token) => ({ kind: token.kind, text: token.text })),
   ).toEqual([
@@ -110,22 +115,19 @@ test("制約の範囲は number と rangeDots に分解する", () => {
 });
 
 test("片側開放の範囲も number と rangeDots に分解する", () => {
-  const tokens = Tokenizer.tokenize("data 下限のみ = int constrained 1..\ndata 上限のみ = int constrained ..100");
+  const tokens = Tokenizer.tokenize(
+    "data 下限のみ = int constrained 1..\ndata 上限のみ = int constrained ..100",
+  );
 
   expect(
     tokens
-      .filter((token) =>
-        token.kind === TOKEN_KINDS.number ||
-        token.kind === TOKEN_KINDS.rangeDots
+      .filter(
+        (token) =>
+          token.kind === TOKEN_KINDS.number ||
+          token.kind === TOKEN_KINDS.rangeDots,
       )
       .map((token) => token.text),
   ).toEqual(["1", "..", "..", "100"]);
-});
-
-test("Identifier.isAcceptable は空文字と空白含みを拒否する", () => {
-  expect(Identifier.isAcceptable("")).toBe(false);
-  expect(Identifier.isAcceptable("注文 名")).toBe(false);
-  expect(Identifier.isAcceptable("注文\n名")).toBe(false);
 });
 
 test("プリミティブ型名は予約語ではなく identifier になる", () => {
@@ -156,4 +158,47 @@ test("CRLF 改行でも行番号がずれない", () => {
       endColumn: 6,
     },
   });
+});
+
+test("空文字入力でも例外を投げず blankLine 1件になる", () => {
+  expect(Tokenizer.tokenize("")).toEqual([
+    {
+      kind: TOKEN_KINDS.blankLine,
+      text: "",
+      range: {
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 1,
+      },
+    },
+  ]);
+});
+
+test("コメントでない単独スラッシュは読み飛ばして後続トークンを残す", () => {
+  const tokens = Tokenizer.tokenize("data 注文 / string");
+
+  expect(textsOf(tokens)).toEqual(["data", "注文", "string"]);
+});
+
+test("単独ドットは読み飛ばして前後の数値を残す", () => {
+  const tokens = Tokenizer.tokenize("data X = 1.5");
+
+  expect(
+    tokens
+      .filter((token) => token.kind === TOKEN_KINDS.number)
+      .map((token) => token.text),
+  ).toEqual(["1", "5"]);
+});
+
+test("output: と error: も reserved として分解する", () => {
+  const tokens = Tokenizer.tokenize(
+    "workflow 処理 =\n  input: A\n  output: B\n  error: C",
+  );
+
+  expect(
+    tokens
+      .filter((token) => token.kind === TOKEN_KINDS.reserved)
+      .map((token) => token.text),
+  ).toEqual(["workflow", "input:", "output:", "error:"]);
 });

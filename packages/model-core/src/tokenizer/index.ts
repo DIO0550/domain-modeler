@@ -1,73 +1,5 @@
-import type { ValueOf } from "../types/value-of";
-import { SourceRange } from "../source-range";
-
-/** トークン種別の列挙値。 */
-export const TOKEN_KINDS = {
-  comment: "comment",
-  blankLine: "blankLine",
-  indent: "indent",
-  reserved: "reserved",
-  identifier: "identifier",
-  equals: "equals",
-  rangeDots: "rangeDots",
-  number: "number",
-} as const;
-
-/** トークン種別。 */
-export type TokenKind = ValueOf<typeof TOKEN_KINDS>;
-
-/** DSL の1トークン。 */
-export type Token = Readonly<{
-  kind: TokenKind;
-  text: string;
-  range: SourceRange;
-}>;
-
-/** 予約語の列挙値(model-format.md §3)。 */
-export const RESERVED_WORDS = {
-  data: "data",
-  workflow: "workflow",
-  AND: "AND",
-  OR: "OR",
-  list: "list",
-  option: "option",
-  constrained: "constrained",
-  length: "length",
-  "input:": "input:",
-  "output:": "output:",
-  "error:": "error:",
-} as const;
-
-/** 予約語。 */
-export type ReservedWord = ValueOf<typeof RESERVED_WORDS>;
-
-/** 予約語を判定する関数群。 */
-export const ReservedWord = {
-  /**
-   * 値が予約語か判定する。
-   * @param value 判定する値。
-   * @returns 予約語の場合は `true`。
-   */
-  is: (value: string): value is ReservedWord => value in RESERVED_WORDS,
-} as const;
-
-/** 識別子として使える文字列かを判定する関数群。 */
-export const Identifier = {
-  /**
-   * 予約語・空・空白含みを拒否し、識別子として使えるか判定する。
-   * @param text 判定する文字列。
-   * @returns 識別子として使える場合は `true`。
-   */
-  isAcceptable: (text: string): boolean => {
-    if (text.length === 0) {
-      return false;
-    }
-    if (/\s/u.test(text)) {
-      return false;
-    }
-    return !ReservedWord.is(text);
-  },
-} as const;
+import { ReservedWord } from "../reserved-word";
+import { TOKEN_KINDS, Token, type Token as DslToken } from "../token";
 
 /**
  * 行末の CR を除く(CRLF 入力への耐性)。
@@ -108,52 +40,13 @@ const wordLength = (text: string): number => {
 };
 
 /**
- * 予約語(コロン付きを含む)として最長一致する長さを返す。
- * @param text 走査開始位置からの部分文字列。
- * @returns 予約語として一致した文字数。一致しなければ 0。
- */
-const reservedWordLength = (text: string): number => {
-  const withColon = wordLength(text);
-  if (withColon > 0 && text[withColon] === ":") {
-    const candidate = text.slice(0, withColon + 1);
-    if (ReservedWord.is(candidate)) {
-      return withColon + 1;
-    }
-  }
-  const withoutColon = text.slice(0, withColon);
-  if (ReservedWord.is(withoutColon)) {
-    return withColon;
-  }
-  return 0;
-};
-
-/**
- * 1トークンを生成する。
- * @param kind トークン種別。
- * @param text トークン文字列。
- * @param line 行番号。
- * @param startColumn 開始桁。
- * @returns トークン。
- */
-const createToken = (
-  kind: TokenKind,
-  text: string,
-  line: number,
-  startColumn: number,
-): Token => ({
-  kind,
-  text,
-  range: SourceRange.onLine(line, startColumn, startColumn + text.length),
-});
-
-/**
  * 空行・空白のみの行を blankLine トークンにする。
  * @param line 行内容。
  * @param lineNumber 行番号。
  * @returns blankLine トークン。
  */
-const tokenizeBlankLine = (line: string, lineNumber: number): Token =>
-  createToken(TOKEN_KINDS.blankLine, line, lineNumber, 1);
+const tokenizeBlankLine = (line: string, lineNumber: number): DslToken =>
+  Token.create(TOKEN_KINDS.blankLine, line, lineNumber, 1);
 
 /**
  * 行頭以降の内容をトークン列にする。
@@ -166,8 +59,8 @@ const tokenizeLineContent = (
   line: string,
   lineNumber: number,
   startColumn: number,
-): readonly Token[] => {
-  const tokens: Token[] = [];
+): readonly DslToken[] => {
+  const tokens: DslToken[] = [];
   let column = startColumn;
 
   while (column <= line.length) {
@@ -175,21 +68,19 @@ const tokenizeLineContent = (
     const rest = line.slice(offset);
 
     if (rest.startsWith("//")) {
-      tokens.push(
-        createToken(TOKEN_KINDS.comment, rest, lineNumber, column),
-      );
+      tokens.push(Token.create(TOKEN_KINDS.comment, rest, lineNumber, column));
       break;
     }
 
     if (rest.startsWith("=")) {
-      tokens.push(createToken(TOKEN_KINDS.equals, "=", lineNumber, column));
+      tokens.push(Token.create(TOKEN_KINDS.equals, "=", lineNumber, column));
       column += 1;
       continue;
     }
 
     if (rest.startsWith("..")) {
       tokens.push(
-        createToken(TOKEN_KINDS.rangeDots, "..", lineNumber, column),
+        Token.create(TOKEN_KINDS.rangeDots, "..", lineNumber, column),
       );
       column += 2;
       continue;
@@ -203,16 +94,16 @@ const tokenizeLineContent = (
     const digits = numberLength(rest);
     if (digits > 0) {
       const text = rest.slice(0, digits);
-      tokens.push(createToken(TOKEN_KINDS.number, text, lineNumber, column));
+      tokens.push(Token.create(TOKEN_KINDS.number, text, lineNumber, column));
       column += digits;
       continue;
     }
 
-    const reservedLength = reservedWordLength(rest);
+    const reservedLength = ReservedWord.matchedLength(rest);
     if (reservedLength > 0) {
       const text = rest.slice(0, reservedLength);
       tokens.push(
-        createToken(TOKEN_KINDS.reserved, text, lineNumber, column),
+        Token.create(TOKEN_KINDS.reserved, text, lineNumber, column),
       );
       column += reservedLength;
       continue;
@@ -227,7 +118,7 @@ const tokenizeLineContent = (
 
     const text = rest.slice(0, length);
     tokens.push(
-      createToken(TOKEN_KINDS.identifier, text, lineNumber, column),
+      Token.create(TOKEN_KINDS.identifier, text, lineNumber, column),
     );
     column += length;
   }
@@ -244,7 +135,7 @@ const tokenizeLineContent = (
 const tokenizeLine = (
   line: string,
   lineNumber: number,
-): readonly Token[] => {
+): readonly DslToken[] => {
   const indentLength = leadingWhitespaceLength(line);
   const content = line.slice(indentLength);
 
@@ -252,10 +143,10 @@ const tokenizeLine = (
     return [tokenizeBlankLine(line, lineNumber)];
   }
 
-  const tokens: Token[] = [];
+  const tokens: DslToken[] = [];
   if (indentLength > 0) {
     tokens.push(
-      createToken(
+      Token.create(
         TOKEN_KINDS.indent,
         line.slice(0, indentLength),
         lineNumber,
@@ -263,9 +154,7 @@ const tokenizeLine = (
       ),
     );
   }
-  tokens.push(
-    ...tokenizeLineContent(line, lineNumber, indentLength + 1),
-  );
+  tokens.push(...tokenizeLineContent(line, lineNumber, indentLength + 1));
   return tokens;
 };
 
@@ -276,7 +165,7 @@ export const Tokenizer = {
    * @param source `.dmodel` テキスト。
    * @returns 出現順のトークン列。
    */
-  tokenize: (source: string): readonly Token[] => {
+  tokenize: (source: string): readonly DslToken[] => {
     const lines = source.split("\n").map(stripTrailingCr);
     return lines.flatMap((line, index) => tokenizeLine(line, index + 1));
   },
