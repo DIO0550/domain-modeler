@@ -2,7 +2,7 @@ import { DIAGNOSTIC_SEVERITIES, Diagnostic } from "../../diagnostic";
 import { Result } from "../../result";
 import type { SourceRange as Range } from "../../source-range";
 import { TOKEN_KINDS, type Token } from "../../token";
-import type { ChunkCursor } from "../chunk-cursor";
+import { ChunkCursor, type WithCursor } from "../chunk-cursor";
 import type { DeclChunk } from "../decl-chunk";
 
 /** トークン期待と診断生成の関数群。 */
@@ -23,7 +23,7 @@ export const ExpectToken = {
    * @returns ソース範囲。
    */
   fallbackRange: (cursor: ChunkCursor, chunk: DeclChunk): Range => {
-    const token = cursor.peek();
+    const token = ChunkCursor.peek(cursor);
     return token?.range ?? chunk.range;
   },
 
@@ -33,22 +33,22 @@ export const ExpectToken = {
    * @param text 期待する予約語。
    * @param chunk 宣言チャンク。
    * @param message 不一致時のメッセージ。
-   * @returns 予約語トークン、または診断。
+   * @returns 予約語トークンと消費後カーソル、または診断。
    */
   reserved: (
     cursor: ChunkCursor,
     text: string,
     chunk: DeclChunk,
     message: string,
-  ): Result<Token, Diagnostic> => {
-    const token = cursor.peek();
+  ): Result<WithCursor<Token>, Diagnostic> => {
+    const token = ChunkCursor.peek(cursor);
     if (
       token !== undefined &&
       token.kind === TOKEN_KINDS.reserved &&
       token.text === text
     ) {
-      cursor.advance();
-      return Result.ok(token);
+      const advanced = ChunkCursor.advance(cursor);
+      return Result.ok({ cursor: advanced.cursor, value: token });
     }
     return Result.err(
       ExpectToken.errorAt(message, ExpectToken.fallbackRange(cursor, chunk)),
@@ -59,16 +59,16 @@ export const ExpectToken = {
    * `=` トークンを消費する。
    * @param cursor チャンクカーソル。
    * @param chunk 宣言チャンク。
-   * @returns equals トークン、または診断。
+   * @returns equals トークンと消費後カーソル、または診断。
    */
   equals: (
     cursor: ChunkCursor,
     chunk: DeclChunk,
-  ): Result<Token, Diagnostic> => {
-    const token = cursor.peek();
+  ): Result<WithCursor<Token>, Diagnostic> => {
+    const token = ChunkCursor.peek(cursor);
     if (token !== undefined && token.kind === TOKEN_KINDS.equals) {
-      cursor.advance();
-      return Result.ok(token);
+      const advanced = ChunkCursor.advance(cursor);
+      return Result.ok({ cursor: advanced.cursor, value: token });
     }
     return Result.err(
       ExpectToken.errorAt(
@@ -82,16 +82,16 @@ export const ExpectToken = {
    * データ名の識別子トークンを消費する。
    * @param cursor チャンクカーソル。
    * @param chunk 宣言チャンク。
-   * @returns 識別子トークン、または診断。
+   * @returns 識別子トークンと消費後カーソル、または診断。
    */
   identifierName: (
     cursor: ChunkCursor,
     chunk: DeclChunk,
-  ): Result<Token, Diagnostic> => {
-    const token = cursor.peek();
+  ): Result<WithCursor<Token>, Diagnostic> => {
+    const token = ChunkCursor.peek(cursor);
     if (token !== undefined && token.kind === TOKEN_KINDS.identifier) {
-      cursor.advance();
-      return Result.ok(token);
+      const advanced = ChunkCursor.advance(cursor);
+      return Result.ok({ cursor: advanced.cursor, value: token });
     }
     return Result.err(
       ExpectToken.errorAt(

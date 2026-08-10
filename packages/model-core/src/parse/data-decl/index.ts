@@ -25,7 +25,7 @@ export type MaterializedDecl = Readonly<{
  * @returns data 宣言、または診断。
  */
 const parseDataChunk = (chunk: DeclChunk): Result<DataDecl, Diagnostic> => {
-  const cursor = new ChunkCursor(chunk.tokens);
+  const cursor = ChunkCursor.create(chunk.tokens);
   const dataKeyword = ExpectToken.reserved(
     cursor,
     RESERVED_WORDS.data,
@@ -36,23 +36,26 @@ const parseDataChunk = (chunk: DeclChunk): Result<DataDecl, Diagnostic> => {
     return dataKeyword;
   }
 
-  const nameToken = ExpectToken.identifierName(cursor, chunk);
+  const nameToken = ExpectToken.identifierName(
+    dataKeyword.value.cursor,
+    chunk,
+  );
   if (Result.isErr(nameToken)) {
     return nameToken;
   }
 
-  const equals = ExpectToken.equals(cursor, chunk);
+  const equals = ExpectToken.equals(nameToken.value.cursor, chunk);
   if (Result.isErr(equals)) {
     return equals;
   }
 
-  const typeExpr = TypeExprParse.parse(cursor, chunk);
+  const typeExpr = TypeExprParse.parse(equals.value.cursor, chunk);
   if (Result.isErr(typeExpr)) {
     return typeExpr;
   }
 
-  if (!cursor.atEnd) {
-    const unexpected = cursor.peek();
+  if (!ChunkCursor.atEnd(typeExpr.value.cursor)) {
+    const unexpected = ChunkCursor.peek(typeExpr.value.cursor);
     return Result.err(
       ExpectToken.errorAt(
         "型式の後に余分なトークンがあります",
@@ -63,10 +66,13 @@ const parseDataChunk = (chunk: DeclChunk): Result<DataDecl, Diagnostic> => {
 
   return Result.ok(
     DataDecl.create({
-      name: nameToken.value.text,
-      nameRange: nameToken.value.range,
-      typeExpr: typeExpr.value,
-      range: SourceRange.span(dataKeyword.value.range, typeExpr.value.range),
+      name: nameToken.value.value.text,
+      nameRange: nameToken.value.value.range,
+      typeExpr: typeExpr.value.value,
+      range: SourceRange.span(
+        dataKeyword.value.value.range,
+        typeExpr.value.value.range,
+      ),
     }),
   );
 };

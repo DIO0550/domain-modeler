@@ -9,7 +9,7 @@ import { TOKEN_KINDS, type Token } from "../../token";
 import { TypeExpr } from "../../type-expr";
 import { TypeModifier, type TypeModifier as Modifier } from "../../type-modifier";
 import { TypeTerm } from "../../type-term";
-import type { ChunkCursor } from "../chunk-cursor";
+import { ChunkCursor, type WithCursor } from "../chunk-cursor";
 import type { DeclChunk } from "../decl-chunk";
 import { ExpectToken } from "../expect-token";
 
@@ -20,11 +20,37 @@ type ParsedRange = Readonly<{
   range: Range;
 }>;
 
+type ModifiersParse = Readonly<{
+  modifiers: readonly Modifier[];
+  endRange: Range;
+}>;
+
+const collectModifiers = (
+  cursor: ChunkCursor,
+  endRange: Range,
+  modifiers: readonly Modifier[],
+): WithCursor<ModifiersParse> => {
+  const modifierToken = ChunkCursor.peek(cursor);
+  if (
+    modifierToken === undefined ||
+    modifierToken.kind !== TOKEN_KINDS.reserved ||
+    !TypeModifier.is(modifierToken.text)
+  ) {
+    return { cursor, value: { modifiers, endRange } };
+  }
+  const advanced = ChunkCursor.advance(cursor);
+  return collectModifiers(
+    advanced.cursor,
+    modifierToken.range,
+    [...modifiers, modifierToken.text],
+  );
+};
+
 const parseTerm = (
   cursor: ChunkCursor,
   chunk: DeclChunk,
-): Result<TypeTerm, Diagnostic> => {
-  const token = cursor.peek();
+): Result<WithCursor<TypeTerm>, Diagnostic> => {
+  const token = ChunkCursor.peek(cursor);
   if (token === undefined) {
     return Result.err(ExpectToken.errorAt("型参照が必要です", chunk.range));
   }
@@ -37,52 +63,41 @@ const parseTerm = (
     );
   }
 
-  cursor.advance();
-  const startRange = token.range;
-  let endRange = token.range;
-  const modifiers: Modifier[] = [];
-  while (true) {
-    const modifierToken = cursor.peek();
-    if (
-      modifierToken === undefined ||
-      modifierToken.kind !== TOKEN_KINDS.reserved ||
-      !TypeModifier.is(modifierToken.text)
-    ) {
-      break;
-    }
-    modifiers.push(modifierToken.text);
-    endRange = modifierToken.range;
-    cursor.advance();
-  }
-
-  return Result.ok(
-    TypeTerm.create({
+  const afterName = ChunkCursor.advance(cursor);
+  const collected = collectModifiers(
+    afterName.cursor,
+    token.range,
+    [],
+  );
+  return Result.ok({
+    cursor: collected.cursor,
+    value: TypeTerm.create({
       name: token.text,
       isPrimitive: Primitive.is(token.text),
-      modifiers,
-      range: SourceRange.span(startRange, endRange),
+      modifiers: collected.value.modifiers,
+      range: SourceRange.span(token.range, collected.value.endRange),
     }),
-  );
+  });
 };
 
 const parseNumberRange = (
   cursor: ChunkCursor,
   chunk: DeclChunk,
-): Result<ParsedRange, Diagnostic> => {
-  const first = cursor.peek();
+): Result<WithCursor<ParsedRange>, Diagnostic> => {
+  const first = ChunkCursor.peek(cursor);
   if (first !== undefined && first.kind === TOKEN_KINDS.number) {
-    cursor.advance();
+    const afterMin = ChunkCursor.advance(cursor);
     const min = Number(first.text);
-    const dots = cursor.peek();
+    const dots = ChunkCursor.peek(afterMin.cursor);
     if (dots === undefined || dots.kind !== TOKEN_KINDS.rangeDots) {
       return Result.err(
         ExpectToken.errorAt("範囲には .. が必要です", first.range),
       );
     }
-    cursor.advance();
-    const maxToken = cursor.peek();
+    const afterDots = ChunkCursor.advance(afterMin.cursor);
+    const maxToken = ChunkCursor.peek(afterDots.cursor);
     if (maxToken !== undefined && maxToken.kind === TOKEN_KINDS.number) {
-      cursor.advance();
+      const afterMax = ChunkCursor.advance(afterDots.cursor);
       const max = Number(maxToken.text);
       const range = SourceRange.span(first.range, maxToken.range);
       if (min > max) {
@@ -90,17 +105,23 @@ const parseNumberRange = (
           ExpectToken.errorAt("範囲の下限が上限を超えています", range),
         );
       }
-      return Result.ok({ bounds: NumberRange.both(min, max), range });
+      return Result.ok({
+        cursor: afterMax.cursor,
+        value: { bounds: NumberRange.both(min, max), range },
+      });
     }
     return Result.ok({
-      bounds: NumberRange.minOnly(min),
-      range: SourceRange.span(first.range, dots.range),
+      cursor: afterDots.cursor,
+      value: {
+        bounds: NumberRange.minOnly(min),
+        range: SourceRange.span(first.range, dots.range),
+      },
     });
   }
 
   if (first !== undefined && first.kind === TOKEN_KINDS.rangeDots) {
-    cursor.advance();
-    const maxToken = cursor.peek();
+    const afterDots = ChunkCursor.advance(cursor);
+    const maxToken = ChunkCursor.peek(afterDots.cursor);
     if (maxToken === undefined || maxToken.kind !== TOKEN_KINDS.number) {
       return Result.err(
         ExpectToken.errorAt(
@@ -109,10 +130,13 @@ const parseNumberRange = (
         ),
       );
     }
-    cursor.advance();
+    const afterMax = ChunkCursor.advance(afterDots.cursor);
     return Result.ok({
-      bounds: NumberRange.maxOnly(Number(maxToken.text)),
-      range: SourceRange.span(first.range, maxToken.range),
+      cursor: afterMax.cursor,
+      value: {
+        bounds: NumberRange.maxOnly(Number(maxToken.text)),
+        range: SourceRange.span(first.range, maxToken.range),
+      },
     });
   }
 
@@ -129,7 +153,7 @@ const parseConstraintBody = (
   chunk: DeclChunk,
   primitive: PrimitiveType,
   constrainedToken: Token,
-): Result<Constraint, Diagnostic> => {
+): Result<WithCursor<Constraint>, Diagnostic> => {
   if (
     primitive === "bool" ||
     primitive === "date" ||
@@ -143,14 +167,14 @@ const parseConstraintBody = (
     );
   }
 
-  const lengthToken = cursor.peek();
+  const lengthToken = ChunkCursor.peek(cursor);
   const hasLength =
     lengthToken !== undefined &&
     lengthToken.kind === TOKEN_KINDS.reserved &&
     lengthToken.text === RESERVED_WORDS.length;
 
   if (hasLength) {
-    cursor.advance();
+    const afterLength = ChunkCursor.advance(cursor);
     if (primitive !== "string") {
       return Result.err(
         ExpectToken.errorAt(
@@ -159,16 +183,17 @@ const parseConstraintBody = (
         ),
       );
     }
-    const parsed = parseNumberRange(cursor, chunk);
+    const parsed = parseNumberRange(afterLength.cursor, chunk);
     if (Result.isErr(parsed)) {
       return parsed;
     }
-    return Result.ok(
-      Constraint.length(
-        parsed.value.bounds,
-        SourceRange.span(constrainedToken.range, parsed.value.range),
+    return Result.ok({
+      cursor: parsed.value.cursor,
+      value: Constraint.length(
+        parsed.value.value.bounds,
+        SourceRange.span(constrainedToken.range, parsed.value.value.range),
       ),
-    );
+    });
   }
 
   if (primitive === "string") {
@@ -184,22 +209,23 @@ const parseConstraintBody = (
   if (Result.isErr(parsed)) {
     return parsed;
   }
-  return Result.ok(
-    Constraint.numeric(
-      parsed.value.bounds,
-      SourceRange.span(constrainedToken.range, parsed.value.range),
+  return Result.ok({
+    cursor: parsed.value.cursor,
+    value: Constraint.numeric(
+      parsed.value.value.bounds,
+      SourceRange.span(constrainedToken.range, parsed.value.value.range),
     ),
-  );
+  });
 };
 
 const parseConstrainedTypeExpr = (
   cursor: ChunkCursor,
   chunk: DeclChunk,
   primitiveToken: Token,
-): Result<TypeExpr, Diagnostic> => {
-  cursor.advance();
+): Result<WithCursor<TypeExpr>, Diagnostic> => {
+  const afterPrimitive = ChunkCursor.advance(cursor);
   const constrained = ExpectToken.reserved(
-    cursor,
+    afterPrimitive.cursor,
     RESERVED_WORDS.constrained,
     chunk,
     "constrained が必要です",
@@ -216,68 +242,99 @@ const parseConstrainedTypeExpr = (
     );
   }
   const constraint = parseConstraintBody(
-    cursor,
+    constrained.value.cursor,
     chunk,
     primitiveToken.text,
-    constrained.value,
+    constrained.value.value,
   );
   if (Result.isErr(constraint)) {
     return constraint;
   }
-  return Result.ok(
-    TypeExpr.value({
+  return Result.ok({
+    cursor: constraint.value.cursor,
+    value: TypeExpr.value({
       primitive: primitiveToken.text,
       primitiveRange: primitiveToken.range,
-      constraint: constraint.value,
-      range: SourceRange.span(primitiveToken.range, constraint.value.range),
+      constraint: constraint.value.value,
+      range: SourceRange.span(
+        primitiveToken.range,
+        constraint.value.value.range,
+      ),
     }),
-  );
+  });
 };
 
 const isConnector = (token: Token): token is Token & { text: Connector } =>
   token.kind === TOKEN_KINDS.reserved &&
   (token.text === RESERVED_WORDS.AND || token.text === RESERVED_WORDS.OR);
 
+type JoinedTerms = Readonly<{
+  terms: readonly TypeTerm[];
+  connector: Connector | undefined;
+}>;
+
+const collectJoinedTerms = (
+  cursor: ChunkCursor,
+  chunk: DeclChunk,
+  terms: readonly TypeTerm[],
+  connector: Connector | undefined,
+): Result<WithCursor<JoinedTerms>, Diagnostic> => {
+  if (ChunkCursor.atEnd(cursor)) {
+    return Result.ok({ cursor, value: { terms, connector } });
+  }
+  const token = ChunkCursor.peek(cursor);
+  if (token === undefined || !isConnector(token)) {
+    return Result.ok({ cursor, value: { terms, connector } });
+  }
+  if (connector !== undefined && connector !== token.text) {
+    return Result.err(
+      ExpectToken.errorAt(
+        "AND と OR を同じ宣言内で混在させることはできません",
+        token.range,
+      ),
+    );
+  }
+  const afterConnector = ChunkCursor.advance(cursor);
+  const nextTerm = parseTerm(afterConnector.cursor, chunk);
+  if (Result.isErr(nextTerm)) {
+    return nextTerm;
+  }
+  return collectJoinedTerms(
+    nextTerm.value.cursor,
+    chunk,
+    [...terms, nextTerm.value.value],
+    connector ?? token.text,
+  );
+};
+
 const parseJoinedTypeExpr = (
   cursor: ChunkCursor,
   chunk: DeclChunk,
-): Result<TypeExpr, Diagnostic> => {
+): Result<WithCursor<TypeExpr>, Diagnostic> => {
   const firstTerm = parseTerm(cursor, chunk);
   if (Result.isErr(firstTerm)) {
     return firstTerm;
   }
 
-  const terms: TypeTerm[] = [firstTerm.value];
-  let connector: Connector | undefined;
-
-  while (!cursor.atEnd) {
-    const token = cursor.peek();
-    if (token === undefined || !isConnector(token)) {
-      break;
-    }
-    if (connector === undefined) {
-      connector = token.text;
-    } else if (connector !== token.text) {
-      return Result.err(
-        ExpectToken.errorAt(
-          "AND と OR を同じ宣言内で混在させることはできません",
-          token.range,
-        ),
-      );
-    }
-    cursor.advance();
-    const nextTerm = parseTerm(cursor, chunk);
-    if (Result.isErr(nextTerm)) {
-      return nextTerm;
-    }
-    terms.push(nextTerm.value);
+  const joined = collectJoinedTerms(
+    firstTerm.value.cursor,
+    chunk,
+    [firstTerm.value.value],
+    undefined,
+  );
+  if (Result.isErr(joined)) {
+    return joined;
   }
 
-  const lastTerm = terms[terms.length - 1] ?? firstTerm.value;
-  const range = SourceRange.span(firstTerm.value.range, lastTerm.range);
+  const { terms, connector } = joined.value.value;
+  const lastTerm = terms[terms.length - 1] ?? firstTerm.value.value;
+  const range = SourceRange.span(firstTerm.value.value.range, lastTerm.range);
 
   if (connector === undefined) {
-    return Result.ok(TypeExpr.alias(firstTerm.value, range));
+    return Result.ok({
+      cursor: joined.value.cursor,
+      value: TypeExpr.alias(firstTerm.value.value, range),
+    });
   }
   if (terms.length < 2) {
     return Result.err(
@@ -285,9 +342,15 @@ const parseJoinedTypeExpr = (
     );
   }
   if (connector === RESERVED_WORDS.AND) {
-    return Result.ok(TypeExpr.record(terms, range));
+    return Result.ok({
+      cursor: joined.value.cursor,
+      value: TypeExpr.record(terms, range),
+    });
   }
-  return Result.ok(TypeExpr.choice(terms, range));
+  return Result.ok({
+    cursor: joined.value.cursor,
+    value: TypeExpr.choice(terms, range),
+  });
 };
 
 /** 型式をトークン列から解析する関数群。 */
@@ -296,14 +359,14 @@ export const TypeExprParse = {
    * カーソル位置から型式を解析する。
    * @param cursor チャンクカーソル。
    * @param chunk 宣言チャンク。
-   * @returns 型式、または診断。
+   * @returns 型式と消費後カーソル、または診断。
    */
   parse: (
     cursor: ChunkCursor,
     chunk: DeclChunk,
-  ): Result<TypeExpr, Diagnostic> => {
-    const head = cursor.peekAt(0);
-    const next = cursor.peekAt(1);
+  ): Result<WithCursor<TypeExpr>, Diagnostic> => {
+    const head = ChunkCursor.peekAt(cursor, 0);
+    const next = ChunkCursor.peekAt(cursor, 1);
     if (
       head !== undefined &&
       head.kind === TOKEN_KINDS.identifier &&
