@@ -214,10 +214,21 @@ jobs:
           #
           # 公開の確認は push の有無で分岐させない。再実行などで push すべき差分が
           # 無かったときも、レポートが実際に配信されていることを確かめる
-          # (見えていないのに緑になる状態を作らない)。
+          # (見えてていないのに緑になる状態を作らない)。
           #
           # 待ち時間を 10 分取るのは、キューに入ったデプロイが実測で 10 分 42 秒
           # かかったため。5 分では配信されているのに失敗と判定してしまう(#109)。
+          #
+          # domain-modeler では GitHub Pages が未設定のことがある。
+          # その場合は公開 URL が永遠に 404 なので待ちをスキップし、
+          # artifact / PR コメント側でレポートを残す。
+          pages_configured=true
+          if ! gh api "repos/${GITHUB_REPOSITORY}/pages" >/tmp/pages-site.json 2>/tmp/pages-site.err; then
+            echo "Pages site is not configured; skipping public report availability wait"
+            cat /tmp/pages-site.err || true
+            pages_configured=false
+          fi
+
           wait_for_publication() {
             for attempt in $(seq 1 120); do
               if curl --fail --silent --show-error "$PUBLIC_SUMMARY" -o /tmp/published-visual-summary.json \
@@ -230,7 +241,7 @@ jobs:
             return 1
           }
 
-          if [ "$CLOSED" != "true" ]; then
+          if [ "$CLOSED" != "true" ] && [ "$pages_configured" = "true" ]; then
             OWNER="${GITHUB_REPOSITORY%%/*}"
             REPO_NAME="${GITHUB_REPOSITORY#*/}"
             PUBLIC_SUMMARY="https://${OWNER}.github.io/${REPO_NAME}/visual-regression/pr-${PR}/summary.json?revision=${REPORT_VERSION}"
