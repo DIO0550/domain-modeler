@@ -54,9 +54,11 @@ test("datetime への制約はエラー診断になる", () => {
 
   expect(result.diagnostics).toEqual([
     expect.objectContaining({
+      severity: "error",
       message: "datetime 型に制約を付けることはできません",
     }),
   ]);
+  expect(result.document.declarations[0]).toMatchObject({ kind: "error" });
 });
 
 test("壊れた data 宣言の次の data 宣言は独立して解析される", () => {
