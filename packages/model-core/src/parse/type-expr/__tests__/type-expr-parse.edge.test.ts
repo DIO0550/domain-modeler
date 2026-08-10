@@ -6,7 +6,7 @@ import { TypeExprParse } from "..";
 
 const parseTypeExpr = (source: string) => {
   const tokens = Tokenizer.tokenize(source);
-  const cursor = new ChunkCursor(tokens);
+  const cursor = ChunkCursor.create(tokens);
   const chunk: DeclChunk = {
     kind: "data",
     tokens,
