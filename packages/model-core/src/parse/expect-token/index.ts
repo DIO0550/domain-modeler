@@ -100,4 +100,27 @@ export const ExpectToken = {
       ),
     );
   },
+
+  /**
+   * workflow 名の識別子トークンを消費する。
+   * @param cursor チャンクカーソル。
+   * @param chunk 宣言チャンク。
+   * @returns 識別子トークンと消費後カーソル、または診断。
+   */
+  workflowName: (
+    cursor: ChunkCursor,
+    chunk: DeclChunk,
+  ): Result<WithCursor<Token>, Diagnostic> => {
+    const token = ChunkCursor.peek(cursor);
+    if (token !== undefined && token.kind === TOKEN_KINDS.identifier) {
+      const advanced = ChunkCursor.advance(cursor);
+      return Result.ok({ cursor: advanced.cursor, value: token });
+    }
+    return Result.err(
+      ExpectToken.errorAt(
+        "workflow 名の識別子が必要です",
+        ExpectToken.fallbackRange(cursor, chunk),
+      ),
+    );
+  },
 } as const;
