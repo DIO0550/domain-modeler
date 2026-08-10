@@ -2,12 +2,19 @@ name: Storybook Visual Regression
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, closed]
+    # labeled / unlabeled も受けるのは、意図した差分の承認をラベルで行うため。
+    # ラベルの付け外しでチェックを green / red へ切り替えられるようにする。
+    types: [opened, reopened, synchronize, closed, labeled, unlabeled]
+
+env:
+  # このラベルが付いている間、差分があってもチェックを通す(下の「意図した差分の承認」参照)。
+  VISUAL_APPROVAL_LABEL: visual-approved
 
 permissions:
   contents: write
   pull-requests: write
   issues: write
+  # 取り残されたリビジョンの再デプロイ要求にだけ使う(#109)
   pages: write
 
 concurrency:
@@ -16,8 +23,17 @@ concurrency:
 
 jobs:
   visual-regression:
+    # ラベルの付け外しは承認ラベルのときだけ走らせる。全ラベルで再実行すると、
+    # 無関係なラベルを付けるたびに撮影からやり直して数分待たされるため。
+    #
+    # ここだけ `env.VISUAL_APPROVAL_LABEL` ではなく綴りを直接書いている。
+    # job レベルの `if` は env コンテキストを読めず、参照すると常に空文字と
+    # 比較されて承認ラベルでの再実行が起きなくなるため(GitHub の式の制約)。
+    if: >-
+      (github.event.action != 'labeled' && github.event.action != 'unlabeled')
+      || github.event.label.name == 'visual-approved'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -152,7 +168,6 @@ jobs:
           if [ "$CLOSED" = "true" ]; then ACTION=removed; else ACTION=updated; fi
 
           success=false
-          pushed=false
           for attempt in 1 2 3 4 5; do
             git worktree remove --force /tmp/gh-pages 2>/dev/null || true
             git branch -D gh-pages 2>/dev/null || true
@@ -184,7 +199,6 @@ jobs:
 
             if git push origin HEAD:gh-pages; then
               success=true
-              pushed=true
               break
             fi
             echo "push failed (attempt $attempt), retrying..."
@@ -193,58 +207,61 @@ jobs:
           done
           [ "$success" = "true" ]
 
-          if [ "$pushed" = "true" ]; then
-            pages_configured=true
-            if ! gh api "repos/${GITHUB_REPOSITORY}/pages" >/tmp/pages-site.json 2>/tmp/pages-site.err; then
-              echo "Pages site is not configured; skipping public report availability wait"
-              cat /tmp/pages-site.err || true
-              pages_configured=false
-            fi
+          # gh-pages への push だけで Pages のビルドは走る。ここで
+          # `POST /pages/builds` を足すと 1 コミットにつきデプロイが 2 本になり、
+          # 同時に 1 つしか走れない Pages でキューが詰まって、片方が
+          # `deployment_queued` のまま 10 分でタイムアウトする(#109)。
+          #
+          # 公開の確認は push の有無で分岐させない。再実行などで push すべき差分が
+          # 無かったときも、レポートが実際に配信されていることを確かめる
+          # (見えていないのに緑になる状態を作らない)。
+          #
+          # 待ち時間を 10 分取るのは、キューに入ったデプロイが実測で 10 分 42 秒
+          # かかったため。5 分では配信されているのに失敗と判定してしまう(#109)。
+          wait_for_publication() {
+            for attempt in $(seq 1 120); do
+              if curl --fail --silent --show-error "$PUBLIC_SUMMARY" -o /tmp/published-visual-summary.json \
+                && node -e 'const summary = require("/tmp/published-visual-summary.json"); if (summary.reportVersion !== process.env.REPORT_VERSION) process.exit(1)'; then
+                return 0
+              fi
+              echo "Waiting for Pages report revision $REPORT_VERSION (attempt $attempt)..."
+              sleep 5
+            done
+            return 1
+          }
 
-            build_ok=false
-            if [ "$pages_configured" = "true" ]; then
-              for attempt in 1 2 3; do
-                if out=$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pages/builds" 2>&1); then
-                  build_ok=true
-                  break
-                fi
-                echo "$out"
-                if echo "$out" | grep -Eq "HTTP (403|404)"; then
-                  echo "Pages build request unavailable; skipping public report availability wait. Detail: $out"
-                  pages_configured=false
-                  build_ok=true
-                  break
-                fi
-                if echo "$out" | grep -q "HTTP 409"; then
-                  echo "Pages build already in progress; waiting for the public revision"
-                  build_ok=true
-                  break
-                fi
-                echo "Pages build request failed (attempt $attempt), retrying..."
-                sleep $((attempt * 2))
-              done
-              [ "$build_ok" = "true" ]
-            else
-              build_ok=true
-            fi
+          if [ "$CLOSED" != "true" ]; then
+            OWNER="${GITHUB_REPOSITORY%%/*}"
+            REPO_NAME="${GITHUB_REPOSITORY#*/}"
+            PUBLIC_SUMMARY="https://${OWNER}.github.io/${REPO_NAME}/visual-regression/pr-${PR}/summary.json?revision=${REPORT_VERSION}"
 
-            if [ "$CLOSED" != "true" ] && [ "$pages_configured" = "true" ]; then
-              OWNER="${GITHUB_REPOSITORY%%/*}"
-              REPO_NAME="${GITHUB_REPOSITORY#*/}"
-              PUBLIC_SUMMARY="https://${OWNER}.github.io/${REPO_NAME}/visual-regression/pr-${PR}/summary.json?revision=${REPORT_VERSION}"
-              published=false
-              for attempt in $(seq 1 60); do
-                if curl --fail --silent --show-error "$PUBLIC_SUMMARY" -o /tmp/published-visual-summary.json \
-                  && node -e 'const summary = require("/tmp/published-visual-summary.json"); if (summary.reportVersion !== process.env.REPORT_VERSION) process.exit(1)'; then
-                  published=true
-                  break
-                fi
-                echo "Waiting for Pages report revision $REPORT_VERSION (attempt $attempt)..."
-                sleep 5
-              done
-              [ "$published" = "true" ]
+            # 通常は push が起こしたビルドで配信される。
+            # ただし短い間隔で 2 回 push すると、後の push のツリーが
+            # デプロイされないまま終わることがある(#110 で実際に発生。
+            # プレビューの push と VRT の push が 1 分差で並び、
+            # デプロイはプレビュー側のツリーだけを配信して完了した)。
+            # その取り残しからは自力で復帰できないので、配信されていないときに
+            # 限りビルドを 1 本だけ要求する。push 済みの分と二重にはならない。
+            if ! wait_for_publication; then
+              echo "revision is still not published; requesting a Pages build"
+              # 既にビルド中(409)なら要求は通らないが、待つこと自体は正しいので続ける
+              gh api --method POST "repos/${GITHUB_REPOSITORY}/pages/builds" \
+                || echo "build request was rejected; waiting for the running build instead"
+              wait_for_publication
             fi
           fi
+
+      # 承認ラベルはリポジトリに実在しないと PR へ付けられない。差分が出て初めて
+      # 要るものなので、案内を出す直前にこの場で用意する(既にあれば何もしない)。
+      - name: Ensure visual approval label exists
+        if: always() && github.event.action != 'closed' && steps.compare.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create "$VISUAL_APPROVAL_LABEL" \
+            --description "Storybook の視覚差分をレビュー済みとして承認する" \
+            --color BFD4F2 \
+            || echo "ラベルは既にあるので作らない"
 
       - name: Comment visual report
         if: always() && github.event.action != 'closed'
@@ -267,8 +284,16 @@ jobs:
           if [ "$PUBLISH_OUTCOME" = "success" ] && [ -f "$SUMMARY" ]; then
             COUNTS=$(node -e 'const s = require("./visual-report/summary.json"); console.log(s.changed, s.new, s.deleted, s.passed)')
             set -- $COUNTS
+            # 差分がある間はチェックが赤になる。赤を見た人が次に何をすればよいか
+            # (レポートを見て、意図した変更ならラベルを付ける)をここに書いておく。
+            # 見出しだけだと「壊したのか意図した変更なのか」を読み取れないため。
             if [ "$1" -gt 0 ]; then
-              HEADLINE="差分が見つかりました。"
+              if gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels" --jq '.[].name' \
+                | grep -Fxq "$VISUAL_APPROVAL_LABEL"; then
+                HEADLINE="差分がありますが、\`${VISUAL_APPROVAL_LABEL}\` ラベルで承認済みのためチェックは通しています。"
+              else
+                HEADLINE="差分が見つかりました。レポートで確認し、意図した変更なら \`${VISUAL_APPROVAL_LABEL}\` ラベルを付けてください（付けるとチェックが通ります）。意図しない変更ならコードを直してください。"
+              fi
             else
               HEADLINE="差分はありませんでした。"
             fi
@@ -314,6 +339,22 @@ jobs:
             gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" --field body=@"$BODY_FILE"
           fi
 
+      # 差分は「壊した」と「意図して変えた」の区別が付かないので、既定では落として
+      # レビューを止める。意図した変更だと確認できたら承認ラベルで通す。
+      #
+      # ラベルを見るのに event の payload(`github.event.pull_request.labels`)ではなく
+      # API を引くのは、実行中にラベルが付いたときも今の状態で判定するため。
+      # payload は実行開始時点のスナップショットなので、撮影中に承認しても古いままになる。
       - name: Fail on visual differences
         if: github.event.action != 'closed' && steps.compare.outcome != 'success'
-        run: exit 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels" --jq '.[].name' \
+            | grep -Fxq "$VISUAL_APPROVAL_LABEL"; then
+            echo "差分は ${VISUAL_APPROVAL_LABEL} ラベルで承認済みのため、チェックは通す。"
+            exit 0
+          fi
+          echo "差分が見つかった。意図した変更なら ${VISUAL_APPROVAL_LABEL} ラベルを付けると通る。"
+          exit 1
