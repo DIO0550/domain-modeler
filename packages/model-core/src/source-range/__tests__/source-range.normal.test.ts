@@ -18,3 +18,14 @@ test("空の範囲は開始桁と終了桁が一致する", () => {
     endColumn: 5,
   });
 });
+
+test("2つの範囲を包含する最小範囲を span で生成する", () => {
+  const start = SourceRange.onLine(1, 1, 5);
+  const end = SourceRange.onLine(3, 2, 8);
+  expect(SourceRange.span(start, end)).toEqual({
+    startLine: 1,
+    startColumn: 1,
+    endLine: 3,
+    endColumn: 8,
+  });
+});

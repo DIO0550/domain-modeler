@@ -25,4 +25,16 @@ export const SourceRange = {
     endLine: line,
     endColumn,
   }),
+  /**
+   * 2つの範囲を包含する最小範囲を生成する。
+   * @param start 開始側の範囲。
+   * @param end 終了側の範囲。
+   * @returns 両端を含むソース範囲。
+   */
+  span: (start: SourceRange, end: SourceRange): SourceRange => ({
+    startLine: start.startLine,
+    startColumn: start.startColumn,
+    endLine: end.endLine,
+    endColumn: end.endColumn,
+  }),
 } as const;
