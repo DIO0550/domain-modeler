@@ -11,6 +11,15 @@ import { ExpectToken } from "../expect-token";
 import { TypeExprParse } from "../type-expr";
 
 /**
+ * data チャンクを解析した結果。
+ * 成功時は DataDecl、失敗時は ErrorDecl を declaration に載せ、診断を添える。
+ */
+export type MaterializedDecl = Readonly<{
+  declaration: Declaration;
+  diagnostics: readonly Diagnostic[];
+}>;
+
+/**
  * data チャンクを DataDecl へ解析する。
  * @param chunk data 宣言チャンク。
  * @returns data 宣言、または診断。
@@ -69,12 +78,7 @@ export const DataDeclParse = {
    * @param chunk data 宣言チャンク。
    * @returns 宣言と診断。
    */
-  materialize: (
-    chunk: DeclChunk,
-  ): Readonly<{
-    declaration: Declaration;
-    diagnostics: readonly Diagnostic[];
-  }> => {
+  materialize: (chunk: DeclChunk): MaterializedDecl => {
     const parsed = parseDataChunk(chunk);
     if (Result.isOk(parsed)) {
       return { declaration: parsed.value, diagnostics: [] };
