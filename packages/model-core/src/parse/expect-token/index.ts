@@ -79,14 +79,16 @@ export const ExpectToken = {
   },
 
   /**
-   * データ名の識別子トークンを消費する。
+   * 宣言名の識別子トークンを消費する。
    * @param cursor チャンクカーソル。
    * @param chunk 宣言チャンク。
+   * @param declarationKind 宣言の種類。
    * @returns 識別子トークンと消費後カーソル、または診断。
    */
-  identifierName: (
+  declarationName: (
     cursor: ChunkCursor,
     chunk: DeclChunk,
+    declarationKind: DeclChunk["kind"],
   ): Result<WithCursor<Token>, Diagnostic> => {
     const token = ChunkCursor.peek(cursor);
     if (token !== undefined && token.kind === TOKEN_KINDS.identifier) {
@@ -95,7 +97,9 @@ export const ExpectToken = {
     }
     return Result.err(
       ExpectToken.errorAt(
-        "データ名の識別子が必要です",
+        declarationKind === "data"
+          ? "データ名の識別子が必要です"
+          : "workflow 名の識別子が必要です",
         ExpectToken.fallbackRange(cursor, chunk),
       ),
     );

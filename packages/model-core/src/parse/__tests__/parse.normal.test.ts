@@ -165,7 +165,7 @@ test("上限のみの範囲制約を解析する", () => {
   });
 });
 
-test("仕様例の data 宣言群を解析し workflow はスキップする", () => {
+test("仕様例の data 宣言群と workflow 宣言を出現順に解析する", () => {
   const source = `// 注文ドメインのモデル
 
 data 注文 = 未検証の注文 OR 検証済みの注文
@@ -187,10 +187,7 @@ workflow 注文を確定する =
   const result = Parse.parse(source);
 
   expect(result.diagnostics).toEqual([]);
-  expect(result.document.declarations).toHaveLength(5);
-  expect(
-    result.document.declarations.every((decl) => Declaration.isData(decl)),
-  ).toBe(true);
+  expect(result.document.declarations).toHaveLength(6);
   expect(
     result.document.declarations.map((decl) =>
       "name" in decl ? decl.name : "",
@@ -201,6 +198,16 @@ workflow 注文を確定する =
     "注文数量",
     "顧客名",
     "割引コード",
+    "注文を確定する",
   ]);
+  expect(Declaration.isWorkflow(result.document.declarations[5]!)).toBe(true);
+  expect(result.document.declarations[5]).toMatchObject({
+    kind: "workflow",
+    input: { terms: [{ name: "未検証の注文" }, { name: "在庫状況" }] },
+    output: {
+      terms: [{ name: "注文確定イベント" }, { name: "注文保留イベント" }],
+    },
+    error: { present: true, terms: [{ name: "検証エラー" }] },
+  });
   expect(result.tokens.length).toBeGreaterThan(0);
 });

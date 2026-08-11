@@ -7,11 +7,11 @@ import { Result } from "../../result";
 import { SourceRange, type SourceRange as Range } from "../../source-range";
 import { TOKEN_KINDS, type Token } from "../../token";
 import { TypeExpr } from "../../type-expr";
-import { TypeModifier, type TypeModifier as Modifier } from "../../type-modifier";
-import { TypeTerm } from "../../type-term";
+import type { TypeTerm } from "../../type-term";
 import { ChunkCursor, type WithCursor } from "../chunk-cursor";
 import type { DeclChunk } from "../decl-chunk";
 import { ExpectToken } from "../expect-token";
+import { TypeTermParse } from "../type-term";
 
 type Connector = typeof RESERVED_WORDS.AND | typeof RESERVED_WORDS.OR;
 
@@ -19,66 +19,6 @@ type ParsedRange = Readonly<{
   bounds: NumberRange;
   range: Range;
 }>;
-
-type ModifiersParse = Readonly<{
-  modifiers: readonly Modifier[];
-  endRange: Range;
-}>;
-
-const collectModifiers = (
-  cursor: ChunkCursor,
-  endRange: Range,
-  modifiers: readonly Modifier[],
-): WithCursor<ModifiersParse> => {
-  const modifierToken = ChunkCursor.peek(cursor);
-  if (
-    modifierToken === undefined ||
-    modifierToken.kind !== TOKEN_KINDS.reserved ||
-    !TypeModifier.is(modifierToken.text)
-  ) {
-    return { cursor, value: { modifiers, endRange } };
-  }
-  const advanced = ChunkCursor.advance(cursor);
-  return collectModifiers(
-    advanced.cursor,
-    modifierToken.range,
-    [...modifiers, modifierToken.text],
-  );
-};
-
-const parseTerm = (
-  cursor: ChunkCursor,
-  chunk: DeclChunk,
-): Result<WithCursor<TypeTerm>, Diagnostic> => {
-  const token = ChunkCursor.peek(cursor);
-  if (token === undefined) {
-    return Result.err(ExpectToken.errorAt("型参照が必要です", chunk.range));
-  }
-  if (token.kind !== TOKEN_KINDS.identifier) {
-    return Result.err(
-      ExpectToken.errorAt(
-        "型参照の識別子またはプリミティブ型が必要です",
-        token.range,
-      ),
-    );
-  }
-
-  const afterName = ChunkCursor.advance(cursor);
-  const collected = collectModifiers(
-    afterName.cursor,
-    token.range,
-    [],
-  );
-  return Result.ok({
-    cursor: collected.cursor,
-    value: TypeTerm.create({
-      name: token.text,
-      isPrimitive: Primitive.is(token.text),
-      modifiers: collected.value.modifiers,
-      range: SourceRange.span(token.range, collected.value.endRange),
-    }),
-  });
-};
 
 const parseNumberRange = (
   cursor: ChunkCursor,
@@ -295,7 +235,7 @@ const collectJoinedTerms = (
     );
   }
   const afterConnector = ChunkCursor.advance(cursor);
-  const nextTerm = parseTerm(afterConnector.cursor, chunk);
+  const nextTerm = TypeTermParse.parse(afterConnector.cursor, chunk);
   if (Result.isErr(nextTerm)) {
     return nextTerm;
   }
@@ -311,7 +251,7 @@ const parseJoinedTypeExpr = (
   cursor: ChunkCursor,
   chunk: DeclChunk,
 ): Result<WithCursor<TypeExpr>, Diagnostic> => {
-  const firstTerm = parseTerm(cursor, chunk);
+  const firstTerm = TypeTermParse.parse(cursor, chunk);
   if (Result.isErr(firstTerm)) {
     return firstTerm;
   }
