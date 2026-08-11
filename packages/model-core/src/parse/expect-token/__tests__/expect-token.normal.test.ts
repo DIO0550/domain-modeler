@@ -112,19 +112,23 @@ test("equals は = 以外のとき診断を返す", () => {
   });
 });
 
-test("identifierName は識別子を消費して成功を返す", () => {
+test("declarationName は data 名の識別子を消費して成功を返す", () => {
   const token = Token.create(TOKEN_KINDS.identifier, "注文ID", 1, 6);
   const cursor = ChunkCursor.create([token]);
-  expect(ExpectToken.identifierName(cursor, chunkOf([token]))).toMatchObject({
+  expect(
+    ExpectToken.declarationName(cursor, chunkOf([token]), "data"),
+  ).toMatchObject({
     ok: true,
     value: { value: token },
   });
 });
 
-test("identifierName は予約語のとき診断を返す", () => {
+test("declarationName は data 名が予約語のとき診断を返す", () => {
   const token = Token.create(TOKEN_KINDS.reserved, "AND", 1, 6);
   const cursor = ChunkCursor.create([token]);
-  expect(ExpectToken.identifierName(cursor, chunkOf([token]))).toEqual({
+  expect(
+    ExpectToken.declarationName(cursor, chunkOf([token]), "data"),
+  ).toEqual({
     ok: false,
     error: expect.objectContaining({
       message: "データ名の識別子が必要です",

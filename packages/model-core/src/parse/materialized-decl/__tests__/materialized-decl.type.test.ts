@@ -1,6 +1,6 @@
 import { expectTypeOf, test } from "vitest";
-import type { Declaration } from "../../../document";
 import type { Diagnostic } from "../../../diagnostic";
+import type { Declaration } from "../../../document";
 import type { MaterializedDecl } from "..";
 
 test("MaterializedDecl は declaration と diagnostics を持つ", () => {

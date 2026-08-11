@@ -4,7 +4,7 @@ import { ErrorDecl } from "../../error-decl";
 import { RESERVED_WORDS } from "../../reserved-word";
 import { Result } from "../../result";
 import { SourceRange } from "../../source-range";
-import type { TypeExpr } from "../../type-expr";
+import { TOKEN_KINDS, type Token } from "../../token";
 import type { TypeTerm } from "../../type-term";
 import {
   WorkflowDecl,
@@ -12,49 +12,88 @@ import {
   WorkflowSection,
 } from "../../workflow-decl";
 import { ChunkCursor, type WithCursor } from "../chunk-cursor";
-import type { MaterializedDecl } from "../data-decl";
 import type { DeclChunk } from "../decl-chunk";
 import { ExpectToken } from "../expect-token";
-import { TypeExprParse } from "../type-expr";
+import type { MaterializedDecl } from "../materialized-decl";
+import { TypeTermParse } from "../type-term";
 
 type SectionKind = "input" | "output" | "error";
+
+type ParsedTerms = Readonly<{
+  terms: readonly TypeTerm[];
+  endRange: TypeTerm["range"];
+}>;
+
+type TermsParseState = Readonly<{
+  cursor: ChunkCursor;
+  parsed: ParsedTerms;
+}>;
 
 type ParsedSection = Readonly<{
   section: WorkflowSection;
 }>;
 
+type ParsedErrorClause = Readonly<{
+  clause: WorkflowErrorClause;
+  endRange: WorkflowSection["range"];
+}>;
+
 /**
- * 型式から workflow 節の型参照項を取得する。
- * @param typeExpr 解析済みの型式。
- * @param kind 対象の workflow 節。
- * @returns 許可された連結なら型参照項、違反なら診断。
+ * 節で許可される連結子を返す。
+ * @param kind workflow 節の種類。
+ * @returns input では AND、それ以外では OR。
  */
-const termsForSection = (
-  typeExpr: TypeExpr,
+const connectorFor = (
   kind: SectionKind,
-): Result<readonly TypeTerm[], Diagnostic> => {
-  if (typeExpr.form === "value") {
+): typeof RESERVED_WORDS.AND | typeof RESERVED_WORDS.OR =>
+  kind === "input" ? RESERVED_WORDS.AND : RESERVED_WORDS.OR;
+
+/**
+ * トークンが AND または OR かを判定する。
+ * @param token 判定するトークン。
+ * @returns 連結子の場合は true。
+ */
+const isConnector = (token: Token): boolean =>
+  token.kind === TOKEN_KINDS.reserved &&
+  (token.text === RESERVED_WORDS.AND || token.text === RESERVED_WORDS.OR);
+
+/**
+ * workflow 節の型参照項を収集する。
+ * @param chunk workflow 宣言チャンク。
+ * @param kind workflow 節の種類。
+ * @param state カーソルと収集済みの型参照項。
+ * @returns 型参照項と消費後カーソル、または診断。
+ */
+const collectTerms = (
+  chunk: DeclChunk,
+  kind: SectionKind,
+  state: TermsParseState,
+): Result<WithCursor<ParsedTerms>, Diagnostic> => {
+  const token = ChunkCursor.peek(state.cursor);
+  if (token === undefined || !isConnector(token)) {
+    return Result.ok({ cursor: state.cursor, value: state.parsed });
+  }
+  const connector = connectorFor(kind);
+  if (token.text !== connector) {
     return Result.err(
       ExpectToken.errorAt(
-        `${kind}: には型参照が必要です`,
-        typeExpr.range,
+        `${kind}: では ${token.text} を使用できません`,
+        token.range,
       ),
     );
   }
-  if (typeExpr.form === "record" && kind !== "input") {
-    return Result.err(
-      ExpectToken.errorAt(`${kind}: では AND を使用できません`, typeExpr.range),
-    );
+  const afterConnector = ChunkCursor.advance(state.cursor);
+  const term = TypeTermParse.parse(afterConnector.cursor, chunk);
+  if (Result.isErr(term)) {
+    return term;
   }
-  if (typeExpr.form === "choice" && kind === "input") {
-    return Result.err(
-      ExpectToken.errorAt("input: では OR を使用できません", typeExpr.range),
-    );
-  }
-  if (typeExpr.form === "alias") {
-    return Result.ok([typeExpr.term]);
-  }
-  return Result.ok(typeExpr.terms);
+  return collectTerms(chunk, kind, {
+    cursor: term.value.cursor,
+    parsed: {
+      terms: [...state.parsed.terms, term.value.value],
+      endRange: term.value.value.range,
+    },
+  });
 };
 
 /**
@@ -79,21 +118,68 @@ const parseSection = (
   if (Result.isErr(marker)) {
     return marker;
   }
-  const typeExpr = TypeExprParse.parse(marker.value.cursor, chunk);
-  if (Result.isErr(typeExpr)) {
-    return typeExpr;
+  const firstTerm = TypeTermParse.parse(marker.value.cursor, chunk);
+  if (Result.isErr(firstTerm)) {
+    return firstTerm;
   }
-  const terms = termsForSection(typeExpr.value.value, kind);
-  if (Result.isErr(terms)) {
-    return terms;
+  const parsedTerms = collectTerms(chunk, kind, {
+    cursor: firstTerm.value.cursor,
+    parsed: {
+      terms: [firstTerm.value.value],
+      endRange: firstTerm.value.value.range,
+    },
+  });
+  if (Result.isErr(parsedTerms)) {
+    return parsedTerms;
   }
   return Result.ok({
-    cursor: typeExpr.value.cursor,
+    cursor: parsedTerms.value.cursor,
     value: {
       section: WorkflowSection.create(
-        terms.value,
-        SourceRange.span(marker.value.value.range, typeExpr.value.value.range),
+        parsedTerms.value.value.terms,
+        SourceRange.span(
+          marker.value.value.range,
+          parsedTerms.value.value.endRange,
+        ),
       ),
+    },
+  });
+};
+
+/**
+ * 任意の error 節を解析する。
+ * @param cursor output 節の直後にあるカーソル。
+ * @param chunk workflow 宣言チャンク。
+ * @param outputRange output 節のソース範囲。
+ * @returns error 節の有無と消費後カーソル、または診断。
+ */
+const parseErrorClause = (
+  cursor: ChunkCursor,
+  chunk: DeclChunk,
+  outputRange: WorkflowSection["range"],
+): Result<WithCursor<ParsedErrorClause>, Diagnostic> => {
+  const next = ChunkCursor.peek(cursor);
+  if (next === undefined || next.text !== RESERVED_WORDS["error:"]) {
+    return Result.ok({
+      cursor,
+      value: {
+        clause: WorkflowErrorClause.absent(),
+        endRange: outputRange,
+      },
+    });
+  }
+  const error = parseSection(cursor, chunk, "error");
+  if (Result.isErr(error)) {
+    return error;
+  }
+  return Result.ok({
+    cursor: error.value.cursor,
+    value: {
+      clause: WorkflowErrorClause.present(
+        error.value.value.section.terms,
+        error.value.value.section.range,
+      ),
+      endRange: error.value.value.section.range,
     },
   });
 };
@@ -113,52 +199,56 @@ const parseWorkflowChunk = (
     chunk,
     "workflow が必要です",
   );
-  if (Result.isErr(keyword)) return keyword;
-
-  const name = ExpectToken.workflowName(keyword.value.cursor, chunk);
-  if (Result.isErr(name)) return name;
-
+  if (Result.isErr(keyword)) {
+    return keyword;
+  }
+  const name = ExpectToken.declarationName(
+    keyword.value.cursor,
+    chunk,
+    "workflow",
+  );
+  if (Result.isErr(name)) {
+    return name;
+  }
   const equals = ExpectToken.equals(name.value.cursor, chunk);
-  if (Result.isErr(equals)) return equals;
-
+  if (Result.isErr(equals)) {
+    return equals;
+  }
   const input = parseSection(equals.value.cursor, chunk, "input");
-  if (Result.isErr(input)) return input;
-
+  if (Result.isErr(input)) {
+    return input;
+  }
   const output = parseSection(input.value.cursor, chunk, "output");
-  if (Result.isErr(output)) return output;
-
-  const next = ChunkCursor.peek(output.value.cursor);
-  const hasError = next?.text === RESERVED_WORDS["error:"];
-  const error = hasError
-    ? parseSection(output.value.cursor, chunk, "error")
-    : undefined;
-  if (error !== undefined && Result.isErr(error)) return error;
-
-  const endCursor = error?.value.cursor ?? output.value.cursor;
-  if (!ChunkCursor.atEnd(endCursor)) {
+  if (Result.isErr(output)) {
+    return output;
+  }
+  const error = parseErrorClause(
+    output.value.cursor,
+    chunk,
+    output.value.value.section.range,
+  );
+  if (Result.isErr(error)) {
+    return error;
+  }
+  if (!ChunkCursor.atEnd(error.value.cursor)) {
     return Result.err(
       ExpectToken.errorAt(
         "workflow 宣言の後に余分なトークンがあります",
-        ExpectToken.fallbackRange(endCursor, chunk),
+        ExpectToken.fallbackRange(error.value.cursor, chunk),
       ),
     );
   }
-  const endRange =
-    error?.value.value.section.range ?? output.value.value.section.range;
   return Result.ok(
     WorkflowDecl.create({
       name: name.value.value.text,
       nameRange: name.value.value.range,
       input: input.value.value.section,
       output: output.value.value.section,
-      error:
-        error === undefined
-          ? WorkflowErrorClause.absent()
-          : WorkflowErrorClause.present(
-              error.value.value.section.terms,
-              error.value.value.section.range,
-            ),
-      range: SourceRange.span(keyword.value.value.range, endRange),
+      error: error.value.value.clause,
+      range: SourceRange.span(
+        keyword.value.value.range,
+        error.value.value.endRange,
+      ),
     }),
   );
 };

@@ -1,6 +1,5 @@
 import { DataDecl } from "../../data-decl";
 import type { Diagnostic } from "../../diagnostic";
-import type { Declaration } from "../../document";
 import { ErrorDecl } from "../../error-decl";
 import { RESERVED_WORDS } from "../../reserved-word";
 import { Result } from "../../result";
@@ -8,16 +7,8 @@ import { SourceRange } from "../../source-range";
 import { ChunkCursor } from "../chunk-cursor";
 import type { DeclChunk } from "../decl-chunk";
 import { ExpectToken } from "../expect-token";
+import type { MaterializedDecl } from "../materialized-decl";
 import { TypeExprParse } from "../type-expr";
-
-/**
- * data チャンクを解析した結果。
- * 成功時は DataDecl、失敗時は ErrorDecl を declaration に載せ、診断を添える。
- */
-export type MaterializedDecl = Readonly<{
-  declaration: Declaration;
-  diagnostics: readonly Diagnostic[];
-}>;
 
 /**
  * data チャンクを DataDecl へ解析する。
@@ -36,9 +27,10 @@ const parseDataChunk = (chunk: DeclChunk): Result<DataDecl, Diagnostic> => {
     return dataKeyword;
   }
 
-  const nameToken = ExpectToken.identifierName(
+  const nameToken = ExpectToken.declarationName(
     dataKeyword.value.cursor,
     chunk,
+    "data",
   );
   if (Result.isErr(nameToken)) {
     return nameToken;

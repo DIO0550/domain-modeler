@@ -75,6 +75,22 @@ data 注文ID = string`;
   });
 });
 
+test("壊れた workflow 宣言の次の data 宣言は独立して解析される", () => {
+  const source = `workflow 壊れた =
+  input: 注文 OR 在庫
+  output: 確定イベント
+data 注文ID = string`;
+  const result = Parse.parse(source);
+
+  expect(result.diagnostics).toHaveLength(1);
+  expect(result.document.declarations).toHaveLength(2);
+  expect(result.document.declarations[0]).toMatchObject({ kind: "error" });
+  expect(result.document.declarations[1]).toMatchObject({
+    kind: "data",
+    name: "注文ID",
+  });
+});
+
 test("不正な入力でも例外を投げずに結果を返す", () => {
   expect(() => Parse.parse("data ====")).not.toThrow();
   const result = Parse.parse("data ====");
