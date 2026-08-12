@@ -162,3 +162,6 @@ vite.config.d.ts
 visual-actual/
 visual-baseline/
 visual-report/
+
+# spec-driven development artifacts
+.plugin-workspace/
