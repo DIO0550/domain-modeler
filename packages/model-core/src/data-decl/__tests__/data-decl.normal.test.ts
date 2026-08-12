@@ -92,3 +92,28 @@ test("value 型式の data 宣言は VALUE カードになる", () => {
   });
   expect(DataDecl.cardKind(decl)).toBe(DATA_CARD_KINDS.VALUE);
 });
+
+test("data 宣言の型式から型参照項を列挙する", () => {
+  const terms = [
+    TypeTerm.create({
+      name: "注文ID",
+      isPrimitive: false,
+      modifiers: [],
+      range: SourceRange.onLine(2, 3, 8),
+    }),
+    TypeTerm.create({
+      name: "顧客情報",
+      isPrimitive: false,
+      modifiers: [],
+      range: SourceRange.onLine(3, 7, 11),
+    }),
+  ];
+  const decl = DataDecl.create({
+    name: "注文",
+    nameRange: SourceRange.onLine(1, 6, 8),
+    typeExpr: TypeExpr.record(terms, SourceRange.onLine(2, 3, 11)),
+    range: SourceRange.onLine(1, 1, 11),
+  });
+
+  expect(DataDecl.referencedTerms(decl)).toEqual(terms);
+});

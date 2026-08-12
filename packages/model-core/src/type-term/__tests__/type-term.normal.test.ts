@@ -36,3 +36,14 @@ test("プリミティブに list と option を重ねた項を生成する", () 
     range,
   });
 });
+
+test("後置修飾を除いた型名だけのソース範囲を返す", () => {
+  const term = TypeTerm.create({
+    name: "注文明細",
+    isPrimitive: false,
+    modifiers: [TYPE_MODIFIERS.list],
+    range: SourceRange.onLine(1, 11, 20),
+  });
+
+  expect(TypeTerm.nameRange(term)).toEqual(SourceRange.onLine(1, 11, 15));
+});
