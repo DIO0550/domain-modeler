@@ -46,3 +46,78 @@ data 数量 = int constrained 10..1`;
     }),
   ]);
 });
+
+test("壊れた宣言の後の非同期行は ErrorDecl の範囲に含まれ次宣言は独立する", () => {
+  const source = `data 数量 = int constrained 10..1
+ゴミ行
+data 注文ID = string`;
+
+  const result = Parse.parse(source);
+
+  expect(result.document.declarations).toMatchObject([
+    {
+      kind: "error",
+      range: {
+        startLine: 1,
+        startColumn: 1,
+        endLine: 2,
+        endColumn: 4,
+      },
+    },
+    { kind: "data", name: "注文ID" },
+  ]);
+  expect(result.diagnostics).toEqual([
+    expect.objectContaining({
+      severity: "error",
+      message: "範囲の下限が上限を超えています",
+    }),
+  ]);
+});
+
+test("先頭の非同期トークンは ErrorDecl にして後続宣言の解析を継続する", () => {
+  const source = `ゴミ行
+data 注文ID = string`;
+
+  const result = Parse.parse(source);
+
+  expect(result.document.declarations).toMatchObject([
+    {
+      kind: "error",
+      range: {
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 4,
+      },
+    },
+    { kind: "data", name: "注文ID" },
+  ]);
+  expect(result.diagnostics).toEqual([
+    expect.objectContaining({
+      severity: "error",
+      message: "data または workflow で始まる宣言が必要です",
+    }),
+  ]);
+});
+
+test("同期ポイントの無い意味トークンだけの入力も ErrorDecl と診断を返す", () => {
+  const result = Parse.parse("ゴミだけ");
+
+  expect(result.document.declarations).toMatchObject([
+    {
+      kind: "error",
+      range: {
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 5,
+      },
+    },
+  ]);
+  expect(result.diagnostics).toEqual([
+    expect.objectContaining({
+      severity: "error",
+      message: "data または workflow で始まる宣言が必要です",
+    }),
+  ]);
+});

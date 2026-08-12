@@ -57,3 +57,38 @@ test("宣言が無いソースは空のチャンク列になる", () => {
   const tokens = Tokenizer.tokenize("// コメントだけ\n\n");
   expect(DeclChunk.split(tokens)).toEqual([]);
 });
+
+test("先頭の意味トークンは孤立チャンクとして切り出す", () => {
+  const tokens = Tokenizer.tokenize(`ゴミ行
+data 注文ID = string`);
+  const chunks = DeclChunk.split(tokens);
+
+  expect(chunks).toHaveLength(2);
+  expect(chunks[0]).toMatchObject({
+    kind: "orphan",
+    range: {
+      startLine: 1,
+      startColumn: 1,
+      endLine: 1,
+      endColumn: 4,
+    },
+  });
+  expect(chunks[1]).toMatchObject({ kind: "data" });
+});
+
+test("同期ポイントが無い意味トークンは孤立チャンク1つになる", () => {
+  const tokens = Tokenizer.tokenize("ゴミだけ");
+  const chunks = DeclChunk.split(tokens);
+
+  expect(chunks).toEqual([
+    expect.objectContaining({
+      kind: "orphan",
+      range: {
+        startLine: 1,
+        startColumn: 1,
+        endLine: 1,
+        endColumn: 5,
+      },
+    }),
+  ]);
+});
