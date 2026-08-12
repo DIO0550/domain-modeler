@@ -99,4 +99,14 @@ export const WorkflowDecl = {
   ): decl is WorkflowDecl & {
     error: Extract<WorkflowErrorClause, { present: true }>;
   } => decl.error.present,
+  /**
+   * workflow 宣言の各節に含まれる型参照項を列挙する。
+   * @param decl workflow 宣言。
+   * @returns input / output / error の型参照項を出現順に並べた列。
+   */
+  referencedTerms: (decl: WorkflowDecl): readonly TypeTerm[] => [
+    ...decl.input.terms,
+    ...decl.output.terms,
+    ...(decl.error.present ? decl.error.terms : []),
+  ],
 } as const;

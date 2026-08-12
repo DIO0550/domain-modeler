@@ -1,4 +1,4 @@
-import type { SourceRange } from "../source-range";
+import { SourceRange, type SourceRange as Range } from "../source-range";
 import type { TypeModifier } from "../type-modifier";
 
 /** 型参照の1項(識別子またはプリミティブ + 後置修飾)。 */
@@ -6,7 +6,7 @@ export type TypeTerm = Readonly<{
   name: string;
   isPrimitive: boolean;
   modifiers: readonly TypeModifier[];
-  range: SourceRange;
+  range: Range;
 }>;
 
 /** TypeTerm を生成するときの引数。 */
@@ -14,7 +14,7 @@ export type TypeTermCreateParams = Readonly<{
   name: string;
   isPrimitive: boolean;
   modifiers: readonly TypeModifier[];
-  range: SourceRange;
+  range: Range;
 }>;
 
 /** 型参照項を生成する関数群。 */
@@ -30,4 +30,15 @@ export const TypeTerm = {
     modifiers: params.modifiers,
     range: params.range,
   }),
+  /**
+   * 型名識別子だけのソース範囲を返す(後置修飾を含まない)。
+   * @param term 型参照項。
+   * @returns 型名のソース範囲。
+   */
+  nameRange: (term: TypeTerm): Range =>
+    SourceRange.onLine(
+      term.range.startLine,
+      term.range.startColumn,
+      term.range.startColumn + term.name.length,
+    ),
 } as const;
