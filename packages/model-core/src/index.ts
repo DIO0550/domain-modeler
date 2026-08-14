@@ -23,3 +23,4 @@ export * from "./definition-table";
 export * from "./reference-table";
 export * from "./resolve-result";
 export * from "./resolve";
+export * from "./rename";
