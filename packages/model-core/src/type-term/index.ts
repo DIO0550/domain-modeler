@@ -41,4 +41,11 @@ export const TypeTerm = {
       term.range.startColumn,
       term.range.startColumn + term.name.length,
     ),
+  /**
+   * 参照解決の対象になる型参照項か判定する。
+   * プリミティブ型は対象外(model-core.md §7)。
+   * @param term 型参照項。
+   * @returns 名前付き参照の場合は `true`。
+   */
+  isResolvable: (term: TypeTerm): boolean => !term.isPrimitive,
 } as const;

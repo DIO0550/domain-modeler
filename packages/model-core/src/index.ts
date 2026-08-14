@@ -18,4 +18,8 @@ export * from "./document";
 export * from "./diagnostic";
 export * from "./result";
 export * from "./parse";
+export * from "./named-decl";
+export * from "./definition-table";
+export * from "./reference-table";
+export * from "./resolve-result";
 export * from "./resolve";
