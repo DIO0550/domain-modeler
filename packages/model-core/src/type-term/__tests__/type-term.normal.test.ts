@@ -36,3 +36,36 @@ test("プリミティブに list と option を重ねた項を生成する", () 
     range,
   });
 });
+
+test("後置修飾を除いた型名だけのソース範囲を返す", () => {
+  const term = TypeTerm.create({
+    name: "注文明細",
+    isPrimitive: false,
+    modifiers: [TYPE_MODIFIERS.list],
+    range: SourceRange.onLine(1, 11, 20),
+  });
+
+  expect(TypeTerm.nameRange(term)).toEqual(SourceRange.onLine(1, 11, 15));
+});
+
+test("プリミティブ型は参照解決の対象外である", () => {
+  const term = TypeTerm.create({
+    name: "string",
+    isPrimitive: true,
+    modifiers: [],
+    range: SourceRange.onLine(1, 13, 19),
+  });
+
+  expect(TypeTerm.isResolvable(term)).toBe(false);
+});
+
+test("名前付き型参照は参照解決の対象である", () => {
+  const term = TypeTerm.create({
+    name: "注文ID",
+    isPrimitive: false,
+    modifiers: [],
+    range: SourceRange.onLine(1, 11, 15),
+  });
+
+  expect(TypeTerm.isResolvable(term)).toBe(true);
+});

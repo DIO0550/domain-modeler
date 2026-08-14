@@ -115,4 +115,21 @@ export const TypeExpr = {
    */
   isValue: (expr: TypeExpr): expr is Extract<TypeExpr, { form: "value" }> =>
     expr.form === "value",
+  /**
+   * 型式に含まれる型参照項を列挙する。
+   * value 型式はプリミティブ制約のみのため空列を返す。
+   * @param expr 型式。
+   * @returns 型参照項の列。
+   */
+  referencedTerms: (expr: TypeExpr): readonly TypeTerm[] => {
+    switch (expr.form) {
+      case "alias":
+        return [expr.term];
+      case "record":
+      case "choice":
+        return expr.terms;
+      case "value":
+        return [];
+    }
+  },
 } as const;

@@ -1,5 +1,6 @@
 import type { SourceRange } from "../source-range";
-import type { TypeExpr } from "../type-expr";
+import { TypeExpr } from "../type-expr";
+import type { TypeTerm } from "../type-term";
 import type { ValueOf } from "../types/value-of";
 
 /** 構造化プレビューの data カード種別(model-editor.md §4.1)。 */
@@ -61,4 +62,11 @@ export const DataDecl = {
         return DATA_CARD_KINDS.VALUE;
     }
   },
+  /**
+   * data 宣言の型式に含まれる型参照項を列挙する。
+   * @param decl data 宣言。
+   * @returns 型参照項の列。
+   */
+  referencedTerms: (decl: DataDecl): readonly TypeTerm[] =>
+    TypeExpr.referencedTerms(decl.typeExpr),
 } as const;

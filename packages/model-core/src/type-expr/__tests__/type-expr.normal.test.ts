@@ -81,3 +81,50 @@ test("制約付きの value 型式を生成する", () => {
   });
   expect(TypeExpr.isValue(expr)).toBe(true);
 });
+
+test("alias / record / choice の型参照項を列挙し value は空にする", () => {
+  const aliasTerm = TypeTerm.create({
+    name: "注文ID",
+    isPrimitive: false,
+    modifiers: [],
+    range: SourceRange.onLine(1, 12, 17),
+  });
+  const recordTerms = [
+    TypeTerm.create({
+      name: "注文ID",
+      isPrimitive: false,
+      modifiers: [],
+      range: SourceRange.onLine(2, 3, 8),
+    }),
+    TypeTerm.create({
+      name: "顧客情報",
+      isPrimitive: false,
+      modifiers: [],
+      range: SourceRange.onLine(3, 7, 11),
+    }),
+  ];
+
+  expect(
+    TypeExpr.referencedTerms(
+      TypeExpr.alias(aliasTerm, SourceRange.onLine(1, 12, 17)),
+    ),
+  ).toEqual([aliasTerm]);
+  expect(
+    TypeExpr.referencedTerms(
+      TypeExpr.record(recordTerms, SourceRange.onLine(2, 3, 11)),
+    ),
+  ).toEqual(recordTerms);
+  expect(
+    TypeExpr.referencedTerms(
+      TypeExpr.value({
+        primitive: PRIMITIVES.int,
+        primitiveRange: SourceRange.onLine(1, 14, 17),
+        constraint: Constraint.numeric(
+          NumberRange.both(1, 100),
+          SourceRange.onLine(1, 20, 26),
+        ),
+        range: SourceRange.onLine(1, 14, 26),
+      }),
+    ),
+  ).toEqual([]);
+});
