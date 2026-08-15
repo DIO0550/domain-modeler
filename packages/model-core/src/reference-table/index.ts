@@ -21,6 +21,15 @@ const append = (
   [name]: [...(table[name] ?? []), range],
 });
 
+/**
+ * 参照表に名前が載っているか判定する。
+ * @param table 参照表。
+ * @param name 識別子。
+ * @returns 載っている場合は `true`。
+ */
+const hasName = (table: ReferenceTable, name: string): boolean =>
+  Object.prototype.hasOwnProperty.call(table, name);
+
 /** 参照表を生成する関数群。 */
 export const ReferenceTable = {
   /**
@@ -40,4 +49,20 @@ export const ReferenceTable = {
         withDefinition,
       );
     }, {}),
+  /**
+   * 指定識別子の宣言名・型参照の出現位置を返す。
+   * コメント内の文字列や、同名部分文字列を含む別識別子は含まない。
+   * @param table 参照表。
+   * @param name 識別子。
+   * @returns 出現順のソース範囲。名前が無い場合は空配列。
+   */
+  collectRanges: (
+    table: ReferenceTable,
+    name: string,
+  ): readonly SourceRange[] => {
+    if (!hasName(table, name)) {
+      return [];
+    }
+    return table[name] ?? [];
+  },
 } as const;
