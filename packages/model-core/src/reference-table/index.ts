@@ -56,7 +56,7 @@ export const ReferenceTable = {
    * @param name 識別子。
    * @returns 出現順のソース範囲。名前が無い場合は空配列。
    */
-  collectRanges: (
+  rangesOf: (
     table: ReferenceTable,
     name: string,
   ): readonly SourceRange[] => {

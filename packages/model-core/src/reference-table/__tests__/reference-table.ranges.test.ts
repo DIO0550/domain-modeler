@@ -9,7 +9,7 @@ const rangesFromSource = (
   name: string,
 ): readonly SourceRange[] => {
   const { document } = Parse.parse(source);
-  return ReferenceTable.collectRanges(
+  return ReferenceTable.rangesOf(
     Resolve.resolve(document).references,
     name,
   );
