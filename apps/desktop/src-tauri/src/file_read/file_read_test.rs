@@ -1,39 +1,7 @@
-use std::env;
 use std::fs;
-use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{read_utf8_file, FileReadError, FileReadResult};
-
-struct TempWorkspace {
-    dir: PathBuf,
-}
-
-impl TempWorkspace {
-    fn create() -> Self {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system clock is after unix epoch")
-            .as_nanos();
-        let dir = env::temp_dir().join(format!(
-            "domain-modeler-read-file-{}-{}",
-            std::process::id(),
-            nanos
-        ));
-        fs::create_dir_all(&dir).expect("temp workspace should be created");
-        Self { dir }
-    }
-
-    fn path(&self, name: &str) -> PathBuf {
-        self.dir.join(name)
-    }
-}
-
-impl Drop for TempWorkspace {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.dir);
-    }
-}
+use crate::temp_workspace::TempWorkspace;
 
 #[test]
 fn utf8ファイルを読むと内容の文字列が返る() {
@@ -107,7 +75,7 @@ fn utf8でないバイト列のファイルを読むと不正なutf8エラーが
 #[test]
 fn ディレクトリを読むと読み取り失敗が値として返る() {
     let workspace = TempWorkspace::create();
-    let path_str = workspace.dir.to_str().expect("path is utf-8");
+    let path_str = workspace.dir().to_str().expect("path is utf-8");
 
     let json = serde_json::to_value(read_utf8_file(path_str)).expect("result should serialize");
 
