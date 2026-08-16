@@ -50,6 +50,7 @@ apps/desktop/src-tauri/src/
   lib.rs           # 入口: command 登録と run のみ
   file_read.rs     # ファイル読み込み
   file_write.rs    # アトミック書き込み
+  file_dialog.rs   # 保存/開くダイアログ
 ```
 
 ## ロジックの帰属先
