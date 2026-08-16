@@ -1,5 +1,6 @@
 mod file_dialog;
 mod file_read;
+mod file_watch;
 mod file_write;
 mod greet;
 
@@ -11,6 +12,8 @@ pub fn invoke_handler<R: tauri::Runtime>(
         file_read::read_file,
         file_write::write_file,
         file_dialog::open_file_dialog,
-        file_dialog::save_file_dialog
+        file_dialog::save_file_dialog,
+        file_watch::start_file_watch,
+        file_watch::stop_file_watch
     ]
 }
