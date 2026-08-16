@@ -43,13 +43,24 @@ features/<feature-name>/
 - 失敗の直和や手順(アトミック書き込みの一時ファイル + rename など)は、その操作のモジュールに置く
 - モジュールフォルダの形は domains と同じ(`index.ts` + `__tests__/`)。フォルダ外部からの import は `index.ts` 経由のみ
 
-Rust 側も同じ判断にする。`src-tauri/src/lib.rs` は command 登録と `run` の入口にとどめ、読み込み・アトミック書き込みなどの処理はドメイン単位のモジュールへ分ける。
+Rust 側も同じ判断にする。`#[tauri::command]` はフロントエンドとの IPC 境界なので、処理本体と混ぜず `command/` に入口だけを置く。`lib.rs` は plugin 初期化・command 登録と `run` にとどめる。
+
+- `command/` は command 関数だけ。中身は対応するモジュールへ委譲する。登録は `command/mod.rs` の `invoke_handler` に集約する
+- 処理本体(読み込み・アトミック書き込み・フィルタと path 変換)は `file_read` / `file_write` / `file_dialog` に置く
+- 汎用の 1 ファイルへ読み書き・監視・ダイアログの command を寄せない。ドメイン単位でファイルを分ける
+- `command/` の外から内部ファイルへ deep import しない。公開APIは `command/mod.rs` 経由のみ
 
 ```
 apps/desktop/src-tauri/src/
-  lib.rs           # 入口: command 登録と run のみ
-  file_read.rs     # ファイル読み込み
-  file_write.rs    # アトミック書き込み
+  lib.rs              # 入口: plugin 初期化・command 登録と run のみ
+  command/            # IPC 入口: #[tauri::command] のみ
+    mod.rs
+    file_read.rs
+    file_write.rs
+    file_dialog.rs
+  file_read.rs        # ファイル読み込み
+  file_write.rs       # アトミック書き込み
+  file_dialog.rs      # 保存/開くダイアログのフィルタと path 変換
 ```
 
 ## ロジックの帰属先
