@@ -46,21 +46,23 @@ features/<feature-name>/
 Rust 側も同じ判断にする。`#[tauri::command]` はフロントエンドとの IPC 境界なので、処理本体と混ぜず `command/` に入口だけを置く。`lib.rs` は plugin 初期化・command 登録と `run` にとどめる。
 
 - `command/` は command 関数だけ。中身は対応するモジュールへ委譲する。登録は `command/mod.rs` の `invoke_handler` に集約する
-- 処理本体(読み込み・アトミック書き込み・フィルタと path 変換)は `file_read` / `file_write` / `file_dialog` に置く
+- 処理本体(読み込み・アトミック書き込み・フィルタと path 変換・監視)は `file_read` / `file_write` / `file_dialog` / `file_watch` に置く
 - 汎用の 1 ファイルへ読み書き・監視・ダイアログの command を寄せない。ドメイン単位でファイルを分ける
 - `command/` の外から内部ファイルへ deep import しない。公開APIは `command/mod.rs` 経由のみ
 
 ```
 apps/desktop/src-tauri/src/
-  lib.rs              # 入口: plugin 初期化・command 登録と run のみ
+  lib.rs              # 入口: plugin 初期化・command 登録・State と run のみ
   command/            # IPC 入口: #[tauri::command] のみ
     mod.rs
     file_read.rs
     file_write.rs
     file_dialog.rs
+    file_watch.rs
   file_read.rs        # ファイル読み込み
   file_write.rs       # アトミック書き込み
   file_dialog.rs      # 保存/開くダイアログのフィルタと path 変換
+  file_watch.rs       # ファイル監視の開始・停止と change/delete イベント
 ```
 
 ## ロジックの帰属先
