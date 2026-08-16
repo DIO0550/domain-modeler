@@ -75,14 +75,5 @@ pub fn read_utf8_file(path: &str) -> FileReadResult {
     }
 }
 
-/// パスを受けて UTF-8 文字列を返す。
-///
-/// Tauri の `Result<T, E>` にするとフロントエンド側で例外になるため、
-/// 失敗も [`FileReadResult`] の値として返す。
-#[tauri::command]
-pub fn read_file(path: &str) -> FileReadResult {
-    read_utf8_file(path)
-}
-
 #[cfg(test)]
 mod file_read_test;
