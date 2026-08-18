@@ -3,13 +3,13 @@ use std::sync::mpsc::{self, Receiver};
 use std::thread;
 use std::time::Duration;
 
-use super::{settled_event, FileWatchEvent, FileWatchRegistry, FileWatchResult, DEBOUNCE};
+use super::{FileWatchEvent, FileWatchRegistry, FileWatchResult, DEBOUNCE};
 use crate::temp_workspace::TempWorkspace;
 
 #[test]
 fn デバウンス後にファイルがあると変更イベントになる() {
     assert_eq!(
-        settled_event("/tmp/note.dmodel", true),
+        FileWatchEvent::from_exists("/tmp/note.dmodel", true),
         FileWatchEvent::Changed {
             path: "/tmp/note.dmodel".to_string(),
         }
@@ -19,7 +19,7 @@ fn デバウンス後にファイルがあると変更イベントになる() {
 #[test]
 fn デバウンス後にファイルが無いと削除イベントになる() {
     assert_eq!(
-        settled_event("/tmp/note.dmodel", false),
+        FileWatchEvent::from_exists("/tmp/note.dmodel", false),
         FileWatchEvent::Deleted {
             path: "/tmp/note.dmodel".to_string(),
         }

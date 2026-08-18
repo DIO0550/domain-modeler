@@ -34,6 +34,21 @@ pub enum FileWatchEvent {
     },
 }
 
+impl FileWatchEvent {
+    /// デバウンス後のファイル有無から送出イベントを決める。
+    pub(crate) fn from_exists(path: &str, exists: bool) -> Self {
+        if exists {
+            Self::Changed {
+                path: path.to_string(),
+            }
+        } else {
+            Self::Deleted {
+                path: path.to_string(),
+            }
+        }
+    }
+}
+
 /// ファイル監視の失敗理由。
 ///
 /// IPC では例外にせず、この値を結果として返す。
@@ -189,19 +204,6 @@ impl Drop for WatchSession {
     }
 }
 
-/// デバウンス後のファイル有無から送出イベントを決める。
-pub(crate) fn settled_event(path: &str, exists: bool) -> FileWatchEvent {
-    if exists {
-        FileWatchEvent::Changed {
-            path: path.to_string(),
-        }
-    } else {
-        FileWatchEvent::Deleted {
-            path: path.to_string(),
-        }
-    }
-}
-
 fn watch_failed(path: &str, message: &str) -> FileWatchResult {
     FileWatchResult::Err {
         error: FileWatchError::WatchFailed {
@@ -235,7 +237,7 @@ fn debounce_loop(
         let now = Instant::now();
         if deadline.is_some_and(|due| due <= now) {
             deadline = None;
-            on_event(settled_event(&original_path, target.exists()));
+            on_event(FileWatchEvent::from_exists(&original_path, target.exists()));
             continue;
         }
 
@@ -244,7 +246,7 @@ fn debounce_loop(
                 Ok(msg) => msg,
                 Err(RecvTimeoutError::Timeout) => {
                     deadline = None;
-                    on_event(settled_event(&original_path, target.exists()));
+                    on_event(FileWatchEvent::from_exists(&original_path, target.exists()));
                     continue;
                 }
                 Err(RecvTimeoutError::Disconnected) => break,
