@@ -1,3 +1,4 @@
+mod app_settings;
 mod command;
 mod file_dialog;
 mod file_read;

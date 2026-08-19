@@ -51,3 +51,41 @@ impl Drop for TempWorkspace {
         let _ = fs::remove_dir_all(&self.dir);
     }
 }
+
+/// テスト終了時にディレクトリのパーミッションを戻す。
+#[cfg(unix)]
+pub(crate) struct RestoredPermissions {
+    path: PathBuf,
+    permissions: fs::Permissions,
+}
+
+#[cfg(unix)]
+impl RestoredPermissions {
+    /// ディレクトリを読み取り専用にして、Drop で元に戻す。
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - 読み取り専用にするディレクトリ。
+    pub(crate) fn make_dir_readonly(path: &Path) -> Self {
+        use std::os::unix::fs::PermissionsExt;
+
+        let original_permissions = fs::metadata(path)
+            .expect("directory metadata should be readable")
+            .permissions();
+        let restore = Self {
+            path: path.to_path_buf(),
+            permissions: original_permissions.clone(),
+        };
+        let mut readonly = original_permissions;
+        readonly.set_mode(0o555);
+        fs::set_permissions(path, readonly).expect("directory should become read-only");
+        restore
+    }
+}
+
+#[cfg(unix)]
+impl Drop for RestoredPermissions {
+    fn drop(&mut self) {
+        let _ = fs::set_permissions(&self.path, self.permissions.clone());
+    }
+}
