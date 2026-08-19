@@ -43,24 +43,26 @@ features/<feature-name>/
 - 失敗の直和や手順(アトミック書き込みの一時ファイル + rename など)は、その操作のモジュールに置く
 - モジュールフォルダの形は domains と同じ(`index.ts` + `__tests__/`)。フォルダ外部からの import は `index.ts` 経由のみ
 
-Rust 側も同じ判断にする。`#[tauri::command]` はフロントエンドとの IPC 境界なので、処理本体と混ぜず `command/` に入口だけを置く。`lib.rs` は plugin 初期化・command 登録と `run` にとどめる。
+Rust 側も同じ判断にする。`#[tauri::command]` はフロントエンドとの IPC 境界なので、処理本体と混ぜず `command/` に入口だけを置く。`lib.rs` は plugin 初期化・command 登録と `run` にとどめる。ディレクトリの `mod.rs` は使わず、2018 edition のファイル形式(`command.rs` + `command/`)にする。
 
-- `command/` は command 関数だけ。中身は対応するモジュールへ委譲する。登録は `command/mod.rs` の `invoke_handler` に集約する
-- 処理本体(読み込み・アトミック書き込み・フィルタと path 変換)は `file_read` / `file_write` / `file_dialog` に置く
+- `command/` は command 関数だけ。中身は対応するモジュールへ委譲する。登録は `command.rs` の `invoke_handler` に集約する
+- 処理本体(読み込み・アトミック書き込み・フィルタと path 変換・監視)は `file_read` / `file_write` / `file_dialog` / `file_watch` に置く
 - 汎用の 1 ファイルへ読み書き・監視・ダイアログの command を寄せない。ドメイン単位でファイルを分ける
-- `command/` の外から内部ファイルへ deep import しない。公開APIは `command/mod.rs` 経由のみ
+- `command/` の外から内部ファイルへ deep import しない。公開APIは `command.rs` 経由のみ
 
 ```
 apps/desktop/src-tauri/src/
-  lib.rs              # 入口: plugin 初期化・command 登録と run のみ
+  lib.rs              # 入口: plugin 初期化・command 登録・State と run のみ
+  command.rs          # IPC 入口の登録: invoke_handler
   command/            # IPC 入口: #[tauri::command] のみ
-    mod.rs
     file_read.rs
     file_write.rs
     file_dialog.rs
+    file_watch.rs
   file_read.rs        # ファイル読み込み
   file_write.rs       # アトミック書き込み
   file_dialog.rs      # 保存/開くダイアログのフィルタと path 変換
+  file_watch.rs       # ファイル監視の開始・停止と change/delete イベント
 ```
 
 ## ロジックの帰属先
