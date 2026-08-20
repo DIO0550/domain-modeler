@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
-import { createShowcaseTabsState } from "../showcase-tabs";
 import {
   type TabDocumentType,
   type TabsAction,
@@ -102,7 +101,30 @@ export const Missing: Story = {
 
 export const AllProps: Story = {
   args: {
-    tabsState: createShowcaseTabsState(),
+    tabsState: applyActions(
+      openTabs(
+        { path: "/Users/demo/shop/order.dcanvas", documentType: "canvas" },
+        {
+          path: "/Users/demo/warehouse/order.dcanvas",
+          documentType: "canvas",
+        },
+        { path: "/Users/demo/shop/order.dmodel", documentType: "model" },
+      ),
+      [
+        {
+          type: "markFileMissing",
+          path: "/Users/demo/shop/order.dmodel",
+        },
+        {
+          type: "markBackgroundChanged",
+          path: "/Users/demo/warehouse/order.dcanvas",
+        },
+        {
+          type: "activateTab",
+          path: "/Users/demo/shop/order.dcanvas",
+        },
+      ],
+    ),
   },
 };
 
