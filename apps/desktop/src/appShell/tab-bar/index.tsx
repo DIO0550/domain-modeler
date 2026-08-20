@@ -1,4 +1,5 @@
 import type { KeyboardEvent } from "react";
+import { ArrayEx } from "../../utils/ArrayEx";
 import {
   type Tab,
   type TabActivation,
@@ -57,9 +58,7 @@ export function TabBar({ tabsState, onActivate }: TabBarProps) {
     const currentIndex = views.findIndex(
       (view) => view.activation === "active",
     );
-    const nextIndex =
-      (currentIndex + direction + views.length) % views.length;
-    const next = views[nextIndex];
+    const next = ArrayEx.atWrapped(views, currentIndex + direction);
     if (next === undefined) {
       return;
     }
