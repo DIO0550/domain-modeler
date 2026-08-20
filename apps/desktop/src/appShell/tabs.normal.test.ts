@@ -34,11 +34,11 @@ test("異なるpathの文書を開くと複数のタブが開かれる", () => {
     documentType: "model",
   });
 
-  expect(second.status).toBe("active");
+  expect(second).toMatchObject({
+    status: "active",
+    activePath: "/documents/order.dmodel",
+  });
   expect(second.tabs).toHaveLength(2);
-  if (second.status === "active") {
-    expect(second.activePath).toBe("/documents/order.dmodel");
-  }
 });
 
 test("同じpathの文書を再び開くと重複せず既存タブがアクティブになる", () => {
