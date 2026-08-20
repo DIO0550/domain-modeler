@@ -18,10 +18,23 @@ type TabBarItemProps = Readonly<{
   onActivate: (path: string) => void;
 }>;
 
-const DOCUMENT_TYPE_LABEL = {
-  canvas: "キャンバス",
-  model: "ドメインモデル",
-} as const satisfies Record<TabDocumentType, string>;
+const DocumentTypeLabel = {
+  Canvas: "キャンバス",
+  Model: "ドメインモデル",
+} as const;
+
+/**
+ * 文書種別に対応する表示名を返す。
+ *
+ * @param documentType キャンバスまたはモデル。
+ * @returns タブや読み上げに使う種別名。
+ */
+const documentTypeLabelOf = (documentType: TabDocumentType): string => {
+  if (documentType === "canvas") {
+    return DocumentTypeLabel.Canvas;
+  }
+  return DocumentTypeLabel.Model;
+};
 
 /**
  * 開いている文書のタブバー。
@@ -272,7 +285,7 @@ const tabAccessibleName = (tab: Tab, caption: TabCaption): string => {
   const changed =
     tab.backgroundChangeState.status === "changed" ? "未読の変更" : "";
   const parts = [
-    DOCUMENT_TYPE_LABEL[tab.documentType],
+    documentTypeLabelOf(tab.documentType),
     caption.fileName,
     parent,
     missing,
