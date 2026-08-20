@@ -17,6 +17,9 @@ const meta: Meta<typeof TabBar> = {
     onActivate: { control: false },
     tabsState: { control: false },
   },
+  parameters: {
+    layout: "fullscreen",
+  },
   decorators: [
     (Story) => (
       <div className="tab-bar-story">

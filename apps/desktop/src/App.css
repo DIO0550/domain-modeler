@@ -62,9 +62,9 @@ body,
 }
 
 .tab-bar-story {
-  width: 960px;
+  width: 100%;
+  min-height: 100vh;
   background: var(--shell-bg);
-  border: 1px solid var(--tab-bar-border);
 }
 
 .tab-bar {
