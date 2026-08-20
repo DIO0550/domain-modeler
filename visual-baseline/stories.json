@@ -1,1 +1,37 @@
-[]
+[
+  {
+    "id": "appshell-tab-bar-tabbar--active",
+    "title": "appShell/tab-bar/TabBar",
+    "name": "Active"
+  },
+  {
+    "id": "appshell-tab-bar-tabbar--all-props",
+    "title": "appShell/tab-bar/TabBar",
+    "name": "All Props"
+  },
+  {
+    "id": "appshell-tab-bar-tabbar--background",
+    "title": "appShell/tab-bar/TabBar",
+    "name": "Background"
+  },
+  {
+    "id": "appshell-tab-bar-tabbar--default",
+    "title": "appShell/tab-bar/TabBar",
+    "name": "Default"
+  },
+  {
+    "id": "appshell-tab-bar-tabbar--edge-cases",
+    "title": "appShell/tab-bar/TabBar",
+    "name": "Edge Cases"
+  },
+  {
+    "id": "appshell-tab-bar-tabbar--empty",
+    "title": "appShell/tab-bar/TabBar",
+    "name": "Empty"
+  },
+  {
+    "id": "appshell-tab-bar-tabbar--missing",
+    "title": "appShell/tab-bar/TabBar",
+    "name": "Missing"
+  }
+]
