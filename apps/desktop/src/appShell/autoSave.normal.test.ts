@@ -226,6 +226,7 @@ test("書き込み中の変更は完了後も残る", async () => {
   autoSave = AutoSave.finishSaving(autoSave, {
     contents: '{"version":1}',
     result: { type: "ok" },
+    now: Date.now(),
   });
 
   expect(autoSave).toMatchObject({

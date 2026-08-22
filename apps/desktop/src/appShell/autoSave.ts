@@ -2,6 +2,7 @@ import type { FileWriteError, FileWriteResult } from "./fileActions";
 
 export const AUTO_SAVE_DEBOUNCE_MS = 500;
 export const AUTO_SAVE_MAX_INTERVAL_MS = 2_000;
+export const AUTO_SAVE_RETRY_MS = 1_000;
 
 /** 未保存変更がない自動保存状態。 */
 export type IdleAutoSave = Readonly<{
@@ -42,6 +43,7 @@ export type FailedAutoSave = Readonly<{
   pendingContents: string;
   lastChangedAt: number;
   firstDirtyAt: number;
+  lastFailedAt: number;
   transactionDepth: number;
   error: FileWriteError;
 }>;
@@ -68,6 +70,7 @@ export type AutoSaveOperations = Readonly<{
 export type AutoSaveWriteOutcome = Readonly<{
   contents: string;
   result: FileWriteResult;
+  now: number;
 }>;
 
 /** 文書単位の自動保存状態を扱う関数群。 */
@@ -144,6 +147,9 @@ export const AutoSave = {
    * @returns 保存しないときは notScheduled、待つときは delayMs。
    */
   due(autoSave: AutoSave, now: number): AutoSaveDue {
+    if (autoSave.status === "failed") {
+      return failedRetryDue(autoSave, now);
+    }
     if (autoSave.status !== "pending") {
       return { status: "notScheduled" };
     }
@@ -261,10 +267,14 @@ const save = async (
     return autoSave;
   }
 
-  const result = await operations.writeFile(autoSave.path, saving.writingContents);
+  const result = await operations.writeFile(
+    autoSave.path,
+    saving.writingContents,
+  );
   return AutoSave.finishSaving(saving, {
     contents: saving.writingContents,
     result,
+    now: operations.now(),
   });
 };
 
@@ -280,16 +290,7 @@ const applyWriteOutcome = (
   outcome: AutoSaveWriteOutcome,
 ): AutoSave => {
   if (outcome.result.type === "err") {
-    return {
-      status: "failed",
-      path: autoSave.path,
-      lastSavedContents: autoSave.lastSavedContents,
-      pendingContents: autoSave.pendingContents,
-      lastChangedAt: autoSave.lastChangedAt,
-      firstDirtyAt: autoSave.firstDirtyAt,
-      transactionDepth: autoSave.transactionDepth,
-      error: outcome.result.error,
-    };
+    return toFailed(autoSave, outcome.result.error, outcome.now);
   }
 
   if (autoSave.pendingContents === outcome.contents) {
@@ -320,6 +321,49 @@ const toIdle = (
   lastSavedContents,
   transactionDepth: autoSave.transactionDepth,
 });
+
+/**
+ * 書き込み失敗後の再試行待ち状態を返す。
+ *
+ * @param autoSave 書き込み中だった自動保存状態。
+ * @param error 書き込み失敗の理由。
+ * @param lastFailedAt 失敗した時刻。
+ * @returns failed 状態。
+ */
+const toFailed = (
+  autoSave: SavingAutoSave,
+  error: FileWriteError,
+  lastFailedAt: number,
+): FailedAutoSave => ({
+  status: "failed",
+  path: autoSave.path,
+  lastSavedContents: autoSave.lastSavedContents,
+  pendingContents: autoSave.pendingContents,
+  lastChangedAt: autoSave.lastChangedAt,
+  firstDirtyAt: autoSave.firstDirtyAt,
+  lastFailedAt,
+  transactionDepth: autoSave.transactionDepth,
+  error,
+});
+
+/**
+ * 書き込み失敗後の再試行までの待ち時間を返す。
+ *
+ * @param autoSave 失敗中の自動保存状態。
+ * @param now 判定時刻。
+ * @returns 再試行しないときは notScheduled、待つときは delayMs。
+ */
+const failedRetryDue = (autoSave: FailedAutoSave, now: number): AutoSaveDue => {
+  if (autoSave.transactionDepth > 0) {
+    return { status: "notScheduled" };
+  }
+  if (!AutoSave.isDirty(autoSave)) {
+    return { status: "notScheduled" };
+  }
+
+  const retryAt = autoSave.lastFailedAt + AUTO_SAVE_RETRY_MS;
+  return { status: "scheduled", delayMs: Math.max(0, retryAt - now) };
+};
 
 /**
  * 未保存変更を持つ pending 状態を返す。
