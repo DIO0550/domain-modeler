@@ -205,7 +205,7 @@ test("トランザクション中でもflushは待たずに保存する", async 
   expect(autoSave.status).toBe("idle");
 });
 
-test("書き込み中の変更は完了後も残る", () => {
+test("書き込み中の変更は完了後も残る", async () => {
   vi.useFakeTimers();
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
   autoSave = AutoSave.notifyContentsChanged(
@@ -215,21 +215,24 @@ test("書き込み中の変更は完了後も残る", () => {
   );
 
   autoSave = AutoSave.startSaving(autoSave);
+  await vi.advanceTimersByTimeAsync(1_000);
   autoSave = AutoSave.notifyContentsChanged(
     autoSave,
     '{"version":2}',
     Date.now(),
   );
-  autoSave = AutoSave.finishSaving(
-    autoSave,
-    { contents: '{"version":1}', result: { type: "ok" } },
-    Date.now(),
-  );
+  const editedAt = Date.now();
+  await vi.advanceTimersByTimeAsync(500);
+  autoSave = AutoSave.finishSaving(autoSave, {
+    contents: '{"version":1}',
+    result: { type: "ok" },
+  });
 
   expect(autoSave).toMatchObject({
     status: "pending",
     lastSavedContents: '{"version":1}',
     pendingContents: '{"version":2}',
+    firstDirtyAt: editedAt,
   });
 });
 
