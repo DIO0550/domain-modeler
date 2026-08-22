@@ -2,15 +2,20 @@ import { Document, Serialize } from "@domain-modeler/canvas-core";
 import { expect, test } from "vitest";
 import {
   FileActions,
+  type FileReadResult,
   type FileWriteResult,
   type NewDocumentOperations,
+  type OpenDocumentError,
+  type OpenDocumentOperations,
   type SavePathSelection,
 } from "./fileActions";
 
 type OperationCall =
   | Readonly<{ type: "selectSavePath"; documentType: "canvas" | "model" }>
   | Readonly<{ type: "writeFile"; path: string; contents: string }>
-  | Readonly<{ type: "openTab"; path: string; documentType: "canvas" | "model" }>;
+  | Readonly<{ type: "readFile"; path: string }>
+  | Readonly<{ type: "openTab"; path: string; documentType: "canvas" | "model" }>
+  | Readonly<{ type: "notifyError"; error: OpenDocumentError }>;
 
 /**
  * 呼び出し履歴を記録する新規作成操作を組み立てる。
@@ -35,6 +40,29 @@ const operationsRecording = (
   },
   openTab: (path, documentType) => {
     calls.push({ type: "openTab", path, documentType });
+  },
+});
+
+/**
+ * 呼び出し履歴を記録するファイルオープン操作を組み立てる。
+ *
+ * @param calls 操作の呼び出し履歴。
+ * @param readResult ファイル読み込み結果。
+ * @returns テスト用のファイルオープン操作。
+ */
+const openOperationsRecording = (
+  calls: OperationCall[],
+  readResult: FileReadResult,
+): OpenDocumentOperations => ({
+  readFile: async (path) => {
+    calls.push({ type: "readFile", path });
+    return readResult;
+  },
+  openTab: (path, documentType) => {
+    calls.push({ type: "openTab", path, documentType });
+  },
+  notifyError: (error) => {
+    calls.push({ type: "notifyError", error });
   },
 });
 
@@ -135,4 +163,99 @@ test("初期内容を書き込めないとタブを開かない", async () => {
   expect(result).toEqual({ status: "writeFailed", error });
   expect(calls).toHaveLength(2);
   expect(calls[1]?.type).toBe("writeFile");
+});
+
+test("正しいキャンバスを読み込むと検証後にタブを開く", async () => {
+  const calls: OperationCall[] = [];
+  const path = "/documents/context.dcanvas";
+
+  const result = await FileActions.openDocument(
+    path,
+    openOperationsRecording(calls, {
+      type: "ok",
+      value: Serialize.stringify(Document.empty()),
+    }),
+  );
+
+  expect(result).toEqual({ status: "opened", path, documentType: "canvas" });
+  expect(calls).toEqual([
+    { type: "readFile", path },
+    { type: "openTab", path, documentType: "canvas" },
+  ]);
+});
+
+test("モデルは内容を検証せずタブを開く", async () => {
+  const calls: OperationCall[] = [];
+  const path = "C:\\documents\\order.dmodel";
+
+  const result = await FileActions.openDocument(
+    path,
+    openOperationsRecording(calls, {
+      type: "ok",
+      value: "これは未完成のモデル定義 {",
+    }),
+  );
+
+  expect(result).toEqual({ status: "opened", path, documentType: "model" });
+  expect(calls).toEqual([
+    { type: "readFile", path },
+    { type: "openTab", path, documentType: "model" },
+  ]);
+});
+
+test("対応外の拡張子は読み込まず通知する", async () => {
+  const calls: OperationCall[] = [];
+  const path = "/documents/context.json";
+  const error = { kind: "unsupportedExtension", path } as const;
+
+  const result = await FileActions.openDocument(
+    path,
+    openOperationsRecording(calls, { type: "ok", value: "{}" }),
+  );
+
+  expect(result).toEqual({ status: "rejected", error });
+  expect(calls).toEqual([{ type: "notifyError", error }]);
+});
+
+test("読み込みに失敗するとタブを開かず通知する", async () => {
+  const calls: OperationCall[] = [];
+  const path = "/documents/missing.dmodel";
+  const readError = { kind: "notFound", path } as const;
+  const error = { kind: "readFailed", error: readError } as const;
+
+  const result = await FileActions.openDocument(
+    path,
+    openOperationsRecording(calls, { type: "err", error: readError }),
+  );
+
+  expect(result).toEqual({ status: "rejected", error });
+  expect(calls).toEqual([
+    { type: "readFile", path },
+    { type: "notifyError", error },
+  ]);
+});
+
+test("不正なキャンバスはタブを開かず検証エラーを通知する", async () => {
+  const calls: OperationCall[] = [];
+  const path = "/documents/broken.dcanvas";
+
+  const result = await FileActions.openDocument(
+    path,
+    openOperationsRecording(calls, { type: "ok", value: "not json" }),
+  );
+
+  expect(result.status).toBe("rejected");
+  expect(calls[0]).toEqual({ type: "readFile", path });
+  expect(calls[1]).toEqual({
+    type: "notifyError",
+    error: {
+      kind: "invalidCanvas",
+      path,
+      error: {
+        code: "INVALID_JSON",
+        message: "JSON could not be parsed",
+      },
+    },
+  });
+  expect(calls).toHaveLength(2);
 });
