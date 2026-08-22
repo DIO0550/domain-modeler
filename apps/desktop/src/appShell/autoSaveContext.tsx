@@ -32,13 +32,23 @@ type AutoSaveProviderProps = Readonly<{
 
 /**
  * 1文書の自動保存状態を保持し、期限が来たら書き込む。
- * path が変わったときは状態と書き込みキューを新しい文書向けに作り直し、
+ * path が変わったときは key によりセッションを作り直し、
  * 進行中の書き込み結果は新しい文書へ反映しない。
  *
  * @param props 対象パス、初期内容、書き込み操作、子要素。
  * @returns 自動保存操作を下位へ渡す Provider。
  */
-export function AutoSaveProvider({
+export function AutoSaveProvider(props: AutoSaveProviderProps) {
+  return <AutoSaveSession key={props.path} {...props} />;
+}
+
+/**
+ * 1つの path に紐づく自動保存セッション。
+ *
+ * @param props 対象パス、初期内容、書き込み操作、子要素。
+ * @returns 自動保存操作を下位へ渡す Provider。
+ */
+function AutoSaveSession({
   path,
   initialContents,
   operations,
@@ -50,25 +60,8 @@ export function AutoSaveProvider({
   const autoSaveRef = useRef(autoSave);
   const operationsRef = useRef(operations);
   const writeQueueRef = useRef(Promise.resolve());
-  const openedDocumentRef = useRef({ path, generation: 0 });
+  autoSaveRef.current = autoSave;
   operationsRef.current = operations;
-
-  if (openedDocumentRef.current.path !== path) {
-    openedDocumentRef.current = {
-      path,
-      generation: openedDocumentRef.current.generation + 1,
-    };
-    writeQueueRef.current = Promise.resolve();
-  }
-
-  const openedAutoSave =
-    autoSave.path === path
-      ? autoSave
-      : AutoSave.create(path, initialContents);
-  if (autoSave.path !== path) {
-    setAutoSave(openedAutoSave);
-  }
-  autoSaveRef.current = openedAutoSave;
 
   const replaceAutoSave = (
     next: AutoSave | ((current: AutoSave) => AutoSave),
@@ -80,12 +73,7 @@ export function AutoSaveProvider({
   };
 
   const runSave = async (force: boolean): Promise<void> => {
-    const generation = openedDocumentRef.current.generation;
     const run = async (): Promise<void> => {
-      if (openedDocumentRef.current.generation !== generation) {
-        return;
-      }
-
       const current = autoSaveRef.current;
       if (force) {
         if (!AutoSave.isDirty(current)) {
@@ -114,9 +102,6 @@ export function AutoSaveProvider({
         path: saving.path,
         contents: saving.writingContents,
       });
-      if (openedDocumentRef.current.generation !== generation) {
-        return;
-      }
       replaceAutoSave((latest) =>
         AutoSave.finishSaving(latest, {
           contents: saving.writingContents,
@@ -135,7 +120,7 @@ export function AutoSaveProvider({
   };
 
   useEffect(() => {
-    const due = AutoSave.due(openedAutoSave, operationsRef.current.now());
+    const due = AutoSave.due(autoSave, operationsRef.current.now());
     if (due.status === "notScheduled") {
       return;
     }
@@ -150,11 +135,11 @@ export function AutoSaveProvider({
     return () => {
       clearTimeout(timer);
     };
-  }, [openedAutoSave]);
+  }, [autoSave]);
 
   const value = useMemo((): AutoSaveContextValue => {
     return {
-      autoSave: openedAutoSave,
+      autoSave,
       notifyContentsChanged: (contents) => {
         replaceAutoSave((current) =>
           AutoSave.notifyContentsChanged(
@@ -174,7 +159,7 @@ export function AutoSaveProvider({
         await runSave(true);
       },
     };
-  }, [openedAutoSave]);
+  }, [autoSave]);
 
   return (
     <AutoSaveContext.Provider value={value}>{children}</AutoSaveContext.Provider>
