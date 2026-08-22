@@ -241,3 +241,54 @@ test("保存中の編集は完了後も Context の状態に残る", async () =>
     pendingContents: '{"version":2}',
   });
 });
+
+test("保存中のflushは進行中の書き込みの完了後に最新内容を書く", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  const pendingWrites: Array<(result: { type: "ok" }) => void> = [];
+  const operations: AutoSaveOperations = {
+    writeFile: async (path, contents) => {
+      writes.push({ path, contents });
+      return new Promise((resolve) => {
+        pendingWrites.push(resolve);
+      });
+    },
+    now: () => Date.now(),
+  };
+  const probe = renderAutoSave(operations);
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS);
+  });
+  expect(writes).toEqual([
+    { path: "/documents/context.dcanvas", contents: '{"version":1}' },
+  ]);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":2}');
+  });
+  const flushPromise = probe.latest.current?.flush();
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(writes).toHaveLength(1);
+
+  await act(async () => {
+    pendingWrites[0]?.({ type: "ok" });
+    await Promise.resolve();
+  });
+  expect(writes).toEqual([
+    { path: "/documents/context.dcanvas", contents: '{"version":1}' },
+    { path: "/documents/context.dcanvas", contents: '{"version":2}' },
+  ]);
+
+  await act(async () => {
+    pendingWrites[1]?.({ type: "ok" });
+    await flushPromise;
+  });
+  expect(probe.latest.current?.autoSave.status).toBe("idle");
+});
