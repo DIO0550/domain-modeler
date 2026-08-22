@@ -49,6 +49,25 @@ export function AutoSaveProvider({
   autoSaveRef.current = autoSave;
   operationsRef.current = operations;
 
+  const runSave = async (startedFrom: AutoSave): Promise<void> => {
+    const saving = AutoSave.startSaving(startedFrom);
+    if (saving.status !== "saving") {
+      return;
+    }
+    setAutoSave(saving);
+    const result = await operationsRef.current.writeFile(
+      saving.path,
+      saving.writingContents,
+    );
+    setAutoSave((current) =>
+      AutoSave.finishSaving(
+        current,
+        { contents: saving.writingContents, result },
+        operationsRef.current.now(),
+      ),
+    );
+  };
+
   useEffect(() => {
     const due = AutoSave.due(autoSave, operationsRef.current.now());
     if (due.status === "notScheduled") {
@@ -56,10 +75,12 @@ export function AutoSaveProvider({
     }
 
     const timer = setTimeout(() => {
-      void AutoSave.saveIfDue(
-        autoSaveRef.current,
-        operationsRef.current,
-      ).then(setAutoSave);
+      const current = autoSaveRef.current;
+      const remaining = AutoSave.due(current, operationsRef.current.now());
+      if (remaining.status === "notScheduled" || remaining.delayMs > 0) {
+        return;
+      }
+      void runSave(current);
     }, due.delayMs);
 
     return () => {
@@ -86,11 +107,7 @@ export function AutoSaveProvider({
         setAutoSave(AutoSave.endTransaction);
       },
       flush: async () => {
-        const next = await AutoSave.flush(
-          autoSaveRef.current,
-          operationsRef.current,
-        );
-        setAutoSave(next);
+        await runSave(autoSaveRef.current);
       },
     };
   }, [autoSave]);
