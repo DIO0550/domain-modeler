@@ -200,3 +200,44 @@ test("flush は Context に保持した未保存変更を即時に書き込む",
   ]);
   expect(probe.latest.current?.autoSave.status).toBe("idle");
 });
+
+test("保存中の編集は完了後も Context の状態に残る", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  let releaseWrite: ((result: { type: "ok" }) => void) | undefined;
+  const operations: AutoSaveOperations = {
+    writeFile: async (path, contents) => {
+      writes.push({ path, contents });
+      return new Promise((resolve) => {
+        releaseWrite = resolve;
+      });
+    },
+    now: () => Date.now(),
+  };
+  const probe = renderAutoSave(operations);
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS);
+  });
+  expect(writes).toEqual([
+    { path: "/documents/context.dcanvas", contents: '{"version":1}' },
+  ]);
+  expect(probe.latest.current?.autoSave.status).toBe("saving");
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":2}');
+  });
+  await act(async () => {
+    releaseWrite?.({ type: "ok" });
+  });
+
+  expect(probe.latest.current?.autoSave).toMatchObject({
+    status: "pending",
+    lastSavedContents: '{"version":1}',
+    pendingContents: '{"version":2}',
+  });
+});
