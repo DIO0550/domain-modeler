@@ -46,25 +46,63 @@ export function AutoSaveProvider({
   );
   const autoSaveRef = useRef(autoSave);
   const operationsRef = useRef(operations);
+  const writeQueueRef = useRef(Promise.resolve());
   autoSaveRef.current = autoSave;
   operationsRef.current = operations;
 
-  const runSave = async (startedFrom: AutoSave): Promise<void> => {
-    const saving = AutoSave.startSaving(startedFrom);
-    if (saving.status !== "saving") {
-      return;
-    }
-    setAutoSave(saving);
-    const result = await operationsRef.current.writeFile(
-      saving.path,
-      saving.writingContents,
+  const replaceAutoSave = (
+    next: AutoSave | ((current: AutoSave) => AutoSave),
+  ): void => {
+    const current = autoSaveRef.current;
+    const resolved = typeof next === "function" ? next(current) : next;
+    autoSaveRef.current = resolved;
+    setAutoSave(resolved);
+  };
+
+  const runSave = async (force: boolean): Promise<void> => {
+    const run = async (): Promise<void> => {
+      const current = autoSaveRef.current;
+      if (force) {
+        if (!AutoSave.isDirty(current)) {
+          return;
+        }
+      } else {
+        const due = AutoSave.due(current, operationsRef.current.now());
+        if (due.status === "notScheduled" || due.delayMs > 0) {
+          return;
+        }
+      }
+
+      const saving = AutoSave.startSaving(current);
+      if (saving.status !== "saving") {
+        return;
+      }
+      if (
+        current.status === "saving" &&
+        current.pendingContents === current.writingContents
+      ) {
+        return;
+      }
+
+      replaceAutoSave(saving);
+      const result = await operationsRef.current.writeFile(
+        saving.path,
+        saving.writingContents,
+      );
+      replaceAutoSave((latest) =>
+        AutoSave.finishSaving(latest, {
+          contents: saving.writingContents,
+          result,
+        }),
+      );
+    };
+
+    const queued = writeQueueRef.current.then(run, run);
+    writeQueueRef.current = queued.then(
+      () => undefined,
+      () => undefined,
     );
-    setAutoSave((current) =>
-      AutoSave.finishSaving(current, {
-        contents: saving.writingContents,
-        result,
-      }),
-    );
+    await queued;
   };
 
   useEffect(() => {
@@ -74,12 +112,7 @@ export function AutoSaveProvider({
     }
 
     const timer = setTimeout(() => {
-      const current = autoSaveRef.current;
-      const remaining = AutoSave.due(current, operationsRef.current.now());
-      if (remaining.status === "notScheduled" || remaining.delayMs > 0) {
-        return;
-      }
-      void runSave(current);
+      void runSave(false);
     }, due.delayMs);
 
     return () => {
@@ -91,7 +124,7 @@ export function AutoSaveProvider({
     return {
       autoSave,
       notifyContentsChanged: (contents) => {
-        setAutoSave((current) =>
+        replaceAutoSave((current) =>
           AutoSave.notifyContentsChanged(
             current,
             contents,
@@ -100,13 +133,13 @@ export function AutoSaveProvider({
         );
       },
       beginTransaction: () => {
-        setAutoSave(AutoSave.beginTransaction);
+        replaceAutoSave(AutoSave.beginTransaction);
       },
       endTransaction: () => {
-        setAutoSave(AutoSave.endTransaction);
+        replaceAutoSave(AutoSave.endTransaction);
       },
       flush: async () => {
-        await runSave(autoSaveRef.current);
+        await runSave(true);
       },
     };
   }, [autoSave]);
