@@ -4,6 +4,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import {
   AUTO_SAVE_DEBOUNCE_MS,
   AUTO_SAVE_MAX_INTERVAL_MS,
+  AUTO_SAVE_RETRY_MS,
   type AutoSaveOperations,
 } from "./autoSave";
 import {
@@ -288,6 +289,69 @@ test("書き込みが例外でもタイマー起動の自動保存は未処理�
   } finally {
     process.off("unhandledRejection", onUnhandledRejection);
   }
+});
+
+test("書き込みが例外のとき自動保存状態は failed になる", async () => {
+  vi.useFakeTimers();
+  const operations: AutoSaveOperations = {
+    writeFile: async () => {
+      throw new Error("disk full");
+    },
+    now: () => Date.now(),
+  };
+  const probe = renderAutoSave(operations);
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS);
+  });
+
+  expect(probe.latest.current?.autoSave).toMatchObject({
+    status: "failed",
+    error: { kind: "writeFailed", message: "disk full" },
+  });
+});
+
+test("書き込み失敗後は再試行間隔の経過後に Context が再書き込みする", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  const operations: AutoSaveOperations = {
+    writeFile: async (path, contents) => {
+      writes.push({ path, contents });
+      return {
+        type: "err",
+        error: { kind: "writeFailed", path, message: "disk full" },
+      };
+    },
+    now: () => Date.now(),
+  };
+  const probe = renderAutoSave(operations);
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS);
+  });
+  expect(writes).toHaveLength(1);
+  expect(probe.latest.current?.autoSave.status).toBe("failed");
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_RETRY_MS - 1);
+  });
+  expect(writes).toHaveLength(1);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+  });
+  expect(writes).toEqual([
+    { path: "/documents/context.dcanvas", contents: '{"version":1}' },
+    { path: "/documents/context.dcanvas", contents: '{"version":1}' },
+  ]);
 });
 
 test("保存中のflushは進行中の書き込みの完了後に最新内容を書く", async () => {
