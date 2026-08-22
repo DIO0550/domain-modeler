@@ -16,6 +16,10 @@ type WriteCall = Readonly<{ path: string; contents: string }>;
 
 type AutoSaveProbe = Readonly<{
   latest: { current: AutoSaveContextValue | undefined };
+  rerender: (next: {
+    path: string;
+    initialContents: string;
+  }) => void;
   unmount: () => void;
 }>;
 
@@ -37,7 +41,7 @@ const operationsRecording = (writes: WriteCall[]): AutoSaveOperations => ({
  * Provider 配下の自動保存操作を参照できるテスト用ツリーを描画する。
  *
  * @param operations ファイル書き込みと時刻取得。
- * @returns 最新の Context 値と unmount。
+ * @returns 最新の Context 値、再描画、unmount。
  */
 const renderAutoSave = (operations: AutoSaveOperations): AutoSaveProbe => {
   const latest: { current: AutoSaveContextValue | undefined } = {
@@ -52,20 +56,31 @@ const renderAutoSave = (operations: AutoSaveOperations): AutoSaveProbe => {
     return null;
   };
 
-  act(() => {
-    root.render(
-      <AutoSaveProvider
-        path="/documents/context.dcanvas"
-        initialContents="{}"
-        operations={operations}
-      >
-        <Probe />
-      </AutoSaveProvider>,
-    );
+  const renderProvider = (next: {
+    path: string;
+    initialContents: string;
+  }) => {
+    act(() => {
+      root.render(
+        <AutoSaveProvider
+          path={next.path}
+          initialContents={next.initialContents}
+          operations={operations}
+        >
+          <Probe />
+        </AutoSaveProvider>,
+      );
+    });
+  };
+
+  renderProvider({
+    path: "/documents/context.dcanvas",
+    initialContents: "{}",
   });
 
   return {
     latest,
+    rerender: renderProvider,
     unmount: () => {
       act(() => {
         root.unmount();
@@ -324,4 +339,99 @@ test("保存中のflushは進行中の書き込みの完了後に最新内容を
     await flushPromise;
   });
   expect(probe.latest.current?.autoSave.status).toBe("idle");
+});
+
+test("文書パスを切り替えると未保存の旧文書は新しいパスへ書き込まない", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  const probe = renderAutoSave(operationsRecording(writes));
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+  });
+  probe.rerender({
+    path: "/documents/other.dcanvas",
+    initialContents: '{"other":true}',
+  });
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_MAX_INTERVAL_MS);
+  });
+  expect(writes).toEqual([]);
+  expect(probe.latest.current?.autoSave).toMatchObject({
+    status: "idle",
+    path: "/documents/other.dcanvas",
+    lastSavedContents: '{"other":true}',
+  });
+});
+
+test("文書パスを切り替えたあとの変更は新しいパスへ書き込む", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  const probe = renderAutoSave(operationsRecording(writes));
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+  });
+  probe.rerender({
+    path: "/documents/other.dcanvas",
+    initialContents: '{"other":true}',
+  });
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"other":false}');
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS);
+  });
+  expect(writes).toEqual([
+    { path: "/documents/other.dcanvas", contents: '{"other":false}' },
+  ]);
+});
+
+test("文書パスを切り替えると進行中の書き込み結果を新しい文書の状態へ反映しない", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  let releaseWrite: ((result: { type: "ok" }) => void) | undefined;
+  const operations: AutoSaveOperations = {
+    writeFile: async (path, contents) => {
+      writes.push({ path, contents });
+      return new Promise((resolve) => {
+        releaseWrite = resolve;
+      });
+    },
+    now: () => Date.now(),
+  };
+  const probe = renderAutoSave(operations);
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS);
+  });
+  expect(writes).toEqual([
+    { path: "/documents/context.dcanvas", contents: '{"version":1}' },
+  ]);
+
+  probe.rerender({
+    path: "/documents/other.dcanvas",
+    initialContents: '{"other":true}',
+  });
+  expect(probe.latest.current?.autoSave).toMatchObject({
+    status: "idle",
+    path: "/documents/other.dcanvas",
+    lastSavedContents: '{"other":true}',
+  });
+
+  await act(async () => {
+    releaseWrite?.({ type: "ok" });
+  });
+  expect(probe.latest.current?.autoSave).toMatchObject({
+    status: "idle",
+    path: "/documents/other.dcanvas",
+    lastSavedContents: '{"other":true}',
+  });
 });
