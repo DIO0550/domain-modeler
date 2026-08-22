@@ -29,41 +29,51 @@ afterEach(() => {
 test("変更から500ms経過すると最新内容を1回だけ書き込む", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];
-  const scheduler = AutoSave.create(
-    "/documents/context.dcanvas",
-    "{}",
-    operationsRecording(writes),
+  const operations = operationsRecording(writes);
+  let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
+
+  autoSave = AutoSave.notifyContentsChanged(
+    autoSave,
+    '{"version":1}',
+    Date.now(),
   );
 
-  scheduler.notifyContentsChanged('{"version":1}');
-
   await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS - 1);
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
   expect(writes).toEqual([]);
 
   await vi.advanceTimersByTimeAsync(1);
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":1}' },
   ]);
-  expect(scheduler.status()).toEqual({ status: "idle" });
+  expect(autoSave.status).toBe("idle");
 });
 
 test("連続変更中は最後の変更から500ms後に保存する", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];
-  const scheduler = AutoSave.create(
-    "/documents/context.dcanvas",
-    "{}",
-    operationsRecording(writes),
+  const operations = operationsRecording(writes);
+  let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
+
+  autoSave = AutoSave.notifyContentsChanged(
+    autoSave,
+    '{"version":1}',
+    Date.now(),
+  );
+  await vi.advanceTimersByTimeAsync(300);
+  autoSave = AutoSave.notifyContentsChanged(
+    autoSave,
+    '{"version":2}',
+    Date.now(),
   );
 
-  scheduler.notifyContentsChanged('{"version":1}');
-  await vi.advanceTimersByTimeAsync(300);
-  scheduler.notifyContentsChanged('{"version":2}');
-
   await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS - 1);
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
   expect(writes).toEqual([]);
 
   await vi.advanceTimersByTimeAsync(1);
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":2}' },
   ]);
@@ -72,19 +82,27 @@ test("連続変更中は最後の変更から500ms後に保存する", async () 
 test("連続変更中は最大2秒で最新内容を保存する", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];
-  const scheduler = AutoSave.create(
-    "/documents/context.dcanvas",
-    "{}",
-    operationsRecording(writes),
-  );
+  const operations = operationsRecording(writes);
+  let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
 
-  scheduler.notifyContentsChanged('{"version":0}');
+  autoSave = AutoSave.notifyContentsChanged(
+    autoSave,
+    '{"version":0}',
+    Date.now(),
+  );
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
   for (const version of Array.from({ length: 19 }, (_, index) => index + 1)) {
     await vi.advanceTimersByTimeAsync(100);
-    scheduler.notifyContentsChanged(`{"version":${version}}`);
+    autoSave = AutoSave.notifyContentsChanged(
+      autoSave,
+      `{"version":${version}}`,
+      Date.now(),
+    );
+    autoSave = await AutoSave.saveIfDue(autoSave, operations);
   }
 
   await vi.advanceTimersByTimeAsync(100);
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":19}' },
   ]);
@@ -93,21 +111,33 @@ test("連続変更中は最大2秒で最新内容を保存する", async () => {
 test("最大間隔で保存した後も変更が続けば次の2秒で再保存する", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];
-  const scheduler = AutoSave.create(
-    "/documents/context.dcanvas",
-    "{}",
-    operationsRecording(writes),
-  );
+  const operations = operationsRecording(writes);
+  let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
 
-  scheduler.notifyContentsChanged('{"version":0}');
+  autoSave = AutoSave.notifyContentsChanged(
+    autoSave,
+    '{"version":0}',
+    Date.now(),
+  );
   await vi.advanceTimersByTimeAsync(AUTO_SAVE_MAX_INTERVAL_MS);
-  scheduler.notifyContentsChanged('{"version":1}');
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
+  autoSave = AutoSave.notifyContentsChanged(
+    autoSave,
+    '{"version":1}',
+    Date.now(),
+  );
   for (const version of Array.from({ length: 19 }, (_, index) => index + 2)) {
     await vi.advanceTimersByTimeAsync(100);
-    scheduler.notifyContentsChanged(`{"version":${version}}`);
+    autoSave = AutoSave.notifyContentsChanged(
+      autoSave,
+      `{"version":${version}}`,
+      Date.now(),
+    );
+    autoSave = await AutoSave.saveIfDue(autoSave, operations);
   }
 
   await vi.advanceTimersByTimeAsync(100);
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":0}' },
     { path: "/documents/context.dcanvas", contents: '{"version":20}' },
@@ -117,33 +147,38 @@ test("最大間隔で保存した後も変更が続けば次の2秒で再保存�
 test("トランザクション中は待機時間が経過しても書き込まない", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];
-  const scheduler = AutoSave.create(
-    "/documents/context.dcanvas",
-    "{}",
-    operationsRecording(writes),
-  );
+  const operations = operationsRecording(writes);
+  let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
 
-  scheduler.beginTransaction();
-  scheduler.notifyContentsChanged('{"version":1}');
+  autoSave = AutoSave.beginTransaction(autoSave);
+  autoSave = AutoSave.notifyContentsChanged(
+    autoSave,
+    '{"version":1}',
+    Date.now(),
+  );
   await vi.advanceTimersByTimeAsync(AUTO_SAVE_MAX_INTERVAL_MS);
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
 
   expect(writes).toEqual([]);
-  expect(scheduler.status()).toEqual({ status: "idle" });
+  expect(autoSave.status).toBe("pending");
+  expect(autoSave.transactionDepth).toBe(1);
 });
 
 test("トランザクション終了後は未保存変更を保存する", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];
-  const scheduler = AutoSave.create(
-    "/documents/context.dcanvas",
-    "{}",
-    operationsRecording(writes),
-  );
+  const operations = operationsRecording(writes);
+  let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
 
-  scheduler.beginTransaction();
-  scheduler.notifyContentsChanged('{"version":1}');
-  scheduler.endTransaction();
+  autoSave = AutoSave.beginTransaction(autoSave);
+  autoSave = AutoSave.notifyContentsChanged(
+    autoSave,
+    '{"version":1}',
+    Date.now(),
+  );
+  autoSave = AutoSave.endTransaction(autoSave);
   await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS);
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
 
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":1}' },
@@ -153,32 +188,30 @@ test("トランザクション終了後は未保存変更を保存する", async
 test("トランザクション中でもflushは待たずに保存する", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];
-  const scheduler = AutoSave.create(
-    "/documents/context.dcanvas",
-    "{}",
-    operationsRecording(writes),
-  );
+  const operations = operationsRecording(writes);
+  let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
 
-  scheduler.beginTransaction();
-  scheduler.notifyContentsChanged('{"version":1}');
-  await scheduler.flush();
+  autoSave = AutoSave.beginTransaction(autoSave);
+  autoSave = AutoSave.notifyContentsChanged(
+    autoSave,
+    '{"version":1}',
+    Date.now(),
+  );
+  autoSave = await AutoSave.flush(autoSave, operations);
 
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":1}' },
   ]);
-  expect(scheduler.status()).toEqual({ status: "idle" });
+  expect(autoSave.status).toBe("idle");
 });
 
 test("内容が変わっていないとflushは書き込まない", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];
-  const scheduler = AutoSave.create(
-    "/documents/context.dcanvas",
-    "{}",
-    operationsRecording(writes),
-  );
+  const operations = operationsRecording(writes);
+  const autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
 
-  await scheduler.flush();
+  await AutoSave.flush(autoSave, operations);
 
   expect(writes).toEqual([]);
 });
