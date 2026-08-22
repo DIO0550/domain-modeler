@@ -205,6 +205,25 @@ test("トランザクション中でもflushは待たずに保存する", async 
   expect(autoSave.status).toBe("idle");
 });
 
+test("保存済み内容に戻すと待機時間後も書き込まない", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  const operations = operationsRecording(writes);
+  let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
+
+  autoSave = AutoSave.notifyContentsChanged(
+    autoSave,
+    '{"version":1}',
+    Date.now(),
+  );
+  autoSave = AutoSave.notifyContentsChanged(autoSave, "{}", Date.now());
+  await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS);
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
+  expect(writes).toEqual([]);
+  expect(autoSave.status).toBe("idle");
+});
+
 test("内容が変わっていないとflushは書き込まない", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];
