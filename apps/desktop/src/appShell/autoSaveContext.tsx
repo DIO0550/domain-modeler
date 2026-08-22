@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { AutoSave, type AutoSaveOperations } from "./autoSave";
+import type { FileWriteResult } from "./fileActions";
 
 /** Context 経由で公開する、1文書の自動保存操作。 */
 export type AutoSaveContextValue = Readonly<{
@@ -109,10 +110,10 @@ export function AutoSaveProvider({
       }
 
       replaceAutoSave(saving);
-      const result = await operationsRef.current.writeFile(
-        saving.path,
-        saving.writingContents,
-      );
+      const result = await writeFileAsResult(operationsRef.current.writeFile, {
+        path: saving.path,
+        contents: saving.writingContents,
+      });
       if (openedDocumentRef.current.generation !== generation) {
         return;
       }
@@ -120,6 +121,7 @@ export function AutoSaveProvider({
         AutoSave.finishSaving(latest, {
           contents: saving.writingContents,
           result,
+          now: operationsRef.current.now(),
         }),
       );
     };
@@ -187,3 +189,41 @@ export function AutoSaveProvider({
 export function useAutoSave(): AutoSaveContextValue | undefined {
   return useContext(AutoSaveContext);
 }
+
+/**
+ * ファイル書き込みの例外を失敗結果へ変換する。
+ *
+ * @param writeFile 対象パスへ内容を書く操作。
+ * @param target 書き込み先パスと内容。
+ * @returns 成功または書き込み失敗。
+ */
+const writeFileAsResult = async (
+  writeFile: AutoSaveOperations["writeFile"],
+  target: Readonly<{ path: string; contents: string }>,
+): Promise<FileWriteResult> => {
+  try {
+    return await writeFile(target.path, target.contents);
+  } catch (caught) {
+    return {
+      type: "err",
+      error: {
+        kind: "writeFailed",
+        path: target.path,
+        message: writeFailureMessage(caught),
+      },
+    };
+  }
+};
+
+/**
+ * 書き込み例外から失敗メッセージを取り出す。
+ *
+ * @param caught 捕捉した例外。
+ * @returns 表示用の失敗メッセージ。
+ */
+const writeFailureMessage = (caught: unknown): string => {
+  if (caught instanceof Error) {
+    return caught.message;
+  }
+  return String(caught);
+};
