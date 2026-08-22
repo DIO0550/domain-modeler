@@ -242,6 +242,39 @@ test("保存中の編集は完了後も Context の状態に残る", async () =>
   });
 });
 
+test("書き込みが例外でもタイマー起動の自動保存は未処理の rejection にならない", async () => {
+  vi.useFakeTimers();
+  const rejections: unknown[] = [];
+  const onUnhandledRejection = (reason: unknown) => {
+    rejections.push(reason);
+  };
+  process.on("unhandledRejection", onUnhandledRejection);
+
+  const operations: AutoSaveOperations = {
+    writeFile: async () => {
+      throw new Error("disk full");
+    },
+    now: () => Date.now(),
+  };
+  const probe = renderAutoSave(operations);
+  probes.push(probe);
+
+  try {
+    act(() => {
+      probe.latest.current?.notifyContentsChanged('{"version":1}');
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(rejections).toEqual([]);
+  } finally {
+    process.off("unhandledRejection", onUnhandledRejection);
+  }
+});
+
 test("保存中のflushは進行中の書き込みの完了後に最新内容を書く", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];
