@@ -65,7 +65,7 @@ export type AutoSaveOperations = Readonly<{
 }>;
 
 /** 書き込み完了を状態へ反映するための結果。 */
-type WriteOutcome = Readonly<{
+export type AutoSaveWriteOutcome = Readonly<{
   contents: string;
   result: FileWriteResult;
 }>;
@@ -196,6 +196,44 @@ export const AutoSave = {
   },
 
   /**
+   * 未保存内容の書き込みを開始し、saving 状態へ移す。
+   *
+   * @param autoSave 書き込み前の自動保存状態。
+   * @returns 書き込み中の状態。書き込むものがなければ元の状態。
+   */
+  startSaving(autoSave: AutoSave): AutoSave {
+    if (autoSave.status === "idle") {
+      return autoSave;
+    }
+    if (
+      autoSave.status === "saving" &&
+      autoSave.pendingContents === autoSave.writingContents
+    ) {
+      return autoSave;
+    }
+    return toSaving(autoSave, pendingContentsOf(autoSave));
+  },
+
+  /**
+   * 書き込み結果を、保存中に進んだ現在の状態へ反映する。
+   *
+   * @param autoSave 書き込み完了時点の自動保存状態。
+   * @param outcome 書き込んだ内容とその結果。
+   * @param now 書き込みが完了した時刻。
+   * @returns 成功して差分が無ければ idle、残差があれば pending、失敗なら failed。
+   */
+  finishSaving(
+    autoSave: AutoSave,
+    outcome: AutoSaveWriteOutcome,
+    now: number,
+  ): AutoSave {
+    if (autoSave.status !== "saving") {
+      return autoSave;
+    }
+    return applyWriteOutcome(autoSave, outcome, now);
+  },
+
+  /**
    * ファイルへまだ書き込まれていない内容があるか判定する。
    *
    * @param autoSave 判定する自動保存状態。
@@ -217,7 +255,8 @@ const save = async (
   autoSave: AutoSave,
   operations: AutoSaveOperations,
 ): Promise<AutoSave> => {
-  if (autoSave.status === "idle") {
+  const saving = AutoSave.startSaving(autoSave);
+  if (saving.status !== "saving") {
     return autoSave;
   }
   if (
@@ -227,10 +266,12 @@ const save = async (
     return autoSave;
   }
 
-  const contents = pendingContentsOf(autoSave);
-  const saving = toSaving(autoSave, contents);
-  const result = await operations.writeFile(autoSave.path, contents);
-  return applyWriteOutcome(saving, { contents, result }, operations.now());
+  const result = await operations.writeFile(autoSave.path, saving.writingContents);
+  return AutoSave.finishSaving(
+    saving,
+    { contents: saving.writingContents, result },
+    operations.now(),
+  );
 };
 
 /**
@@ -243,7 +284,7 @@ const save = async (
  */
 const applyWriteOutcome = (
   autoSave: SavingAutoSave,
-  outcome: WriteOutcome,
+  outcome: AutoSaveWriteOutcome,
   now: number,
 ): AutoSave => {
   if (outcome.result.type === "err") {
@@ -263,7 +304,12 @@ const applyWriteOutcome = (
     return toIdle(autoSave, outcome.contents);
   }
 
-  return toPending(autoSave, autoSave.pendingContents, autoSave.lastChangedAt, now);
+  return toPending(
+    { ...autoSave, lastSavedContents: outcome.contents },
+    autoSave.pendingContents,
+    autoSave.lastChangedAt,
+    now,
+  );
 };
 
 /**
