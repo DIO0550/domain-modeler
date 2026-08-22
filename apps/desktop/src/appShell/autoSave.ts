@@ -150,6 +150,9 @@ export const AutoSave = {
     if (autoSave.transactionDepth > 0) {
       return { status: "notScheduled" };
     }
+    if (!AutoSave.isDirty(autoSave)) {
+      return { status: "notScheduled" };
+    }
 
     const debounceAt = autoSave.lastChangedAt + AUTO_SAVE_DEBOUNCE_MS;
     const maxIntervalAt = autoSave.firstDirtyAt + AUTO_SAVE_MAX_INTERVAL_MS;
