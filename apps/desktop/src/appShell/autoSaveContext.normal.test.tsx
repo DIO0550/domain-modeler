@@ -1,0 +1,202 @@
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, expect, test, vi } from "vitest";
+import {
+  AUTO_SAVE_DEBOUNCE_MS,
+  AUTO_SAVE_MAX_INTERVAL_MS,
+  type AutoSaveOperations,
+} from "./autoSave";
+import {
+  AutoSaveProvider,
+  useAutoSave,
+  type AutoSaveContextValue,
+} from "./autoSaveContext";
+
+type WriteCall = Readonly<{ path: string; contents: string }>;
+
+type AutoSaveProbe = Readonly<{
+  latest: { current: AutoSaveContextValue | undefined };
+  unmount: () => void;
+}>;
+
+/**
+ * 呼び出し履歴を記録する自動保存用の外部操作を組み立てる。
+ *
+ * @param writes ファイル書き込みの呼び出し履歴。
+ * @returns テスト用の自動保存操作。
+ */
+const operationsRecording = (writes: WriteCall[]): AutoSaveOperations => ({
+  writeFile: async (path, contents) => {
+    writes.push({ path, contents });
+    return { type: "ok" };
+  },
+  now: () => Date.now(),
+});
+
+/**
+ * Provider 配下の自動保存操作を参照できるテスト用ツリーを描画する。
+ *
+ * @param operations ファイル書き込みと時刻取得。
+ * @returns 最新の Context 値と unmount。
+ */
+const renderAutoSave = (operations: AutoSaveOperations): AutoSaveProbe => {
+  const latest: { current: AutoSaveContextValue | undefined } = {
+    current: undefined,
+  };
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root: Root = createRoot(host);
+
+  const Probe = () => {
+    latest.current = useAutoSave();
+    return null;
+  };
+
+  act(() => {
+    root.render(
+      <AutoSaveProvider
+        path="/documents/context.dcanvas"
+        initialContents="{}"
+        operations={operations}
+      >
+        <Probe />
+      </AutoSaveProvider>,
+    );
+  });
+
+  return {
+    latest,
+    unmount: () => {
+      act(() => {
+        root.unmount();
+      });
+      host.remove();
+    },
+  };
+};
+
+const probes: AutoSaveProbe[] = [];
+
+afterEach(() => {
+  for (const probe of probes.splice(0)) {
+    probe.unmount();
+  }
+  vi.useRealTimers();
+});
+
+test("Context に保持した変更は500ms後に自動で書き込む", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  const probe = renderAutoSave(operationsRecording(writes));
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+  });
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS - 1);
+  });
+  expect(writes).toEqual([]);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+  });
+  expect(writes).toEqual([
+    { path: "/documents/context.dcanvas", contents: '{"version":1}' },
+  ]);
+  expect(probe.latest.current?.autoSave.status).toBe("idle");
+});
+
+test("Context に保持した連続変更は最後の変更から500ms後に保存する", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  const probe = renderAutoSave(operationsRecording(writes));
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(300);
+  });
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":2}');
+  });
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS - 1);
+  });
+  expect(writes).toEqual([]);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+  });
+  expect(writes).toEqual([
+    { path: "/documents/context.dcanvas", contents: '{"version":2}' },
+  ]);
+});
+
+test("Context に保持した連続変更は最大2秒で最新内容を保存する", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  const probe = renderAutoSave(operationsRecording(writes));
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":0}');
+  });
+  for (const version of Array.from({ length: 19 }, (_, index) => index + 1)) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    act(() => {
+      probe.latest.current?.notifyContentsChanged(`{"version":${version}}`);
+    });
+  }
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(100);
+  });
+  expect(writes).toEqual([
+    { path: "/documents/context.dcanvas", contents: '{"version":19}' },
+  ]);
+});
+
+test("トランザクション中は Context のタイマーが満了しても書き込まない", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  const probe = renderAutoSave(operationsRecording(writes));
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.beginTransaction();
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_MAX_INTERVAL_MS);
+  });
+
+  expect(writes).toEqual([]);
+  expect(probe.latest.current?.autoSave.status).toBe("pending");
+});
+
+test("flush は Context に保持した未保存変更を即時に書き込む", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  const probe = renderAutoSave(operationsRecording(writes));
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.beginTransaction();
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+  });
+  await act(async () => {
+    await probe.latest.current?.flush();
+  });
+
+  expect(writes).toEqual([
+    { path: "/documents/context.dcanvas", contents: '{"version":1}' },
+  ]);
+  expect(probe.latest.current?.autoSave.status).toBe("idle");
+});
