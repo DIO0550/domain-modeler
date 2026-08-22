@@ -219,18 +219,13 @@ export const AutoSave = {
    *
    * @param autoSave 書き込み完了時点の自動保存状態。
    * @param outcome 書き込んだ内容とその結果。
-   * @param now 書き込みが完了した時刻。
    * @returns 成功して差分が無ければ idle、残差があれば pending、失敗なら failed。
    */
-  finishSaving(
-    autoSave: AutoSave,
-    outcome: AutoSaveWriteOutcome,
-    now: number,
-  ): AutoSave {
+  finishSaving(autoSave: AutoSave, outcome: AutoSaveWriteOutcome): AutoSave {
     if (autoSave.status !== "saving") {
       return autoSave;
     }
-    return applyWriteOutcome(autoSave, outcome, now);
+    return applyWriteOutcome(autoSave, outcome);
   },
 
   /**
@@ -267,11 +262,10 @@ const save = async (
   }
 
   const result = await operations.writeFile(autoSave.path, saving.writingContents);
-  return AutoSave.finishSaving(
-    saving,
-    { contents: saving.writingContents, result },
-    operations.now(),
-  );
+  return AutoSave.finishSaving(saving, {
+    contents: saving.writingContents,
+    result,
+  });
 };
 
 /**
@@ -279,13 +273,11 @@ const save = async (
  *
  * @param autoSave 書き込み中の自動保存状態。
  * @param outcome 書き込んだ内容とその結果。
- * @param now 書き込みが完了した時刻。
  * @returns 成功して差分が無ければ idle、残差があれば pending、失敗なら failed。
  */
 const applyWriteOutcome = (
   autoSave: SavingAutoSave,
   outcome: AutoSaveWriteOutcome,
-  now: number,
 ): AutoSave => {
   if (outcome.result.type === "err") {
     return {
@@ -308,7 +300,7 @@ const applyWriteOutcome = (
     { ...autoSave, lastSavedContents: outcome.contents },
     autoSave.pendingContents,
     autoSave.lastChangedAt,
-    now,
+    autoSave.firstDirtyAt,
   );
 };
 
@@ -394,6 +386,18 @@ const withPendingContents = (
       lastChangedAt,
       autoSave.firstDirtyAt,
     );
+  }
+  if (
+    autoSave.status === "saving" &&
+    autoSave.pendingContents === autoSave.writingContents &&
+    pendingContents !== autoSave.writingContents
+  ) {
+    return {
+      ...autoSave,
+      pendingContents,
+      lastChangedAt,
+      firstDirtyAt: lastChangedAt,
+    };
   }
   return { ...autoSave, pendingContents, lastChangedAt };
 };

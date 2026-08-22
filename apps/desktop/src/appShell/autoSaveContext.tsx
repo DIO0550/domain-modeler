@@ -60,11 +60,10 @@ export function AutoSaveProvider({
       saving.writingContents,
     );
     setAutoSave((current) =>
-      AutoSave.finishSaving(
-        current,
-        { contents: saving.writingContents, result },
-        operationsRef.current.now(),
-      ),
+      AutoSave.finishSaving(current, {
+        contents: saving.writingContents,
+        result,
+      }),
     );
   };
 
