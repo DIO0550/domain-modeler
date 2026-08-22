@@ -112,7 +112,10 @@ export function AutoSaveProvider({
     }
 
     const timer = setTimeout(() => {
-      void runSave(false);
+      void runSave(false).then(
+        () => undefined,
+        () => undefined,
+      );
     }, due.delayMs);
 
     return () => {
