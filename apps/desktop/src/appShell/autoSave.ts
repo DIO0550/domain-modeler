@@ -423,14 +423,6 @@ const withPendingContents = (
   pendingContents: string,
   lastChangedAt: number,
 ): AutoSave => {
-  if (autoSave.status === "failed") {
-    return toPending(
-      autoSave,
-      pendingContents,
-      lastChangedAt,
-      autoSave.firstDirtyAt,
-    );
-  }
   if (
     autoSave.status === "saving" &&
     autoSave.pendingContents === autoSave.writingContents &&
