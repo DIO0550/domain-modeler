@@ -3,19 +3,8 @@ import {
   Serialize,
   type CanvasError,
 } from "@domain-modeler/canvas-core";
+import type { FileWriteError, FileWriteResult } from "@/libs/file-write";
 import type { TabDocumentType } from "./tabs";
-
-/** ファイル書き込みに失敗した理由。 */
-export type FileWriteError = Readonly<{
-  kind: "writeFailed";
-  path: string;
-  message: string;
-}>;
-
-/** ファイル書き込み IPC の結果。 */
-export type FileWriteResult =
-  | Readonly<{ type: "ok" }>
-  | Readonly<{ type: "err"; error: FileWriteError }>;
 
 /** ファイル読み込みに失敗した理由。 */
 export type FileReadError =
