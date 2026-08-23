@@ -114,3 +114,27 @@ test("書き込み失敗中の編集は failed のまま再試行間隔を維持
     { path: "/documents/context.dcanvas", contents: '{"version":2}' },
   ]);
 });
+
+test("writeFile が例外でも saveIfDue は reject せず failed になる", async () => {
+  vi.useFakeTimers();
+  const operations: AutoSaveOperations = {
+    writeFile: async () => {
+      throw new Error("disk full");
+    },
+    now: () => Date.now(),
+  };
+  let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
+  autoSave = AutoSave.notifyContentsChanged(
+    autoSave,
+    '{"version":1}',
+    Date.now(),
+  );
+  await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS);
+
+  autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
+  expect(autoSave).toMatchObject({
+    status: "failed",
+    error: { kind: "writeFailed", message: "disk full" },
+  });
+});
