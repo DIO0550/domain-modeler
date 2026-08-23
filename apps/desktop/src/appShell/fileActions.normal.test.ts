@@ -1,9 +1,9 @@
 import { Document, Serialize } from "@domain-modeler/canvas-core";
 import { expect, test } from "vitest";
+import type { FileWriteResult } from "@/libs/file-write";
 import {
   FileActions,
   type FileReadResult,
-  type FileWriteResult,
   type NewDocumentOperations,
   type OpenDocumentError,
   type OpenDocumentOperations,

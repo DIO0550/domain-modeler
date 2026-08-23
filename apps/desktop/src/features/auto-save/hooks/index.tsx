@@ -7,8 +7,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AutoSave, type AutoSaveOperations } from "./autoSave";
-import { writeFileAsResult } from "./fileActions";
+import { writeFileAsResult } from "@/libs/file-write";
+import { AutoSave, type AutoSaveOperations } from "../domains";
 
 /** Context 経由で公開する、1文書の自動保存操作。 */
 export type AutoSaveContextValue = Readonly<{

@@ -4,7 +4,7 @@ import {
   AUTO_SAVE_MAX_INTERVAL_MS,
   AutoSave,
   type AutoSaveOperations,
-} from "./autoSave";
+} from "../index";
 
 type WriteCall = Readonly<{ path: string; contents: string }>;
 

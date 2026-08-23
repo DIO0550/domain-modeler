@@ -6,12 +6,12 @@ import {
   AUTO_SAVE_MAX_INTERVAL_MS,
   AUTO_SAVE_RETRY_MS,
   type AutoSaveOperations,
-} from "./autoSave";
+} from "../../domains";
 import {
   AutoSaveProvider,
   useAutoSave,
   type AutoSaveContextValue,
-} from "./autoSaveContext";
+} from "../index";
 
 type WriteCall = Readonly<{ path: string; contents: string }>;
 

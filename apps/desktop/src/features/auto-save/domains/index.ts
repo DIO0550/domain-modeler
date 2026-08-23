@@ -2,7 +2,7 @@ import {
   writeFileAsResult,
   type FileWriteError,
   type FileWriteResult,
-} from "./fileActions";
+} from "@/libs/file-write";
 
 export const AUTO_SAVE_DEBOUNCE_MS = 500;
 export const AUTO_SAVE_MAX_INTERVAL_MS = 2_000;
