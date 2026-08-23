@@ -1,4 +1,8 @@
-import type { FileWriteError, FileWriteResult } from "./fileActions";
+import {
+  writeFileAsResult,
+  type FileWriteError,
+  type FileWriteResult,
+} from "./fileActions";
 
 export const AUTO_SAVE_DEBOUNCE_MS = 500;
 export const AUTO_SAVE_MAX_INTERVAL_MS = 2_000;
@@ -267,10 +271,10 @@ const save = async (
     return autoSave;
   }
 
-  const result = await operations.writeFile(
-    autoSave.path,
-    saving.writingContents,
-  );
+  const result = await writeFileAsResult(operations.writeFile, {
+    path: autoSave.path,
+    contents: saving.writingContents,
+  });
   return AutoSave.finishSaving(saving, {
     contents: saving.writingContents,
     result,
