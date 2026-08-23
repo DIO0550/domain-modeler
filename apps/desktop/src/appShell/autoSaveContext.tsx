@@ -60,8 +60,16 @@ function AutoSaveSession({
   const autoSaveRef = useRef(autoSave);
   const operationsRef = useRef(operations);
   const writeQueueRef = useRef(Promise.resolve());
+  const sessionMountedRef = useRef(true);
   autoSaveRef.current = autoSave;
   operationsRef.current = operations;
+
+  useEffect(() => {
+    sessionMountedRef.current = true;
+    return () => {
+      sessionMountedRef.current = false;
+    };
+  }, []);
 
   const replaceAutoSave = (
     next: AutoSave | ((current: AutoSave) => AutoSave),
@@ -69,6 +77,9 @@ function AutoSaveSession({
     const current = autoSaveRef.current;
     const resolved = typeof next === "function" ? next(current) : next;
     autoSaveRef.current = resolved;
+    if (!sessionMountedRef.current) {
+      return;
+    }
     setAutoSave(resolved);
   };
 
