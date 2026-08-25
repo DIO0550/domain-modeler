@@ -4,8 +4,8 @@ import {
   ExternalFileEvents,
   type ExternalFileEventError,
   type ExternalFileEventOperations,
-} from "./externalFileEvents";
-import { TabsState, type TabsAction } from "./tabs";
+} from "..";
+import { TabsState, type TabsAction } from "../../tabs";
 
 type Effect =
   | Readonly<{ type: "tabAction"; action: TabsAction }>

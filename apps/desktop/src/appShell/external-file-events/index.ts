@@ -3,8 +3,8 @@ import {
   type CanvasError,
   type History,
 } from "@domain-modeler/canvas-core";
-import type { FileReadError, FileReadResult } from "./fileActions";
-import type { TabActivation, TabsAction } from "./tabs";
+import type { FileReadError, FileReadResult } from "../fileActions";
+import type { TabActivation, TabsAction } from "../tabs";
 
 /** 外部変更を受け取るキャンバス文書。 */
 export type ExternalCanvasDocument = Readonly<{

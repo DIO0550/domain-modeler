@@ -1,12 +1,12 @@
 import { Document, History } from "@domain-modeler/canvas-core";
 import { expect, test } from "vitest";
-import type { FileReadResult } from "./fileActions";
+import type { FileReadResult } from "../../fileActions";
 import {
   ExternalFileEvents,
   type ExternalFileEventError,
   type ExternalFileEventOperations,
-} from "./externalFileEvents";
-import type { TabsAction } from "./tabs";
+} from "..";
+import type { TabsAction } from "../../tabs";
 
 type Effect =
   | Readonly<{ type: "tabAction"; action: TabsAction }>
