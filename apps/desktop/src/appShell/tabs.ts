@@ -61,6 +61,7 @@ export type TabsAction =
       documentType: TabDocumentType;
     }>
   | Readonly<{ type: "activateTab"; path: string }>
+  | Readonly<{ type: "closeTab"; path: string }>
   | Readonly<{ type: "markFileMissing"; path: string }>
   | Readonly<{ type: "clearFileMissing"; path: string }>
   | Readonly<{ type: "markBackgroundChanged"; path: string }>;
@@ -120,6 +121,10 @@ export const TabsState = {
           : tab,
       ) as [Tab, ...Tab[]];
       return { status: "active", tabs, activePath: action.path };
+    }
+
+    if (action.type === "closeTab") {
+      return closeTab(state, action.path);
     }
 
     const tabs = state.tabs.map((tab): Tab => {
@@ -185,6 +190,60 @@ export const TabsState = {
     return state.tabs[0];
   },
 } as const;
+
+/**
+ * 指定パスのタブを閉じる。最後の1つなら空状態にする。
+ *
+ * @param state タブがある状態。
+ * @param path 閉じるタブのパス。
+ * @returns タブを除いたあとの状態。
+ */
+const closeTab = (
+  state: Extract<TabsState, { status: "active" }>,
+  path: string,
+): TabsState => {
+  const index = state.tabs.findIndex((tab) => tab.path === path);
+  if (index < 0) {
+    return state;
+  }
+
+  const remaining = state.tabs.filter((tab) => tab.path !== path);
+  if (remaining.length === 0) {
+    return { status: "empty", tabs: [] };
+  }
+
+  return {
+    status: "active",
+    tabs: remaining as [Tab, ...Tab[]],
+    activePath: nextActivePathAfterClose(state, path, remaining, index),
+  };
+};
+
+/**
+ * タブを閉じたあとに前面にするパスを返す。
+ *
+ * @param state 閉じる前のタブ状態。
+ * @param closedPath 閉じるタブのパス。
+ * @param remaining 残ったタブ。1つ以上あること。
+ * @param closedIndex 閉じるタブの元の位置。
+ * @returns 前面にするパス。
+ */
+const nextActivePathAfterClose = (
+  state: Extract<TabsState, { status: "active" }>,
+  closedPath: string,
+  remaining: readonly Tab[],
+  closedIndex: number,
+): string => {
+  if (state.activePath !== closedPath) {
+    return state.activePath;
+  }
+  const neighborIndex = Math.min(closedIndex, remaining.length - 1);
+  const neighbor = remaining[neighborIndex];
+  if (neighbor === undefined) {
+    return remaining[0].path;
+  }
+  return neighbor.path;
+};
 
 const WINDOWS_SEPARATOR = "\\";
 const POSIX_SEPARATOR = "/";
