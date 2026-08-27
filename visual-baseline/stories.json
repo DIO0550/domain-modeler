@@ -1,5 +1,35 @@
 [
   {
+    "id": "appshell-menu-bar-menubar--all-props",
+    "title": "appShell/menu-bar/MenuBar",
+    "name": "All Props"
+  },
+  {
+    "id": "appshell-menu-bar-menubar--canvas-active",
+    "title": "appShell/menu-bar/MenuBar",
+    "name": "Canvas Active"
+  },
+  {
+    "id": "appshell-menu-bar-menubar--default",
+    "title": "appShell/menu-bar/MenuBar",
+    "name": "Default"
+  },
+  {
+    "id": "appshell-menu-bar-menubar--edge-cases",
+    "title": "appShell/menu-bar/MenuBar",
+    "name": "Edge Cases"
+  },
+  {
+    "id": "appshell-menu-bar-menubar--empty",
+    "title": "appShell/menu-bar/MenuBar",
+    "name": "Empty"
+  },
+  {
+    "id": "appshell-menu-bar-menubar--model-active",
+    "title": "appShell/menu-bar/MenuBar",
+    "name": "Model Active"
+  },
+  {
     "id": "appshell-tab-bar-tabbar--active",
     "title": "appShell/tab-bar/TabBar",
     "name": "Active"
