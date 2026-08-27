@@ -1,20 +1,16 @@
-import { useReducer } from "react";
 import { DocumentWorkspace } from "./appShell/document-workspace";
+import { useAppShell } from "./appShell/hooks";
+import { MenuBar } from "./appShell/menu-bar";
 import { TabBar } from "./appShell/tab-bar";
-import { TabsState } from "./appShell/tabs";
 import "./App.css";
 
 function App() {
-  const [tabsState, dispatch] = useReducer(TabsState.reducer, TabsState.create());
+  const { tabsState, menuState, activate, runCommand } = useAppShell();
 
   return (
     <div className="app-shell">
-      <TabBar
-        tabsState={tabsState}
-        onActivate={(path) => {
-          dispatch({ type: "activateTab", path });
-        }}
-      />
+      <MenuBar menuState={menuState} onCommand={runCommand} />
+      <TabBar tabsState={tabsState} onActivate={activate} />
       <DocumentWorkspace tabsState={tabsState} />
     </div>
   );

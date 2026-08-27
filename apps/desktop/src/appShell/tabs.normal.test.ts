@@ -167,6 +167,99 @@ test("変更マークが付いた背景タブをアクティブにするとマ�
   });
 });
 
+test("最後のタブを閉じると文書が無い状態になる", () => {
+  const opened = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const closed = TabsState.reducer(opened, {
+    type: "closeTab",
+    path: "/documents/order.dcanvas",
+  });
+
+  expect(closed).toEqual({ status: "empty", tabs: [] });
+});
+
+test("先頭のタブを閉じると隣のタブがアクティブになる", () => {
+  const first = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const second = TabsState.reducer(first, {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const activated = TabsState.reducer(second, {
+    type: "activateTab",
+    path: "/documents/order.dcanvas",
+  });
+  const closed = TabsState.reducer(activated, {
+    type: "closeTab",
+    path: "/documents/order.dcanvas",
+  });
+
+  expect(closed).toMatchObject({
+    status: "active",
+    activePath: "/documents/order.dmodel",
+  });
+  expect(closed.tabs.map((tab) => tab.path)).toEqual([
+    "/documents/order.dmodel",
+  ]);
+});
+
+test("末尾のタブを閉じると直前のタブがアクティブになる", () => {
+  const first = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const second = TabsState.reducer(first, {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const closed = TabsState.reducer(second, {
+    type: "closeTab",
+    path: "/documents/order.dmodel",
+  });
+
+  expect(closed).toMatchObject({
+    status: "active",
+    activePath: "/documents/order.dcanvas",
+  });
+  expect(closed.tabs.map((tab) => tab.path)).toEqual([
+    "/documents/order.dcanvas",
+  ]);
+});
+
+test("背景タブを閉じてもアクティブタブは変わらない", () => {
+  const first = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const second = TabsState.reducer(first, {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const closed = TabsState.reducer(second, {
+    type: "closeTab",
+    path: "/documents/order.dcanvas",
+  });
+
+  expect(closed).toMatchObject({
+    status: "active",
+    activePath: "/documents/order.dmodel",
+  });
+  expect(closed.tabs.map((tab) => tab.path)).toEqual([
+    "/documents/order.dmodel",
+  ]);
+});
+
 test("操作を適用しても入力状態とそのタブを変更しない", () => {
   const opened = TabsState.reducer(TabsState.create(), {
     type: "openTab",
