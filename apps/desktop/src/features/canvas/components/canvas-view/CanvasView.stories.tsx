@@ -53,7 +53,7 @@ const allStickies = StickyAppearance.all().map((appearance, index) => {
         StickyId.create(`stk_${appearance.type}`),
         appearance.type,
         SAMPLE_TEXT[appearance.type],
-        { x: 32 + column * 220, y: 32 + row * 180 },
+        { x: 24 + column * 190, y: 24 + row * 168 },
         appearance.defaultSize,
       )}
     />

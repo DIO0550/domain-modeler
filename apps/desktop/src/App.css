@@ -466,6 +466,20 @@ body,
   background-size: 24px 24px;
 }
 
+.sticky-story--gallery {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 28px 24px;
+  box-sizing: border-box;
+  padding: 24px;
+}
+
+.sticky-story__cell {
+  position: relative;
+  flex: 0 0 auto;
+}
+
 .sticky {
   position: absolute;
   box-sizing: border-box;

@@ -68,20 +68,31 @@ export const Default: Story = {
 };
 
 export const AllProps: Story = {
+  decorators: [
+    (Story) => (
+      <div className="sticky-story sticky-story--gallery">
+        <Story />
+      </div>
+    ),
+  ],
   render: () => (
     <>
-      {StickyAppearance.all().map((appearance, index) => (
-        <Sticky
+      {StickyAppearance.all().map((appearance) => (
+        <div
           key={appearance.type}
-          sticky={sampleSticky(
-            appearance.type,
-            SAMPLE_TEXT[appearance.type],
-            {
-              x: 16 + (index % 4) * 220,
-              y: 16 + Math.floor(index / 4) * 180,
-            },
-          )}
-        />
+          className="sticky-story__cell"
+          style={{
+            width: appearance.defaultSize.width,
+            height: appearance.defaultSize.height,
+          }}
+        >
+          <Sticky
+            sticky={sampleSticky(appearance.type, SAMPLE_TEXT[appearance.type], {
+              x: 0,
+              y: 0,
+            })}
+          />
+        </div>
       ))}
     </>
   ),
@@ -103,7 +114,7 @@ export const Overflow: Story = {
   args: {
     sticky: sampleSticky(
       "readModel",
-      "注文番号と顧客名と明細と配送先と支払い状態をすべて一覧に載せる",
+      "注文番号と顧客名と明細と配送先と支払い状態をすべて一覧に載せ、検索と絞り込みもできるようにする",
     ),
   },
 };
@@ -121,32 +132,46 @@ export const CustomSize: Story = {
 };
 
 export const EdgeCases: Story = {
+  decorators: [
+    (Story) => (
+      <div className="sticky-story sticky-story--gallery">
+        <Story />
+      </div>
+    ),
+  ],
   render: () => (
     <>
-      <Sticky sticky={sampleSticky("actor", "", { x: 16, y: 16 })} />
-      <Sticky
-        sticky={sampleSticky(
-          "hotspot",
-          "在庫引当は注文確定の前か後か、それとも非同期か",
-          { x: 160, y: 24 },
-        )}
-      />
-      <Sticky
-        sticky={StickyModel.create(
-          StickyId.create("stk_tiny"),
-          "event",
-          "あふれる本文を最小サイズに入れる",
-          { x: 16, y: 160 },
-          { width: 60, height: 40 },
-        )}
-      />
-      <Sticky
-        sticky={sampleSticky(
-          "externalSystem",
-          "決済\nサービス\nのタイムアウト",
-          { x: 220, y: 140 },
-        )}
-      />
+      <div className="sticky-story__cell" style={{ width: 120, height: 80 }}>
+        <Sticky sticky={sampleSticky("actor", "", { x: 0, y: 0 })} />
+      </div>
+      <div className="sticky-story__cell" style={{ width: 140, height: 100 }}>
+        <Sticky
+          sticky={sampleSticky(
+            "hotspot",
+            "在庫引当は注文確定の前か後か、それとも非同期か、判断が分かれている",
+            { x: 0, y: 0 },
+          )}
+        />
+      </div>
+      <div className="sticky-story__cell" style={{ width: 60, height: 40 }}>
+        <Sticky
+          sticky={StickyModel.create(
+            StickyId.create("stk_tiny"),
+            "event",
+            "あふれる本文を最小サイズに入れる",
+            { x: 0, y: 0 },
+            { width: 60, height: 40 },
+          )}
+        />
+      </div>
+      <div className="sticky-story__cell" style={{ width: 160, height: 100 }}>
+        <Sticky
+          sticky={sampleSticky("externalSystem", "決済\nサービス\nのタイムアウト", {
+            x: 0,
+            y: 0,
+          })}
+        />
+      </div>
     </>
   ),
 };
