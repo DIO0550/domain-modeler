@@ -1,4 +1,4 @@
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vitest";
 import { CanvasView, type HistoryButton } from "../index";
@@ -29,6 +29,7 @@ const renderCanvasView = (props: {
   saveStatus?: "saved" | "saving" | "failed";
   undo?: HistoryButton;
   redo?: HistoryButton;
+  children?: ReactNode;
 }): HTMLDivElement => {
   const host = document.createElement("div");
   document.body.append(host);
@@ -41,7 +42,9 @@ const renderCanvasView = (props: {
         saveStatus={props.saveStatus ?? "saved"}
         undo={props.undo ?? disabledHistory}
         redo={props.redo ?? disabledHistory}
-      />,
+      >
+        {props.children}
+      </CanvasView>,
     );
   });
 
@@ -164,6 +167,17 @@ test("キャンバス領域はスクロールバーを持たない面として�
 
   expect(surface).not.toBeNull();
   expect(surface?.classList.contains("canvas-surface")).toBe(true);
+});
+
+test("子要素の付箋はキャンバス面上に置かれる", () => {
+  const host = renderCanvasView({
+    children: <article data-sticky-type="event">注文が確定した</article>,
+  });
+
+  const surface = host.querySelector('[role="region"][aria-label="キャンバス"]');
+  expect(surface?.querySelector('[data-sticky-type="event"]')?.textContent).toBe(
+    "注文が確定した",
+  );
 });
 
 test("下限ズームは 10% と表示する", () => {
