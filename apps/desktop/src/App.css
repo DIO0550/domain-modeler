@@ -34,6 +34,7 @@
   --canvas-surface-bg: #f4f4f5;
   --canvas-grid-dot: #d4d4d8;
   --canvas-status-bg: #fafafa;
+  --canvas-status-failed: #9a3412;
   --sticky-event: #fdba74;
   --sticky-command: #93c5fd;
   --sticky-actor: #fde047;
@@ -66,6 +67,7 @@
     --canvas-surface-bg: #09090b;
     --canvas-grid-dot: #3f3f46;
     --canvas-status-bg: #18181b;
+    --canvas-status-failed: #fdba74;
     --sticky-event: #fb923c;
     --sticky-command: #60a5fa;
     --sticky-actor: #facc15;
@@ -445,5 +447,5 @@ body,
 }
 
 .canvas-status__save[data-save-status="failed"] {
-  color: var(--tab-warning);
+  color: var(--canvas-status-failed);
 }

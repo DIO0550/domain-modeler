@@ -29,7 +29,7 @@ export const SaveIndicator = {
    * @param status 保存済み / 保存中 / 失敗。
    * @returns 表示するラベルを含むインジケータ。
    */
-  from(status: SaveIndicatorStatus): SaveIndicator {
+  create(status: SaveIndicatorStatus): SaveIndicator {
     return { status, label: LABELS[status] };
   },
 } as const;

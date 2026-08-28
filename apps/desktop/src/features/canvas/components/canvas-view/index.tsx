@@ -30,8 +30,8 @@ export function CanvasView({ zoom, saveStatus, undo, redo }: CanvasViewProps) {
     STICKY_TYPES.event,
   );
   const appearances = StickyAppearance.all();
-  const saveIndicator = SaveIndicator.from(saveStatus);
-  const zoomLabel = ZoomLabel.fromZoom(zoom);
+  const saveIndicator = SaveIndicator.create(saveStatus);
+  const zoomLabel = ZoomLabel.toPercent(zoom);
 
   return (
     <div className="canvas-view">
@@ -61,11 +61,7 @@ type CanvasToolbarProps = Readonly<{
  */
 function CanvasToolbar({ children }: CanvasToolbarProps) {
   return (
-    <div
-      className="canvas-toolbar"
-      role="toolbar"
-      aria-label="キャンバスツール"
-    >
+    <div className="canvas-toolbar" role="group" aria-label="キャンバスツール">
       {children}
     </div>
   );

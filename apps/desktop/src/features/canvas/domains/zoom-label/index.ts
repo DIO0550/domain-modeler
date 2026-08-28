@@ -9,7 +9,7 @@ export const ZoomLabel = {
    * @param zoom ビューポートのズーム倍率。
    * @returns 四捨五入した百分率。例: 1 → 100%。
    */
-  fromZoom(zoom: number): ZoomLabel {
+  toPercent(zoom: number): ZoomLabel {
     return `${Math.round(zoom * 100)}%`;
   },
 } as const;

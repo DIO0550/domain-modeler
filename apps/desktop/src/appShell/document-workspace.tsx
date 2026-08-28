@@ -34,6 +34,7 @@ export function DocumentWorkspace({ tabsState }: DocumentWorkspaceProps) {
       <main className="document-workspace">
         {missingBanner}
         <CanvasView
+          key={activeTab.path}
           zoom={Viewport.default().zoom}
           saveStatus="saved"
           undo={{ availability: "disabled" }}

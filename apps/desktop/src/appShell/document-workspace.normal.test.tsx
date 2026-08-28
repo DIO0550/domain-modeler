@@ -6,6 +6,7 @@ import { TabsState } from "./tabs";
 
 type RenderedWorkspace = Readonly<{
   host: HTMLDivElement;
+  rerender: (tabsState: TabsState) => void;
   unmount: () => void;
 }>;
 
@@ -21,19 +22,26 @@ afterEach(() => {
  * DocumentWorkspace を描画してホスト要素を返す。
  *
  * @param tabsState 表示するタブ状態。
- * @returns 描画先のホスト要素。
+ * @returns 描画先と再描画。
  */
-const renderWorkspace = (tabsState: TabsState): HTMLDivElement => {
+const renderWorkspace = (
+  tabsState: TabsState,
+): Pick<RenderedWorkspace, "host" | "rerender"> => {
   const host = document.createElement("div");
   document.body.append(host);
   const root: Root = createRoot(host);
 
-  act(() => {
-    root.render(<DocumentWorkspace tabsState={tabsState} />);
-  });
+  const rerender = (next: TabsState): void => {
+    act(() => {
+      root.render(<DocumentWorkspace tabsState={next} />);
+    });
+  };
+
+  rerender(tabsState);
 
   rendered.push({
     host,
+    rerender,
     unmount: () => {
       act(() => {
         root.unmount();
@@ -41,7 +49,24 @@ const renderWorkspace = (tabsState: TabsState): HTMLDivElement => {
       host.remove();
     },
   });
-  return host;
+  return { host, rerender };
+};
+
+/**
+ * 指定した aria-label のボタンを返す。
+ *
+ * @param host 描画先。
+ * @param name ボタンの名前。
+ * @returns 該当するボタン。無ければ空のボタン。
+ */
+const buttonNamed = (host: HTMLDivElement, name: string): HTMLButtonElement => {
+  const found = Array.from(host.querySelectorAll("button")).find(
+    (element) =>
+      element.getAttribute("aria-label") === name || element.textContent === name,
+  );
+  return found instanceof HTMLButtonElement
+    ? found
+    : document.createElement("button");
 };
 
 test("キャンバス文書が前面のとき8種の付箋ボタンとズーム表示がある", () => {
@@ -50,7 +75,7 @@ test("キャンバス文書が前面のとき8種の付箋ボタンとズーム�
     path: "/documents/order.dcanvas",
     documentType: "canvas",
   });
-  const host = renderWorkspace(tabsState);
+  const { host } = renderWorkspace(tabsState);
   const captions = [
     "Domain Event",
     "Command",
@@ -83,10 +108,42 @@ test("モデル文書が前面のときはキャンバスツールバーを出�
     path: "/documents/order.dmodel",
     documentType: "model",
   });
-  const host = renderWorkspace(tabsState);
+  const { host } = renderWorkspace(tabsState);
 
   expect(host.querySelector('[aria-label="キャンバスツール"]')).toBeNull();
   expect(host.querySelector(".document-workspace__message")?.textContent).toBe(
     "ドメインモデル · order.dmodel",
+  );
+});
+
+test("キャンバス文書を切り替えると種別の選択は文書ごとに初期状態に戻る", () => {
+  const first = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const bothOpen = TabsState.reducer(first, {
+    type: "openTab",
+    path: "/documents/stock.dcanvas",
+    documentType: "canvas",
+  });
+  const orderActive = TabsState.reducer(bothOpen, {
+    type: "activateTab",
+    path: "/documents/order.dcanvas",
+  });
+  const { host, rerender } = renderWorkspace(orderActive);
+
+  act(() => {
+    buttonNamed(host, "Command").click();
+  });
+  expect(buttonNamed(host, "Command").getAttribute("aria-pressed")).toBe("true");
+
+  rerender(bothOpen);
+
+  expect(buttonNamed(host, "Domain Event").getAttribute("aria-pressed")).toBe(
+    "true",
+  );
+  expect(buttonNamed(host, "Command").getAttribute("aria-pressed")).toBe(
+    "false",
   );
 });
