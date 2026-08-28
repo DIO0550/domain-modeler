@@ -63,5 +63,45 @@
     "id": "appshell-tab-bar-tabbar--missing",
     "title": "appShell/tab-bar/TabBar",
     "name": "Missing"
+  },
+  {
+    "id": "features-canvas-components-canvas-view-canvasview--all-props",
+    "title": "features/canvas/components/canvas-view/CanvasView",
+    "name": "All Props"
+  },
+  {
+    "id": "features-canvas-components-canvas-view-canvasview--default",
+    "title": "features/canvas/components/canvas-view/CanvasView",
+    "name": "Default"
+  },
+  {
+    "id": "features-canvas-components-canvas-view-canvasview--edge-cases",
+    "title": "features/canvas/components/canvas-view/CanvasView",
+    "name": "Edge Cases"
+  },
+  {
+    "id": "features-canvas-components-canvas-view-canvasview--failed",
+    "title": "features/canvas/components/canvas-view/CanvasView",
+    "name": "Failed"
+  },
+  {
+    "id": "features-canvas-components-canvas-view-canvasview--history-enabled",
+    "title": "features/canvas/components/canvas-view/CanvasView",
+    "name": "History Enabled"
+  },
+  {
+    "id": "features-canvas-components-canvas-view-canvasview--saving",
+    "title": "features/canvas/components/canvas-view/CanvasView",
+    "name": "Saving"
+  },
+  {
+    "id": "features-canvas-components-canvas-view-canvasview--zoom-max",
+    "title": "features/canvas/components/canvas-view/CanvasView",
+    "name": "Zoom Max"
+  },
+  {
+    "id": "features-canvas-components-canvas-view-canvasview--zoom-min",
+    "title": "features/canvas/components/canvas-view/CanvasView",
+    "name": "Zoom Min"
   }
 ]
