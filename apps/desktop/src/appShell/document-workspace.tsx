@@ -1,3 +1,5 @@
+import { Viewport } from "@domain-modeler/canvas-core";
+import { CanvasView } from "@/features/canvas";
 import { TabsState } from "./tabs";
 
 type DocumentWorkspaceProps = Readonly<{
@@ -5,7 +7,7 @@ type DocumentWorkspaceProps = Readonly<{
 }>;
 
 /**
- * アクティブ文書のプレースホルダ。キャンバス/モデル画面の置き場所。
+ * アクティブ文書の表示領域。キャンバス文書はキャンバス画面を出す。
  *
  * @param props タブ状態。
  * @returns 文書領域。
@@ -20,12 +22,6 @@ export function DocumentWorkspace({ tabsState }: DocumentWorkspaceProps) {
   }
 
   const activeTab = TabsState.activeTab(tabsState);
-  const caption = TabsState.captions(tabsState).find(
-    (item) => item.path === activeTab.path,
-  );
-  const fileName = caption === undefined ? activeTab.path : caption.fileName;
-  const documentTypeLabel =
-    activeTab.documentType === "canvas" ? "キャンバス" : "ドメインモデル";
   const missingBanner =
     activeTab.fileState.status === "missing" ? (
       <p className="document-workspace__banner" role="alert">
@@ -33,12 +29,30 @@ export function DocumentWorkspace({ tabsState }: DocumentWorkspaceProps) {
       </p>
     ) : null;
 
+  if (activeTab.documentType === "canvas") {
+    return (
+      <main className="document-workspace">
+        {missingBanner}
+        <CanvasView
+          key={activeTab.path}
+          zoom={Viewport.default().zoom}
+          saveStatus="saved"
+          undo={{ availability: "disabled" }}
+          redo={{ availability: "disabled" }}
+        />
+      </main>
+    );
+  }
+
+  const caption = TabsState.captions(tabsState).find(
+    (item) => item.path === activeTab.path,
+  );
+  const fileName = caption === undefined ? activeTab.path : caption.fileName;
+
   return (
     <main className="document-workspace">
       {missingBanner}
-      <p className="document-workspace__message">
-        {documentTypeLabel} · {fileName}
-      </p>
+      <p className="document-workspace__message">ドメインモデル · {fileName}</p>
     </main>
   );
 }

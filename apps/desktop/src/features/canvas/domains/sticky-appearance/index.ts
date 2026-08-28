@@ -1,0 +1,111 @@
+import {
+  type Size,
+  STICKY_TYPES,
+  type StickyType,
+  type ValueOf,
+} from "@domain-modeler/canvas-core";
+
+/** 物理付箋の色系統。具体色はテーマが決める。 */
+export const STICKY_COLOR_FAMILIES = {
+  orange: "orange",
+  blue: "blue",
+  yellow: "yellow",
+  purple: "purple",
+  green: "green",
+  pink: "pink",
+  red: "red",
+} as const;
+
+export type StickyColorFamily = ValueOf<typeof STICKY_COLOR_FAMILIES>;
+
+/** キャンバス UI が使う種別ごとの表示名、色系統、標準サイズ。 */
+export type StickyAppearance = Readonly<{
+  type: StickyType;
+  caption: string;
+  colorFamily: StickyColorFamily;
+  defaultSize: Size;
+}>;
+
+const PALETTE_ORDER = [
+  STICKY_TYPES.event,
+  STICKY_TYPES.command,
+  STICKY_TYPES.actor,
+  STICKY_TYPES.aggregate,
+  STICKY_TYPES.policy,
+  STICKY_TYPES.readModel,
+  STICKY_TYPES.externalSystem,
+  STICKY_TYPES.hotspot,
+] as const;
+
+const APPEARANCES: Readonly<Record<StickyType, StickyAppearance>> = {
+  event: {
+    type: STICKY_TYPES.event,
+    caption: "Domain Event",
+    colorFamily: STICKY_COLOR_FAMILIES.orange,
+    defaultSize: { width: 160, height: 100 },
+  },
+  command: {
+    type: STICKY_TYPES.command,
+    caption: "Command",
+    colorFamily: STICKY_COLOR_FAMILIES.blue,
+    defaultSize: { width: 160, height: 100 },
+  },
+  actor: {
+    type: STICKY_TYPES.actor,
+    caption: "Actor",
+    colorFamily: STICKY_COLOR_FAMILIES.yellow,
+    defaultSize: { width: 120, height: 80 },
+  },
+  aggregate: {
+    type: STICKY_TYPES.aggregate,
+    caption: "Aggregate",
+    colorFamily: STICKY_COLOR_FAMILIES.yellow,
+    defaultSize: { width: 200, height: 140 },
+  },
+  policy: {
+    type: STICKY_TYPES.policy,
+    caption: "Policy",
+    colorFamily: STICKY_COLOR_FAMILIES.purple,
+    defaultSize: { width: 160, height: 100 },
+  },
+  readModel: {
+    type: STICKY_TYPES.readModel,
+    caption: "Read Model",
+    colorFamily: STICKY_COLOR_FAMILIES.green,
+    defaultSize: { width: 160, height: 100 },
+  },
+  externalSystem: {
+    type: STICKY_TYPES.externalSystem,
+    caption: "External System",
+    colorFamily: STICKY_COLOR_FAMILIES.pink,
+    defaultSize: { width: 160, height: 100 },
+  },
+  hotspot: {
+    type: STICKY_TYPES.hotspot,
+    caption: "Hotspot",
+    colorFamily: STICKY_COLOR_FAMILIES.red,
+    defaultSize: { width: 140, height: 100 },
+  },
+};
+
+/** 付箋種別の表示を扱う関数群。 */
+export const StickyAppearance = {
+  /**
+   * 種別のキャプション、色系統、標準サイズを返す。
+   *
+   * @param type 付箋種別。
+   * @returns その種別の表示。
+   */
+  of(type: StickyType): StickyAppearance {
+    return APPEARANCES[type];
+  },
+
+  /**
+   * パレットに並べる種別表示を canvas-ui の表順で返す。
+   *
+   * @returns 8種の表示。
+   */
+  all(): readonly StickyAppearance[] {
+    return PALETTE_ORDER.map((type) => APPEARANCES[type]);
+  },
+} as const;
