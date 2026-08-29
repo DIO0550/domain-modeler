@@ -37,12 +37,12 @@ export type StickyAppearance = Readonly<{
 
 /**
  * パディングと種別名キャプションが占める高さ。
- * `.sticky__face` 上下 padding 8px + `.sticky__caption` 12px + 下余白 2px。
- * 最小高さ 40 でも本文 1 行(18px)が収まる値にする。
+ * `.sticky__face` 上下 padding 6px + `.sticky__caption` 12px + 下余白 2px。
+ * 最小高さ 40 でも本文 1 行(18px)の上に余白が残る値にする。
  */
-const STICKY_CHROME_HEIGHT = 22;
+const STICKY_CHROME_HEIGHT = 20;
 
-/** 本文 1 行の高さ。フォント 13px・行間 1.4 に合わせる。 */
+/** 本文 1 行の高さ。`.sticky__text` の line-height 18px に合わせる。 */
 const STICKY_BODY_LINE_HEIGHT = 18;
 
 /**
