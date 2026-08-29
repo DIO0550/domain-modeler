@@ -86,7 +86,6 @@ export const AllProps: Story = {
     undo: { availability: "enabled", onClick: fn() },
     redo: { availability: "enabled", onClick: fn() },
   },
-  render: (args) => <CanvasView {...args}>{allStickies}</CanvasView>,
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Command" }));
   },
@@ -144,7 +143,6 @@ export const EdgeCases: Story = {
     undo: { availability: "enabled", onClick: fn() },
     redo: { availability: "disabled" },
   },
-  render: (args) => <CanvasView {...args}>{allStickies}</CanvasView>,
   play: async ({ canvas }) => {
     await userEvent.click(
       canvas.getByRole("button", { name: "External System" }),
