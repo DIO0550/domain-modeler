@@ -65,6 +65,26 @@
     "name": "Missing"
   },
   {
+    "id": "features-canvas-components-canvas-editor-canvaseditor--all-props",
+    "title": "features/canvas/components/canvas-editor/CanvasEditor",
+    "name": "All Props"
+  },
+  {
+    "id": "features-canvas-components-canvas-editor-canvaseditor--default",
+    "title": "features/canvas/components/canvas-editor/CanvasEditor",
+    "name": "Default"
+  },
+  {
+    "id": "features-canvas-components-canvas-editor-canvaseditor--edge-cases",
+    "title": "features/canvas/components/canvas-editor/CanvasEditor",
+    "name": "Edge Cases"
+  },
+  {
+    "id": "features-canvas-components-canvas-editor-canvaseditor--editing",
+    "title": "features/canvas/components/canvas-editor/CanvasEditor",
+    "name": "Editing"
+  },
+  {
     "id": "features-canvas-components-canvas-view-canvasview--all-props",
     "title": "features/canvas/components/canvas-view/CanvasView",
     "name": "All Props"
@@ -130,6 +150,11 @@
     "name": "Edge Cases"
   },
   {
+    "id": "features-canvas-components-sticky--editing",
+    "title": "features/canvas/components/Sticky",
+    "name": "Editing"
+  },
+  {
     "id": "features-canvas-components-sticky--empty",
     "title": "features/canvas/components/Sticky",
     "name": "Empty"
@@ -143,5 +168,10 @@
     "id": "features-canvas-components-sticky--overflow",
     "title": "features/canvas/components/Sticky",
     "name": "Overflow"
+  },
+  {
+    "id": "features-canvas-components-sticky--selected",
+    "title": "features/canvas/components/Sticky",
+    "name": "Selected"
   }
 ]
