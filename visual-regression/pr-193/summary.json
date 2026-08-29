@@ -1,11 +1,11 @@
 {
-  "reportVersion": "d5321feb0aa38f9668fe3081f404eeb0327b53ef",
+  "reportVersion": "038f978b383aa0a6882347acfbb0602700e0dd5d",
   "maxDiffRatio": 0.002,
-  "changed": 2,
+  "changed": 0,
   "new": 8,
   "deleted": 0,
-  "passed": 19,
-  "failed": 2,
+  "passed": 21,
+  "failed": 0,
   "results": [
     {
       "story": "appshell-menu-bar-menubar--all-props",
@@ -181,13 +181,13 @@
       "id": "features-canvas-components-canvas-view-canvasview--all-props",
       "title": "features/canvas/components/canvas-view/CanvasView",
       "name": "All Props",
-      "status": "changed",
-      "reason": "pixel-diff",
-      "diffPixels": 127897,
-      "diffRatio": 0.1388,
+      "status": "passed",
+      "reason": "match",
+      "diffPixels": 0,
+      "diffRatio": 0,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": true
+      "hasDiff": false
     },
     {
       "story": "features-canvas-components-canvas-view-canvasview--all-types",
@@ -220,13 +220,13 @@
       "id": "features-canvas-components-canvas-view-canvasview--edge-cases",
       "title": "features/canvas/components/canvas-view/CanvasView",
       "name": "Edge Cases",
-      "status": "changed",
-      "reason": "pixel-diff",
-      "diffPixels": 127897,
-      "diffRatio": 0.1388,
+      "status": "passed",
+      "reason": "match",
+      "diffPixels": 0,
+      "diffRatio": 0,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": true
+      "hasDiff": false
     },
     {
       "story": "features-canvas-components-canvas-view-canvasview--failed",
