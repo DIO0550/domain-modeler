@@ -70,6 +70,11 @@
     "name": "All Props"
   },
   {
+    "id": "features-canvas-components-canvas-view-canvasview--all-types",
+    "title": "features/canvas/components/canvas-view/CanvasView",
+    "name": "All Types"
+  },
+  {
     "id": "features-canvas-components-canvas-view-canvasview--default",
     "title": "features/canvas/components/canvas-view/CanvasView",
     "name": "Default"
@@ -103,5 +108,40 @@
     "id": "features-canvas-components-canvas-view-canvasview--zoom-min",
     "title": "features/canvas/components/canvas-view/CanvasView",
     "name": "Zoom Min"
+  },
+  {
+    "id": "features-canvas-components-sticky--all-props",
+    "title": "features/canvas/components/Sticky",
+    "name": "All Props"
+  },
+  {
+    "id": "features-canvas-components-sticky--custom-size",
+    "title": "features/canvas/components/Sticky",
+    "name": "Custom Size"
+  },
+  {
+    "id": "features-canvas-components-sticky--default",
+    "title": "features/canvas/components/Sticky",
+    "name": "Default"
+  },
+  {
+    "id": "features-canvas-components-sticky--edge-cases",
+    "title": "features/canvas/components/Sticky",
+    "name": "Edge Cases"
+  },
+  {
+    "id": "features-canvas-components-sticky--empty",
+    "title": "features/canvas/components/Sticky",
+    "name": "Empty"
+  },
+  {
+    "id": "features-canvas-components-sticky--multiline",
+    "title": "features/canvas/components/Sticky",
+    "name": "Multiline"
+  },
+  {
+    "id": "features-canvas-components-sticky--overflow",
+    "title": "features/canvas/components/Sticky",
+    "name": "Overflow"
   }
 ]
