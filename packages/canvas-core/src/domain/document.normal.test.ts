@@ -71,6 +71,19 @@ import type { Sticky } from "./sticky";
     connections,
   };
 
+  it("付箋IDに一致する付箋を返す", () => {
+    expect(Document.stickyById(baseDocument, idA)).toEqual({
+      some: true,
+      value: stickies[0],
+    });
+  });
+
+  it("存在しない付箋IDでは値を返さない", () => {
+    expect(Document.stickyById(baseDocument, idMissing)).toEqual({
+      some: false,
+    });
+  });
+
   it("付箋を追加すると末尾(最前面)に配置され、入力を変更しない", () => {
     const randomUUIDSpy = vi
       .spyOn(crypto, "randomUUID")

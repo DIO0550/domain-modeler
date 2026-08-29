@@ -70,6 +70,18 @@ test("既存の付箋をクリックするとその付箋を選択する", () =>
   });
 });
 
+test("付箋IDを指定するとその付箋を選択する", () => {
+  const selected = StickyInteraction.select(
+    StickyInteraction.create(documentWithSticky),
+    existingId,
+  );
+
+  expect(selected.session).toEqual({
+    status: "selected",
+    stickyId: existingId,
+  });
+});
+
 test("選択中に Enter を押すと本文編集を始める", () => {
   const selected = StickyInteraction.clickAt(
     StickyInteraction.create(documentWithSticky),

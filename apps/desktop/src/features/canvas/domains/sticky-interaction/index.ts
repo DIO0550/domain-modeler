@@ -1,7 +1,6 @@
 import {
   Document,
   History,
-  Option,
   type Point,
   ReplaceDocumentCommand,
   STICKY_TYPES,
@@ -79,6 +78,28 @@ export const StickyInteraction = {
       };
     }
     return addStickyAndEdit(committed, point);
+  },
+
+  /**
+   * 指定した付箋を選択する。編集中なら先に確定する。
+   *
+   * @param interaction 選択前の操作状態。
+   * @param stickyId 選択する付箋 ID。
+   * @returns 選択後の操作状態。付箋が無ければ確定後の状態。
+   */
+  select(
+    interaction: StickyInteraction,
+    stickyId: StickyId,
+  ): StickyInteraction {
+    const committed = StickyInteraction.commitEdit(interaction);
+    const sticky = Document.stickyById(committed.workingDocument, stickyId);
+    if (!sticky.some) {
+      return committed;
+    }
+    return {
+      ...committed,
+      session: { status: "selected", stickyId },
+    };
   },
 
   /**
@@ -173,7 +194,7 @@ export const StickyInteraction = {
     if (interaction.session.status !== "selected") {
       return interaction;
     }
-    const sticky = stickyById(
+    const sticky = Document.stickyById(
       interaction.workingDocument,
       interaction.session.stickyId,
     );
@@ -347,32 +368,12 @@ const sessionIfStickyExists = (
   if (session.status === "idle") {
     return session;
   }
-  const exists = document.stickies.some(
-    (sticky) => sticky.id === session.stickyId,
-  );
-  if (!exists) {
+  const sticky = Document.stickyById(document, session.stickyId);
+  if (!sticky.some) {
     return { status: "idle" };
   }
   if (session.status === "editing") {
     return { status: "selected", stickyId: session.stickyId };
   }
   return session;
-};
-
-/**
- * 文書から付箋 ID に一致する付箋を返す。
- *
- * @param document 検索する文書。
- * @param stickyId 探す付箋 ID。
- * @returns 一致した付箋。無ければ値なし。
- */
-const stickyById = (
-  document: Document,
-  stickyId: StickyId,
-): Option<Sticky> => {
-  const found = document.stickies.find((sticky) => sticky.id === stickyId);
-  if (found === undefined) {
-    return Option.none();
-  }
-  return Option.some(found);
 };
