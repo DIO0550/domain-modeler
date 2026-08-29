@@ -1,10 +1,20 @@
-import { useEffect, useRef, type CSSProperties, type FocusEvent } from "react";
-import type { Sticky as StickyModel } from "@domain-modeler/canvas-core";
+import {
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type FocusEvent,
+  type PointerEvent,
+} from "react";
+import type {
+  Point,
+  Sticky as StickyModel,
+} from "@domain-modeler/canvas-core";
 import {
   StickyAppearance,
   type StickyRotation,
 } from "../../domains/sticky-appearance";
 import type { StickyChromeView } from "../../domains/sticky-interaction";
+import { StickyResizeCorner } from "../../domains/sticky-interaction";
 
 /** 付箋の選択枠と本文の表示/編集。 */
 export type StickyChrome =
@@ -15,7 +25,9 @@ export type StickyChrome =
       draftText: string;
       onDraftChange: (text: string) => void;
       onCommit: () => void;
-    }>;
+    }>
+  | Readonly<{ status: "dragging" }>
+  | Readonly<{ status: "resizing" }>;
 
 type DraftHandlers = Readonly<{
   onDraftChange: (text: string) => void;
@@ -48,6 +60,15 @@ type StickyProps = Readonly<{
   sticky: StickyModel;
   chrome?: StickyChrome;
   onActivate?: () => void;
+  manipulation?: StickyManipulation;
+}>;
+
+/** 付箋のドラッグと四隅リサイズを受け取る操作。 */
+export type StickyManipulation = Readonly<{
+  onDragStart: (point: Point) => void;
+  onResizeStart: (corner: StickyResizeCorner, point: Point) => void;
+  onPointerMove: (point: Point) => void;
+  onPointerCommit: () => void;
 }>;
 
 type StickyStyle = CSSProperties & {
@@ -64,9 +85,11 @@ export function Sticky({
   sticky,
   chrome = { status: "plain" },
   onActivate,
+  manipulation,
 }: StickyProps) {
   const articleRef = useRef<HTMLElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const activePointerIdRef = useRef<number | null>(null);
   const previousChromeStatusRef = useRef(chrome.status);
   const appearance = StickyAppearance.of(sticky.type);
   const lineCount = StickyAppearance.bodyLineCount(sticky.size);
@@ -79,6 +102,42 @@ export function Sticky({
     width: `${sticky.size.width}px`,
     height: `${sticky.size.height}px`,
     "--sticky-body-line-count": lineCount,
+  };
+  const beginManipulation = (
+    event: PointerEvent<HTMLElement>,
+    begin: (point: Point) => void,
+  ): void => {
+    if (
+      event.button !== 0 ||
+      manipulation === undefined ||
+      activePointerIdRef.current !== null
+    ) {
+      return;
+    }
+    activePointerIdRef.current = event.pointerId;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    begin(pointFromPointer(event));
+  };
+  const moveManipulation = (event: PointerEvent<HTMLElement>): void => {
+    if (
+      manipulation === undefined ||
+      activePointerIdRef.current !== event.pointerId
+    ) {
+      return;
+    }
+    event.stopPropagation();
+    manipulation.onPointerMove(pointFromPointer(event));
+  };
+  const commitManipulation = (event: PointerEvent<HTMLElement>): void => {
+    if (
+      manipulation === undefined ||
+      activePointerIdRef.current !== event.pointerId
+    ) {
+      return;
+    }
+    event.stopPropagation();
+    activePointerIdRef.current = null;
+    manipulation.onPointerCommit();
   };
 
   useEffect(() => {
@@ -108,8 +167,20 @@ export function Sticky({
       tabIndex={0}
       style={stickyStyle}
       onFocus={(event) => {
+        if (activePointerIdRef.current !== null) {
+          return;
+        }
         activateStickyFromFocus(event, onActivate);
       }}
+      onPointerDown={(event) => {
+        if (isTextEditorTarget(event.target) || manipulation === undefined) {
+          return;
+        }
+        beginManipulation(event, manipulation.onDragStart);
+      }}
+      onPointerMove={moveManipulation}
+      onPointerUp={commitManipulation}
+      onPointerCancel={commitManipulation}
     >
       <div className={stickyFaceClassName(appearance.rotation)}>
         <span className="sticky__caption">{appearance.caption}</span>
@@ -136,9 +207,67 @@ export function Sticky({
           )}
         </div>
       </div>
+      {hasResizeHandles(chrome) && manipulation !== undefined
+        ? resizeCorners.map((corner) => (
+            <span
+              key={corner}
+              className="sticky__resize-handle"
+              data-resize-corner={corner}
+              aria-hidden="true"
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                beginManipulation(event, (point) => {
+                  manipulation.onResizeStart(corner, point);
+                });
+              }}
+              onPointerMove={moveManipulation}
+              onPointerUp={commitManipulation}
+              onPointerCancel={commitManipulation}
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+              onDoubleClick={(event) => {
+                event.stopPropagation();
+              }}
+            />
+          ))
+        : null}
     </article>
   );
 }
+
+const resizeCorners = StickyResizeCorner.all();
+
+/**
+ * 選択中またはポインタ操作中に四隅のリサイズハンドルを出す。
+ *
+ * @param chrome 付箋の表示状態。
+ * @returns リサイズハンドルを出す場合は true。
+ */
+const hasResizeHandles = (chrome: StickyChrome): boolean =>
+  chrome.status === "selected" ||
+  chrome.status === "dragging" ||
+  chrome.status === "resizing";
+
+/**
+ * Pointer Event から画面上の座標を返す。
+ *
+ * @param event ポインタイベント。
+ * @returns ドラッグ差分の計算に使う画面座標。
+ */
+const pointFromPointer = (event: PointerEvent<HTMLElement>): Point => ({
+  x: event.clientX,
+  y: event.clientY,
+});
+
+/**
+ * ポインタ操作の発生元が本文エディタか判定する。
+ *
+ * @param target イベントの発生元。
+ * @returns textarea なら true。
+ */
+const isTextEditorTarget = (target: EventTarget | null): boolean =>
+  target instanceof HTMLTextAreaElement;
 
 /**
  * 付箋本体へフォーカスしたときだけ選択を始める。textarea へのフォーカスは対象外。

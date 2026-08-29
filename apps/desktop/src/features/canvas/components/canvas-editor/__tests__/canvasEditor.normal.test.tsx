@@ -141,6 +141,54 @@ const doubleClickSurface = (
 };
 
 /**
+ * 要素上でPointer Eventsによるドラッグを発生させる。
+ *
+ * @param element ドラッグ対象。
+ * @param points pointerdown、pointermove群、pointerupの座標。
+ */
+const dragElement = (
+  element: Element,
+  points: readonly Readonly<{ x: number; y: number }>[],
+): void => {
+  const first = points[0] ?? { x: 0, y: 0 };
+  const last = points[points.length - 1] ?? first;
+  act(() => {
+    element.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        pointerId: 1,
+        clientX: first.x,
+        clientY: first.y,
+      }),
+    );
+  });
+  for (const point of points.slice(1)) {
+    act(() => {
+      element.dispatchEvent(
+        new PointerEvent("pointermove", {
+          bubbles: true,
+          pointerId: 1,
+          clientX: point.x,
+          clientY: point.y,
+        }),
+      );
+    });
+  }
+  act(() => {
+    element.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        button: 0,
+        pointerId: 1,
+        clientX: last.x,
+        clientY: last.y,
+      }),
+    );
+  });
+};
+
+/**
  * 指定した aria-label またはラベルのボタンを返す。
  *
  * @param host 描画先。
@@ -400,4 +448,43 @@ test("本文を確定したあと選択中の付箋へフォーカスを戻さ�
   expect(host.querySelector("textarea")).toBeNull();
   expect(articleOf(host).getAttribute("data-sticky-session")).toBe("selected");
   expect(document.activeElement).not.toBe(articleOf(host));
+});
+
+test("付箋を連続pointermoveでドラッグしてもundo 1回で開始位置へ戻る", () => {
+  const host = renderEditor(existingStickyDocument);
+
+  dragElement(articleOf(host), [
+    { x: 20, y: 30 },
+    { x: 40, y: 50 },
+    { x: 70, y: 90 },
+  ]);
+
+  expect(articleOf(host).style.left).toBe("60px");
+  expect(articleOf(host).style.top).toBe("80px");
+  act(() => {
+    buttonNamed(host, "元に戻す").click();
+  });
+  expect(articleOf(host).style.left).toBe("10px");
+  expect(articleOf(host).style.top).toBe("20px");
+  expect(buttonNamed(host, "元に戻す").getAttribute("aria-disabled")).toBe(
+    "true",
+  );
+});
+
+test("選択中の南東ハンドルをドラッグすると付箋をリサイズする", () => {
+  const host = renderEditor(existingStickyDocument);
+  clickSurface(host, { x: 20, y: 30 });
+  const handle = host.querySelector(
+    '[data-resize-corner="southEast"]',
+  );
+  const resizeHandle = handle ?? document.createElement("span");
+
+  dragElement(resizeHandle, [
+    { x: 170, y: 120 },
+    { x: 190, y: 140 },
+    { x: 200, y: 150 },
+  ]);
+
+  expect(articleOf(host).style.width).toBe("190px");
+  expect(articleOf(host).style.height).toBe("130px");
 });

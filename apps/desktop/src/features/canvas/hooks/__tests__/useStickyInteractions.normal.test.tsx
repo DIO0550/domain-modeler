@@ -11,6 +11,7 @@ import {
   useStickyInteractions,
   type UseStickyInteractionsResult,
 } from "../index";
+import { STICKY_RESIZE_CORNERS } from "../../domains/sticky-interaction";
 
 type RenderedHook = Readonly<{
   latest: { current: UseStickyInteractionsResult | undefined };
@@ -104,4 +105,68 @@ test("本文を複数回変えて確定すると undo 1回で編集前の本文�
   });
 
   expect(latest.current?.stickies[0]?.text).toBe("注文が確定した");
+});
+
+test("連続するポインタ移動を確定すると undo 1回でドラッグ開始位置に戻る", () => {
+  const existing = Sticky.create(
+    StickyId.create("stk_existing000"),
+    STICKY_TYPES.event,
+    "注文が確定した",
+    { x: 10, y: 20 },
+    { width: 160, height: 100 },
+  );
+  const latest = renderHook({ ...Document.empty(), stickies: [existing] });
+
+  act(() => {
+    latest.current?.beginDrag(existing.id, { x: 20, y: 30 });
+  });
+  act(() => {
+    latest.current?.movePointer({ x: 30, y: 40 });
+  });
+  act(() => {
+    latest.current?.movePointer({ x: 70, y: 90 });
+  });
+  act(() => {
+    latest.current?.commitManipulation();
+  });
+  expect(latest.current?.stickies[0]?.position).toEqual({ x: 60, y: 80 });
+
+  act(() => {
+    latest.current?.undo();
+  });
+
+  expect(latest.current?.stickies[0]?.position).toEqual({ x: 10, y: 20 });
+  expect(latest.current?.hasUndo).toBe(false);
+});
+
+test("選択中の付箋を四隅ハンドルからリサイズできる", () => {
+  const existing = Sticky.create(
+    StickyId.create("stk_existing000"),
+    STICKY_TYPES.event,
+    "注文が確定した",
+    { x: 10, y: 20 },
+    { width: 160, height: 100 },
+  );
+  const latest = renderHook({ ...Document.empty(), stickies: [existing] });
+
+  act(() => {
+    latest.current?.select(existing.id);
+  });
+  act(() => {
+    latest.current?.beginResize(STICKY_RESIZE_CORNERS.southEast, {
+      x: 170,
+      y: 120,
+    });
+  });
+  act(() => {
+    latest.current?.movePointer({ x: 200, y: 150 });
+  });
+  act(() => {
+    latest.current?.commitManipulation();
+  });
+
+  expect(latest.current?.stickies[0]?.size).toEqual({
+    width: 190,
+    height: 130,
+  });
 });
