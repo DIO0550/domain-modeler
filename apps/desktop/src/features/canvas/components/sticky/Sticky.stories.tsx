@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 import {
   Sticky as StickyModel,
   StickyId,
@@ -45,6 +46,7 @@ const meta: Meta<typeof Sticky> = {
   component: Sticky,
   argTypes: {
     sticky: { control: false },
+    chrome: { control: false },
   },
   parameters: {
     layout: "fullscreen",
@@ -64,6 +66,25 @@ type Story = StoryObj<typeof Sticky>;
 export const Default: Story = {
   args: {
     sticky: sampleSticky("event"),
+  },
+};
+
+export const Selected: Story = {
+  args: {
+    sticky: sampleSticky("event"),
+    chrome: { status: "selected" },
+  },
+};
+
+export const Editing: Story = {
+  args: {
+    sticky: sampleSticky("event", "注文が確定した"),
+    chrome: {
+      status: "editing",
+      draftText: "注文が確定した",
+      onDraftChange: fn(),
+      onCommit: fn(),
+    },
   },
 };
 

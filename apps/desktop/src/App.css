@@ -46,6 +46,7 @@
   --sticky-ink: #3f3f46;
   --sticky-caption: #52525b;
   --sticky-shadow: 0 1px 1px rgb(24 24 27 / 10%), 0 6px 14px rgb(24 24 27 / 10%);
+  --sticky-selected-ring: #2563eb;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -82,6 +83,7 @@
     --sticky-ink: #3f3f46;
     --sticky-caption: #52525b;
     --sticky-shadow: 0 1px 1px rgb(0 0 0 / 24%), 0 8px 18px rgb(0 0 0 / 28%);
+    --sticky-selected-ring: #60a5fa;
   }
 }
 
@@ -483,6 +485,13 @@ body,
 .sticky {
   position: absolute;
   box-sizing: border-box;
+  user-select: none;
+}
+
+.sticky--selected {
+  z-index: 1;
+  outline: 2px solid var(--sticky-selected-ring);
+  outline-offset: 2px;
 }
 
 .sticky__face {
@@ -569,4 +578,28 @@ body,
   overflow-wrap: anywhere;
   text-align: center;
   white-space: pre-wrap;
+}
+
+.sticky__editor {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 18px;
+  text-align: center;
+  resize: none;
+}
+
+.sticky__editor:focus {
+  outline: none;
+}
+
+.canvas-surface:focus {
+  outline: none;
 }

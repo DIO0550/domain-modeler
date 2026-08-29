@@ -1,5 +1,14 @@
-import { useState, type ReactNode } from "react";
-import { STICKY_TYPES, type StickyType } from "@domain-modeler/canvas-core";
+import {
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
+import {
+  STICKY_TYPES,
+  type Point,
+  type StickyType,
+} from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../../domains/sticky-appearance";
 import {
   SaveIndicator,
@@ -18,12 +27,17 @@ type CanvasViewProps = Readonly<{
   undo: HistoryButton;
   redo: HistoryButton;
   children?: ReactNode;
+  selectedType?: StickyType;
+  onSelectType?: (type: StickyType) => void;
+  onSurfaceClick?: (point: Point) => void;
+  onSurfaceDoubleClick?: (point: Point) => void;
+  onSurfaceKeyDown?: (key: "Enter" | "Escape") => void;
 }>;
 
 /**
  * キャンバス画面。種別パレット、無限キャンバス、保存/ズーム表示を持つ。
  *
- * @param props ズーム、保存状態、履歴ボタン、キャンバス面の子要素。
+ * @param props ズーム、保存状態、履歴ボタン、キャンバス面の子要素と操作。
  * @returns キャンバス画面。
  */
 export function CanvasView({
@@ -32,13 +46,26 @@ export function CanvasView({
   undo,
   redo,
   children,
+  selectedType: selectedTypeProp,
+  onSelectType,
+  onSurfaceClick,
+  onSurfaceDoubleClick,
+  onSurfaceKeyDown,
 }: CanvasViewProps) {
-  const [selectedType, setSelectedType] = useState<StickyType>(
+  const [uncontrolledType, setUncontrolledType] = useState<StickyType>(
     STICKY_TYPES.event,
   );
+  const selectedType = selectedTypeProp ?? uncontrolledType;
   const appearances = StickyAppearance.all();
   const saveIndicator = SaveIndicator.create(saveStatus);
   const zoomLabel = ZoomLabel.toPercent(zoom);
+
+  const selectType = (type: StickyType): void => {
+    if (selectedTypeProp === undefined) {
+      setUncontrolledType(type);
+    }
+    onSelectType?.(type);
+  };
 
   return (
     <div className="canvas-view">
@@ -46,11 +73,17 @@ export function CanvasView({
         <Palette
           appearances={appearances}
           selectedType={selectedType}
-          onSelectType={setSelectedType}
+          onSelectType={selectType}
         />
         <HistoryControls undo={undo} redo={redo} />
       </CanvasToolbar>
-      <CanvasSurface>{children}</CanvasSurface>
+      <CanvasSurface
+        onClick={onSurfaceClick}
+        onDoubleClick={onSurfaceDoubleClick}
+        onKeyDown={onSurfaceKeyDown}
+      >
+        {children}
+      </CanvasSurface>
       <CanvasStatusBar saveIndicator={saveIndicator} zoomLabel={zoomLabel} />
     </div>
   );
@@ -184,23 +217,93 @@ function HistoryControlButton({ label, button }: HistoryControlButtonProps) {
   );
 }
 
+type CanvasSurfaceProps = Readonly<{
+  children?: ReactNode;
+  onClick?: (point: Point) => void;
+  onDoubleClick?: (point: Point) => void;
+  onKeyDown?: (key: "Enter" | "Escape") => void;
+}>;
+
 /**
  * パンとズームだけで移動する無限キャンバス領域。スクロールバーは持たない。
  *
- * @param props キャンバス上に置く付箋などの子要素。
+ * @param props キャンバス上に置く付箋などの子要素とポインタ操作。
  * @returns キャンバス面。
  */
-function CanvasSurface({ children }: Readonly<{ children?: ReactNode }>) {
+function CanvasSurface({
+  children,
+  onClick,
+  onDoubleClick,
+  onKeyDown,
+}: CanvasSurfaceProps) {
   return (
     <div
       className="canvas-surface"
       role="region"
       aria-label="キャンバス"
+      tabIndex={onKeyDown === undefined ? undefined : 0}
+      onClick={(event) => {
+        if (onClick === undefined) {
+          return;
+        }
+        onClick(surfacePointFromMouse(event));
+      }}
+      onDoubleClick={(event) => {
+        if (onDoubleClick === undefined) {
+          return;
+        }
+        onDoubleClick(surfacePointFromMouse(event));
+      }}
+      onKeyDown={(event) => {
+        handleSurfaceKeyDown(event, onKeyDown);
+      }}
     >
       {children}
     </div>
   );
 }
+
+/**
+ * キャンバス面を基準にしたクリック位置を返す。
+ *
+ * @param event 面に対するポインタイベント。
+ * @returns 面の左上を原点とする座標。
+ */
+const surfacePointFromMouse = (event: MouseEvent<HTMLDivElement>): Point => {
+  const rect = event.currentTarget.getBoundingClientRect();
+  return {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top,
+  };
+};
+
+/**
+ * Enter / Esc をキャンバス操作へ渡す。本文編集中の Enter は改行に譲る。
+ *
+ * @param event 面または子要素からのキーイベント。
+ * @param onKeyDown 解釈したキーを受け取るハンドラ。
+ */
+const handleSurfaceKeyDown = (
+  event: KeyboardEvent<HTMLDivElement>,
+  onKeyDown: ((key: "Enter" | "Escape") => void) | undefined,
+): void => {
+  if (onKeyDown === undefined) {
+    return;
+  }
+  if (event.key === "Escape") {
+    event.preventDefault();
+    onKeyDown("Escape");
+    return;
+  }
+  if (event.key !== "Enter") {
+    return;
+  }
+  if (event.target instanceof HTMLTextAreaElement) {
+    return;
+  }
+  event.preventDefault();
+  onKeyDown("Enter");
+};
 
 type CanvasStatusBarProps = Readonly<{
   saveIndicator: SaveIndicator;

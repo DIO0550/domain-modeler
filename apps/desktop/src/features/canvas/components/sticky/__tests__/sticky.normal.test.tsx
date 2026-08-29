@@ -7,7 +7,7 @@ import {
   type StickyType,
 } from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../../../domains/sticky-appearance";
-import { Sticky } from "../index";
+import { Sticky, type StickyChrome } from "../index";
 
 type RenderedSticky = Readonly<{
   host: HTMLDivElement;
@@ -26,15 +26,19 @@ afterEach(() => {
  * Sticky を描画してホスト要素を返す。
  *
  * @param sticky 描画する付箋。
+ * @param chrome 選択または編集の表示。省略時は通常表示。
  * @returns 描画先のホスト要素。
  */
-const renderSticky = (sticky: StickyModel): HTMLDivElement => {
+const renderSticky = (
+  sticky: StickyModel,
+  chrome?: StickyChrome,
+): HTMLDivElement => {
   const host = document.createElement("div");
   document.body.append(host);
   const root: Root = createRoot(host);
 
   act(() => {
-    root.render(<Sticky sticky={sticky} />);
+    root.render(<Sticky sticky={sticky} chrome={chrome} />);
   });
 
   rendered.push({
@@ -181,4 +185,31 @@ test("長い本文があっても付箋のサイズは変えない", () => {
 
   expect(note.style.width).toBe(`${appearance.defaultSize.width}px`);
   expect(note.style.height).toBe(`${appearance.defaultSize.height}px`);
+});
+
+test("選択中は選択セッションとして表示する", () => {
+  const host = renderSticky(stickyOf("event", "注文が確定した"), {
+    status: "selected",
+  });
+
+  expect(
+    host.querySelector("article")?.getAttribute("data-sticky-session"),
+  ).toBe("selected");
+  expect(
+    host.querySelector("article")?.classList.contains("sticky--selected"),
+  ).toBe(true);
+});
+
+test("編集中は下書き本文を textarea に出す", () => {
+  const host = renderSticky(stickyOf("event", "注文が確定した"), {
+    status: "editing",
+    draftText: "下書き",
+    onDraftChange: () => undefined,
+    onCommit: () => undefined,
+  });
+
+  expect(host.querySelector("textarea")?.value).toBe("下書き");
+  expect(
+    host.querySelector("article")?.getAttribute("data-sticky-session"),
+  ).toBe("editing");
 });
