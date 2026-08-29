@@ -246,10 +246,16 @@ function CanvasSurface({
         if (onClick === undefined) {
           return;
         }
+        if (isTextareaEventTarget(event.target)) {
+          return;
+        }
         onClick(surfacePointFromMouse(event));
       }}
       onDoubleClick={(event) => {
         if (onDoubleClick === undefined) {
+          return;
+        }
+        if (isTextareaEventTarget(event.target)) {
           return;
         }
         onDoubleClick(surfacePointFromMouse(event));
@@ -278,7 +284,17 @@ const surfacePointFromMouse = (event: MouseEvent<HTMLDivElement>): Point => {
 };
 
 /**
+ * イベントの発生元が本文エディタか判定する。
+ *
+ * @param target イベントの発生元。
+ * @returns textarea なら true。
+ */
+const isTextareaEventTarget = (target: EventTarget | null): boolean =>
+  target instanceof HTMLTextAreaElement;
+
+/**
  * Enter / Esc をキャンバス操作へ渡す。本文編集中の Enter は改行に譲る。
+ * IME 変換中のキーは確定や選択解除に使わない。
  *
  * @param event 面または子要素からのキーイベント。
  * @param onKeyDown 解釈したキーを受け取るハンドラ。
@@ -290,6 +306,12 @@ const handleSurfaceKeyDown = (
   if (onKeyDown === undefined) {
     return;
   }
+  if (
+    event.nativeEvent.isComposing ||
+    event.nativeEvent.keyCode === 229
+  ) {
+    return;
+  }
   if (event.key === "Escape") {
     event.preventDefault();
     onKeyDown("Escape");
@@ -298,7 +320,7 @@ const handleSurfaceKeyDown = (
   if (event.key !== "Enter") {
     return;
   }
-  if (event.target instanceof HTMLTextAreaElement) {
+  if (isTextareaEventTarget(event.target)) {
     return;
   }
   event.preventDefault();

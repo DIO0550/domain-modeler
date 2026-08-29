@@ -3,6 +3,7 @@ import type {
   Document,
   Point,
   Sticky,
+  StickyId,
   StickyType,
 } from "@domain-modeler/canvas-core";
 import {
@@ -18,6 +19,7 @@ export type UseStickyInteractionsResult = Readonly<{
   hasUndo: boolean;
   hasRedo: boolean;
   selectType: (type: StickyType) => void;
+  select: (stickyId: StickyId) => void;
   clickAt: (point: Point) => void;
   doubleClickAt: (point: Point) => void;
   changeDraft: (draftText: string) => void;
@@ -49,6 +51,9 @@ export function useStickyInteractions(
     hasRedo: StickyInteraction.hasRedo(interaction),
     selectType: (type) => {
       setInteraction((current) => StickyInteraction.selectType(current, type));
+    },
+    select: (stickyId) => {
+      setInteraction((current) => StickyInteraction.select(current, stickyId));
     },
     clickAt: (point) => {
       setInteraction((current) => StickyInteraction.clickAt(current, point));

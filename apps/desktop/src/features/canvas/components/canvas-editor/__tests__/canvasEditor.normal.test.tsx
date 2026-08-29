@@ -34,6 +34,19 @@ const emptyRect = {
   toJSON: () => ({}),
 };
 
+const existingStickyDocument = {
+  ...Document.empty(),
+  stickies: [
+    StickyModel.create(
+      StickyId.create("stk_existing000"),
+      STICKY_TYPES.event,
+      "注文が確定した",
+      { x: 10, y: 20 },
+      { width: 160, height: 100 },
+    ),
+  ],
+};
+
 /**
  * CanvasEditor を描画してホスト要素を返す。
  *
@@ -142,6 +155,30 @@ const buttonNamed = (host: HTMLDivElement, name: string): HTMLButtonElement => {
   return found instanceof HTMLButtonElement
     ? found
     : document.createElement("button");
+};
+
+/**
+ * 描画された付箋要素を返す。
+ *
+ * @param host 描画先。
+ * @returns 付箋。無ければ空の article。
+ */
+const articleOf = (host: HTMLDivElement): HTMLElement => {
+  const found = host.querySelector("article");
+  return found instanceof HTMLElement ? found : document.createElement("article");
+};
+
+/**
+ * 描画された本文エディタを返す。
+ *
+ * @param host 描画先。
+ * @returns textarea。無ければ空の textarea。
+ */
+const editorOf = (host: HTMLDivElement): HTMLTextAreaElement => {
+  const found = host.querySelector("textarea");
+  return found instanceof HTMLTextAreaElement
+    ? found
+    : document.createElement("textarea");
 };
 
 test("パレットの種別を選んで空白をクリックするとその種別の付箋を作成する", () => {
@@ -289,4 +326,78 @@ test("編集中に Esc を押すと本文を確定して選択中になる", () 
   expect(
     host.querySelector("article")?.getAttribute("data-sticky-session"),
   ).toBe("selected");
+});
+
+test("編集中の本文をクリックしても編集は終わらない", () => {
+  const host = renderEditor(existingStickyDocument);
+
+  doubleClickSurface(host, { x: 20, y: 30 });
+  act(() => {
+    editorOf(host).dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 20,
+        clientY: 30,
+      }),
+    );
+  });
+
+  expect(host.querySelector("textarea")).not.toBeNull();
+  expect(articleOf(host).getAttribute("data-sticky-session")).toBe("editing");
+});
+
+test("IME変換中の Escape では本文を確定しない", () => {
+  const host = renderEditor(existingStickyDocument);
+
+  doubleClickSurface(host, { x: 20, y: 30 });
+  const foundSurface = host.querySelector(".canvas-surface");
+  const surface =
+    foundSurface instanceof HTMLElement
+      ? foundSurface
+      : document.createElement("div");
+  const escapeWhileComposing = new KeyboardEvent("keydown", {
+    key: "Escape",
+    bubbles: true,
+  });
+  Object.defineProperty(escapeWhileComposing, "isComposing", {
+    value: true,
+  });
+  act(() => {
+    surface.dispatchEvent(escapeWhileComposing);
+  });
+
+  expect(host.querySelector("textarea")).not.toBeNull();
+  expect(articleOf(host).getAttribute("data-sticky-session")).toBe("editing");
+});
+
+test("付箋にフォーカスすると選択する", () => {
+  const host = renderEditor(existingStickyDocument);
+  const note = articleOf(host);
+
+  act(() => {
+    note.focus();
+  });
+
+  expect(note.getAttribute("data-sticky-session")).toBe("selected");
+});
+
+test("クリックで選択すると付箋がフォーカスされる", () => {
+  const host = renderEditor(existingStickyDocument);
+
+  clickSurface(host, { x: 20, y: 30 });
+
+  expect(document.activeElement).toBe(articleOf(host));
+});
+
+test("本文を確定したあと選択中の付箋へフォーカスを戻さない", () => {
+  const host = renderEditor(existingStickyDocument);
+
+  doubleClickSurface(host, { x: 20, y: 30 });
+  act(() => {
+    editorOf(host).blur();
+  });
+
+  expect(host.querySelector("textarea")).toBeNull();
+  expect(articleOf(host).getAttribute("data-sticky-session")).toBe("selected");
+  expect(document.activeElement).not.toBe(articleOf(host));
 });

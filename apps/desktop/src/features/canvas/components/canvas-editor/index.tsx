@@ -50,6 +50,9 @@ export function CanvasEditor({
             onDraftChange: board.changeDraft,
             onCommit: board.commitEdit,
           })}
+          onActivate={() => {
+            board.select(sticky.id);
+          }}
         />
       ))}
     </CanvasView>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties, type FocusEvent } from "react";
 import type { Sticky as StickyModel } from "@domain-modeler/canvas-core";
 import {
   StickyAppearance,
@@ -19,6 +19,7 @@ export type StickyChrome =
 type StickyProps = Readonly<{
   sticky: StickyModel;
   chrome?: StickyChrome;
+  onActivate?: () => void;
 }>;
 
 type StickyStyle = CSSProperties & {
@@ -34,9 +35,11 @@ type StickyStyle = CSSProperties & {
 export function Sticky({
   sticky,
   chrome = { status: "plain" },
+  onActivate,
 }: StickyProps) {
   const articleRef = useRef<HTMLElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const previousChromeStatusRef = useRef(chrome.status);
   const appearance = StickyAppearance.of(sticky.type);
   const lineCount = StickyAppearance.bodyLineCount(sticky.size);
   const displayedText =
@@ -51,13 +54,19 @@ export function Sticky({
   };
 
   useEffect(() => {
-    if (chrome.status === "selected") {
-      articleRef.current?.focus();
-      return;
-    }
+    const previousStatus = previousChromeStatusRef.current;
+    previousChromeStatusRef.current = chrome.status;
     if (chrome.status === "editing") {
       editorRef.current?.focus();
+      return;
     }
+    if (chrome.status !== "selected") {
+      return;
+    }
+    if (previousStatus === "editing") {
+      return;
+    }
+    articleRef.current?.focus();
   }, [chrome.status, sticky.id]);
 
   return (
@@ -68,8 +77,11 @@ export function Sticky({
       data-sticky-id={sticky.id}
       data-sticky-session={chrome.status}
       aria-label={accessibleName}
-      tabIndex={chrome.status === "plain" ? undefined : 0}
+      tabIndex={0}
       style={stickyStyle}
+      onFocus={(event) => {
+        activateStickyFromFocus(event, onActivate);
+      }}
     >
       <div className={stickyFaceClassName(appearance.rotation)}>
         <span className="sticky__caption">{appearance.caption}</span>
@@ -84,6 +96,12 @@ export function Sticky({
                 chrome.onDraftChange(event.target.value);
               }}
               onBlur={chrome.onCommit}
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+              onDoubleClick={(event) => {
+                event.stopPropagation();
+              }}
             />
           ) : (
             <p className="sticky__text">{sticky.text}</p>
@@ -93,6 +111,25 @@ export function Sticky({
     </article>
   );
 }
+
+/**
+ * 付箋本体へフォーカスしたときだけ選択を始める。textarea へのフォーカスは対象外。
+ *
+ * @param event 付箋のフォーカスイベント。
+ * @param onActivate 付箋を選択する操作。
+ */
+const activateStickyFromFocus = (
+  event: FocusEvent<HTMLElement>,
+  onActivate: (() => void) | undefined,
+): void => {
+  if (onActivate === undefined) {
+    return;
+  }
+  if (event.target !== event.currentTarget) {
+    return;
+  }
+  onActivate();
+};
 
 /**
  * 付箋の読み上げ名を組み立てる。

@@ -490,7 +490,6 @@ body,
 }
 
 .sticky--selected {
-  z-index: 1;
   outline: 2px solid var(--sticky-selected-ring);
   outline-offset: 2px;
 }
@@ -603,4 +602,9 @@ body,
 
 .canvas-surface:focus {
   outline: none;
+}
+
+.canvas-surface:focus-visible {
+  outline: 2px solid var(--tab-change-mark);
+  outline-offset: -2px;
 }

@@ -187,6 +187,12 @@ test("長い本文があっても付箋のサイズは変えない", () => {
   expect(note.style.height).toBe(`${appearance.defaultSize.height}px`);
 });
 
+test("通常表示の付箋もキーボードでフォーカスできる", () => {
+  const host = renderSticky(stickyOf("event", "注文が確定した"));
+
+  expect(host.querySelector("article")?.getAttribute("tabindex")).toBe("0");
+});
+
 test("選択中は選択セッションとして表示する", () => {
   const host = renderSticky(stickyOf("event", "注文が確定した"), {
     status: "selected",
