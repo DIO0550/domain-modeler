@@ -322,6 +322,7 @@ body,
 .canvas-toolbar {
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-height: 40px;
