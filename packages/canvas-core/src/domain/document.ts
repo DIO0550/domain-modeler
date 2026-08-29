@@ -74,6 +74,18 @@ export const Document = {
       OptionValue.none(),
     ),
   /**
+   * 指定した ID の付箋を取得する。
+   * @param doc 検索対象の文書。
+   * @param stickyId 探す付箋の ID。
+   * @returns 一致した付箋。該当する付箋がなければ値なし。
+   */
+  stickyById: (doc: Document, stickyId: StickyId): Option<Sticky> => {
+    const found = doc.stickies.find((sticky) => sticky.id === stickyId);
+    return found === undefined
+      ? OptionValue.none()
+      : OptionValue.some(found);
+  },
+  /**
    * 指定座標にある最後に追加された接続を取得する。
    * @param doc 判定対象の文書。
    * @param point 判定するワールド座標。

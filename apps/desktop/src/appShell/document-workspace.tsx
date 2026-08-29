@@ -1,5 +1,5 @@
 import { Viewport } from "@domain-modeler/canvas-core";
-import { CanvasView } from "@/features/canvas";
+import { CanvasEditor } from "@/features/canvas";
 import { TabsState } from "./tabs";
 
 type DocumentWorkspaceProps = Readonly<{
@@ -33,12 +33,10 @@ export function DocumentWorkspace({ tabsState }: DocumentWorkspaceProps) {
     return (
       <main className="document-workspace">
         {missingBanner}
-        <CanvasView
+        <CanvasEditor
           key={activeTab.path}
           zoom={Viewport.default().zoom}
           saveStatus="saved"
-          undo={{ availability: "disabled" }}
-          redo={{ availability: "disabled" }}
         />
       </main>
     );
