@@ -17,15 +17,22 @@ type CanvasViewProps = Readonly<{
   saveStatus: SaveIndicatorStatus;
   undo: HistoryButton;
   redo: HistoryButton;
+  children?: ReactNode;
 }>;
 
 /**
  * キャンバス画面。種別パレット、無限キャンバス、保存/ズーム表示を持つ。
  *
- * @param props ズーム、保存状態、履歴ボタン。
+ * @param props ズーム、保存状態、履歴ボタン、キャンバス面の子要素。
  * @returns キャンバス画面。
  */
-export function CanvasView({ zoom, saveStatus, undo, redo }: CanvasViewProps) {
+export function CanvasView({
+  zoom,
+  saveStatus,
+  undo,
+  redo,
+  children,
+}: CanvasViewProps) {
   const [selectedType, setSelectedType] = useState<StickyType>(
     STICKY_TYPES.event,
   );
@@ -43,7 +50,7 @@ export function CanvasView({ zoom, saveStatus, undo, redo }: CanvasViewProps) {
         />
         <HistoryControls undo={undo} redo={redo} />
       </CanvasToolbar>
-      <CanvasSurface />
+      <CanvasSurface>{children}</CanvasSurface>
       <CanvasStatusBar saveIndicator={saveIndicator} zoomLabel={zoomLabel} />
     </div>
   );
@@ -180,15 +187,18 @@ function HistoryControlButton({ label, button }: HistoryControlButtonProps) {
 /**
  * パンとズームだけで移動する無限キャンバス領域。スクロールバーは持たない。
  *
+ * @param props キャンバス上に置く付箋などの子要素。
  * @returns キャンバス面。
  */
-function CanvasSurface() {
+function CanvasSurface({ children }: Readonly<{ children?: ReactNode }>) {
   return (
     <div
       className="canvas-surface"
       role="region"
       aria-label="キャンバス"
-    />
+    >
+      {children}
+    </div>
   );
 }
 

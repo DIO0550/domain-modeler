@@ -75,3 +75,40 @@ test("パレット順は canvas-ui の種別表の順になる", () => {
     STICKY_TYPES.hotspot,
   ]);
 });
+
+test("Hotspot だけ僅かに傾けて描画する", () => {
+  expect(StickyAppearance.of(STICKY_TYPES.hotspot).rotation).toBe("tilted");
+  expect(
+    StickyAppearance.all()
+      .filter((item) => item.type !== STICKY_TYPES.hotspot)
+      .map((item) => item.rotation),
+  ).toEqual([
+    "upright",
+    "upright",
+    "upright",
+    "upright",
+    "upright",
+    "upright",
+    "upright",
+  ]);
+});
+
+test.each([
+  { width: 160, height: 100, lineCount: 4 },
+  { width: 120, height: 80, lineCount: 3 },
+  { width: 200, height: 140, lineCount: 6 },
+  { width: 60, height: 40, lineCount: 1 },
+])(
+  "高さ $height の付箋は本文を $lineCount 行まで表示する",
+  ({
+    width,
+    height,
+    lineCount,
+  }: {
+    width: number;
+    height: number;
+    lineCount: number;
+  }) => {
+    expect(StickyAppearance.bodyLineCount({ width, height })).toBe(lineCount);
+  },
+);
