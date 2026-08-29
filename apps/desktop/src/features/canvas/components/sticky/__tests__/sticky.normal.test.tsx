@@ -150,6 +150,25 @@ test("空の本文でも種別名は表示する", () => {
   expect(host.querySelector(".sticky__text")?.textContent).toBe("");
 });
 
+test("最小サイズでも種別名と本文を表示する", () => {
+  const sticky = StickyModel.create(
+    StickyId.create("stk_min"),
+    "event",
+    "注文",
+    { x: 0, y: 0 },
+    { width: 60, height: 40 },
+  );
+  const host = renderSticky(sticky);
+  const note = host.querySelector("article") as HTMLElement;
+
+  expect(note.style.width).toBe("60px");
+  expect(note.style.height).toBe("40px");
+  expect(note.querySelector(".sticky__caption")?.textContent).toBe(
+    "Domain Event",
+  );
+  expect(host.querySelector(".sticky__text")?.textContent).toBe("注文");
+});
+
 test("長い本文があっても付箋のサイズは変えない", () => {
   const appearance = StickyAppearance.of("policy");
   const host = renderSticky(

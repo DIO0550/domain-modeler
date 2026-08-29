@@ -35,11 +35,24 @@ export type StickyAppearance = Readonly<{
   rotation: StickyRotation;
 }>;
 
-/** パディングと種別名キャプションが占める高さ。本文の行数計算に使う。 */
-const STICKY_CHROME_HEIGHT = 30;
+/**
+ * パディングと種別名キャプションが占める高さ。
+ * `.sticky__face` 上下 padding 8px + `.sticky__caption` 12px + 下余白 2px。
+ * 最小高さ 40 でも本文 1 行(18px)が収まる値にする。
+ */
+const STICKY_CHROME_HEIGHT = 22;
 
 /** 本文 1 行の高さ。フォント 13px・行間 1.4 に合わせる。 */
 const STICKY_BODY_LINE_HEIGHT = 18;
+
+/**
+ * キャプションとパディングを除いた本文領域の高さを返す。
+ *
+ * @param size 付箋のサイズ。
+ * @returns 本文に使える高さ。
+ */
+const bodyHeightOf = (size: Size): number =>
+  Math.max(0, size.height - STICKY_CHROME_HEIGHT);
 
 const PALETTE_ORDER = [
   STICKY_TYPES.event,
@@ -134,13 +147,16 @@ export const StickyAppearance = {
 
   /**
    * 付箋サイズから本文として表示できる行数を返す。
-   * あふれた行は省略するため、少なくとも 1 行は確保する。
+   * キャプションを残したうえで、あふれた行は省略する。
+   * 最小高さでも本文 1 行分の高さを確保する。
    *
    * @param size 付箋のサイズ。
    * @returns 本文に割り当てる行数。
    */
   bodyLineCount(size: Size): number {
-    const available = size.height - STICKY_CHROME_HEIGHT;
-    return Math.max(1, Math.floor(available / STICKY_BODY_LINE_HEIGHT));
+    return Math.max(
+      1,
+      Math.floor(bodyHeightOf(size) / STICKY_BODY_LINE_HEIGHT),
+    );
   },
 } as const;

@@ -94,8 +94,8 @@ test("Hotspot だけ僅かに傾けて描画する", () => {
 });
 
 test.each([
-  { width: 160, height: 100, lineCount: 3 },
-  { width: 120, height: 80, lineCount: 2 },
+  { width: 160, height: 100, lineCount: 4 },
+  { width: 120, height: 80, lineCount: 3 },
   { width: 200, height: 140, lineCount: 6 },
   { width: 60, height: 40, lineCount: 1 },
 ])(
