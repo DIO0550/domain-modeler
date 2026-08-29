@@ -7,9 +7,9 @@ import {
 } from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../../domains/sticky-appearance";
 import { Sticky } from "../sticky";
-import { CanvasView, type HistoryButton } from "./index";
+import { CanvasView, HistoryButton } from "./index";
 
-const disabledHistory: HistoryButton = { availability: "disabled" };
+const disabledHistory = HistoryButton.disabled();
 
 const meta: Meta<typeof CanvasView> = {
   component: CanvasView,
@@ -140,8 +140,8 @@ export const EdgeCases: Story = {
   args: {
     zoom: 0.1,
     saveStatus: "failed",
-    undo: { availability: "enabled", onClick: fn() },
-    redo: { availability: "disabled" },
+    undo: HistoryButton.enabled(fn()),
+    redo: HistoryButton.disabled(),
   },
   play: async ({ canvas }) => {
     await userEvent.click(

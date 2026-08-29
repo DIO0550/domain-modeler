@@ -21,6 +21,26 @@ export type HistoryButton =
   | Readonly<{ availability: "disabled" }>
   | Readonly<{ availability: "enabled"; onClick: () => void }>;
 
+/** `HistoryButton` を生成する関数群。 */
+export const HistoryButton = {
+  /**
+   * 押せない履歴ボタンを返す。
+   *
+   * @returns 無効な履歴ボタン。
+   */
+  disabled: (): HistoryButton => ({ availability: "disabled" }),
+  /**
+   * 押すと操作を実行する履歴ボタンを返す。
+   *
+   * @param onClick 実行する操作。
+   * @returns 有効な履歴ボタン。
+   */
+  enabled: (onClick: () => void): HistoryButton => ({
+    availability: "enabled",
+    onClick,
+  }),
+} as const;
+
 type CanvasViewProps = Readonly<{
   zoom: number;
   saveStatus: SaveIndicatorStatus;

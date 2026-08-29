@@ -7,7 +7,7 @@ import {
   STICKY_TYPES,
 } from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../../sticky-appearance";
-import { StickyInteraction } from "../index";
+import { StickyInteraction, StickySession } from "../index";
 
 const existingId = StickyId.create("stk_existing000");
 
@@ -187,4 +187,38 @@ test("作成して undo すると付箋が消える", () => {
   expect(created.workingDocument.stickies).toHaveLength(1);
   expect(undone.workingDocument.stickies).toHaveLength(0);
   expect(undone.session).toEqual({ status: "idle" });
+});
+
+test("選択中の付箋は選択の chrome を出し、他の付箋は通常表示にする", () => {
+  const selected = StickyInteraction.clickAt(
+    StickyInteraction.create(documentWithSticky),
+    { x: 10, y: 20 },
+  );
+
+  expect(StickySession.chromeOf(selected.session, existingId)).toEqual({
+    status: "selected",
+  });
+  expect(
+    StickySession.chromeOf(selected.session, StickyId.create("stk_other000000")),
+  ).toEqual({ status: "plain" });
+});
+
+test("編集中の付箋は下書きの chrome を出し、対象外は通常表示にする", () => {
+  const editing = StickyInteraction.changeDraft(
+    StickyInteraction.pressEnter(
+      StickyInteraction.clickAt(
+        StickyInteraction.create(documentWithSticky),
+        { x: 50, y: 40 },
+      ),
+    ),
+    "下書き",
+  );
+
+  expect(StickySession.chromeOf(editing.session, existingId)).toEqual({
+    status: "editing",
+    draftText: "下書き",
+  });
+  expect(StickySession.chromeOf({ status: "idle" }, existingId)).toEqual({
+    status: "plain",
+  });
 });

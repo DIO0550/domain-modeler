@@ -21,6 +21,32 @@ export type StickySession =
       originalText: string;
     }>;
 
+/** 1枚の付箋に出す選択枠または本文編集。操作ハンドラは持たない。 */
+export type StickyChromeView =
+  | Readonly<{ status: "plain" }>
+  | Readonly<{ status: "selected" }>
+  | Readonly<{ status: "editing"; draftText: string }>;
+
+/** `StickySession` から1枚の付箋の表示を導く関数群。 */
+export const StickySession = {
+  /**
+   * 対象の付箋に出す選択枠または本文編集を返す。
+   *
+   * @param session キャンバス全体の選択と編集。
+   * @param stickyId この付箋の ID。
+   * @returns その付箋の表示。対象でなければ通常表示。
+   */
+  chromeOf(session: StickySession, stickyId: StickyId): StickyChromeView {
+    if (session.status === "idle" || session.stickyId !== stickyId) {
+      return { status: "plain" };
+    }
+    if (session.status === "selected") {
+      return { status: "selected" };
+    }
+    return { status: "editing", draftText: session.draftText };
+  },
+} as const;
+
 /** キャンバス上の付箋作成・選択・編集と、その履歴。 */
 export type StickyInteraction = Readonly<{
   history: History;

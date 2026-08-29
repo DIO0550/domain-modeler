@@ -1,9 +1,9 @@
-import type { Document, StickyId } from "@domain-modeler/canvas-core";
+import type { Document } from "@domain-modeler/canvas-core";
 import type { SaveIndicatorStatus } from "../../domains/save-indicator";
-import type { StickySession } from "../../domains/sticky-interaction";
+import { StickySession } from "../../domains/sticky-interaction";
 import { useStickyInteractions } from "../../hooks";
-import { Sticky, type StickyChrome } from "../sticky";
-import { CanvasView, type HistoryButton } from "../canvas-view";
+import { Sticky, StickyChrome } from "../sticky";
+import { CanvasView, HistoryButton } from "../canvas-view";
 
 type CanvasEditorProps = Readonly<{
   zoom: number;
@@ -28,8 +28,16 @@ export function CanvasEditor({
     <CanvasView
       zoom={zoom}
       saveStatus={saveStatus}
-      undo={historyButton(board.hasUndo, board.undo)}
-      redo={historyButton(board.hasRedo, board.redo)}
+      undo={
+        board.hasUndo
+          ? HistoryButton.enabled(board.undo)
+          : HistoryButton.disabled()
+      }
+      redo={
+        board.hasRedo
+          ? HistoryButton.enabled(board.redo)
+          : HistoryButton.disabled()
+      }
       selectedType={board.selectedType}
       onSelectType={board.selectType}
       onSurfaceClick={board.clickAt}
@@ -46,10 +54,13 @@ export function CanvasEditor({
         <Sticky
           key={sticky.id}
           sticky={sticky}
-          chrome={chromeOf(board.session, sticky.id, {
-            onDraftChange: board.changeDraft,
-            onCommit: board.commitEdit,
-          })}
+          chrome={StickyChrome.of(
+            StickySession.chromeOf(board.session, sticky.id),
+            {
+              onDraftChange: board.changeDraft,
+              onCommit: board.commitEdit,
+            },
+          )}
           onActivate={() => {
             board.select(sticky.id);
           }}
@@ -58,49 +69,3 @@ export function CanvasEditor({
     </CanvasView>
   );
 }
-
-/**
- * undo / redo を、有効なときだけハンドラを持つボタンにする。
- *
- * @param available 実行できるか。
- * @param onClick 実行する操作。
- * @returns 履歴ボタン。
- */
-const historyButton = (available: boolean, onClick: () => void): HistoryButton => {
-  if (!available) {
-    return { availability: "disabled" };
-  }
-  return { availability: "enabled", onClick };
-};
-
-type DraftHandlers = Readonly<{
-  onDraftChange: (text: string) => void;
-  onCommit: () => void;
-}>;
-
-/**
- * 対象の付箋に出す選択枠または本文編集を返す。
- *
- * @param session キャンバス全体の選択と編集。
- * @param stickyId この付箋の ID。
- * @param handlers 本文の下書き更新と確定。
- * @returns その付箋の表示。
- */
-const chromeOf = (
-  session: StickySession,
-  stickyId: StickyId,
-  handlers: DraftHandlers,
-): StickyChrome => {
-  if (session.status === "idle" || session.stickyId !== stickyId) {
-    return { status: "plain" };
-  }
-  if (session.status === "selected") {
-    return { status: "selected" };
-  }
-  return {
-    status: "editing",
-    draftText: session.draftText,
-    onDraftChange: handlers.onDraftChange,
-    onCommit: handlers.onCommit,
-  };
-};

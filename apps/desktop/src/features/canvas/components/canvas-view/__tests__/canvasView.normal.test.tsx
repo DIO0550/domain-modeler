@@ -1,7 +1,7 @@
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vitest";
-import { CanvasView, type HistoryButton } from "../index";
+import { CanvasView, HistoryButton } from "../index";
 
 type RenderedCanvasView = Readonly<{
   host: HTMLDivElement;
@@ -16,7 +16,7 @@ afterEach(() => {
   }
 });
 
-const disabledHistory: HistoryButton = { availability: "disabled" };
+const disabledHistory = HistoryButton.disabled();
 
 /**
  * CanvasView を描画してホスト要素を返す。
@@ -132,7 +132,7 @@ test("Command を選ぶと Command が押下状態になり Domain Event は解�
 
 test("undo が無効のときは押してもハンドラを呼ばない", () => {
   const host = renderCanvasView({
-    undo: { availability: "disabled" },
+    undo: HistoryButton.disabled(),
   });
   const undoButton = buttonNamed(host, "元に戻す");
 
@@ -146,12 +146,9 @@ test("undo が無効のときは押してもハンドラを呼ばない", () => 
 test("undo が有効のときは押すとハンドラを1回呼ぶ", () => {
   const clicks: string[] = [];
   const host = renderCanvasView({
-    undo: {
-      availability: "enabled",
-      onClick: () => {
-        clicks.push("undo");
-      },
-    },
+    undo: HistoryButton.enabled(() => {
+      clicks.push("undo");
+    }),
   });
 
   act(() => {

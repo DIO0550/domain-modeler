@@ -4,6 +4,7 @@ import {
   StickyAppearance,
   type StickyRotation,
 } from "../../domains/sticky-appearance";
+import type { StickyChromeView } from "../../domains/sticky-interaction";
 
 /** 付箋の選択枠と本文の表示/編集。 */
 export type StickyChrome =
@@ -15,6 +16,33 @@ export type StickyChrome =
       onDraftChange: (text: string) => void;
       onCommit: () => void;
     }>;
+
+type DraftHandlers = Readonly<{
+  onDraftChange: (text: string) => void;
+  onCommit: () => void;
+}>;
+
+/** `StickyChrome` を生成する関数群。 */
+export const StickyChrome = {
+  /**
+   * 表示状態に本文操作を付けて、付箋の chrome にする。
+   *
+   * @param view 選択枠または本文編集の表示。
+   * @param handlers 本文の下書き更新と確定。
+   * @returns 付箋の chrome。
+   */
+  of(view: StickyChromeView, handlers: DraftHandlers): StickyChrome {
+    if (view.status !== "editing") {
+      return view;
+    }
+    return {
+      status: "editing",
+      draftText: view.draftText,
+      onDraftChange: handlers.onDraftChange,
+      onCommit: handlers.onCommit,
+    };
+  },
+} as const;
 
 type StickyProps = Readonly<{
   sticky: StickyModel;
