@@ -77,7 +77,7 @@ export const StickyInteraction = {
         session: { status: "selected", stickyId: hit.value.id },
       };
     }
-    return addStickyAndEdit(committed, point);
+    return createEditingSticky(committed, point);
   },
 
   /**
@@ -272,13 +272,13 @@ export const StickyInteraction = {
 } as const;
 
 /**
- * 空白クリックで付箋を追加し、本文編集を始める。
+ * 空白に、本文編集中の新しい付箋を置く。
  *
  * @param interaction 追加前の操作状態。
  * @param point 新しい付箋の左上位置。
- * @returns 追加と編集開始後の操作状態。サイズが不正なら入力を返す。
+ * @returns 編集中の付箋を置いた操作状態。サイズが不正なら入力を返す。
  */
-const addStickyAndEdit = (
+const createEditingSticky = (
   interaction: StickyInteraction,
   point: Point,
 ): StickyInteraction => {
