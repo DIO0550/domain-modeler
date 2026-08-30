@@ -47,6 +47,19 @@ const existingStickyDocument = {
   ],
 };
 
+const frontSticky = StickyModel.create(
+  StickyId.create("stk_front0000000"),
+  STICKY_TYPES.command,
+  "メールを送る",
+  { x: 240, y: 20 },
+  { width: 160, height: 100 },
+);
+
+const documentWithTwoStickies = {
+  ...existingStickyDocument,
+  stickies: [...existingStickyDocument.stickies, frontSticky],
+};
+
 /**
  * CanvasEditor を描画してホスト要素を返す。
  *
@@ -149,15 +162,21 @@ const doubleClickSurface = (
 const dragElement = (
   element: Element,
   points: readonly Readonly<{ x: number; y: number }>[],
+  options: Readonly<{
+    isPrimary?: boolean;
+    endType?: "pointerup" | "pointercancel";
+  }> = {},
 ): void => {
   const first = points[0] ?? { x: 0, y: 0 };
   const last = points[points.length - 1] ?? first;
+  const isPrimary = options.isPrimary ?? true;
   act(() => {
     element.dispatchEvent(
       new PointerEvent("pointerdown", {
         bubbles: true,
         button: 0,
         pointerId: 1,
+        isPrimary,
         clientX: first.x,
         clientY: first.y,
       }),
@@ -169,6 +188,7 @@ const dragElement = (
         new PointerEvent("pointermove", {
           bubbles: true,
           pointerId: 1,
+          isPrimary,
           clientX: point.x,
           clientY: point.y,
         }),
@@ -177,10 +197,11 @@ const dragElement = (
   }
   act(() => {
     element.dispatchEvent(
-      new PointerEvent("pointerup", {
+      new PointerEvent(options.endType ?? "pointerup", {
         bubbles: true,
         button: 0,
         pointerId: 1,
+        isPrimary,
         clientX: last.x,
         clientY: last.y,
       }),
@@ -448,6 +469,106 @@ test("本文を確定したあと選択中の付箋へフォーカスを戻さ�
   expect(host.querySelector("textarea")).toBeNull();
   expect(articleOf(host).getAttribute("data-sticky-session")).toBe("selected");
   expect(document.activeElement).not.toBe(articleOf(host));
+});
+
+test("最前面でない付箋を動かさずにクリックしても重なり順と履歴を変えない", () => {
+  const host = renderEditor(documentWithTwoStickies);
+  const rearSticky = host.querySelector(
+    '[data-sticky-id="stk_existing000"]',
+  );
+  const article = rearSticky ?? document.createElement("article");
+
+  dragElement(article, [{ x: 20, y: 30 }]);
+  act(() => {
+    article.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 20,
+        clientY: 30,
+      }),
+    );
+  });
+
+  expect(
+    [...host.querySelectorAll("[data-sticky-id]")].map((sticky) =>
+      sticky.getAttribute("data-sticky-id"),
+    ),
+  ).toEqual(["stk_existing000", "stk_front0000000"]);
+  expect(article.getAttribute("data-sticky-session")).toBe("selected");
+  expect(buttonNamed(host, "元に戻す").getAttribute("aria-disabled")).toBe(
+    "true",
+  );
+});
+
+test("4px未満のポインタ移動ではドラッグを開始しない", () => {
+  const host = renderEditor(documentWithTwoStickies);
+  const rearSticky = host.querySelector(
+    '[data-sticky-id="stk_existing000"]',
+  );
+  const article = rearSticky ?? document.createElement("article");
+
+  dragElement(article, [
+    { x: 20, y: 30 },
+    { x: 22, y: 31 },
+  ]);
+
+  expect((article as HTMLElement).style.left).toBe("10px");
+  expect((article as HTMLElement).style.top).toBe("20px");
+  expect(
+    [...host.querySelectorAll("[data-sticky-id]")].map((sticky) =>
+      sticky.getAttribute("data-sticky-id"),
+    ),
+  ).toEqual(["stk_existing000", "stk_front0000000"]);
+  expect(buttonNamed(host, "元に戻す").getAttribute("aria-disabled")).toBe(
+    "true",
+  );
+});
+
+test("非primary pointerではドラッグを開始しない", () => {
+  const host = renderEditor(existingStickyDocument);
+
+  dragElement(
+    articleOf(host),
+    [
+      { x: 20, y: 30 },
+      { x: 70, y: 90 },
+    ],
+    { isPrimary: false },
+  );
+
+  expect(articleOf(host).style.left).toBe("10px");
+  expect(articleOf(host).style.top).toBe("20px");
+  expect(buttonNamed(host, "元に戻す").getAttribute("aria-disabled")).toBe(
+    "true",
+  );
+});
+
+test("ドラッグ中のpointercancelは開始前へ戻して履歴へ積まない", () => {
+  const host = renderEditor(documentWithTwoStickies);
+  const rearSticky = host.querySelector(
+    '[data-sticky-id="stk_existing000"]',
+  );
+  const article = rearSticky ?? document.createElement("article");
+
+  dragElement(
+    article,
+    [
+      { x: 20, y: 30 },
+      { x: 70, y: 90 },
+    ],
+    { endType: "pointercancel" },
+  );
+
+  expect((article as HTMLElement).style.left).toBe("10px");
+  expect((article as HTMLElement).style.top).toBe("20px");
+  expect(
+    [...host.querySelectorAll("[data-sticky-id]")].map((sticky) =>
+      sticky.getAttribute("data-sticky-id"),
+    ),
+  ).toEqual(["stk_existing000", "stk_front0000000"]);
+  expect(buttonNamed(host, "元に戻す").getAttribute("aria-disabled")).toBe(
+    "true",
+  );
 });
 
 test("付箋を連続pointermoveでドラッグしてもundo 1回で開始位置へ戻る", () => {

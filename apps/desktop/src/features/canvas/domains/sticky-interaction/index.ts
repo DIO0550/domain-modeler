@@ -378,6 +378,29 @@ export const StickyInteraction = {
   },
 
   /**
+   * ドラッグまたはリサイズを取り消し、操作開始前の文書へ戻す。
+   *
+   * @param interaction 取り消し前の操作状態。
+   * @returns 選択中へ戻した操作状態。連続操作中でなければ入力を返す。
+   */
+  cancelManipulation(interaction: StickyInteraction): StickyInteraction {
+    if (
+      interaction.session.status !== "dragging" &&
+      interaction.session.status !== "resizing"
+    ) {
+      return interaction;
+    }
+    return {
+      ...interaction,
+      workingDocument: interaction.history.current,
+      session: {
+        status: "selected",
+        stickyId: interaction.session.originalSticky.id,
+      },
+    };
+  },
+
+  /**
    * 本文編集を確定する。本文が変わっていれば履歴へ 1 エントリ積む。
    *
    * @param interaction 確定前の操作状態。

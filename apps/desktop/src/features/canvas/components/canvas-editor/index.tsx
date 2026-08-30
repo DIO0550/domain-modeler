@@ -71,6 +71,7 @@ export function CanvasEditor({
             onResizeStart: board.beginResize,
             onPointerMove: board.movePointer,
             onPointerCommit: board.commitManipulation,
+            onPointerCancel: board.cancelManipulation,
           }}
         />
       ))}

@@ -69,7 +69,17 @@ export type StickyManipulation = Readonly<{
   onResizeStart: (corner: StickyResizeCorner, point: Point) => void;
   onPointerMove: (point: Point) => void;
   onPointerCommit: () => void;
+  onPointerCancel: () => void;
 }>;
+
+type PointerTracking =
+  | Readonly<{ status: "idle" }>
+  | Readonly<{
+      status: "pendingDrag";
+      pointerId: number;
+      origin: Point;
+    }>
+  | Readonly<{ status: "manipulating"; pointerId: number }>;
 
 type StickyStyle = CSSProperties & {
   readonly "--sticky-body-line-count": number;
@@ -89,7 +99,7 @@ export function Sticky({
 }: StickyProps) {
   const articleRef = useRef<HTMLElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
-  const activePointerIdRef = useRef<number | null>(null);
+  const pointerTrackingRef = useRef<PointerTracking>({ status: "idle" });
   const previousChromeStatusRef = useRef(chrome.status);
   const appearance = StickyAppearance.of(sticky.type);
   const lineCount = StickyAppearance.bodyLineCount(sticky.size);
@@ -103,41 +113,71 @@ export function Sticky({
     height: `${sticky.size.height}px`,
     "--sticky-body-line-count": lineCount,
   };
-  const beginManipulation = (
+  const trackPointer = (
     event: PointerEvent<HTMLElement>,
-    begin: (point: Point) => void,
-  ): void => {
+    tracking: PointerTracking,
+  ): boolean => {
     if (
       event.button !== 0 ||
+      !event.isPrimary ||
       manipulation === undefined ||
-      activePointerIdRef.current !== null
+      pointerTrackingRef.current.status !== "idle"
     ) {
-      return;
+      return false;
     }
-    activePointerIdRef.current = event.pointerId;
+    pointerTrackingRef.current = tracking;
     event.currentTarget.setPointerCapture(event.pointerId);
-    begin(pointFromPointer(event));
+    return true;
   };
   const moveManipulation = (event: PointerEvent<HTMLElement>): void => {
-    if (
-      manipulation === undefined ||
-      activePointerIdRef.current !== event.pointerId
-    ) {
+    const tracking = pointerTrackingRef.current;
+    if (manipulation === undefined || tracking.status === "idle") {
+      return;
+    }
+    if (tracking.pointerId !== event.pointerId) {
       return;
     }
     event.stopPropagation();
-    manipulation.onPointerMove(pointFromPointer(event));
+    const point = pointFromPointer(event);
+    if (tracking.status === "pendingDrag") {
+      if (!dragThresholdReached(tracking.origin, point)) {
+        return;
+      }
+      pointerTrackingRef.current = {
+        status: "manipulating",
+        pointerId: event.pointerId,
+      };
+      manipulation.onDragStart(tracking.origin);
+    }
+    manipulation.onPointerMove(point);
   };
   const commitManipulation = (event: PointerEvent<HTMLElement>): void => {
-    if (
-      manipulation === undefined ||
-      activePointerIdRef.current !== event.pointerId
-    ) {
+    const tracking = pointerTrackingRef.current;
+    if (manipulation === undefined || tracking.status === "idle") {
+      return;
+    }
+    if (tracking.pointerId !== event.pointerId) {
       return;
     }
     event.stopPropagation();
-    activePointerIdRef.current = null;
-    manipulation.onPointerCommit();
+    pointerTrackingRef.current = { status: "idle" };
+    if (tracking.status === "manipulating") {
+      manipulation.onPointerCommit();
+    }
+  };
+  const cancelManipulation = (event: PointerEvent<HTMLElement>): void => {
+    const tracking = pointerTrackingRef.current;
+    if (manipulation === undefined || tracking.status === "idle") {
+      return;
+    }
+    if (tracking.pointerId !== event.pointerId) {
+      return;
+    }
+    event.stopPropagation();
+    pointerTrackingRef.current = { status: "idle" };
+    if (tracking.status === "manipulating") {
+      manipulation.onPointerCancel();
+    }
   };
 
   useEffect(() => {
@@ -167,7 +207,7 @@ export function Sticky({
       tabIndex={0}
       style={stickyStyle}
       onFocus={(event) => {
-        if (activePointerIdRef.current !== null) {
+        if (pointerTrackingRef.current.status !== "idle") {
           return;
         }
         activateStickyFromFocus(event, onActivate);
@@ -176,11 +216,16 @@ export function Sticky({
         if (isTextEditorTarget(event.target) || manipulation === undefined) {
           return;
         }
-        beginManipulation(event, manipulation.onDragStart);
+        const origin = pointFromPointer(event);
+        trackPointer(event, {
+          status: "pendingDrag",
+          pointerId: event.pointerId,
+          origin,
+        });
       }}
       onPointerMove={moveManipulation}
       onPointerUp={commitManipulation}
-      onPointerCancel={commitManipulation}
+      onPointerCancel={cancelManipulation}
     >
       <div className={stickyFaceClassName(appearance.rotation)}>
         <span className="sticky__caption">{appearance.caption}</span>
@@ -216,13 +261,18 @@ export function Sticky({
               aria-hidden="true"
               onPointerDown={(event) => {
                 event.stopPropagation();
-                beginManipulation(event, (point) => {
-                  manipulation.onResizeStart(corner, point);
+                const point = pointFromPointer(event);
+                const tracked = trackPointer(event, {
+                  status: "manipulating",
+                  pointerId: event.pointerId,
                 });
+                if (tracked) {
+                  manipulation.onResizeStart(corner, point);
+                }
               }}
               onPointerMove={moveManipulation}
               onPointerUp={commitManipulation}
-              onPointerCancel={commitManipulation}
+              onPointerCancel={cancelManipulation}
               onClick={(event) => {
                 event.stopPropagation();
               }}
@@ -237,6 +287,25 @@ export function Sticky({
 }
 
 const resizeCorners = StickyResizeCorner.all();
+
+const DRAG_START_DISTANCE = 4;
+
+/**
+ * クリック時の微小な揺れを除外し、ドラッグ開始距離へ達したか判定する。
+ *
+ * @param origin ポインタ押下位置。
+ * @param point 現在位置。
+ * @returns ドラッグ開始距離へ達していれば true。
+ */
+const dragThresholdReached = (origin: Point, point: Point): boolean => {
+  const horizontalDistance = point.x - origin.x;
+  const verticalDistance = point.y - origin.y;
+  return (
+    horizontalDistance * horizontalDistance +
+      verticalDistance * verticalDistance >=
+    DRAG_START_DISTANCE * DRAG_START_DISTANCE
+  );
+};
 
 /**
  * 選択中またはポインタ操作中に四隅のリサイズハンドルを出す。

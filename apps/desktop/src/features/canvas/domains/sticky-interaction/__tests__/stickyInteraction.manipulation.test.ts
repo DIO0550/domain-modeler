@@ -110,6 +110,20 @@ test("最前面の付箋を動かさずに離すと履歴へ積まない", () =>
   expect(committed.workingDocument).toBe(documentWithTwoStickies);
 });
 
+test("ドラッグを取り消すと開始前の位置と重なり順へ戻して履歴へ積まない", () => {
+  const dragging = StickyInteraction.beginDrag(
+    StickyInteraction.create(documentWithTwoStickies),
+    draggedId,
+    { x: 20, y: 30 },
+  );
+  const moved = StickyInteraction.movePointer(dragging, { x: 60, y: 80 });
+  const canceled = StickyInteraction.cancelManipulation(moved);
+
+  expect(canceled.workingDocument).toBe(documentWithTwoStickies);
+  expect(canceled.session).toEqual({ status: "selected", stickyId: draggedId });
+  expect(StickyInteraction.hasUndo(canceled)).toBe(false);
+});
+
 test.each<
   readonly [
     StickyResizeCorner,
@@ -193,4 +207,23 @@ test("連続リサイズを確定するとundo 1回で開始前の矩形へ戻�
   });
   expect(stickyIn(undone.workingDocument, draggedId)).toEqual(draggedSticky);
   expect(StickyInteraction.hasUndo(undone)).toBe(false);
+});
+
+test("リサイズを取り消すと開始前の矩形へ戻して履歴へ積まない", () => {
+  const selected = StickyInteraction.select(
+    StickyInteraction.create(documentWithTwoStickies),
+    draggedId,
+  );
+  const resizing = StickyInteraction.beginResize(
+    selected,
+    STICKY_RESIZE_CORNERS.southEast,
+    { x: 0, y: 0 },
+  );
+  const moved = StickyInteraction.movePointer(resizing, { x: 30, y: 20 });
+  const canceled = StickyInteraction.cancelManipulation(moved);
+
+  expect(canceled.workingDocument).toBe(documentWithTwoStickies);
+  expect(stickyIn(canceled.workingDocument, draggedId)).toEqual(draggedSticky);
+  expect(canceled.session).toEqual({ status: "selected", stickyId: draggedId });
+  expect(StickyInteraction.hasUndo(canceled)).toBe(false);
 });

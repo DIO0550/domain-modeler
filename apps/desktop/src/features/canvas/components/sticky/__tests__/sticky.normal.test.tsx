@@ -237,6 +237,7 @@ test("選択中は四隅にリサイズハンドルを表示する", () => {
     onResizeStart: () => undefined,
     onPointerMove: () => undefined,
     onPointerCommit: () => undefined,
+    onPointerCancel: () => undefined,
   };
   const host = renderSticky(
     stickyOf("event", "注文が確定した"),
@@ -257,6 +258,7 @@ test("通常表示と本文編集中はリサイズハンドルを表示しな�
     onResizeStart: () => undefined,
     onPointerMove: () => undefined,
     onPointerCommit: () => undefined,
+    onPointerCancel: () => undefined,
   };
   const plain = renderSticky(
     stickyOf("event", "注文が確定した"),

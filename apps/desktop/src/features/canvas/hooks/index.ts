@@ -29,6 +29,7 @@ export type UseStickyInteractionsResult = Readonly<{
   beginResize: (corner: StickyResizeCorner, point: Point) => void;
   movePointer: (point: Point) => void;
   commitManipulation: () => void;
+  cancelManipulation: () => void;
   pressEnter: () => void;
   pressEscape: () => void;
   undo: () => void;
@@ -93,6 +94,9 @@ export function useStickyInteractions(
     },
     commitManipulation: () => {
       setInteraction(StickyInteraction.commitManipulation);
+    },
+    cancelManipulation: () => {
+      setInteraction(StickyInteraction.cancelManipulation);
     },
     pressEnter: () => {
       setInteraction(StickyInteraction.pressEnter);
