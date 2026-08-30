@@ -106,6 +106,7 @@ function RenderedConnection({
       {appearance.value.label.visibility === "visible" && (
         <g
           className="connection-layer__label"
+          pointerEvents="all"
           transform={`translate(${appearance.value.label.position.x} ${appearance.value.label.position.y})`}
         >
           <rect

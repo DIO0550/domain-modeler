@@ -298,6 +298,25 @@ test("接続線をクリックしても新しい付箋を作成しない", () =>
   expect(host.querySelector("textarea")).toBeNull();
 });
 
+test("接続ラベルをクリックしても新しい付箋を作成しない", () => {
+  const host = renderEditor(documentWithConnection);
+  const label = host.querySelector(".connection-layer__label");
+
+  expect(label?.getAttribute("pointer-events")).toBe("all");
+  act(() => {
+    label?.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 200,
+        clientY: 70,
+      }),
+    );
+  });
+
+  expect(host.querySelectorAll("article")).toHaveLength(2);
+  expect(host.querySelector("textarea")).toBeNull();
+});
+
 test("既存の付箋をクリックすると選択する", () => {
   const host = renderEditor({
     ...Document.empty(),
