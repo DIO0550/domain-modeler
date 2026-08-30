@@ -1,4 +1,4 @@
-import type { StickyType } from "./sticky";
+import { STICKY_TYPES, type StickyType } from "./sticky";
 
 /** 接続のソフト警告判定結果。問題なしまたは警告。 */
 export type ConnectionStatus = "ok" | "warning";
@@ -34,5 +34,20 @@ export const ConnectionStatus = {
       return "ok";
     }
     return ALLOWED_PAIR_KEYS.has(`${from}->${to}`) ? "ok" : "warning";
+  },
+
+  /**
+   * 始点の種別から推奨される接続先種別を返す。
+   * hotspot はどの種別にも接続できるため、全種別を返す。
+   * @param from 始点の付箋種別。
+   * @returns 推奨される接続先種別。
+   */
+  recommendedTargets: (from: StickyType): readonly StickyType[] => {
+    if (from === STICKY_TYPES.hotspot) {
+      return Object.values(STICKY_TYPES);
+    }
+    return ALLOWED_PAIRS.filter(([allowedFrom]) => allowedFrom === from).map(
+      ([, to]) => to,
+    );
   },
 };

@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vitest";
 import {
+  ConnectionId,
   Document,
   Sticky as StickyModel,
   StickyId,
@@ -58,6 +59,21 @@ const frontSticky = StickyModel.create(
 const documentWithTwoStickies = {
   ...existingStickyDocument,
   stickies: [...existingStickyDocument.stickies, frontSticky],
+};
+
+const documentWithConnection = {
+  ...documentWithTwoStickies,
+  connections: [
+    {
+      id: ConnectionId.create("con_existing000"),
+      from: StickyId.create("stk_existing000"),
+      to: frontSticky.id,
+      fromAnchor: "right" as const,
+      toAnchor: "left" as const,
+      label: "通知",
+      note: "",
+    },
+  ],
 };
 
 /**
@@ -608,4 +624,18 @@ test("選択中の南東ハンドルをドラッグすると付箋をリサイ�
 
   expect(articleOf(host).style.width).toBe("190px");
   expect(articleOf(host).style.height).toBe("130px");
+});
+
+test("初期文書の接続は付箋と同じキャンバス面に描画する", () => {
+  const host = renderEditor(documentWithConnection);
+  const surface = host.querySelector(".canvas-surface");
+  const connection = surface?.querySelector(
+    '[data-connection-id="con_existing000"]',
+  );
+
+  expect(connection?.querySelector(".connection-layer__path")).not.toBeNull();
+  expect(
+    connection?.querySelector(".connection-layer__label")?.textContent,
+  ).toBe("通知");
+  expect(surface?.querySelectorAll("article")).toHaveLength(2);
 });

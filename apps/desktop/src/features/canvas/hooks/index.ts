@@ -14,6 +14,7 @@ import {
 
 /** 付箋の作成・選択・編集操作。 */
 export type UseStickyInteractionsResult = Readonly<{
+  document: Document;
   selectedType: StickyType;
   session: StickySession;
   stickies: readonly Sticky[];
@@ -50,6 +51,7 @@ export function useStickyInteractions(
   );
 
   return {
+    document: interaction.workingDocument,
     selectedType: interaction.selectedType,
     session: interaction.session,
     stickies: interaction.workingDocument.stickies,

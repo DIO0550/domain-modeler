@@ -47,6 +47,10 @@
   --sticky-caption: #52525b;
   --sticky-shadow: 0 1px 1px rgb(24 24 27 / 10%), 0 6px 14px rgb(24 24 27 / 10%);
   --sticky-selected-ring: #2563eb;
+  --connection-line: #52525b;
+  --connection-warning: #d97706;
+  --connection-label-bg: #fafafa;
+  --connection-label-text: #27272a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -84,6 +88,10 @@
     --sticky-caption: #52525b;
     --sticky-shadow: 0 1px 1px rgb(0 0 0 / 24%), 0 8px 18px rgb(0 0 0 / 28%);
     --sticky-selected-ring: #60a5fa;
+    --connection-line: #d4d4d8;
+    --connection-warning: #fbbf24;
+    --connection-label-bg: #27272a;
+    --connection-label-text: #f4f4f5;
   }
 }
 
@@ -442,6 +450,48 @@ body,
   display: none;
 }
 
+.connection-layer {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.connection-layer__path {
+  fill: none;
+  pointer-events: stroke;
+  stroke: var(--connection-line);
+  stroke-linecap: round;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.connection-layer__connection[data-connection-status="warning"]
+  .connection-layer__path {
+  stroke: var(--connection-warning);
+  stroke-dasharray: 7 6;
+}
+
+.connection-layer__arrow {
+  fill: var(--connection-line);
+}
+
+.connection-layer__arrow--warning {
+  fill: var(--connection-warning);
+}
+
+.connection-layer__label rect {
+  fill: var(--connection-label-bg);
+  stroke: color-mix(in srgb, var(--connection-line) 24%, transparent);
+}
+
+.connection-layer__label text {
+  fill: var(--connection-label-text);
+  font: 600 12px/1.2 Inter, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  pointer-events: none;
+}
+
 .canvas-status {
   display: flex;
   flex: 0 0 auto;
@@ -485,6 +535,7 @@ body,
 
 .sticky {
   position: absolute;
+  z-index: 1;
   box-sizing: border-box;
   cursor: grab;
   touch-action: none;

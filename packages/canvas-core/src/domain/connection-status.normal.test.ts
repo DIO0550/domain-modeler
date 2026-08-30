@@ -19,6 +19,26 @@ test.each([
   },
 );
 
+test("Command から推奨される接続先は Aggregate と External System になる", () => {
+  expect(ConnectionStatus.recommendedTargets("command")).toEqual([
+    "aggregate",
+    "externalSystem",
+  ]);
+});
+
+test("Hotspot からはすべての付箋種別へ接続できる", () => {
+  expect(ConnectionStatus.recommendedTargets("hotspot")).toEqual([
+    "event",
+    "actor",
+    "command",
+    "policy",
+    "aggregate",
+    "readModel",
+    "externalSystem",
+    "hotspot",
+  ]);
+});
+
 test.each([
   { from: "actor" as const, to: "event" as const },
   { from: "actor" as const, to: "aggregate" as const },
