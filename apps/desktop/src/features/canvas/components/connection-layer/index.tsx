@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import type { Connection, Document } from "@domain-modeler/canvas-core";
 import { ConnectionAppearance } from "../../domains/connection-appearance";
 
@@ -63,6 +64,11 @@ type RenderedConnectionProps = Readonly<{
   connection: Connection;
 }>;
 
+/** 接続線の操作をキャンバス背景の操作へ伝播させない。 */
+const stopConnectionEvent = (event: MouseEvent<SVGGElement>): void => {
+  event.stopPropagation();
+};
+
 /**
  * 解決できた接続1本を描画する。
  *
@@ -88,6 +94,8 @@ function RenderedConnection({
       data-connection-id={connection.id}
       data-connection-status={appearance.value.status}
       data-connection-shape={appearance.value.route.shape}
+      onClick={stopConnectionEvent}
+      onDoubleClick={stopConnectionEvent}
     >
       <title>{appearance.value.tooltip}</title>
       <path

@@ -86,3 +86,52 @@ test("SVG経路の座標は小数第3位に丸める", () => {
 
   expect(route.path).toBe("M 1.235 2.346 L 3.457 4.568");
 });
+
+test("曲線上の座標は接続線の許容距離内になる", () => {
+  const document = setupDocument();
+  const connection = Connection.create(
+    ConnectionId.create("con_curve_hit"),
+    fromId,
+    toId,
+    "",
+    "",
+    "bottom",
+    "top",
+  );
+  const segment = ConnectionSegment.create(document, connection);
+
+  expect(segment.some).toBe(true);
+  if (!segment.some) {
+    return;
+  }
+  expect(
+    ConnectionSegment.contains(
+      segment.value,
+      { x: 120.625, y: 136.89046875 },
+      8,
+    ),
+  ).toBe(true);
+});
+
+test("曲線から離れた始点と終点を結ぶ直線上の座標は許容距離外になる", () => {
+  const document = setupDocument();
+  const connection = Connection.create(
+    ConnectionId.create("con_curve_chord"),
+    fromId,
+    toId,
+    "",
+    "",
+    "bottom",
+    "top",
+  );
+  const segment = ConnectionSegment.create(document, connection);
+
+  expect(segment.some).toBe(true);
+  if (!segment.some) {
+    return;
+  }
+
+  expect(
+    ConnectionSegment.contains(segment.value, { x: 145, y: 97.5 }, 8),
+  ).toBe(false);
+});

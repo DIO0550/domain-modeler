@@ -1,7 +1,7 @@
 import type { Connection } from "./connection";
 import type { Document } from "./document";
 import { type Option, Option as OptionValue } from "./option";
-import { type Point, Sticky } from "./sticky";
+import { Point, Sticky } from "./sticky";
 import { NumberEx } from "../utils/NumberEx";
 
 /** ほぼ水平・垂直とみなすワールド座標上のずれ。 */
@@ -9,6 +9,8 @@ const STRAIGHT_ALIGNMENT_TOLERANCE = 4;
 /** ベジェ曲線が付箋の辺から離れる最小・最大距離。 */
 const MINIMUM_CONTROL_DISTANCE = 40;
 const MAXIMUM_CONTROL_DISTANCE = 140;
+/** 当たり判定用に三次ベジェ曲線を分割する数。 */
+const CURVE_DISTANCE_SEGMENTS = 32;
 /** SVG path の座標に残す小数桁数。 */
 const SVG_COORDINATE_DECIMAL_PLACES = 3;
 
@@ -101,6 +103,20 @@ export const ConnectionSegment = {
    * @returns SVGの曲線経路と曲線上の中点。
    */
   toCurveRoute: (segment: ConnectionSegment) => {
+    const { firstControl, secondControl } =
+      ConnectionSegment.curveControlPoints(segment);
+    return {
+      shape: "curve" as const,
+      path: `M ${NumberEx.round(segment.from.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(segment.from.y, SVG_COORDINATE_DECIMAL_PLACES)} C ${NumberEx.round(firstControl.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(firstControl.y, SVG_COORDINATE_DECIMAL_PLACES)}, ${NumberEx.round(secondControl.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(secondControl.y, SVG_COORDINATE_DECIMAL_PLACES)}, ${NumberEx.round(segment.to.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(segment.to.y, SVG_COORDINATE_DECIMAL_PLACES)}`,
+      midpoint: ConnectionSegment.curvePointAt(segment, 0.5),
+    };
+  },
+  /**
+   * 三次ベジェ曲線の制御点を取得する。
+   * @param segment 制御点を求める接続線。
+   * @returns 始点側と終点側の制御点。
+   */
+  curveControlPoints: (segment: ConnectionSegment) => {
     const endpointDistance = Math.hypot(
       segment.to.x - segment.from.x,
       segment.to.y - segment.from.y,
@@ -109,32 +125,38 @@ export const ConnectionSegment = {
       MINIMUM_CONTROL_DISTANCE,
       Math.min(MAXIMUM_CONTROL_DISTANCE, endpointDistance * 0.4),
     );
-    const firstControl = {
-      x: segment.from.x + segment.fromOutwardNormal.x * controlDistance,
-      y: segment.from.y + segment.fromOutwardNormal.y * controlDistance,
-    };
-    const secondControl = {
-      x: segment.to.x + segment.toOutwardNormal.x * controlDistance,
-      y: segment.to.y + segment.toOutwardNormal.y * controlDistance,
-    };
-    const midpoint = {
-      x:
-        (segment.from.x +
-          3 * firstControl.x +
-          3 * secondControl.x +
-          segment.to.x) /
-        8,
-      y:
-        (segment.from.y +
-          3 * firstControl.y +
-          3 * secondControl.y +
-          segment.to.y) /
-        8,
-    };
     return {
-      shape: "curve" as const,
-      path: `M ${NumberEx.round(segment.from.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(segment.from.y, SVG_COORDINATE_DECIMAL_PLACES)} C ${NumberEx.round(firstControl.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(firstControl.y, SVG_COORDINATE_DECIMAL_PLACES)}, ${NumberEx.round(secondControl.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(secondControl.y, SVG_COORDINATE_DECIMAL_PLACES)}, ${NumberEx.round(segment.to.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(segment.to.y, SVG_COORDINATE_DECIMAL_PLACES)}`,
-      midpoint,
+      firstControl: {
+        x: segment.from.x + segment.fromOutwardNormal.x * controlDistance,
+        y: segment.from.y + segment.fromOutwardNormal.y * controlDistance,
+      },
+      secondControl: {
+        x: segment.to.x + segment.toOutwardNormal.x * controlDistance,
+        y: segment.to.y + segment.toOutwardNormal.y * controlDistance,
+      },
+    };
+  },
+  /**
+   * 三次ベジェ曲線上の座標を取得する。
+   * @param segment 座標を求める接続線。
+   * @param progress 始点を0、終点を1とする曲線上の位置。
+   * @returns 指定位置の座標。
+   */
+  curvePointAt: (segment: ConnectionSegment, progress: number): Point => {
+    const { firstControl, secondControl } =
+      ConnectionSegment.curveControlPoints(segment);
+    const remaining = 1 - progress;
+    return {
+      x:
+        remaining ** 3 * segment.from.x +
+        3 * remaining ** 2 * progress * firstControl.x +
+        3 * remaining * progress ** 2 * secondControl.x +
+        progress ** 3 * segment.to.x,
+      y:
+        remaining ** 3 * segment.from.y +
+        3 * remaining ** 2 * progress * firstControl.y +
+        3 * remaining * progress ** 2 * secondControl.y +
+        progress ** 3 * segment.to.y,
     };
   },
   /**
@@ -165,26 +187,24 @@ export const ConnectionSegment = {
    * @returns 点と接続線の最短距離。
    */
   distanceFrom: (segment: ConnectionSegment, point: Point): number => {
-    const vector = {
-      x: segment.to.x - segment.from.x,
-      y: segment.to.y - segment.from.y,
-    };
-    const squaredLength = vector.x ** 2 + vector.y ** 2;
-    if (squaredLength === 0) {
-      return Math.hypot(point.x - segment.from.x, point.y - segment.from.y);
+    if (ConnectionSegment.isStraightRoute(segment)) {
+      return Point.distanceFromSegment(point, segment);
     }
-    const projection = Math.min(
-      1,
-      Math.max(
-        0,
-        ((point.x - segment.from.x) * vector.x +
-          (point.y - segment.from.y) * vector.y) /
-          squaredLength,
-      ),
+    const curvePoints = Array.from(
+      { length: CURVE_DISTANCE_SEGMENTS + 1 },
+      (_, index) =>
+        ConnectionSegment.curvePointAt(
+          segment,
+          index / CURVE_DISTANCE_SEGMENTS,
+        ),
     );
-    return Math.hypot(
-      point.x - (segment.from.x + projection * vector.x),
-      point.y - (segment.from.y + projection * vector.y),
+    return Math.min(
+      ...curvePoints.slice(1).map((to, index) =>
+        Point.distanceFromSegment(point, {
+          from: curvePoints[index] ?? segment.from,
+          to,
+        }),
+      ),
     );
   },
 };

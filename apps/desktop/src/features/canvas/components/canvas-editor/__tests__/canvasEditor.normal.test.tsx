@@ -280,6 +280,24 @@ test("パレットの種別を選んで空白をクリックするとその種�
   expect(host.querySelector("textarea")).not.toBeNull();
 });
 
+test("接続線をクリックしても新しい付箋を作成しない", () => {
+  const host = renderEditor(documentWithConnection);
+  const path = host.querySelector(".connection-layer__path");
+
+  act(() => {
+    path?.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 200,
+        clientY: 70,
+      }),
+    );
+  });
+
+  expect(host.querySelectorAll("article")).toHaveLength(2);
+  expect(host.querySelector("textarea")).toBeNull();
+});
+
 test("既存の付箋をクリックすると選択する", () => {
   const host = renderEditor({
     ...Document.empty(),
