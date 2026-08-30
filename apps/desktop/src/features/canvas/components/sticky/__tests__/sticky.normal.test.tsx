@@ -7,7 +7,11 @@ import {
   type StickyType,
 } from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../../../domains/sticky-appearance";
-import { Sticky, type StickyChrome } from "../index";
+import {
+  Sticky,
+  type StickyChrome,
+  type StickyManipulation,
+} from "../index";
 
 type RenderedSticky = Readonly<{
   host: HTMLDivElement;
@@ -32,13 +36,20 @@ afterEach(() => {
 const renderSticky = (
   sticky: StickyModel,
   chrome?: StickyChrome,
+  manipulation?: StickyManipulation,
 ): HTMLDivElement => {
   const host = document.createElement("div");
   document.body.append(host);
   const root: Root = createRoot(host);
 
   act(() => {
-    root.render(<Sticky sticky={sticky} chrome={chrome} />);
+    root.render(
+      <Sticky
+        sticky={sticky}
+        chrome={chrome}
+        manipulation={manipulation}
+      />,
+    );
   });
 
   rendered.push({
@@ -218,4 +229,53 @@ test("編集中は下書き本文を textarea に出す", () => {
   expect(
     host.querySelector("article")?.getAttribute("data-sticky-session"),
   ).toBe("editing");
+});
+
+test("選択中は四隅にリサイズハンドルを表示する", () => {
+  const manipulation: StickyManipulation = {
+    onDragStart: () => undefined,
+    onResizeStart: () => undefined,
+    onPointerMove: () => undefined,
+    onPointerCommit: () => undefined,
+    onPointerCancel: () => undefined,
+  };
+  const host = renderSticky(
+    stickyOf("event", "注文が確定した"),
+    { status: "selected" },
+    manipulation,
+  );
+
+  expect(
+    Array.from(host.querySelectorAll(".sticky__resize-handle")).map((handle) =>
+      handle.getAttribute("data-resize-corner"),
+    ),
+  ).toEqual(["northWest", "northEast", "southEast", "southWest"]);
+});
+
+test("通常表示と本文編集中はリサイズハンドルを表示しない", () => {
+  const manipulation: StickyManipulation = {
+    onDragStart: () => undefined,
+    onResizeStart: () => undefined,
+    onPointerMove: () => undefined,
+    onPointerCommit: () => undefined,
+    onPointerCancel: () => undefined,
+  };
+  const plain = renderSticky(
+    stickyOf("event", "注文が確定した"),
+    { status: "plain" },
+    manipulation,
+  );
+  const editing = renderSticky(
+    stickyOf("command", "注文を確定する"),
+    {
+      status: "editing",
+      draftText: "注文を確定する",
+      onDraftChange: () => undefined,
+      onCommit: () => undefined,
+    },
+    manipulation,
+  );
+
+  expect(plain.querySelector(".sticky__resize-handle")).toBeNull();
+  expect(editing.querySelector(".sticky__resize-handle")).toBeNull();
 });

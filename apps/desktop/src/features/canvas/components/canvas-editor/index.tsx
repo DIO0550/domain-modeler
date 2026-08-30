@@ -64,6 +64,15 @@ export function CanvasEditor({
           onActivate={() => {
             board.select(sticky.id);
           }}
+          manipulation={{
+            onDragStart: (point) => {
+              board.beginDrag(sticky.id, point);
+            },
+            onResizeStart: board.beginResize,
+            onPointerMove: board.movePointer,
+            onPointerCommit: board.commitManipulation,
+            onPointerCancel: board.cancelManipulation,
+          }}
         />
       ))}
     </CanvasView>

@@ -486,7 +486,17 @@ body,
 .sticky {
   position: absolute;
   box-sizing: border-box;
+  cursor: grab;
+  touch-action: none;
   user-select: none;
+}
+
+.sticky[data-sticky-session="dragging"] {
+  cursor: grabbing;
+}
+
+.sticky[data-sticky-session="editing"] {
+  cursor: text;
 }
 
 .sticky--selected {
@@ -598,6 +608,42 @@ body,
 
 .sticky__editor:focus {
   outline: none;
+}
+
+.sticky__resize-handle {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--sticky-selected-ring);
+  border-radius: 3px;
+  background: var(--canvas-surface-bg);
+  touch-action: none;
+}
+
+.sticky__resize-handle[data-resize-corner="northWest"] {
+  top: -7px;
+  left: -7px;
+  cursor: nwse-resize;
+}
+
+.sticky__resize-handle[data-resize-corner="northEast"] {
+  top: -7px;
+  right: -7px;
+  cursor: nesw-resize;
+}
+
+.sticky__resize-handle[data-resize-corner="southEast"] {
+  right: -7px;
+  bottom: -7px;
+  cursor: nwse-resize;
+}
+
+.sticky__resize-handle[data-resize-corner="southWest"] {
+  bottom: -7px;
+  left: -7px;
+  cursor: nesw-resize;
 }
 
 .canvas-surface:focus {

@@ -8,6 +8,7 @@ import type {
 } from "@domain-modeler/canvas-core";
 import {
   StickyInteraction,
+  type StickyResizeCorner,
   type StickySession,
 } from "../domains/sticky-interaction";
 
@@ -24,6 +25,11 @@ export type UseStickyInteractionsResult = Readonly<{
   doubleClickAt: (point: Point) => void;
   changeDraft: (draftText: string) => void;
   commitEdit: () => void;
+  beginDrag: (stickyId: StickyId, point: Point) => void;
+  beginResize: (corner: StickyResizeCorner, point: Point) => void;
+  movePointer: (point: Point) => void;
+  commitManipulation: () => void;
+  cancelManipulation: () => void;
   pressEnter: () => void;
   pressEscape: () => void;
   undo: () => void;
@@ -70,6 +76,27 @@ export function useStickyInteractions(
     },
     commitEdit: () => {
       setInteraction(StickyInteraction.commitEdit);
+    },
+    beginDrag: (stickyId, point) => {
+      setInteraction((current) =>
+        StickyInteraction.beginDrag(current, stickyId, point),
+      );
+    },
+    beginResize: (corner, point) => {
+      setInteraction((current) =>
+        StickyInteraction.beginResize(current, corner, point),
+      );
+    },
+    movePointer: (point) => {
+      setInteraction((current) =>
+        StickyInteraction.movePointer(current, point),
+      );
+    },
+    commitManipulation: () => {
+      setInteraction(StickyInteraction.commitManipulation);
+    },
+    cancelManipulation: () => {
+      setInteraction(StickyInteraction.cancelManipulation);
     },
     pressEnter: () => {
       setInteraction(StickyInteraction.pressEnter);

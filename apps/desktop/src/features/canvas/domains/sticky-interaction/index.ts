@@ -3,6 +3,7 @@ import {
   History,
   type Point,
   ReplaceDocumentCommand,
+  type Size,
   STICKY_TYPES,
   type Sticky,
   type StickyId,
@@ -10,7 +11,34 @@ import {
 } from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../sticky-appearance";
 
-/** 付箋の選択と本文編集の状態。編集中は下書き本文を持つ。 */
+/** 四隅にあるリサイズハンドル。 */
+export const STICKY_RESIZE_CORNERS = {
+  northWest: "northWest",
+  northEast: "northEast",
+  southEast: "southEast",
+  southWest: "southWest",
+} as const;
+
+/** 四隅にあるリサイズハンドルの位置。 */
+export type StickyResizeCorner =
+  (typeof STICKY_RESIZE_CORNERS)[keyof typeof STICKY_RESIZE_CORNERS];
+
+/** 四隅のリサイズハンドルを列挙する関数群。 */
+export const StickyResizeCorner = {
+  /**
+   * 描画順に四隅を返す。
+   *
+   * @returns 北西、北東、南東、南西のリサイズハンドル。
+   */
+  all: (): readonly StickyResizeCorner[] => [
+    STICKY_RESIZE_CORNERS.northWest,
+    STICKY_RESIZE_CORNERS.northEast,
+    STICKY_RESIZE_CORNERS.southEast,
+    STICKY_RESIZE_CORNERS.southWest,
+  ],
+} as const;
+
+/** 付箋の選択、本文編集、ドラッグ、リサイズの状態。 */
 export type StickySession =
   | Readonly<{ status: "idle" }>
   | Readonly<{ status: "selected"; stickyId: StickyId }>
@@ -19,13 +47,26 @@ export type StickySession =
       stickyId: StickyId;
       draftText: string;
       originalText: string;
+    }>
+  | Readonly<{
+      status: "dragging";
+      originalSticky: Sticky;
+      pointerOrigin: Point;
+    }>
+  | Readonly<{
+      status: "resizing";
+      originalSticky: Sticky;
+      pointerOrigin: Point;
+      corner: StickyResizeCorner;
     }>;
 
-/** 1枚の付箋に出す選択枠または本文編集。操作ハンドラは持たない。 */
+/** 1枚の付箋に出す選択枠、本文編集、ポインタ操作。操作ハンドラは持たない。 */
 export type StickyChromeView =
   | Readonly<{ status: "plain" }>
   | Readonly<{ status: "selected" }>
-  | Readonly<{ status: "editing"; draftText: string }>;
+  | Readonly<{ status: "editing"; draftText: string }>
+  | Readonly<{ status: "dragging" }>
+  | Readonly<{ status: "resizing" }>;
 
 /** `StickySession` から1枚の付箋の表示を導く関数群。 */
 export const StickySession = {
@@ -37,15 +78,34 @@ export const StickySession = {
    * @returns その付箋の表示。対象でなければ通常表示。
    */
   chromeOf(session: StickySession, stickyId: StickyId): StickyChromeView {
-    if (session.status === "idle" || session.stickyId !== stickyId) {
+    if (session.status === "idle") {
+      return { status: "plain" };
+    }
+    if (
+      (session.status === "dragging" || session.status === "resizing") &&
+      session.originalSticky.id !== stickyId
+    ) {
+      return { status: "plain" };
+    }
+    if (
+      session.status !== "dragging" &&
+      session.status !== "resizing" &&
+      session.stickyId !== stickyId
+    ) {
       return { status: "plain" };
     }
     if (session.status === "selected") {
       return { status: "selected" };
     }
-    return { status: "editing", draftText: session.draftText };
+    if (session.status === "editing") {
+      return { status: "editing", draftText: session.draftText };
+    }
+    return { status: session.status };
   },
 } as const;
+
+/** 付箋を縮められる最小サイズ。 */
+const MINIMUM_STICKY_SIZE = { width: 60, height: 40 } as const;
 
 /** キャンバス上の付箋作成・選択・編集と、その履歴。 */
 export type StickyInteraction = Readonly<{
@@ -95,7 +155,7 @@ export const StickyInteraction = {
    * @returns 選択または作成後の操作状態。
    */
   clickAt(interaction: StickyInteraction, point: Point): StickyInteraction {
-    const committed = StickyInteraction.commitEdit(interaction);
+    const committed = commitSession(interaction);
     const hit = Document.stickyAt(committed.workingDocument, point);
     if (hit.some) {
       return {
@@ -117,7 +177,7 @@ export const StickyInteraction = {
     interaction: StickyInteraction,
     stickyId: StickyId,
   ): StickyInteraction {
-    const committed = StickyInteraction.commitEdit(interaction);
+    const committed = commitSession(interaction);
     const sticky = Document.stickyById(committed.workingDocument, stickyId);
     if (!sticky.some) {
       return committed;
@@ -140,7 +200,7 @@ export const StickyInteraction = {
     interaction: StickyInteraction,
     point: Point,
   ): StickyInteraction {
-    const committed = StickyInteraction.commitEdit(interaction);
+    const committed = commitSession(interaction);
     const hit = Document.stickyAt(committed.workingDocument, point);
     if (!hit.some) {
       return committed;
@@ -170,6 +230,173 @@ export const StickyInteraction = {
         draftText,
       ),
       session: { ...interaction.session, draftText },
+    };
+  },
+
+  /**
+   * 付箋のドラッグを始める。開始時に対象を最前面へ移す。
+   *
+   * @param interaction 開始前の操作状態。
+   * @param stickyId ドラッグする付箋 ID。
+   * @param pointerOrigin ドラッグ開始時のポインタ座標。
+   * @returns ドラッグ中の操作状態。付箋が無ければ入力を返す。
+   */
+  beginDrag(
+    interaction: StickyInteraction,
+    stickyId: StickyId,
+    pointerOrigin: Point,
+  ): StickyInteraction {
+    const committed = commitSession(interaction);
+    const sticky = Document.stickyById(committed.workingDocument, stickyId);
+    if (!sticky.some) {
+      return committed;
+    }
+    return {
+      ...committed,
+      workingDocument: Document.bringStickyToFront(
+        committed.workingDocument,
+        stickyId,
+      ),
+      session: {
+        status: "dragging",
+        originalSticky: sticky.value,
+        pointerOrigin,
+      },
+    };
+  },
+
+  /**
+   * 選択中の付箋のリサイズを始める。
+   *
+   * @param interaction 開始前の操作状態。
+   * @param corner 操作する四隅のハンドル。
+   * @param pointerOrigin リサイズ開始時のポインタ座標。
+   * @returns リサイズ中の操作状態。選択中でなければ入力を返す。
+   */
+  beginResize(
+    interaction: StickyInteraction,
+    corner: StickyResizeCorner,
+    pointerOrigin: Point,
+  ): StickyInteraction {
+    if (interaction.session.status !== "selected") {
+      return interaction;
+    }
+    const sticky = Document.stickyById(
+      interaction.workingDocument,
+      interaction.session.stickyId,
+    );
+    if (!sticky.some) {
+      return { ...interaction, session: { status: "idle" } };
+    }
+    return {
+      ...interaction,
+      session: {
+        status: "resizing",
+        originalSticky: sticky.value,
+        pointerOrigin,
+        corner,
+      },
+    };
+  },
+
+  /**
+   * ドラッグまたはリサイズ中の付箋を、現在のポインタ座標へ追従させる。
+   * 中間状態は履歴へ積まない。
+   *
+   * @param interaction ポインタ移動前の操作状態。
+   * @param point 現在のポインタ座標。
+   * @returns 中間文書を更新した操作状態。連続操作中でなければ入力を返す。
+   */
+  movePointer(
+    interaction: StickyInteraction,
+    point: Point,
+  ): StickyInteraction {
+    if (interaction.session.status === "dragging") {
+      const position = draggedPosition(interaction.session, point);
+      return {
+        ...interaction,
+        workingDocument: Document.moveSticky(
+          interaction.workingDocument,
+          interaction.session.originalSticky.id,
+          position,
+        ),
+      };
+    }
+    if (interaction.session.status !== "resizing") {
+      return interaction;
+    }
+    const rectangle = resizedRectangle(interaction.session, point);
+    const moved = Document.moveSticky(
+      interaction.workingDocument,
+      interaction.session.originalSticky.id,
+      rectangle.position,
+    );
+    const resized = Document.resizeSticky(
+      moved,
+      interaction.session.originalSticky.id,
+      rectangle.size,
+    );
+    return resized.ok
+      ? { ...interaction, workingDocument: resized.value }
+      : interaction;
+  },
+
+  /**
+   * ドラッグまたはリサイズを確定する。中間状態が変化していれば履歴へ1エントリ積む。
+   *
+   * @param interaction 確定前の操作状態。
+   * @returns 選択中へ戻した操作状態。連続操作中でなければ入力を返す。
+   */
+  commitManipulation(interaction: StickyInteraction): StickyInteraction {
+    if (
+      interaction.session.status !== "dragging" &&
+      interaction.session.status !== "resizing"
+    ) {
+      return interaction;
+    }
+    const selected: StickyInteraction = {
+      ...interaction,
+      session: {
+        status: "selected",
+        stickyId: interaction.session.originalSticky.id,
+      },
+    };
+    if (!hasManipulationChange(interaction)) {
+      return {
+        ...selected,
+        workingDocument: interaction.history.current,
+      };
+    }
+    const history = History.execute(
+      interaction.history,
+      ReplaceDocumentCommand.create({
+        previous: interaction.history.current,
+        next: interaction.workingDocument,
+      }),
+    );
+    return { ...selected, history, workingDocument: history.current };
+  },
+
+  /**
+   * ドラッグまたはリサイズを取り消し、操作開始前の文書へ戻す。
+   *
+   * @param interaction 取り消し前の操作状態。
+   * @returns 選択中へ戻した操作状態。連続操作中でなければ入力を返す。
+   */
+  cancelManipulation(interaction: StickyInteraction): StickyInteraction {
+    if (
+      interaction.session.status !== "dragging" &&
+      interaction.session.status !== "resizing"
+    ) {
+      return interaction;
+    }
+    return {
+      ...interaction,
+      workingDocument: interaction.history.current,
+      session: {
+        status: "selected",
+        stickyId: interaction.session.originalSticky.id,
+      },
     };
   },
 
@@ -240,6 +467,12 @@ export const StickyInteraction = {
     if (interaction.session.status === "editing") {
       return StickyInteraction.commitEdit(interaction);
     }
+    if (
+      interaction.session.status === "dragging" ||
+      interaction.session.status === "resizing"
+    ) {
+      return StickyInteraction.commitManipulation(interaction);
+    }
     if (interaction.session.status === "selected") {
       return { ...interaction, session: { status: "idle" } };
     }
@@ -253,7 +486,7 @@ export const StickyInteraction = {
    * @returns 取り消し後の操作状態。取り消す操作が無ければ確定後の状態。
    */
   undo(interaction: StickyInteraction): StickyInteraction {
-    const committed = StickyInteraction.commitEdit(interaction);
+    const committed = commitSession(interaction);
     const undone = History.undo(committed.history);
     if (!undone.some) {
       return committed;
@@ -268,7 +501,7 @@ export const StickyInteraction = {
    * @returns やり直し後の操作状態。やり直す操作が無ければ確定後の状態。
    */
   redo(interaction: StickyInteraction): StickyInteraction {
-    const committed = StickyInteraction.commitEdit(interaction);
+    const committed = commitSession(interaction);
     const redone = History.redo(committed.history);
     if (!redone.some) {
       return committed;
@@ -364,6 +597,121 @@ const startEditing = (
 });
 
 /**
+ * ドラッグ開始位置から現在位置までの差分を、開始時の付箋位置へ加える。
+ *
+ * @param session ドラッグ開始時の付箋とポインタ。
+ * @param point 現在のポインタ座標。
+ * @returns 現在の付箋位置。
+ */
+const draggedPosition = (
+  session: Extract<StickySession, { status: "dragging" }>,
+  point: Point,
+): Point => ({
+  x:
+    session.originalSticky.position.x +
+    point.x -
+    session.pointerOrigin.x,
+  y:
+    session.originalSticky.position.y +
+    point.y -
+    session.pointerOrigin.y,
+});
+
+/**
+ * 操作した四隅をポインタへ追従させ、反対側の二辺を固定した矩形を返す。
+ *
+ * @param session リサイズ開始時の付箋、ポインタ、四隅。
+ * @param point 現在のポインタ座標。
+ * @returns 最小サイズを満たす付箋矩形。
+ */
+const resizedRectangle = (
+  session: Extract<StickySession, { status: "resizing" }>,
+  point: Point,
+): Readonly<{ position: Point; size: Size }> => {
+  const horizontalDelta = point.x - session.pointerOrigin.x;
+  const verticalDelta = point.y - session.pointerOrigin.y;
+  const movesWest =
+    session.corner === STICKY_RESIZE_CORNERS.northWest ||
+    session.corner === STICKY_RESIZE_CORNERS.southWest;
+  const movesNorth =
+    session.corner === STICKY_RESIZE_CORNERS.northWest ||
+    session.corner === STICKY_RESIZE_CORNERS.northEast;
+  const width = Math.max(
+    MINIMUM_STICKY_SIZE.width,
+    session.originalSticky.size.width +
+      (movesWest ? -horizontalDelta : horizontalDelta),
+  );
+  const height = Math.max(
+    MINIMUM_STICKY_SIZE.height,
+    session.originalSticky.size.height +
+      (movesNorth ? -verticalDelta : verticalDelta),
+  );
+  return {
+    position: {
+      x: movesWest
+        ? session.originalSticky.position.x +
+          session.originalSticky.size.width -
+          width
+        : session.originalSticky.position.x,
+      y: movesNorth
+        ? session.originalSticky.position.y +
+          session.originalSticky.size.height -
+          height
+        : session.originalSticky.position.y,
+    },
+    size: { width, height },
+  };
+};
+
+/**
+ * ドラッグまたはリサイズの確定対象に、開始時からの変更があるか判定する。
+ *
+ * @param interaction 確定前の操作状態。
+ * @returns 位置、サイズ、前面順のいずれかが変わっていれば true。
+ */
+const hasManipulationChange = (interaction: StickyInteraction): boolean => {
+  if (
+    interaction.session.status !== "dragging" &&
+    interaction.session.status !== "resizing"
+  ) {
+    return false;
+  }
+  const original = interaction.session.originalSticky;
+  const current = Document.stickyById(interaction.workingDocument, original.id);
+  if (!current.some) {
+    return false;
+  }
+  const positionChanged =
+    current.value.position.x !== original.position.x ||
+    current.value.position.y !== original.position.y;
+  const sizeChanged =
+    current.value.size.width !== original.size.width ||
+    current.value.size.height !== original.size.height;
+  if (interaction.session.status === "resizing") {
+    return positionChanged || sizeChanged;
+  }
+  const originalFront =
+    interaction.history.current.stickies[
+      interaction.history.current.stickies.length - 1
+    ];
+  const movedToFront = originalFront?.id !== original.id;
+  return positionChanged || movedToFront;
+};
+
+/**
+ * 編集、ドラッグ、リサイズの中間文書を履歴へ確定する。
+ *
+ * @param interaction 確定前の操作状態。
+ * @returns 確定後の操作状態。中間操作がなければ入力を返す。
+ */
+const commitSession = (interaction: StickyInteraction): StickyInteraction => {
+  if (interaction.session.status === "editing") {
+    return StickyInteraction.commitEdit(interaction);
+  }
+  return StickyInteraction.commitManipulation(interaction);
+};
+
+/**
  * 履歴の現在文書へ合わせ、消えた付箋の選択を解除する。
  *
  * @param interaction 履歴を差し替える前の操作状態。
@@ -394,12 +742,16 @@ const sessionIfStickyExists = (
   if (session.status === "idle") {
     return session;
   }
-  const sticky = Document.stickyById(document, session.stickyId);
+  const stickyId =
+    session.status === "dragging" || session.status === "resizing"
+      ? session.originalSticky.id
+      : session.stickyId;
+  const sticky = Document.stickyById(document, stickyId);
   if (!sticky.some) {
     return { status: "idle" };
   }
-  if (session.status === "editing") {
-    return { status: "selected", stickyId: session.stickyId };
+  if (session.status !== "selected") {
+    return { status: "selected", stickyId };
   }
   return session;
 };
