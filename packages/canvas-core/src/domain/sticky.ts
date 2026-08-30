@@ -125,6 +125,23 @@ export const Sticky = {
     y: sticky.position.y + sticky.size.height / 2,
   }),
   /**
+   * 付箋の辺上にある座標から外向き法線を取得する。
+   * @param sticky 辺を持つ付箋。
+   * @param point 付箋の辺上にある座標。
+   * @returns 座標がある辺から外向きの単位法線。
+   */
+  outwardNormal: (sticky: Sticky, point: Point): Point => {
+    const center = Sticky.center(sticky);
+    const horizontalRatio =
+      Math.abs(point.x - center.x) / (sticky.size.width / 2);
+    const verticalRatio =
+      Math.abs(point.y - center.y) / (sticky.size.height / 2);
+    if (horizontalRatio >= verticalRatio) {
+      return { x: point.x < center.x ? -1 : 1, y: 0 };
+    }
+    return { x: 0, y: point.y < center.y ? -1 : 1 };
+  },
+  /**
    * 付箋のアンカー座標を取得する。
    * @param sticky アンカーを持つ付箋。
    * @param anchor 座標を求める辺。

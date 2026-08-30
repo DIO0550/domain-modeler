@@ -150,6 +150,8 @@ test("アンカー: 明示したアンカーは自動アンカーより優先す
     value: {
       from: { x: 50, y: 0 },
       to: { x: 100, y: 80 },
+      fromOutwardNormal: { x: 0, y: -1 },
+      toOutwardNormal: { x: 0, y: 1 },
     },
   });
 });
@@ -162,6 +164,8 @@ test("アンカー: 2つの付箋の中心を結ぶ直線と各矩形の辺か�
     value: {
       from: { x: 100, y: 50 },
       to: { x: 50, y: 50 },
+      fromOutwardNormal: { x: 1, y: 0 },
+      toOutwardNormal: { x: -1, y: 0 },
     },
   });
 });

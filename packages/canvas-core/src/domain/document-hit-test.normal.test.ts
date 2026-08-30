@@ -57,6 +57,8 @@ test("付箋の中心を結ぶ直線と各矩形の辺から自動アンカー�
     value: {
       from: { x: 100, y: 50 },
       to: { x: 50, y: 50 },
+      fromOutwardNormal: { x: 1, y: 0 },
+      toOutwardNormal: { x: -1, y: 0 },
     },
   });
 });
@@ -78,6 +80,8 @@ test("明示したアンカーは自動アンカーより優先する", () => {
     value: {
       from: { x: 50, y: 0 },
       to: { x: 100, y: 80 },
+      fromOutwardNormal: { x: 0, y: -1 },
+      toOutwardNormal: { x: 0, y: 1 },
     },
   });
 });
@@ -103,6 +107,17 @@ test.each([
   const sticky = setupDocument().stickies[0];
 
   expect(Sticky.anchorPoint(sticky, anchor)).toEqual(expected);
+});
+
+test.each([
+  { point: { x: 50, y: 0 }, expected: { x: 0, y: -1 } },
+  { point: { x: 100, y: 50 }, expected: { x: 1, y: 0 } },
+  { point: { x: 50, y: 100 }, expected: { x: 0, y: 1 } },
+  { point: { x: 0, y: 50 }, expected: { x: -1, y: 0 } },
+])("付箋の各辺上の座標から外向き法線を取得する", ({ point, expected }) => {
+  const sticky = setupDocument().stickies[0];
+
+  expect(Sticky.outwardNormal(sticky, point)).toEqual(expected);
 });
 
 test("許容距離以内の座標では接続を取得する", () => {

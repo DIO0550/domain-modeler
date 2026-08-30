@@ -8,4 +8,14 @@ export const NumberEx = {
    */
   isFinite: (value: unknown): value is number =>
     typeof value === "number" && Number.isFinite(value),
+  /**
+   * 数値を指定した小数桁に丸める。
+   * @param value 丸める数値。
+   * @param decimalPlaces 残す小数桁数。
+   * @returns 指定した小数桁に丸めた数値。
+   */
+  round: (value: number, decimalPlaces: number): number => {
+    const scale = 10 ** decimalPlaces;
+    return Math.round(value * scale) / scale;
+  },
 } as const;
