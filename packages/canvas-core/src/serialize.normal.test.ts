@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
 import { Serialize } from "./serialize";
-import { StickyId } from "./domain/sticky";
-import { ConnectionId } from "./domain/connection";
-import type { Document } from "./domain/document";
-import { Result } from "./domain/result";
+import { StickyId } from "./domains/sticky";
+import { ConnectionId } from "./domains/connection";
+import type { Document } from "./domains/document";
+import { Result } from "./domains/result";
 
 const validDocumentJson = (): string =>
   JSON.stringify({

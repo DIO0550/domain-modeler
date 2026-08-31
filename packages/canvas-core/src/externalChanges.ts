@@ -1,8 +1,8 @@
-import type { History as HistoryType } from "./domain/history";
-import { History } from "./domain/history";
-import { ReplaceDocumentCommand } from "./domain/history/document-command";
-import type { Result as ResultType } from "./domain/result";
-import { Result } from "./domain/result";
+import type { History as HistoryType } from "./domains/history";
+import { History } from "./domains/history";
+import { ReplaceDocumentCommand } from "./domains/history/document-command";
+import type { Result as ResultType } from "./domains/result";
+import { Result } from "./domains/result";
 import { Serialize } from "./serialize";
 
 /** 外部変更を履歴付きで取り込む関数群。 */
