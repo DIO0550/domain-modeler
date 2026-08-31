@@ -102,9 +102,9 @@ const renderLayer = (document: Document): HTMLDivElement => {
 
 const documentValue = globalThis.document;
 
-Object.defineProperty(SVGElement.prototype, "getComputedTextLength", {
+Object.defineProperty(SVGTextElement.prototype, "getComputedTextLength", {
   configurable: true,
-  value(this: SVGElement): number {
+  value(this: SVGTextElement): number {
     return Array.from(this.textContent ?? "").length * 10;
   },
 });
