@@ -3,6 +3,7 @@ import { Connection, ConnectionId } from "../../connection";
 import { type Document, Document as DocumentValue } from "../../document";
 import { ConnectionSegment } from "../../connection-segment";
 import { Sticky, StickyId } from "../../sticky";
+import { StickyIndex } from "../../sticky-index";
 import { HitTest } from "..";
 
 const backId = StickyId.create("stk_back");
@@ -145,7 +146,9 @@ test("アンカー: 明示したアンカーは自動アンカーより優先す
     "bottom",
   );
 
-  expect(ConnectionSegment.create(doc, connection)).toEqual({
+  expect(
+    ConnectionSegment.create(StickyIndex.create(doc.stickies), connection),
+  ).toEqual({
     some: true,
     value: {
       from: { x: 50, y: 0 },
@@ -159,7 +162,12 @@ test("アンカー: 明示したアンカーは自動アンカーより優先す
 test("アンカー: 2つの付箋の中心を結ぶ直線と各矩形の辺から自動アンカーを解決する", () => {
   const doc = setupDocument();
 
-  expect(ConnectionSegment.create(doc, doc.connections[0])).toEqual({
+  expect(
+    ConnectionSegment.create(
+      StickyIndex.create(doc.stickies),
+      doc.connections[0],
+    ),
+  ).toEqual({
     some: true,
     value: {
       from: { x: 100, y: 50 },

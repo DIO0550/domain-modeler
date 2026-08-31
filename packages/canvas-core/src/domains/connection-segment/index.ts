@@ -1,8 +1,8 @@
 import type { Connection } from "../connection";
-import type { Document } from "../document";
 import { type Option, Option as OptionValue } from "../option";
 import { Point } from "../point";
 import { Sticky } from "../sticky";
+import { type StickyIndex, StickyIndex as StickyIndexValue } from "../sticky-index";
 import { NumberEx } from "../../utils/NumberEx";
 
 /** ほぼ水平・垂直とみなすワールド座標上のずれ。 */
@@ -27,42 +27,40 @@ export interface ConnectionSegment {
 export const ConnectionSegment = {
   /**
    * 接続の明示アンカーまたは付箋間の方向から接続線を生成する。
-   * @param document 接続元と接続先の付箋を含む文書。
+   * @param stickyIndex 接続元と接続先の付箋を含む索引。
    * @param connection 生成元の接続。
    * @returns 生成した接続線。付箋が存在しない場合、または自動アンカーを解決できない場合は値なし。
    */
   create: (
-    document: Document,
+    stickyIndex: StickyIndex,
     connection: Connection,
   ): Option<ConnectionSegment> => {
-    const from = document.stickies.find(
-      (sticky) => sticky.id === connection.from,
-    );
-    const to = document.stickies.find((sticky) => sticky.id === connection.to);
-    if (from === undefined || to === undefined) {
+    const from = StickyIndexValue.get(stickyIndex, connection.from);
+    const to = StickyIndexValue.get(stickyIndex, connection.to);
+    if (!from.some || !to.some) {
       return OptionValue.none();
     }
 
-    const fromCenter = Sticky.center(from);
-    const toCenter = Sticky.center(to);
+    const fromCenter = Sticky.center(from.value);
+    const toCenter = Sticky.center(to.value);
     const direction = {
       x: toCenter.x - fromCenter.x,
       y: toCenter.y - fromCenter.y,
     };
     const fromPoint = connection.fromAnchor === undefined
-      ? Sticky.boundaryPoint(from, direction)
-      : OptionValue.some(Sticky.anchorPoint(from, connection.fromAnchor));
+      ? Sticky.boundaryPoint(from.value, direction)
+      : OptionValue.some(Sticky.anchorPoint(from.value, connection.fromAnchor));
     const toPoint = connection.toAnchor === undefined
-      ? Sticky.boundaryPoint(to, { x: -direction.x, y: -direction.y })
-      : OptionValue.some(Sticky.anchorPoint(to, connection.toAnchor));
+      ? Sticky.boundaryPoint(to.value, { x: -direction.x, y: -direction.y })
+      : OptionValue.some(Sticky.anchorPoint(to.value, connection.toAnchor));
     if (!fromPoint.some || !toPoint.some) {
       return OptionValue.none();
     }
     return OptionValue.some({
       from: fromPoint.value,
       to: toPoint.value,
-      fromOutwardNormal: Sticky.outwardNormal(from, fromPoint.value),
-      toOutwardNormal: Sticky.outwardNormal(to, toPoint.value),
+      fromOutwardNormal: Sticky.outwardNormal(from.value, fromPoint.value),
+      toOutwardNormal: Sticky.outwardNormal(to.value, toPoint.value),
     });
   },
   /**

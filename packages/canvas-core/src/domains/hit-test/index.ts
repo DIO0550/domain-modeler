@@ -4,6 +4,7 @@ import { ConnectionSegment } from "../connection-segment";
 import type { Point } from "../point";
 import type { Sticky } from "../sticky";
 import { Sticky as StickyCompanion } from "../sticky";
+import { StickyIndex } from "../sticky-index";
 import { type Option, Option as OptionValue } from "../option";
 
 /** ヒットテスト関連の機能群。 */
@@ -34,20 +35,22 @@ export const HitTest = {
     doc: Document,
     point: Point,
     tolerance: number,
-  ): Option<Connection> =>
-    doc.connections.reduceRight<Option<Connection>>(
+  ): Option<Connection> => {
+    const stickyIndex = StickyIndex.create(doc.stickies);
+    return doc.connections.reduceRight<Option<Connection>>(
       (hit, connection) => {
         if (hit.some) {
           return hit;
         }
-        const segment = ConnectionSegment.create(doc, connection);
+        const segment = ConnectionSegment.create(stickyIndex, connection);
         return segment.some &&
           ConnectionSegment.contains(segment.value, point, tolerance)
           ? OptionValue.some(connection)
           : hit;
       },
       OptionValue.none(),
-    ),
+    );
+  },
 
   /**
    * 接続線からの最短距離を取得する。
@@ -61,7 +64,8 @@ export const HitTest = {
     connection: Connection,
     point: Point,
   ): Option<number> => {
-    const segment = ConnectionSegment.create(doc, connection);
+    const stickyIndex = StickyIndex.create(doc.stickies);
+    const segment = ConnectionSegment.create(stickyIndex, connection);
     return segment.some ? OptionValue.some(ConnectionSegment.distanceFrom(segment.value, point)) : OptionValue.none();
   },
 };

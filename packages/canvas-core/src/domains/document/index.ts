@@ -1,6 +1,7 @@
 import type { Point } from "../point";
 import { Viewport } from "../viewport";
 import { Size, Sticky, StickyId, type StickyType } from "../sticky";
+import { StickyIndex } from "../sticky-index";
 import {
   type Anchor,
   type Connection,
@@ -97,20 +98,22 @@ export const Document = {
     doc: Document,
     point: Point,
     tolerance: number,
-  ): Option<Connection> =>
-    doc.connections.reduceRight<Option<Connection>>(
+  ): Option<Connection> => {
+    const stickyIndex = StickyIndex.create(doc.stickies);
+    return doc.connections.reduceRight<Option<Connection>>(
       (hit, connection) => {
         if (hit.some) {
           return hit;
         }
-        const segment = ConnectionSegment.create(doc, connection);
+        const segment = ConnectionSegment.create(stickyIndex, connection);
         return segment.some &&
           ConnectionSegment.contains(segment.value, point, tolerance)
           ? OptionValue.some(connection)
           : hit;
       },
       OptionValue.none(),
-    ),
+    );
+  },
   /**
    * 付箋を追加する。
    * @param doc 付箋を追加する文書。

@@ -7,6 +7,7 @@ export * from "./domains/option";
 export * from "./domains/point";
 export * from "./domains/viewport";
 export * from "./domains/sticky";
+export * from "./domains/sticky-index";
 export * from "./domains/connection";
 export * from "./domains/connection-status";
 export * from "./domains/document";

@@ -3,6 +3,7 @@ import { Connection, ConnectionId } from "../../connection";
 import { type Document, Document as DocumentValue } from "../../document";
 import { ConnectionSegment } from "..";
 import { Sticky, StickyId } from "../../sticky";
+import { StickyIndex } from "../../sticky-index";
 
 const fromId = StickyId.create("stk_from");
 const toId = StickyId.create("stk_to");
@@ -39,7 +40,10 @@ test("向かい合うアンカーを水平に結べる接続は直線経路に�
     "right",
     "left",
   );
-  const segment = ConnectionSegment.create(document, connection);
+  const segment = ConnectionSegment.create(
+    StickyIndex.create(document.stickies),
+    connection,
+  );
 
   expect(segment.some).toBe(true);
   if (!segment.some) {
@@ -63,7 +67,10 @@ test("向かい合わないアンカーの接続は辺の法線方向へ出る�
     "bottom",
     "top",
   );
-  const segment = ConnectionSegment.create(document, connection);
+  const segment = ConnectionSegment.create(
+    StickyIndex.create(document.stickies),
+    connection,
+  );
 
   expect(segment.some).toBe(true);
   if (!segment.some) {
@@ -98,7 +105,10 @@ test("曲線上の座標は接続線の許容距離内になる", () => {
     "bottom",
     "top",
   );
-  const segment = ConnectionSegment.create(document, connection);
+  const segment = ConnectionSegment.create(
+    StickyIndex.create(document.stickies),
+    connection,
+  );
 
   expect(segment.some).toBe(true);
   if (!segment.some) {
@@ -124,7 +134,10 @@ test("曲線から離れた始点と終点を結ぶ直線上の座標は許容�
     "bottom",
     "top",
   );
-  const segment = ConnectionSegment.create(document, connection);
+  const segment = ConnectionSegment.create(
+    StickyIndex.create(document.stickies),
+    connection,
+  );
 
   expect(segment.some).toBe(true);
   if (!segment.some) {

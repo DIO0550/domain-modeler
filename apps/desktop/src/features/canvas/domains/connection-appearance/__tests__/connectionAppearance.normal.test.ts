@@ -5,6 +5,7 @@ import {
   Document,
   Sticky,
   StickyId,
+  StickyIndex,
 } from "@domain-modeler/canvas-core";
 import { ConnectionAppearance } from "../index";
 
@@ -42,9 +43,11 @@ const alignedConnection: Connection = {
   note: "",
 };
 
+const alignedStickyIndex = StickyIndex.create(alignedDocument.stickies);
+
 test("向かい合うアンカーを水平に結べる接続は直線になる", () => {
   const appearance = ConnectionAppearance.create(
-    alignedDocument,
+    alignedStickyIndex,
     alignedConnection,
   );
 
@@ -61,7 +64,7 @@ test("向かい合うアンカーを水平に結べる接続は直線になる",
 
 test("接続ルール内の種別ペアは通常表示になる", () => {
   const appearance = ConnectionAppearance.create(
-    alignedDocument,
+    alignedStickyIndex,
     alignedConnection,
   );
 
@@ -70,7 +73,7 @@ test("接続ルール内の種別ペアは通常表示になる", () => {
 
 test("空でないラベルは経路の中点に配置される", () => {
   const appearance = ConnectionAppearance.create(
-    alignedDocument,
+    alignedStickyIndex,
     alignedConnection,
   );
 
@@ -82,7 +85,7 @@ test("空でないラベルは経路の中点に配置される", () => {
 });
 
 test("空文字のラベルは表示しない", () => {
-  const appearance = ConnectionAppearance.create(alignedDocument, {
+  const appearance = ConnectionAppearance.create(alignedStickyIndex, {
     ...alignedConnection,
     label: "",
   });
@@ -93,7 +96,7 @@ test("空文字のラベルは表示しない", () => {
 });
 
 test("向かい合わないアンカーの接続は辺の法線方向へ出る三次ベジェ曲線になる", () => {
-  const appearance = ConnectionAppearance.create(alignedDocument, {
+  const appearance = ConnectionAppearance.create(alignedStickyIndex, {
     ...alignedConnection,
     fromAnchor: "bottom",
     toAnchor: "top",
@@ -108,7 +111,7 @@ test("向かい合わないアンカーの接続は辺の法線方向へ出る�
 });
 
 test("接続ルール外の種別ペアは警告と推奨接続先を返す", () => {
-  const appearance = ConnectionAppearance.create(alignedDocument, {
+  const appearance = ConnectionAppearance.create(alignedStickyIndex, {
     ...alignedConnection,
     from: commandId,
     to: actorId,
@@ -124,7 +127,7 @@ test("接続ルール外の種別ペアは警告と推奨接続先を返す", ()
 });
 
 test("参照先が存在せずcoreで端点を解決できない接続は表示を返さない", () => {
-  const appearance = ConnectionAppearance.create(alignedDocument, {
+  const appearance = ConnectionAppearance.create(alignedStickyIndex, {
     ...alignedConnection,
     to: StickyId.create("stk_missing00000"),
   });

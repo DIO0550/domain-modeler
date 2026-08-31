@@ -2,10 +2,10 @@ import {
   type Connection,
   ConnectionSegment,
   ConnectionStatus,
-  type Document,
-  Document as DocumentValue,
   type Option,
   Option as OptionValue,
+  type StickyIndex,
+  StickyIndex as StickyIndexValue,
 } from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../sticky-appearance";
 
@@ -13,7 +13,7 @@ import { StickyAppearance } from "../sticky-appearance";
 type ConnectionRoute = ReturnType<typeof ConnectionSegment.toRoute>;
 
 /** 接続ラベルの表示。空文字は描画しない。 */
-export type ConnectionLabelAppearance =
+type ConnectionLabelAppearance =
   | Readonly<{ visibility: "hidden" }>
   | Readonly<{
       visibility: "visible";
@@ -34,17 +34,17 @@ export const ConnectionAppearance = {
   /**
    * 文書内の接続から描画可能な表示を作る。
    *
-   * @param document 接続元・接続先の付箋を含む文書。
+   * @param stickyIndex 接続元・接続先の付箋を含む索引。
    * @param connection 描画する接続。
    * @returns 描画表示。参照先が欠落して端点を解決できない場合は値なし。
    */
   create(
-    document: Document,
+    stickyIndex: StickyIndex,
     connection: Connection,
   ): Option<ConnectionAppearance> {
-    const segment = ConnectionSegment.create(document, connection);
-    const from = DocumentValue.stickyById(document, connection.from);
-    const to = DocumentValue.stickyById(document, connection.to);
+    const segment = ConnectionSegment.create(stickyIndex, connection);
+    const from = StickyIndexValue.get(stickyIndex, connection.from);
+    const to = StickyIndexValue.get(stickyIndex, connection.to);
     if (!segment.some || !from.some || !to.some) {
       return OptionValue.none();
     }

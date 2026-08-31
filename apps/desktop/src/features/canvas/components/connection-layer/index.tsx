@@ -1,9 +1,11 @@
-import { type MouseEvent, useRef } from "react";
-import type { Connection, Document } from "@domain-modeler/canvas-core";
+import { type MouseEvent, useMemo, useRef } from "react";
 import {
-  ConnectionAppearance,
-  type ConnectionLabelAppearance,
-} from "../../domains/connection-appearance";
+  type Connection,
+  type Document,
+  type StickyIndex as StickyIndexType,
+  StickyIndex,
+} from "@domain-modeler/canvas-core";
+import { ConnectionAppearance } from "../../domains/connection-appearance";
 
 const LABEL_HORIZONTAL_PADDING = 16;
 
@@ -18,6 +20,10 @@ type ConnectionLayerProps = Readonly<{
  * @returns 矢印、ラベル、警告表示を含むSVGレイヤー。
  */
 export function ConnectionLayer({ document }: ConnectionLayerProps) {
+  const stickyIndex = useMemo(
+    () => StickyIndex.create(document.stickies),
+    [document.stickies],
+  );
   return (
     <svg
       className="connection-layer"
@@ -56,7 +62,7 @@ export function ConnectionLayer({ document }: ConnectionLayerProps) {
       {document.connections.map((connection) => (
         <RenderedConnection
           key={connection.id}
-          document={document}
+          stickyIndex={stickyIndex}
           connection={connection}
         />
       ))}
@@ -65,7 +71,7 @@ export function ConnectionLayer({ document }: ConnectionLayerProps) {
 }
 
 type RenderedConnectionProps = Readonly<{
-  document: Document;
+  stickyIndex: StickyIndexType;
   connection: Connection;
 }>;
 
@@ -81,10 +87,10 @@ const stopConnectionEvent = (event: MouseEvent<SVGGElement>): void => {
  * @returns 接続のSVGグループ。端点を解決できない場合は何も描画しない。
  */
 function RenderedConnection({
-  document,
+  stickyIndex,
   connection,
 }: RenderedConnectionProps) {
-  const appearance = ConnectionAppearance.create(document, connection);
+  const appearance = ConnectionAppearance.create(stickyIndex, connection);
   if (!appearance.some) {
     return null;
   }
@@ -121,7 +127,7 @@ function RenderedConnection({
 }
 
 type VisibleConnectionLabel = Extract<
-  ConnectionLabelAppearance,
+  ConnectionAppearance["label"],
   { visibility: "visible" }
 >;
 
