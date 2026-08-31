@@ -1,5 +1,6 @@
+import type { Point } from "./point";
 import { Viewport } from "./viewport";
-import { type Point, Size, Sticky, StickyId, type StickyType } from "./sticky";
+import { Size, Sticky, StickyId, type StickyType } from "./sticky";
 import {
   type Anchor,
   type Connection,

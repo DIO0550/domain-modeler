@@ -102,11 +102,20 @@ const renderLayer = (document: Document): HTMLDivElement => {
 
 const documentValue = globalThis.document;
 
+Object.defineProperty(SVGElement.prototype, "getComputedTextLength", {
+  configurable: true,
+  value(this: SVGElement): number {
+    return Array.from(this.textContent ?? "").length * 10;
+  },
+});
+
 test("接続ごとにcoreが解決した端点を結ぶSVG経路と終端矢印を描画する", () => {
   const host = renderLayer(connectedDocument);
   const connection = host.querySelector('[data-connection-id="con_allowed0000"]');
+  const hitArea = connection?.querySelector(".connection-layer__hit-area");
   const path = connection?.querySelector(".connection-layer__path");
 
+  expect(hitArea?.getAttribute("d")).toBe("M 140 80 L 260 80");
   expect(path?.getAttribute("d")).toBe("M 140 80 L 260 80");
   expect(path?.getAttribute("marker-end")).toBe("url(#connection-arrow)");
 });
@@ -119,6 +128,17 @@ test("空でないラベルは経路の中点付近に背景チップ付きで�
   expect(label?.getAttribute("transform")).toBe("translate(200 80)");
   expect(label?.querySelector("rect")).not.toBeNull();
   expect(label?.querySelector("text")?.textContent).toBe("操作");
+});
+
+test("幅広文字を含むラベルの背景は描画されたテキスト幅に合わせる", () => {
+  const document = {
+    ...connectedDocument,
+    connections: [{ ...allowedConnection, label: "WWWWWWWW" }],
+  };
+  const host = renderLayer(document);
+  const label = host.querySelector(".connection-layer__label");
+
+  expect(label?.querySelector("rect")?.getAttribute("width")).toBe("96");
 });
 
 test("空文字のラベルは描画しない", () => {

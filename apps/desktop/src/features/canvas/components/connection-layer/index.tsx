@@ -1,6 +1,11 @@
-import type { MouseEvent } from "react";
+import { type MouseEvent, useRef } from "react";
 import type { Connection, Document } from "@domain-modeler/canvas-core";
-import { ConnectionAppearance } from "../../domains/connection-appearance";
+import {
+  ConnectionAppearance,
+  type ConnectionLabelAppearance,
+} from "../../domains/connection-appearance";
+
+const LABEL_HORIZONTAL_PADDING = 16;
 
 type ConnectionLayerProps = Readonly<{
   document: Document;
@@ -99,28 +104,72 @@ function RenderedConnection({
     >
       <title>{appearance.value.tooltip}</title>
       <path
+        aria-hidden="true"
+        className="connection-layer__hit-area"
+        d={appearance.value.route.path}
+      />
+      <path
         className="connection-layer__path"
         d={appearance.value.route.path}
         markerEnd={marker}
       />
       {appearance.value.label.visibility === "visible" && (
-        <g
-          className="connection-layer__label"
-          pointerEvents="all"
-          transform={`translate(${appearance.value.label.position.x} ${appearance.value.label.position.y})`}
-        >
-          <rect
-            x={-appearance.value.label.width / 2}
-            y="-12"
-            width={appearance.value.label.width}
-            height="24"
-            rx="6"
-          />
-          <text textAnchor="middle" dominantBaseline="central">
-            {appearance.value.label.text}
-          </text>
-        </g>
+        <ConnectionLabel label={appearance.value.label} />
       )}
+    </g>
+  );
+}
+
+type VisibleConnectionLabel = Extract<
+  ConnectionLabelAppearance,
+  { visibility: "visible" }
+>;
+
+type ConnectionLabelProps = Readonly<{
+  label: VisibleConnectionLabel;
+}>;
+
+/** ラベルを実際のSVGテキスト幅に合わせた背景チップとともに描画する。 */
+function ConnectionLabel({ label }: ConnectionLabelProps) {
+  const chipRef = useRef<SVGRectElement>(null);
+  const resizeChip = (text: SVGTextElement | null): void => {
+    if (
+      text === null ||
+      chipRef.current === null ||
+      typeof text.getComputedTextLength !== "function"
+    ) {
+      return;
+    }
+    const textWidth = text.getComputedTextLength();
+    if (!Number.isFinite(textWidth)) {
+      return;
+    }
+    const chipWidth = textWidth + LABEL_HORIZONTAL_PADDING;
+    chipRef.current.setAttribute("x", String(-chipWidth / 2));
+    chipRef.current.setAttribute("width", String(chipWidth));
+  };
+
+  return (
+    <g
+      className="connection-layer__label"
+      pointerEvents="all"
+      transform={`translate(${label.position.x} ${label.position.y})`}
+    >
+      <rect
+        ref={chipRef}
+        x={-LABEL_HORIZONTAL_PADDING / 2}
+        y="-12"
+        width={LABEL_HORIZONTAL_PADDING}
+        height="24"
+        rx="6"
+      />
+      <text
+        ref={resizeChip}
+        textAnchor="middle"
+        dominantBaseline="central"
+      >
+        {label.text}
+      </text>
     </g>
   );
 }

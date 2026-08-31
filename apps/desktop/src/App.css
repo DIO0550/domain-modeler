@@ -458,13 +458,22 @@ body,
   pointer-events: none;
 }
 
+.connection-layer__hit-area,
 .connection-layer__path {
   fill: none;
   pointer-events: stroke;
+  vector-effect: non-scaling-stroke;
+}
+
+.connection-layer__hit-area {
+  stroke: transparent;
+  stroke-width: 16;
+}
+
+.connection-layer__path {
   stroke: var(--connection-line);
   stroke-linecap: round;
   stroke-width: 2;
-  vector-effect: non-scaling-stroke;
 }
 
 .connection-layer__connection[data-connection-status="warning"]

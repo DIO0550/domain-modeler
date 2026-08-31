@@ -68,7 +68,7 @@ test("接続ルール内の種別ペアは通常表示になる", () => {
   expect(appearance.some && appearance.value.status).toBe("ok");
 });
 
-test("空でないラベルは経路の中点に背景幅とともに配置される", () => {
+test("空でないラベルは経路の中点に配置される", () => {
   const appearance = ConnectionAppearance.create(
     alignedDocument,
     alignedConnection,
@@ -78,7 +78,6 @@ test("空でないラベルは経路の中点に背景幅とともに配置さ�
     visibility: "visible",
     text: "操作",
     position: { x: 200, y: 80 },
-    width: 42,
   });
 });
 

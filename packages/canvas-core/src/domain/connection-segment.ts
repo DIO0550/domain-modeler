@@ -1,7 +1,8 @@
 import type { Connection } from "./connection";
 import type { Document } from "./document";
 import { type Option, Option as OptionValue } from "./option";
-import { Point, Sticky } from "./sticky";
+import { Point } from "./point";
+import { Sticky } from "./sticky";
 import { NumberEx } from "../utils/NumberEx";
 
 /** ほぼ水平・垂直とみなすワールド座標上のずれ。 */

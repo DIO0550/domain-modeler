@@ -1,7 +1,8 @@
 import type { Connection } from "./connection";
 import type { Document } from "./document";
 import { ConnectionSegment } from "./connection-segment";
-import type { Point, Sticky } from "./sticky";
+import type { Point } from "./point";
+import type { Sticky } from "./sticky";
 import { Sticky as StickyCompanion } from "./sticky";
 import { type Option, Option as OptionValue } from "./option";
 

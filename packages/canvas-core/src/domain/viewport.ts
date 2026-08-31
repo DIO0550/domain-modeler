@@ -1,4 +1,5 @@
-import type { Point, Size } from "./sticky";
+import type { Point } from "./point";
+import type { Size } from "./sticky";
 
 export interface Viewport {
   readonly x: number;

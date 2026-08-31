@@ -19,7 +19,6 @@ export type ConnectionLabelAppearance =
       visibility: "visible";
       text: string;
       position: ConnectionRoute["midpoint"];
-      width: number;
     }>;
 
 /** core の解決結果から組み立てた接続線の表示。 */
@@ -29,19 +28,6 @@ export type ConnectionAppearance = Readonly<{
   label: ConnectionLabelAppearance;
   tooltip: string;
 }>;
-
-/**
- * ラベルのおおよその表示幅を返す。日本語等の全角文字は英数字より広く扱う。
- *
- * @param label 接続ラベル。
- * @returns 背景チップの幅。
- */
-const labelWidth = (label: string): number =>
-  Array.from(label).reduce(
-    (width, character) =>
-      width + (character.charCodeAt(0) <= 0x7f ? 7 : 13),
-    16,
-  );
 
 /** core の解決結果から接続線の表示を作る関数群。 */
 export const ConnectionAppearance = {
@@ -79,7 +65,6 @@ export const ConnectionAppearance = {
               visibility: "visible",
               text: connection.label,
               position: route.midpoint,
-              width: labelWidth(connection.label),
             },
       tooltip:
         status === "ok"
