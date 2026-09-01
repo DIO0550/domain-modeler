@@ -130,6 +130,11 @@
     "name": "Zoom Min"
   },
   {
+    "id": "features-canvas-components-connection-layer-connectionlayer--default",
+    "title": "features/canvas/components/connection-layer/ConnectionLayer",
+    "name": "Default"
+  },
+  {
     "id": "features-canvas-components-sticky--all-props",
     "title": "features/canvas/components/Sticky",
     "name": "All Props"
