@@ -20,3 +20,14 @@ test.each([
     expect(NumberEx.isFinite(value)).toBe(expected);
   },
 );
+
+test.each([
+  { value: 12.34567, decimalPlaces: 3, expected: 12.346 },
+  { value: -12.34567, decimalPlaces: 2, expected: -12.35 },
+  { value: 12.5, decimalPlaces: 0, expected: 13 },
+])(
+  "$value を小数第 $decimalPlaces 位に丸めると $expected になる",
+  ({ value, decimalPlaces, expected }) => {
+    expect(NumberEx.round(value, decimalPlaces)).toBe(expected);
+  },
+);

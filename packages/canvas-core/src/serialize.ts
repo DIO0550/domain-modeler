@@ -1,15 +1,15 @@
-import type { Document } from "./domain/document";
+import type { Document } from "./domains/document";
 import {
   Anchor,
   Size,
   StickyId,
   StickyType,
   type Sticky,
-} from "./domain/sticky";
-import { Connection, ConnectionId } from "./domain/connection";
-import { Viewport } from "./domain/viewport";
-import { CanvasError } from "./domain/error";
-import { Result } from "./domain/result";
+} from "./domains/sticky";
+import { Connection, ConnectionId } from "./domains/connection";
+import { Viewport } from "./domains/viewport";
+import { CanvasError } from "./domains/error";
+import { Result } from "./domains/result";
 import { NumberEx } from "./utils/NumberEx";
 
 /** アプリが対応するスキーマの major バージョン。 */

@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vitest";
 import {
+  ConnectionId,
   Document,
   Sticky as StickyModel,
   StickyId,
@@ -58,6 +59,21 @@ const frontSticky = StickyModel.create(
 const documentWithTwoStickies = {
   ...existingStickyDocument,
   stickies: [...existingStickyDocument.stickies, frontSticky],
+};
+
+const documentWithConnection = {
+  ...documentWithTwoStickies,
+  connections: [
+    {
+      id: ConnectionId.create("con_existing000"),
+      from: StickyId.create("stk_existing000"),
+      to: frontSticky.id,
+      fromAnchor: "right" as const,
+      toAnchor: "left" as const,
+      label: "通知",
+      note: "",
+    },
+  ],
 };
 
 /**
@@ -262,6 +278,61 @@ test("パレットの種別を選んで空白をクリックするとその種�
   expect(note?.getAttribute("data-sticky-type")).toBe("command");
   expect(note?.getAttribute("data-sticky-session")).toBe("editing");
   expect(host.querySelector("textarea")).not.toBeNull();
+});
+
+test("接続線をクリックしても新しい付箋を作成しない", () => {
+  const host = renderEditor(documentWithConnection);
+  const path = host.querySelector(".connection-layer__path");
+
+  act(() => {
+    path?.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 200,
+        clientY: 70,
+      }),
+    );
+  });
+
+  expect(host.querySelectorAll("article")).toHaveLength(2);
+  expect(host.querySelector("textarea")).toBeNull();
+});
+
+test("接続線の8px当たり判定内をクリックしても新しい付箋を作成しない", () => {
+  const host = renderEditor(documentWithConnection);
+  const hitArea = host.querySelector(".connection-layer__hit-area");
+
+  act(() => {
+    hitArea?.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 200,
+        clientY: 77,
+      }),
+    );
+  });
+
+  expect(host.querySelectorAll("article")).toHaveLength(2);
+  expect(host.querySelector("textarea")).toBeNull();
+});
+
+test("接続ラベルをクリックしても新しい付箋を作成しない", () => {
+  const host = renderEditor(documentWithConnection);
+  const label = host.querySelector(".connection-layer__label");
+
+  expect(label?.getAttribute("pointer-events")).toBe("all");
+  act(() => {
+    label?.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 200,
+        clientY: 70,
+      }),
+    );
+  });
+
+  expect(host.querySelectorAll("article")).toHaveLength(2);
+  expect(host.querySelector("textarea")).toBeNull();
 });
 
 test("既存の付箋をクリックすると選択する", () => {
@@ -608,4 +679,18 @@ test("選択中の南東ハンドルをドラッグすると付箋をリサイ�
 
   expect(articleOf(host).style.width).toBe("190px");
   expect(articleOf(host).style.height).toBe("130px");
+});
+
+test("初期文書の接続は付箋と同じキャンバス面に描画する", () => {
+  const host = renderEditor(documentWithConnection);
+  const surface = host.querySelector(".canvas-surface");
+  const connection = surface?.querySelector(
+    '[data-connection-id="con_existing000"]',
+  );
+
+  expect(connection?.querySelector(".connection-layer__path")).not.toBeNull();
+  expect(
+    connection?.querySelector(".connection-layer__label")?.textContent,
+  ).toBe("通知");
+  expect(surface?.querySelectorAll("article")).toHaveLength(2);
 });

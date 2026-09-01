@@ -1,10 +1,10 @@
 import { expect, test } from "vitest";
-import { Document } from "./domain/document";
-import { History } from "./domain/history";
-import { ChangeTitleCommand } from "./domain/history/document-command";
-import { Result } from "./domain/result";
-import { StickyId } from "./domain/sticky";
-import { ConnectionId } from "./domain/connection";
+import { Document } from "./domains/document";
+import { History } from "./domains/history";
+import { ChangeTitleCommand } from "./domains/history/document-command";
+import { Result } from "./domains/result";
+import { StickyId } from "./domains/sticky";
+import { ConnectionId } from "./domains/connection";
 import { ExternalChanges } from "./externalChanges";
 import { Serialize } from "./serialize";
 

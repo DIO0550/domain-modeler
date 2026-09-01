@@ -4,6 +4,7 @@ import { StickySession } from "../../domains/sticky-interaction";
 import { useStickyInteractions } from "../../hooks";
 import { Sticky, StickyChrome } from "../sticky";
 import { CanvasView, HistoryButton } from "../canvas-view";
+import { ConnectionLayer } from "../connection-layer";
 
 type CanvasEditorProps = Readonly<{
   zoom: number;
@@ -50,6 +51,7 @@ export function CanvasEditor({
         board.pressEscape();
       }}
     >
+      <ConnectionLayer document={board.document} />
       {board.stickies.map((sticky) => (
         <Sticky
           key={sticky.id}
