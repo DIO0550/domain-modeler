@@ -59,6 +59,7 @@ export const StickyChrome = {
 type StickyProps = Readonly<{
   sticky: StickyModel;
   chrome?: StickyChrome;
+  connectionEndpoint?: "source";
   onActivate?: () => void;
   manipulation?: StickyManipulation;
 }>;
@@ -94,6 +95,7 @@ type StickyStyle = CSSProperties & {
 export function Sticky({
   sticky,
   chrome = { status: "plain" },
+  connectionEndpoint,
   onActivate,
   manipulation,
 }: StickyProps) {
@@ -203,6 +205,7 @@ export function Sticky({
       data-sticky-type={sticky.type}
       data-sticky-id={sticky.id}
       data-sticky-session={chrome.status}
+      data-connection-endpoint={connectionEndpoint}
       aria-label={accessibleName}
       tabIndex={0}
       style={stickyStyle}

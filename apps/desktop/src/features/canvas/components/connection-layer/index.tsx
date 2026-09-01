@@ -1,16 +1,35 @@
-import { type MouseEvent, useMemo, useRef } from "react";
+import {
+  type ChangeEvent,
+  useEffect,
+  type KeyboardEvent,
+  type MouseEvent,
+  useMemo,
+  useRef,
+} from "react";
 import {
   type Connection,
+  type ConnectionId,
   type Document,
   type StickyIndex as StickyIndexType,
   StickyIndex,
 } from "@domain-modeler/canvas-core";
 import { ConnectionAppearance } from "../../domains/connection-appearance";
+import {
+  ConnectionSession,
+  type ConnectionSession as ConnectionSessionType,
+} from "../../domains/connection-session";
 
 const LABEL_HORIZONTAL_PADDING = 16;
 
 type ConnectionLayerProps = Readonly<{
   document: Document;
+  interaction?: Readonly<{
+    session: ConnectionSessionType;
+    onSelect: (connectionId: ConnectionId) => void;
+    onEdit: (connectionId: ConnectionId) => void;
+    onDraftChange: (draftLabel: string) => void;
+    onCommitEdit: () => void;
+  }>;
 }>;
 
 /**
@@ -19,7 +38,7 @@ type ConnectionLayerProps = Readonly<{
  * @param props 描画する文書。
  * @returns 矢印、ラベル、警告表示を含むSVGレイヤー。
  */
-export function ConnectionLayer({ document }: ConnectionLayerProps) {
+export function ConnectionLayer({ document, interaction }: ConnectionLayerProps) {
   const stickyIndex = useMemo(
     () => StickyIndex.create(document.stickies),
     [document.stickies],
@@ -64,6 +83,7 @@ export function ConnectionLayer({ document }: ConnectionLayerProps) {
           key={connection.id}
           stickyIndex={stickyIndex}
           connection={connection}
+          interaction={interaction}
         />
       ))}
     </svg>
@@ -73,12 +93,8 @@ export function ConnectionLayer({ document }: ConnectionLayerProps) {
 type RenderedConnectionProps = Readonly<{
   stickyIndex: StickyIndexType;
   connection: Connection;
+  interaction: ConnectionLayerProps["interaction"];
 }>;
-
-/** 接続線の操作をキャンバス背景の操作へ伝播させない。 */
-const stopConnectionEvent = (event: MouseEvent<SVGGElement>): void => {
-  event.stopPropagation();
-};
 
 /**
  * 解決できた接続1本を描画する。
@@ -89,6 +105,7 @@ const stopConnectionEvent = (event: MouseEvent<SVGGElement>): void => {
 function RenderedConnection({
   stickyIndex,
   connection,
+  interaction,
 }: RenderedConnectionProps) {
   const appearance = ConnectionAppearance.create(stickyIndex, connection);
   if (!appearance.some) {
@@ -98,6 +115,12 @@ function RenderedConnection({
     appearance.value.status === "warning"
       ? "url(#connection-warning-arrow)"
       : "url(#connection-arrow)";
+  const session = interaction?.session ?? ({ status: "idle" } as const);
+  const connectionStatus = ConnectionSession.statusOf(session, connection.id);
+  const draftLabel =
+    session.status === "editing" && session.connectionId === connection.id
+      ? session.draftLabel
+      : connection.label;
 
   return (
     <g
@@ -105,8 +128,21 @@ function RenderedConnection({
       data-connection-id={connection.id}
       data-connection-status={appearance.value.status}
       data-connection-shape={appearance.value.route.shape}
-      onClick={stopConnectionEvent}
-      onDoubleClick={stopConnectionEvent}
+      data-connection-session={connectionStatus}
+      role={interaction === undefined ? undefined : "button"}
+      aria-label={
+        interaction === undefined ? undefined : connectionAccessibleName(connection)
+      }
+      tabIndex={interaction === undefined ? undefined : 0}
+      onClick={(event) => {
+        selectConnection(event, interaction, connection.id);
+      }}
+      onDoubleClick={(event) => {
+        editConnection(event, interaction, connection.id);
+      }}
+      onKeyDown={(event) => {
+        handleConnectionKeyDown(event, interaction, connection.id);
+      }}
     >
       <title>{appearance.value.tooltip}</title>
       <path
@@ -122,7 +158,133 @@ function RenderedConnection({
       {appearance.value.label.visibility === "visible" && (
         <ConnectionLabel label={appearance.value.label} />
       )}
+      {connectionStatus !== "plain" && connectionStatus !== "editing" && (
+        <ConnectionEndpoints endpoints={appearance.value.endpoints} />
+      )}
+      {connectionStatus === "editing" && interaction !== undefined && (
+        <ConnectionLabelEditor
+          position={appearance.value.route.midpoint}
+          draftLabel={draftLabel}
+          onDraftChange={interaction.onDraftChange}
+          onCommit={interaction.onCommitEdit}
+        />
+      )}
     </g>
+  );
+}
+
+/** 接続クリックを選択として渡し、キャンバス背景へ伝播させない。 */
+const selectConnection = (
+  event: MouseEvent<SVGGElement>,
+  interaction: ConnectionLayerProps["interaction"],
+  connectionId: ConnectionId,
+): void => {
+  event.stopPropagation();
+  interaction?.onSelect(connectionId);
+};
+
+/** 接続ダブルクリックをラベル編集として渡す。 */
+const editConnection = (
+  event: MouseEvent<SVGGElement>,
+  interaction: ConnectionLayerProps["interaction"],
+  connectionId: ConnectionId,
+): void => {
+  event.stopPropagation();
+  interaction?.onEdit(connectionId);
+};
+
+/** フォーカス中の接続で Enter を押すとラベル編集を始める。 */
+const handleConnectionKeyDown = (
+  event: KeyboardEvent<SVGGElement>,
+  interaction: ConnectionLayerProps["interaction"],
+  connectionId: ConnectionId,
+): void => {
+  if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+    return;
+  }
+  if (event.key !== "Enter") {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  interaction?.onEdit(connectionId);
+};
+
+/** 接続のラベル、または ID を使った読み上げ名を返す。 */
+const connectionAccessibleName = (connection: Connection): string =>
+  connection.label.length === 0
+    ? `接続 ${connection.id}`
+    : `接続 ${connection.label}`;
+
+type ConnectionEndpointsProps = Readonly<{
+  endpoints: ConnectionAppearance["endpoints"];
+}>;
+
+/** 選択中の接続の始点と終点を強調する。 */
+function ConnectionEndpoints({ endpoints }: ConnectionEndpointsProps) {
+  return (
+    <g className="connection-layer__endpoints" aria-hidden="true">
+      <circle cx={endpoints.from.x} cy={endpoints.from.y} r="5" />
+      <circle cx={endpoints.to.x} cy={endpoints.to.y} r="5" />
+    </g>
+  );
+}
+
+type ConnectionLabelEditorProps = Readonly<{
+  position: ConnectionAppearance["route"]["midpoint"];
+  draftLabel: string;
+  onDraftChange: (draftLabel: string) => void;
+  onCommit: () => void;
+}>;
+
+/** 経路の中点で接続ラベルをインライン編集する。 */
+function ConnectionLabelEditor({
+  position,
+  draftLabel,
+  onDraftChange,
+  onCommit,
+}: ConnectionLabelEditorProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  return (
+    <foreignObject
+      className="connection-layer__label-editor"
+      x={position.x - 90}
+      y={position.y - 18}
+      width="180"
+      height="36"
+    >
+      <input
+        ref={inputRef}
+        aria-label="接続ラベル"
+        value={draftLabel}
+        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+          onDraftChange(event.target.value);
+        }}
+        onBlur={onCommit}
+        onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+            return;
+          }
+          if (event.key !== "Enter" && event.key !== "Escape") {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          event.currentTarget.blur();
+        }}
+        onClick={(event) => {
+          event.stopPropagation();
+        }}
+        onDoubleClick={(event) => {
+          event.stopPropagation();
+        }}
+      />
+    </foreignObject>
   );
 }
 

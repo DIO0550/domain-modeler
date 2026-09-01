@@ -115,6 +115,23 @@ export const Document = {
     );
   },
   /**
+   * 指定した ID の接続を取得する。
+   * @param doc 検索対象の文書。
+   * @param connectionId 探す接続の ID。
+   * @returns 一致した接続。該当する接続がなければ値なし。
+   */
+  connectionById: (
+    doc: Document,
+    connectionId: ConnectionId,
+  ): Option<Connection> => {
+    const found = doc.connections.find(
+      (connection) => connection.id === connectionId,
+    );
+    return found === undefined
+      ? OptionValue.none()
+      : OptionValue.some(found);
+  },
+  /**
    * 付箋を追加する。
    * @param doc 付箋を追加する文書。
    * @param type 追加する付箋の種別。

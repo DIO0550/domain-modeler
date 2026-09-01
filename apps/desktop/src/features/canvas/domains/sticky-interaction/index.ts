@@ -480,6 +480,17 @@ export const StickyInteraction = {
   },
 
   /**
+   * 進行中の操作を確定して、付箋の選択を解除する。
+   *
+   * @param interaction 選択解除前の操作状態。
+   * @returns 文書変更を確定し、選択がない状態にした操作状態。
+   */
+  deselect(interaction: StickyInteraction): StickyInteraction {
+    const committed = commitSession(interaction);
+    return { ...committed, session: { status: "idle" } };
+  },
+
+  /**
    * 直前の文書操作を取り消す。編集中なら先に確定する。
    *
    * @param interaction undo 前の操作状態。

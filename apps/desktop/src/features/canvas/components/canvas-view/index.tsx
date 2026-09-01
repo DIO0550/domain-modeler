@@ -51,7 +51,14 @@ type CanvasViewProps = Readonly<{
   onSelectType?: (type: StickyType) => void;
   onSurfaceClick?: (point: Point) => void;
   onSurfaceDoubleClick?: (point: Point) => void;
-  onSurfaceKeyDown?: (key: "Enter" | "Escape") => void;
+  onSurfaceKeyDown?: (
+    key: "Enter" | "Escape" | "Delete" | "Backspace",
+  ) => void;
+  connectionTool?: Readonly<{
+    status: "inactive" | "selectingSource" | "selectingTarget";
+    errorMessage?: string;
+    onToggle: () => void;
+  }>;
 }>;
 
 /**
@@ -71,6 +78,7 @@ export function CanvasView({
   onSurfaceClick,
   onSurfaceDoubleClick,
   onSurfaceKeyDown,
+  connectionTool,
 }: CanvasViewProps) {
   const [uncontrolledType, setUncontrolledType] = useState<StickyType>(
     STICKY_TYPES.event,
@@ -96,6 +104,9 @@ export function CanvasView({
           onSelectType={selectType}
         />
         <HistoryControls undo={undo} redo={redo} />
+        {connectionTool !== undefined && (
+          <ConnectionControls tool={connectionTool} />
+        )}
       </CanvasToolbar>
       <CanvasSurface
         onClick={onSurfaceClick}
@@ -105,6 +116,38 @@ export function CanvasView({
         {children}
       </CanvasSurface>
       <CanvasStatusBar saveIndicator={saveIndicator} zoomLabel={zoomLabel} />
+    </div>
+  );
+}
+
+type ConnectionControlsProps = Readonly<{
+  tool: NonNullable<CanvasViewProps["connectionTool"]>;
+}>;
+
+/** 接続モードの切り替え、次の操作、core エラーを表示する。 */
+function ConnectionControls({ tool }: ConnectionControlsProps) {
+  const active = tool.status !== "inactive";
+  const instruction = connectionInstruction(tool.status);
+  return (
+    <div className="canvas-connection" role="group" aria-label="接続操作">
+      <button
+        type="button"
+        className={connectionButtonClassName(active)}
+        aria-pressed={active}
+        onClick={tool.onToggle}
+      >
+        接続
+      </button>
+      {instruction.length > 0 && (
+        <span className="canvas-connection__instruction" role="status">
+          {instruction}
+        </span>
+      )}
+      {tool.errorMessage !== undefined && (
+        <span className="canvas-connection__error" role="alert">
+          {tool.errorMessage}
+        </span>
+      )}
     </div>
   );
 }
@@ -241,7 +284,7 @@ type CanvasSurfaceProps = Readonly<{
   children?: ReactNode;
   onClick?: (point: Point) => void;
   onDoubleClick?: (point: Point) => void;
-  onKeyDown?: (key: "Enter" | "Escape") => void;
+  onKeyDown?: (key: "Enter" | "Escape" | "Delete" | "Backspace") => void;
 }>;
 
 /**
@@ -266,7 +309,7 @@ function CanvasSurface({
         if (onClick === undefined) {
           return;
         }
-        if (isTextareaEventTarget(event.target)) {
+        if (isTextEntryEventTarget(event.target)) {
           return;
         }
         onClick(surfacePointFromMouse(event));
@@ -275,7 +318,7 @@ function CanvasSurface({
         if (onDoubleClick === undefined) {
           return;
         }
-        if (isTextareaEventTarget(event.target)) {
+        if (isTextEntryEventTarget(event.target)) {
           return;
         }
         onDoubleClick(surfacePointFromMouse(event));
@@ -304,16 +347,17 @@ const surfacePointFromMouse = (event: MouseEvent<HTMLDivElement>): Point => {
 };
 
 /**
- * イベントの発生元が本文エディタか判定する。
+ * イベントの発生元がテキスト入力か判定する。
  *
  * @param target イベントの発生元。
- * @returns textarea なら true。
+ * @returns textarea または input なら true。
  */
-const isTextareaEventTarget = (target: EventTarget | null): boolean =>
-  target instanceof HTMLTextAreaElement;
+const isTextEntryEventTarget = (target: EventTarget | null): boolean =>
+  target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement;
 
 /**
- * Enter / Esc をキャンバス操作へ渡す。本文編集中の Enter は改行に譲る。
+ * Enter / Esc / Delete / Backspace をキャンバス操作へ渡す。
+ * テキスト編集中の Enter と削除キーは入力へ譲る。
  * IME 変換中のキーは確定や選択解除に使わない。
  *
  * @param event 面または子要素からのキーイベント。
@@ -321,7 +365,9 @@ const isTextareaEventTarget = (target: EventTarget | null): boolean =>
  */
 const handleSurfaceKeyDown = (
   event: KeyboardEvent<HTMLDivElement>,
-  onKeyDown: ((key: "Enter" | "Escape") => void) | undefined,
+  onKeyDown:
+    | ((key: "Enter" | "Escape" | "Delete" | "Backspace") => void)
+    | undefined,
 ): void => {
   if (onKeyDown === undefined) {
     return;
@@ -337,10 +383,18 @@ const handleSurfaceKeyDown = (
     onKeyDown("Escape");
     return;
   }
+  if (event.key === "Delete" || event.key === "Backspace") {
+    if (isTextEntryEventTarget(event.target)) {
+      return;
+    }
+    event.preventDefault();
+    onKeyDown(event.key);
+    return;
+  }
   if (event.key !== "Enter") {
     return;
   }
-  if (isTextareaEventTarget(event.target)) {
+  if (isTextEntryEventTarget(event.target)) {
     return;
   }
   event.preventDefault();
@@ -400,4 +454,23 @@ const historyButtonClassName = (
     availability === "disabled" ? ["canvas-history__button--disabled"] : [];
   const classNames = ["canvas-history__button", ...disabledClass];
   return classNames.join(" ");
+};
+
+/** 接続モードで次に選ぶ端点を案内する。 */
+const connectionInstruction = (
+  status: NonNullable<CanvasViewProps["connectionTool"]>["status"],
+): string => {
+  if (status === "selectingSource") {
+    return "始点の付箋を選択";
+  }
+  if (status === "selectingTarget") {
+    return "終点の付箋を選択";
+  }
+  return "";
+};
+
+/** 接続ボタンの class を組み立てる。 */
+const connectionButtonClassName = (active: boolean): string => {
+  const activeClass = active ? ["canvas-connection__button--active"] : [];
+  return ["canvas-connection__button", ...activeClass].join(" ");
 };

@@ -1,11 +1,17 @@
 import { useState } from "react";
 import type {
+  CanvasError,
+  Connection,
+  ConnectionId,
   Document,
+  Option,
   Point,
   Sticky,
   StickyId,
   StickyType,
 } from "@domain-modeler/canvas-core";
+import { ConnectionInteraction } from "../domains/connection-interaction";
+import { ConnectionSession } from "../domains/connection-session";
 import {
   StickyInteraction,
   type StickyResizeCorner,
@@ -111,6 +117,137 @@ export function useStickyInteractions(
     },
     redo: () => {
       setInteraction(StickyInteraction.redo);
+    },
+  };
+}
+
+/** 付箋操作に接続の作成・選択・編集・削除を加えたキャンバス操作。 */
+export type UseConnectionInteractionsResult = UseStickyInteractionsResult &
+  Readonly<{
+    connections: readonly Connection[];
+    connectionSession: ConnectionSession;
+    connectionError: Option<CanvasError>;
+    toggleConnectionMode: () => void;
+    selectConnection: (connectionId: ConnectionId) => void;
+    editConnection: (connectionId: ConnectionId) => void;
+    changeConnectionDraft: (draftLabel: string) => void;
+    commitConnectionEdit: () => void;
+    pressDelete: () => void;
+  }>;
+
+/**
+ * 付箋と接続が同じ文書・undo履歴を共有するキャンバス操作を扱う。
+ *
+ * @param initialDocument 初期文書。省略時は空の文書。
+ * @returns 表示する文書、操作状態、イベントハンドラ。
+ */
+export function useConnectionInteractions(
+  initialDocument?: Document,
+): UseConnectionInteractionsResult {
+  const [interaction, setInteraction] = useState(() =>
+    ConnectionInteraction.create(initialDocument),
+  );
+  const board = interaction.board;
+  const updateBoard = (
+    advance: (current: typeof board) => typeof board,
+  ): void => {
+    setInteraction((current) =>
+      ConnectionInteraction.withBoard(current, advance(current.board)),
+    );
+  };
+
+  return {
+    document: board.workingDocument,
+    selectedType: board.selectedType,
+    session: board.session,
+    stickies: board.workingDocument.stickies,
+    connections: board.workingDocument.connections,
+    connectionSession: interaction.session,
+    connectionError: interaction.error,
+    hasUndo: StickyInteraction.hasUndo(board),
+    hasRedo: StickyInteraction.hasRedo(board),
+    selectType: (type) => {
+      updateBoard((current) => StickyInteraction.selectType(current, type));
+    },
+    select: (stickyId) => {
+      updateBoard((current) => StickyInteraction.select(current, stickyId));
+    },
+    clickAt: (point) => {
+      setInteraction((current) => ConnectionInteraction.clickAt(current, point));
+    },
+    doubleClickAt: (point) => {
+      setInteraction((current) => {
+        if (ConnectionSession.isCreating(current.session)) {
+          return current;
+        }
+        return ConnectionInteraction.withBoard(
+          current,
+          StickyInteraction.doubleClickAt(current.board, point),
+        );
+      });
+    },
+    changeDraft: (draftText) => {
+      updateBoard((current) =>
+        StickyInteraction.changeDraft(current, draftText),
+      );
+    },
+    commitEdit: () => {
+      updateBoard(StickyInteraction.commitEdit);
+    },
+    beginDrag: (stickyId, point) => {
+      updateBoard((current) =>
+        StickyInteraction.beginDrag(current, stickyId, point),
+      );
+    },
+    beginResize: (corner, point) => {
+      updateBoard((current) =>
+        StickyInteraction.beginResize(current, corner, point),
+      );
+    },
+    movePointer: (point) => {
+      updateBoard((current) => StickyInteraction.movePointer(current, point));
+    },
+    commitManipulation: () => {
+      updateBoard(StickyInteraction.commitManipulation);
+    },
+    cancelManipulation: () => {
+      updateBoard(StickyInteraction.cancelManipulation);
+    },
+    pressEnter: () => {
+      setInteraction(ConnectionInteraction.pressEnter);
+    },
+    pressEscape: () => {
+      setInteraction(ConnectionInteraction.pressEscape);
+    },
+    undo: () => {
+      setInteraction(ConnectionInteraction.undo);
+    },
+    redo: () => {
+      setInteraction(ConnectionInteraction.redo);
+    },
+    toggleConnectionMode: () => {
+      setInteraction(ConnectionInteraction.toggleMode);
+    },
+    selectConnection: (connectionId) => {
+      setInteraction((current) =>
+        ConnectionInteraction.select(current, connectionId),
+      );
+    },
+    editConnection: (connectionId) => {
+      setInteraction((current) =>
+        ConnectionInteraction.edit(current, connectionId),
+      );
+    },
+    changeConnectionDraft: (draftLabel) => {
+      setInteraction((current) =>
+        ConnectionInteraction.changeDraft(current, draftLabel),
+      );
+    },
+    commitConnectionEdit: () => {
+      setInteraction(ConnectionInteraction.commitEdit);
+    },
+    pressDelete: () => {
+      setInteraction(ConnectionInteraction.pressDelete);
     },
   };
 }

@@ -247,6 +247,16 @@ const connectionSourceId = StickyId.create("stk_aaaaaaaaaaaa");
 const connectionTargetId = StickyId.create("stk_bbbbbbbbbbbb");
 const connectionId = ConnectionId.create("con_111111111111");
 const missingConnectionId = ConnectionId.create("con_missing");
+
+it("Document.connectionByIdは一致する接続を返し、無ければnoneになる", () => {
+  expect(Document.connectionById(connectionDocument, connectionId)).toEqual({
+    some: true,
+    value: connectionDocument.connections[0],
+  });
+  expect(Document.connectionById(connectionDocument, missingConnectionId)).toEqual({
+    some: false,
+  });
+});
 const connectionDocument = {
   ...Document.empty(),
   stickies: [
