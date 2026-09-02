@@ -24,9 +24,12 @@ export const ConnectionSession = {
    * @param session 接続セッション。
    * @returns 接続の端点を選択中なら true。
    */
-  isCreating: (session: ConnectionSession): boolean =>
-    session.status === "selectingSource" ||
-    session.status === "selectingTarget",
+  isCreating(session: ConnectionSession): boolean {
+    return (
+      session.status === "selectingSource" ||
+      session.status === "selectingTarget"
+    );
+  },
 
   /**
    * 指定した接続の表示状態を返す。
@@ -35,10 +38,10 @@ export const ConnectionSession = {
    * @param connectionId 表示する接続 ID。
    * @returns 通常、選択中、ラベル編集中のいずれか。
    */
-  statusOf: (
+  statusOf(
     session: ConnectionSession,
     connectionId: ConnectionId,
-  ): "plain" | "selected" | "editing" => {
+  ): "plain" | "selected" | "editing" {
     if (
       session.status === "idle" ||
       session.status === "selectingSource" ||
@@ -59,6 +62,9 @@ export const ConnectionSession = {
    * @param stickyId 判定する付箋 ID。
    * @returns 選択済みの始点なら true。
    */
-  isSource: (session: ConnectionSession, stickyId: StickyId): boolean =>
-    session.status === "selectingTarget" && session.sourceId === stickyId,
+  isSource(session: ConnectionSession, stickyId: StickyId): boolean {
+    return (
+      session.status === "selectingTarget" && session.sourceId === stickyId
+    );
+  },
 } as const;
