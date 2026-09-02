@@ -488,6 +488,10 @@ body,
   pointer-events: none;
 }
 
+.connection-layer--editing {
+  z-index: 2;
+}
+
 .connection-layer__hit-area,
 .connection-layer__path {
   fill: none;

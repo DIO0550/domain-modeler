@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import {
   Sticky as StickyModel,
   StickyId,
@@ -37,6 +37,7 @@ const renderSticky = (
   sticky: StickyModel,
   chrome?: StickyChrome,
   manipulation?: StickyManipulation,
+  onKeyActivate?: () => void,
 ): HTMLDivElement => {
   const host = document.createElement("div");
   document.body.append(host);
@@ -48,6 +49,7 @@ const renderSticky = (
         sticky={sticky}
         chrome={chrome}
         manipulation={manipulation}
+        onKeyActivate={onKeyActivate}
       />,
     );
   });
@@ -202,6 +204,23 @@ test("通常表示の付箋もキーボードでフォーカスできる", () =>
   const host = renderSticky(stickyOf("event", "注文が確定した"));
 
   expect(host.querySelector("article")?.getAttribute("tabindex")).toBe("0");
+});
+
+test.each(["Enter", " "])("%sでキーボード操作を実行する", (key) => {
+  const onKeyActivate = vi.fn();
+  const host = renderSticky(
+    stickyOf("event", "注文が確定した"),
+    undefined,
+    undefined,
+    onKeyActivate,
+  );
+  const article = host.querySelector("article");
+
+  act(() => {
+    article?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  });
+
+  expect(onKeyActivate).toHaveBeenCalledOnce();
 });
 
 test("選択中は選択セッションとして表示する", () => {

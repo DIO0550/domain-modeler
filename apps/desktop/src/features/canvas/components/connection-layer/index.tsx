@@ -17,7 +17,7 @@ import { ConnectionAppearance } from "../../domains/connection-appearance";
 import {
   ConnectionSession,
   type ConnectionSession as ConnectionSessionType,
-} from "../../domains/connection-session";
+} from "../../domains/connection-interaction";
 
 const LABEL_HORIZONTAL_PADDING = 16;
 
@@ -45,7 +45,11 @@ export function ConnectionLayer({ document, interaction }: ConnectionLayerProps)
   );
   return (
     <svg
-      className="connection-layer"
+      className={
+        interaction?.session.status === "editing"
+          ? "connection-layer connection-layer--editing"
+          : "connection-layer"
+      }
       aria-label="接続線"
       width="100%"
       height="100%"
@@ -129,10 +133,8 @@ function RenderedConnection({
       data-connection-status={appearance.value.status}
       data-connection-shape={appearance.value.route.shape}
       data-connection-session={connectionStatus}
-      role={interaction === undefined ? undefined : "button"}
-      aria-label={
-        interaction === undefined ? undefined : connectionAccessibleName(connection)
-      }
+      role="button"
+      aria-label={connectionAccessibleName(connection)}
       tabIndex={interaction === undefined ? undefined : 0}
       onClick={(event) => {
         selectConnection(event, interaction, connection.id);

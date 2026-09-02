@@ -10,8 +10,10 @@ import type {
   StickyId,
   StickyType,
 } from "@domain-modeler/canvas-core";
-import { ConnectionInteraction } from "../domains/connection-interaction";
-import { ConnectionSession } from "../domains/connection-session";
+import {
+  ConnectionInteraction,
+  ConnectionSession,
+} from "../domains/connection-interaction";
 import {
   StickyInteraction,
   type StickyResizeCorner,
@@ -128,6 +130,7 @@ export type UseConnectionInteractionsResult = UseStickyInteractionsResult &
     connectionSession: ConnectionSession;
     connectionError: Option<CanvasError>;
     toggleConnectionMode: () => void;
+    selectConnectionEndpoint: (stickyId: StickyId) => void;
     selectConnection: (connectionId: ConnectionId) => void;
     editConnection: (connectionId: ConnectionId) => void;
     changeConnectionDraft: (draftLabel: string) => void;
@@ -227,6 +230,11 @@ export function useConnectionInteractions(
     },
     toggleConnectionMode: () => {
       setInteraction(ConnectionInteraction.toggleMode);
+    },
+    selectConnectionEndpoint: (stickyId) => {
+      setInteraction((current) =>
+        ConnectionInteraction.selectEndpoint(current, stickyId),
+      );
     },
     selectConnection: (connectionId) => {
       setInteraction((current) =>

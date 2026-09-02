@@ -3,6 +3,7 @@ import {
   useRef,
   type CSSProperties,
   type FocusEvent,
+  type KeyboardEvent,
   type PointerEvent,
 } from "react";
 import type {
@@ -61,6 +62,7 @@ type StickyProps = Readonly<{
   chrome?: StickyChrome;
   connectionEndpoint?: "source";
   onActivate?: () => void;
+  onKeyActivate?: () => void;
   manipulation?: StickyManipulation;
 }>;
 
@@ -97,6 +99,7 @@ export function Sticky({
   chrome = { status: "plain" },
   connectionEndpoint,
   onActivate,
+  onKeyActivate,
   manipulation,
 }: StickyProps) {
   const articleRef = useRef<HTMLElement>(null);
@@ -214,6 +217,9 @@ export function Sticky({
           return;
         }
         activateStickyFromFocus(event, onActivate);
+      }}
+      onKeyDown={(event) => {
+        activateStickyFromKey(event, onKeyActivate);
       }}
       onPointerDown={(event) => {
         if (isTextEditorTarget(event.target) || manipulation === undefined) {
@@ -358,6 +364,27 @@ const activateStickyFromFocus = (
     return;
   }
   onActivate();
+};
+
+/**
+ * 付箋本体で Enter または Space を押したときだけ操作を実行する。
+ *
+ * @param event 付箋のキーボードイベント。
+ * @param onKeyActivate キーボードによる付箋操作。
+ */
+const activateStickyFromKey = (
+  event: KeyboardEvent<HTMLElement>,
+  onKeyActivate: (() => void) | undefined,
+): void => {
+  if (onKeyActivate === undefined || event.target !== event.currentTarget) {
+    return;
+  }
+  if (event.key !== "Enter" && event.key !== " ") {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  onKeyActivate();
 };
 
 /**

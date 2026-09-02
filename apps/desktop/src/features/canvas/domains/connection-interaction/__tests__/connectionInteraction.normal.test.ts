@@ -133,6 +133,27 @@ test("接続作成はundo 1回で取り消してredoできる", () => {
   expect(redone.board.workingDocument.connections).toHaveLength(1);
 });
 
+test("始点に選んだ付箋がundoで消えたら接続作成を終了する", () => {
+  const createdSticky = ConnectionInteraction.clickAt(
+    ConnectionInteraction.create(),
+    { x: 40, y: 60 },
+  );
+  const stickyId = createdSticky.board.workingDocument.stickies[0]?.id;
+  if (stickyId === undefined) {
+    throw new Error("付箋が作成されていません");
+  }
+  const selectingTarget = ConnectionInteraction.selectEndpoint(
+    ConnectionInteraction.toggleMode(createdSticky),
+    stickyId,
+  );
+
+  const undone = ConnectionInteraction.undo(selectingTarget);
+
+  expect(undone.board.workingDocument.stickies).toHaveLength(0);
+  expect(undone.session).toEqual({ status: "idle" });
+  expect(undone.error).toEqual({ some: false });
+});
+
 test("ラベル編集は確定まで文書を変えず確定時に1操作として履歴へ積む", () => {
   const selected = ConnectionInteraction.select(
     ConnectionInteraction.create(connectedDocument),

@@ -720,6 +720,31 @@ test("接続モードで始点と終点を選ぶと接続線を作成して選�
   expect(buttonNamed(host, "接続").getAttribute("aria-pressed")).toBe("false");
 });
 
+test("接続モードはEnterとSpaceで始点と終点を選べる", () => {
+  const host = renderEditor(documentWithTwoStickies);
+  const source = host.querySelector('[data-sticky-id="stk_existing000"]');
+  const target = host.querySelector('[data-sticky-id="stk_front0000000"]');
+
+  act(() => {
+    buttonNamed(host, "接続").click();
+  });
+  act(() => {
+    source?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+  });
+  expect(host.textContent).toContain("終点の付箋を選択");
+
+  act(() => {
+    target?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: " ", bubbles: true }),
+    );
+  });
+
+  expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(1);
+  expect(buttonNamed(host, "接続").getAttribute("aria-pressed")).toBe("false");
+});
+
 test("接続モードで同じ付箋を2回選んでも自己参照を作成せずcoreエラーを表示する", () => {
   const host = renderEditor(documentWithTwoStickies);
 
@@ -748,6 +773,9 @@ test("接続線をダブルクリックするとラベルをインライン編�
     foundInput instanceof HTMLInputElement
       ? foundInput
       : document.createElement("input");
+  expect(input.closest(".connection-layer")?.classList).toContain(
+    "connection-layer--editing",
+  );
   act(() => {
     const nativeSetter = Object.getOwnPropertyDescriptor(
       HTMLInputElement.prototype,
