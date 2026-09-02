@@ -10,10 +10,8 @@ import type {
   StickyId,
   StickyType,
 } from "@domain-modeler/canvas-core";
-import {
-  ConnectionInteraction,
-  ConnectionSession,
-} from "../domains/connection-interaction";
+import { ConnectionInteraction } from "../domains/connection-interaction";
+import { ConnectionSession } from "../domains/connection-session";
 import {
   StickyInteraction,
   type StickyResizeCorner,

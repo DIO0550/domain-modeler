@@ -1,6 +1,6 @@
 import type { Document } from "@domain-modeler/canvas-core";
 import type { SaveIndicatorStatus } from "../../domains/save-indicator";
-import { ConnectionSession } from "../../domains/connection-interaction";
+import { ConnectionSession } from "../../domains/connection-session";
 import { StickySession } from "../../domains/sticky-interaction";
 import { useConnectionInteractions } from "../../hooks";
 import { Sticky, StickyChrome } from "../sticky";

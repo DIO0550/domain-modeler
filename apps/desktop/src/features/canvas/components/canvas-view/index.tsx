@@ -1,4 +1,5 @@
 import {
+  useRef,
   useState,
   type KeyboardEvent,
   type MouseEvent,
@@ -299,6 +300,17 @@ function CanvasSurface({
   onDoubleClick,
   onKeyDown,
 }: CanvasSurfaceProps) {
+  const pendingClick = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const cancelPendingClick = (): void => {
+    if (pendingClick.current === undefined) {
+      return;
+    }
+    clearTimeout(pendingClick.current);
+    pendingClick.current = undefined;
+  };
+
   return (
     <div
       className="canvas-surface"
@@ -312,7 +324,16 @@ function CanvasSurface({
         if (isTextEntryEventTarget(event.target)) {
           return;
         }
-        onClick(surfacePointFromMouse(event));
+        const point = surfacePointFromMouse(event);
+        if (event.detail === 0) {
+          onClick(point);
+          return;
+        }
+        cancelPendingClick();
+        pendingClick.current = setTimeout(() => {
+          pendingClick.current = undefined;
+          onClick(point);
+        }, 0);
       }}
       onDoubleClick={(event) => {
         if (onDoubleClick === undefined) {
@@ -321,6 +342,7 @@ function CanvasSurface({
         if (isTextEntryEventTarget(event.target)) {
           return;
         }
+        cancelPendingClick();
         onDoubleClick(surfacePointFromMouse(event));
       }}
       onKeyDown={(event) => {

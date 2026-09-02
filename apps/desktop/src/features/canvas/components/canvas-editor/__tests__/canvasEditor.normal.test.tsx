@@ -155,6 +155,15 @@ const doubleClickSurface = (
     surface.dispatchEvent(
       new MouseEvent("click", {
         bubbles: true,
+        detail: 1,
+        clientX: point.x,
+        clientY: point.y,
+      }),
+    );
+    surface.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        detail: 2,
         clientX: point.x,
         clientY: point.y,
       }),
@@ -745,6 +754,19 @@ test("接続モードはEnterとSpaceで始点と終点を選べる", () => {
   expect(buttonNamed(host, "接続").getAttribute("aria-pressed")).toBe("false");
 });
 
+test("接続モード中の付箋ダブルクリックは端点選択を進めない", () => {
+  const host = renderEditor(documentWithTwoStickies);
+
+  act(() => {
+    buttonNamed(host, "接続").click();
+  });
+  doubleClickSurface(host, { x: 20, y: 30 });
+
+  expect(host.textContent).toContain("始点の付箋を選択");
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(0);
+});
+
 test("接続モードで同じ付箋を2回選んでも自己参照を作成せずcoreエラーを表示する", () => {
   const host = renderEditor(documentWithTwoStickies);
 
@@ -813,4 +835,25 @@ test("選択中の接続でDeleteを押すと接続だけを削除してundoで�
     buttonNamed(host, "元に戻す").click();
   });
   expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(1);
+});
+
+test("フォーカス中の接続はSpaceで選択してDeleteで削除できる", () => {
+  const host = renderEditor(documentWithConnection);
+  const connection = host.querySelector('[data-connection-id="con_existing000"]');
+
+  act(() => {
+    connection?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: " ", bubbles: true }),
+    );
+  });
+  expect(connection?.getAttribute("data-connection-session")).toBe("selected");
+
+  act(() => {
+    connection?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Delete", bubbles: true }),
+    );
+  });
+
+  expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(0);
+  expect(host.querySelectorAll("article")).toHaveLength(2);
 });

@@ -17,7 +17,7 @@ import { ConnectionAppearance } from "../../domains/connection-appearance";
 import {
   ConnectionSession,
   type ConnectionSession as ConnectionSessionType,
-} from "../../domains/connection-interaction";
+} from "../../domains/connection-session";
 
 const LABEL_HORIZONTAL_PADDING = 16;
 
@@ -195,13 +195,19 @@ const editConnection = (
   interaction?.onEdit(connectionId);
 };
 
-/** フォーカス中の接続で Enter を押すとラベル編集を始める。 */
+/** フォーカス中の接続で Space を押すと選択し、Enter でラベル編集を始める。 */
 const handleConnectionKeyDown = (
   event: KeyboardEvent<SVGGElement>,
   interaction: ConnectionLayerProps["interaction"],
   connectionId: ConnectionId,
 ): void => {
   if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+    return;
+  }
+  if (event.key === " ") {
+    event.preventDefault();
+    event.stopPropagation();
+    interaction?.onSelect(connectionId);
     return;
   }
   if (event.key !== "Enter") {

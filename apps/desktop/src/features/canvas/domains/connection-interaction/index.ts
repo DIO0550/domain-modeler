@@ -15,8 +15,6 @@ import {
 } from "../sticky-interaction";
 import { ConnectionSession } from "../connection-session";
 
-export { ConnectionSession };
-
 /** 付箋操作と同じ文書・履歴を使う接続操作。 */
 export type ConnectionInteraction = Readonly<{
   board: StickyInteraction;
