@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -336,6 +337,15 @@ function CanvasSurface({
     "--canvas-grid-size": `${24 * viewport.zoom}px`,
   };
 
+  const bindSurface = viewportInteraction?.bindSurface;
+  const setSurfaceRef = useCallback(
+    (surface: HTMLDivElement | null) => {
+      surfaceRef.current = surface;
+      bindSurface?.(surface);
+    },
+    [bindSurface],
+  );
+
   useEffect(() => {
     const surface = surfaceRef.current;
     const onWheel = viewportInteraction?.onWheel;
@@ -353,7 +363,7 @@ function CanvasSurface({
 
   return (
     <div
-      ref={surfaceRef}
+      ref={setSurfaceRef}
       className="canvas-surface"
       role="region"
       aria-label="キャンバス"

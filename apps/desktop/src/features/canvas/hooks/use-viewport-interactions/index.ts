@@ -31,6 +31,7 @@ export type ViewportSurfaceInteraction = Readonly<{
   onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerCancel: (event: PointerEvent<HTMLDivElement>) => void;
   onClickCapture: (event: MouseEvent<HTMLDivElement>) => void;
+  bindSurface: (surface: HTMLDivElement | null) => void;
   onWheel: (
     event: globalThis.WheelEvent,
     surface: HTMLDivElement,
@@ -41,6 +42,7 @@ export type ViewportSurfaceInteraction = Readonly<{
 export type UseViewportInteractionsResult = Readonly<{
   viewport: ViewportModel;
   toWorldPoint: (point: Point) => Point;
+  toWorldClientPoint: (point: Point) => Point;
   panBy: (delta: Point) => void;
   zoomAt: (zoom: number, fixedPoint: Point) => void;
   reset: () => void;
@@ -59,6 +61,7 @@ export function useViewportInteractions(
   changeViewport: ChangeViewport,
 ): UseViewportInteractionsResult {
   const [isPanning, setIsPanning] = useState(false);
+  const surfaceElement = useRef<HTMLDivElement | null>(null);
   const spacePressed = useRef(false);
   const panningPointer = useRef<PanningPointer>({ status: "idle" });
   const suppressClick = useRef(false);
@@ -78,6 +81,23 @@ export function useViewportInteractions(
   const reset = useCallback(() => {
     changeViewport(() => Viewport.default());
   }, [changeViewport]);
+  const stepZoom = useCallback(
+    (factor: number) => {
+      const surface = surfaceElement.current;
+      if (surface === null) {
+        return;
+      }
+      const rect = surface.getBoundingClientRect();
+      const fixedPoint = { x: rect.width / 2, y: rect.height / 2 };
+      changeViewport((current) =>
+        Viewport.zoomAt(current, current.zoom * factor, fixedPoint),
+      );
+    },
+    [changeViewport],
+  );
+  const bindSurface = useCallback((surface: HTMLDivElement | null) => {
+    surfaceElement.current = surface;
+  }, []);
   const stopPanning = useCallback((pointerId: number) => {
     if (
       panningPointer.current.status !== "panning" ||
@@ -91,6 +111,9 @@ export function useViewportInteractions(
   const handleWheel = useCallback(
     (event: globalThis.WheelEvent, surface: HTMLDivElement) => {
       if (isTextEntryEventTarget(event.target)) {
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+        }
         return;
       }
       event.preventDefault();
@@ -114,9 +137,20 @@ export function useViewportInteractions(
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent): void => {
-      if ((event.ctrlKey || event.metaKey) && event.key === "0") {
+      const modified = event.ctrlKey || event.metaKey;
+      if (modified && event.key === "0") {
         event.preventDefault();
         reset();
+        return;
+      }
+      if (modified && (event.key === "=" || event.key === "+")) {
+        event.preventDefault();
+        stepZoom(1.2);
+        return;
+      }
+      if (modified && event.key === "-") {
+        event.preventDefault();
+        stepZoom(1 / 1.2);
         return;
       }
       if (
@@ -144,16 +178,25 @@ export function useViewportInteractions(
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", handleBlur);
     };
-  }, [reset]);
+  }, [reset, stepZoom]);
 
   return {
     viewport,
     toWorldPoint: (point) => Viewport.screenToWorld(viewport, point),
+    toWorldClientPoint: (point) => {
+      const rect = surfaceElement.current?.getBoundingClientRect();
+      const localPoint =
+        rect === undefined
+          ? point
+          : { x: point.x - rect.left, y: point.y - rect.top };
+      return Viewport.screenToWorld(viewport, localPoint);
+    },
     panBy,
     zoomAt,
     reset,
     surfaceInteraction: {
       isPanning,
+      bindSurface,
       onPointerDown: (event) => {
         const startsWithMiddleButton = event.button === 1;
         const startsWithSpace =

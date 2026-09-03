@@ -921,7 +921,7 @@ const wheelSurface = (
     clientX?: number;
     clientY?: number;
   }> = {},
-): void => {
+): WheelEvent => {
   const event = new WheelEvent("wheel", {
     bubbles: true,
     cancelable: true,
@@ -937,6 +937,7 @@ const wheelSurface = (
   act(() => {
     surface.dispatchEvent(event);
   });
+  return event;
 };
 
 test("文書の viewport を全キャンバス要素へ適用する", () => {
@@ -1116,4 +1117,51 @@ test("本文編集中でも Ctrl+0 で viewport をリセットする", () => {
     "translate(0px, 0px) scale(1)",
   );
   expect(editorOf(host)).toBe(editor);
+});
+
+
+test("本文エディタ上の Ctrl ホイールはネイティブズームを抑止する", () => {
+  const host = renderEditor(existingStickyDocument);
+  doubleClickSurface(host, { x: 20, y: 30 });
+  const editor = editorOf(host);
+
+  const event = wheelSurface(
+    editor,
+    { x: 0, y: -80 },
+    { ctrlKey: true, clientX: 20, clientY: 30 },
+  );
+
+  expect(event.defaultPrevented).toBe(true);
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(0px, 0px) scale(1)",
+  );
+});
+
+test("Ctrl+= と Ctrl+- はキャンバス中心を固定して段階ズームする", () => {
+  const host = renderEditor();
+  const toolbarButton = buttonNamed(host, "Domain Event");
+
+  act(() => {
+    toolbarButton.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+        key: "=",
+      }),
+    );
+  });
+  expect(host.querySelector('[aria-label="ズーム 120%"]')).not.toBeNull();
+
+  act(() => {
+    toolbarButton.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+        key: "-",
+      }),
+    );
+  });
+  expect(host.querySelector('[aria-label="ズーム 100%"]')).not.toBeNull();
 });

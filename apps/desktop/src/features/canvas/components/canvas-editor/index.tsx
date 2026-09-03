@@ -126,13 +126,13 @@ export function CanvasEditor({
               ? undefined
               : {
                   onDragStart: (point) => {
-                    board.beginDrag(sticky.id, viewport.toWorldPoint(point));
+                    board.beginDrag(sticky.id, viewport.toWorldClientPoint(point));
                   },
                   onResizeStart: (corner, point) => {
-                    board.beginResize(corner, viewport.toWorldPoint(point));
+                    board.beginResize(corner, viewport.toWorldClientPoint(point));
                   },
                   onPointerMove: (point) => {
-                    board.movePointer(viewport.toWorldPoint(point));
+                    board.movePointer(viewport.toWorldClientPoint(point));
                   },
                   onPointerCommit: board.commitManipulation,
                   onPointerCancel: board.cancelManipulation,

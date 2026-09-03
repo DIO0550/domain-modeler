@@ -89,3 +89,28 @@ test("reset は viewport を既定値へ戻す", () => {
 
   expect(latest.current?.viewport).toEqual(Viewport.default());
 });
+
+
+test("client 座標はキャンバス面を原点としてワールド座標へ変換する", () => {
+  const latest = renderHook({ x: 10, y: 20, zoom: 2 });
+  const surface = document.createElement("div");
+  surface.getBoundingClientRect = () => ({
+    x: 100,
+    y: 50,
+    width: 800,
+    height: 600,
+    top: 50,
+    left: 100,
+    bottom: 650,
+    right: 900,
+    toJSON: () => ({}),
+  });
+  act(() => {
+    latest.current?.surfaceInteraction.bindSurface(surface);
+  });
+
+  expect(latest.current?.toWorldClientPoint({ x: 150, y: 100 })).toEqual({
+    x: 20,
+    y: 15,
+  });
+});
