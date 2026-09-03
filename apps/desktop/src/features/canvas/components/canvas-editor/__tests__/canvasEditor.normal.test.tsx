@@ -856,3 +856,211 @@ test("フォーカス中の接続はSpaceで選択してDeleteで削除できる
   expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(0);
   expect(host.querySelectorAll("article")).toHaveLength(2);
 });
+
+
+const canvasSurfaceOf = (host: HTMLDivElement): HTMLElement => {
+  const found = host.querySelector(".canvas-surface");
+  return found instanceof HTMLElement ? found : document.createElement("div");
+};
+
+const canvasWorldOf = (host: HTMLDivElement): HTMLElement => {
+  const found = host.querySelector(".canvas-world");
+  return found instanceof HTMLElement ? found : document.createElement("div");
+};
+
+const panSurface = (
+  surface: HTMLElement,
+  button: number,
+  points: readonly Readonly<{ x: number; y: number }>[],
+): void => {
+  const first = points[0] ?? { x: 0, y: 0 };
+  const last = points[points.length - 1] ?? first;
+  act(() => {
+    surface.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button,
+        pointerId: 20,
+        clientX: first.x,
+        clientY: first.y,
+      }),
+    );
+  });
+  for (const point of points.slice(1)) {
+    act(() => {
+      surface.dispatchEvent(
+        new PointerEvent("pointermove", {
+          bubbles: true,
+          button,
+          pointerId: 20,
+          clientX: point.x,
+          clientY: point.y,
+        }),
+      );
+    });
+  }
+  act(() => {
+    surface.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        button,
+        pointerId: 20,
+        clientX: last.x,
+        clientY: last.y,
+      }),
+    );
+  });
+};
+
+const wheelSurface = (
+  surface: HTMLElement,
+  delta: Readonly<{ x: number; y: number }>,
+  options: Readonly<{
+    ctrlKey?: boolean;
+    metaKey?: boolean;
+    clientX?: number;
+    clientY?: number;
+  }> = {},
+): void => {
+  const event = new WheelEvent("wheel", {
+    bubbles: true,
+    cancelable: true,
+    deltaX: delta.x,
+    deltaY: delta.y,
+  });
+  Object.defineProperties(event, {
+    ctrlKey: { value: options.ctrlKey ?? false },
+    metaKey: { value: options.metaKey ?? false },
+    clientX: { value: options.clientX ?? 0 },
+    clientY: { value: options.clientY ?? 0 },
+  });
+  act(() => {
+    surface.dispatchEvent(event);
+  });
+};
+
+test("文書の viewport を全キャンバス要素へ適用する", () => {
+  const initialDocument = {
+    ...documentWithConnection,
+    viewport: { x: 48, y: -24, zoom: 1.5 },
+  };
+  const host = renderEditor(initialDocument);
+
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(48px, -24px) scale(1.5)",
+  );
+  expect(host.querySelector('[aria-label="ズーム 150%"]')).not.toBeNull();
+  expect(canvasWorldOf(host).querySelectorAll("article")).toHaveLength(2);
+  expect(canvasWorldOf(host).querySelectorAll("[data-connection-id]")).toHaveLength(
+    1,
+  );
+});
+
+test("Space と左ドラッグで pan し、付箋を作成しない", () => {
+  const host = renderEditor();
+  const surface = canvasSurfaceOf(host);
+
+  act(() => {
+    surface.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        code: "Space",
+        key: " ",
+      }),
+    );
+  });
+  panSurface(surface, 0, [
+    { x: 100, y: 80 },
+    { x: 132, y: 104 },
+  ]);
+  act(() => {
+    surface.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 132,
+        clientY: 104,
+      }),
+    );
+    surface.dispatchEvent(
+      new KeyboardEvent("keyup", {
+        bubbles: true,
+        code: "Space",
+        key: " ",
+      }),
+    );
+  });
+
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(32px, 24px) scale(1)",
+  );
+  expect(host.querySelectorAll("article")).toHaveLength(0);
+});
+
+test("中ボタンドラッグで pan する", () => {
+  const host = renderEditor();
+  const surface = canvasSurfaceOf(host);
+
+  panSurface(surface, 1, [
+    { x: 80, y: 90 },
+    { x: 60, y: 130 },
+  ]);
+
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(-20px, 40px) scale(1)",
+  );
+});
+
+test("修飾キーなしのホイールで pan する", () => {
+  const host = renderEditor();
+  const surface = canvasSurfaceOf(host);
+
+  wheelSurface(surface, { x: 18, y: -30 });
+
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(-18px, 30px) scale(1)",
+  );
+});
+
+test("Ctrl ホイールの前後でカーソル下のワールド座標を維持する", () => {
+  const host = renderEditor();
+  const surface = canvasSurfaceOf(host);
+
+  wheelSurface(
+    surface,
+    { x: 0, y: -120 },
+    { ctrlKey: true, clientX: 240, clientY: 180 },
+  );
+  clickSurface(host, { x: 240, y: 180 });
+
+  const sticky = articleOf(host);
+  expect(Number.parseFloat(sticky.style.left)).toBeCloseTo(240);
+  expect(Number.parseFloat(sticky.style.top)).toBeCloseTo(180);
+  expect(canvasWorldOf(host).style.transform).not.toBe(
+    "translate(0px, 0px) scale(1)",
+  );
+});
+
+test("Ctrl+0 で viewport を既定値へ戻す", () => {
+  const initialDocument = {
+    ...Document.empty(),
+    viewport: { x: 80, y: -40, zoom: 2 },
+  };
+  const host = renderEditor(initialDocument);
+  const surface = canvasSurfaceOf(host);
+
+  act(() => {
+    surface.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+        key: "0",
+      }),
+    );
+  });
+
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(0px, 0px) scale(1)",
+  );
+  expect(host.querySelector('[aria-label="ズーム 100%"]')).not.toBeNull();
+});
