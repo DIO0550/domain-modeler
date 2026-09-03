@@ -9,6 +9,7 @@ import type {
   Sticky,
   StickyId,
   StickyType,
+  Viewport,
 } from "@domain-modeler/canvas-core";
 import { ConnectionInteraction } from "../domains/connection-interaction";
 import { ConnectionSession } from "../domains/connection-session";
