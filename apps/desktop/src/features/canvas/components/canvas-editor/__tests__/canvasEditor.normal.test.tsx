@@ -960,8 +960,10 @@ test("Space と左ドラッグで pan し、付箋を作成しない", () => {
   const host = renderEditor();
   const surface = canvasSurfaceOf(host);
 
+  const toolbarButton = buttonNamed(host, "Domain Event");
   act(() => {
-    surface.dispatchEvent(
+    toolbarButton.focus();
+    toolbarButton.dispatchEvent(
       new KeyboardEvent("keydown", {
         bubbles: true,
         code: "Space",
@@ -981,7 +983,7 @@ test("Space と左ドラッグで pan し、付箋を作成しない", () => {
         clientY: 104,
       }),
     );
-    surface.dispatchEvent(
+    toolbarButton.dispatchEvent(
       new KeyboardEvent("keyup", {
         bubbles: true,
         code: "Space",
@@ -1063,4 +1065,55 @@ test("Ctrl+0 で viewport を既定値へ戻す", () => {
     "translate(0px, 0px) scale(1)",
   );
   expect(host.querySelector('[aria-label="ズーム 100%"]')).not.toBeNull();
+});
+
+
+test("pan 中も接続作成セッションを維持する", () => {
+  const host = renderEditor(documentWithTwoStickies);
+  const surface = canvasSurfaceOf(host);
+
+  act(() => {
+    buttonNamed(host, "接続").click();
+  });
+  wheelSurface(surface, { x: 20, y: 30 });
+
+  expect(host.textContent).toContain("始点の付箋を選択");
+});
+
+test("本文エディタ上のホイールはキャンバスを移動しない", () => {
+  const host = renderEditor(existingStickyDocument);
+  doubleClickSurface(host, { x: 20, y: 30 });
+  const editor = editorOf(host);
+
+  wheelSurface(editor, { x: 0, y: 80 });
+
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(0px, 0px) scale(1)",
+  );
+});
+
+test("本文編集中でも Ctrl+0 で viewport をリセットする", () => {
+  const initialDocument = {
+    ...existingStickyDocument,
+    viewport: { x: 80, y: -40, zoom: 2 },
+  };
+  const host = renderEditor(initialDocument);
+  doubleClickSurface(host, { x: 120, y: 20 });
+  const editor = editorOf(host);
+
+  act(() => {
+    editor.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+        key: "0",
+      }),
+    );
+  });
+
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(0px, 0px) scale(1)",
+  );
+  expect(editorOf(host)).toBe(editor);
 });

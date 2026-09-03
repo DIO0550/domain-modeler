@@ -258,12 +258,13 @@ export function useConnectionInteractions(
       setInteraction(ConnectionInteraction.pressDelete);
     },
     changeViewport: (change) => {
-      updateBoard((current) =>
-        StickyInteraction.changeViewport(
-          current,
-          change(current.workingDocument.viewport),
+      setInteraction((current) => ({
+        ...current,
+        board: StickyInteraction.changeViewport(
+          current.board,
+          change(current.board.workingDocument.viewport),
         ),
-      );
+      }));
     },
   };
 }

@@ -1,12 +1,10 @@
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
-  type FocusEvent,
-  type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
-  type WheelEvent,
 } from "react";
 import {
   Viewport,
@@ -33,10 +31,10 @@ export type ViewportSurfaceInteraction = Readonly<{
   onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerCancel: (event: PointerEvent<HTMLDivElement>) => void;
   onClickCapture: (event: MouseEvent<HTMLDivElement>) => void;
-  onWheel: (event: WheelEvent<HTMLDivElement>) => void;
-  onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
-  onKeyUp: (event: KeyboardEvent<HTMLDivElement>) => void;
-  onBlur: (event: FocusEvent<HTMLDivElement>) => void;
+  onWheel: (
+    event: globalThis.WheelEvent,
+    surface: HTMLDivElement,
+  ) => void;
 }>;
 
 /** viewport と座標変換、pan/zoom 操作。 */
@@ -90,6 +88,63 @@ export function useViewportInteractions(
     panningPointer.current = { status: "idle" };
     setIsPanning(false);
   }, []);
+  const handleWheel = useCallback(
+    (event: globalThis.WheelEvent, surface: HTMLDivElement) => {
+      if (isTextEntryEventTarget(event.target)) {
+        return;
+      }
+      event.preventDefault();
+      const delta = wheelDelta(event, surface);
+      if (event.ctrlKey || event.metaKey) {
+        const rect = surface.getBoundingClientRect();
+        const fixedPoint = {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
+        };
+        const factor = Math.exp(-delta.y * 0.002);
+        changeViewport((current) =>
+          Viewport.zoomAt(current, current.zoom * factor, fixedPoint),
+        );
+        return;
+      }
+      panBy({ x: -delta.x, y: -delta.y });
+    },
+    [changeViewport, panBy],
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent): void => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "0") {
+        event.preventDefault();
+        reset();
+        return;
+      }
+      if (
+        event.code !== "Space" ||
+        isTextEntryEventTarget(event.target)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      spacePressed.current = true;
+    };
+    const handleKeyUp = (event: globalThis.KeyboardEvent): void => {
+      if (event.code === "Space") {
+        spacePressed.current = false;
+      }
+    };
+    const handleBlur = (): void => {
+      spacePressed.current = false;
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [reset]);
 
   return {
     viewport,
@@ -147,55 +202,22 @@ export function useViewportInteractions(
         event.preventDefault();
         event.stopPropagation();
       },
-      onWheel: (event) => {
-        event.preventDefault();
-        const delta = wheelDelta(event);
-        if (event.ctrlKey || event.metaKey) {
-          const rect = event.currentTarget.getBoundingClientRect();
-          const fixedPoint = {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top,
-          };
-          zoomAt(viewport.zoom * Math.exp(-delta.y * 0.002), fixedPoint);
-          return;
-        }
-        panBy({ x: -delta.x, y: -delta.y });
-      },
-      onKeyDown: (event) => {
-        if (isTextEntryEventTarget(event.target)) {
-          return;
-        }
-        if ((event.ctrlKey || event.metaKey) && event.key === "0") {
-          event.preventDefault();
-          reset();
-          return;
-        }
-        if (event.code !== "Space") {
-          return;
-        }
-        event.preventDefault();
-        spacePressed.current = true;
-      },
-      onKeyUp: (event) => {
-        if (event.code === "Space") {
-          spacePressed.current = false;
-        }
-      },
-      onBlur: () => {
-        spacePressed.current = false;
-      },
+      onWheel: handleWheel,
     },
   };
 }
 
-const wheelDelta = (event: WheelEvent<HTMLDivElement>): Point => {
+const wheelDelta = (
+  event: globalThis.WheelEvent,
+  surface: HTMLDivElement,
+): Point => {
   if (event.deltaMode === 1) {
     return { x: event.deltaX * 16, y: event.deltaY * 16 };
   }
   if (event.deltaMode === 2) {
     return {
-      x: event.deltaX * event.currentTarget.clientWidth,
-      y: event.deltaY * event.currentTarget.clientHeight,
+      x: event.deltaX * surface.clientWidth,
+      y: event.deltaY * surface.clientHeight,
     };
   }
   return { x: event.deltaX, y: event.deltaY };

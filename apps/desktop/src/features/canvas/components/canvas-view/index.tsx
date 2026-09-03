@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -318,6 +319,7 @@ function CanvasSurface({
   onDoubleClick,
   onKeyDown,
 }: CanvasSurfaceProps) {
+  const surfaceRef = useRef<HTMLDivElement>(null);
   const pendingClick = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -334,8 +336,24 @@ function CanvasSurface({
     "--canvas-grid-size": `${24 * viewport.zoom}px`,
   };
 
+  useEffect(() => {
+    const surface = surfaceRef.current;
+    const onWheel = viewportInteraction?.onWheel;
+    if (surface === null || onWheel === undefined) {
+      return;
+    }
+    const handleWheel = (event: globalThis.WheelEvent): void => {
+      onWheel(event, surface);
+    };
+    surface.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      surface.removeEventListener("wheel", handleWheel);
+    };
+  }, [viewportInteraction?.onWheel]);
+
   return (
     <div
+      ref={surfaceRef}
       className="canvas-surface"
       role="region"
       aria-label="キャンバス"
@@ -351,7 +369,6 @@ function CanvasSurface({
       onPointerUp={viewportInteraction?.onPointerUp}
       onPointerCancel={viewportInteraction?.onPointerCancel}
       onClickCapture={viewportInteraction?.onClickCapture}
-      onWheel={viewportInteraction?.onWheel}
       onClick={(event) => {
         if (onClick === undefined) {
           return;
@@ -381,13 +398,8 @@ function CanvasSurface({
         onDoubleClick(surfacePointFromMouse(event));
       }}
       onKeyDown={(event) => {
-        viewportInteraction?.onKeyDown(event);
-        if (!event.defaultPrevented) {
-          handleSurfaceKeyDown(event, onKeyDown);
-        }
+        handleSurfaceKeyDown(event, onKeyDown);
       }}
-      onKeyUp={viewportInteraction?.onKeyUp}
-      onBlur={viewportInteraction?.onBlur}
     >
       <CanvasWorld viewport={viewport}>{children}</CanvasWorld>
     </div>
