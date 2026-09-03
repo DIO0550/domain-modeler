@@ -1,11 +1,11 @@
 {
-  "reportVersion": "dd75447931b8c3cd8105de86d5c35fcc31af2ea4",
+  "reportVersion": "9bad8295f44a3d84257c3530cb242b3eedd77dce",
   "maxDiffRatio": 0.002,
-  "changed": 4,
+  "changed": 5,
   "new": 0,
   "deleted": 0,
-  "passed": 33,
-  "failed": 4,
+  "passed": 32,
+  "failed": 5,
   "results": [
     {
       "story": "appshell-menu-bar-menubar--all-props",
@@ -220,10 +220,10 @@
       "id": "features-canvas-components-canvas-editor-canvaseditor--edge-cases",
       "title": "features/canvas/components/canvas-editor/CanvasEditor",
       "name": "Edge Cases",
-      "status": "passed",
-      "reason": "within-threshold",
-      "diffPixels": 48,
-      "diffRatio": 0.0001,
+      "status": "changed",
+      "reason": "pixel-diff",
+      "diffPixels": 252882,
+      "diffRatio": 0.27440000000000003,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
