@@ -70,6 +70,11 @@
     "name": "All Props"
   },
   {
+    "id": "features-canvas-components-canvas-editor-canvaseditor--creating-connection",
+    "title": "features/canvas/components/canvas-editor/CanvasEditor",
+    "name": "Creating Connection"
+  },
+  {
     "id": "features-canvas-components-canvas-editor-canvaseditor--default",
     "title": "features/canvas/components/canvas-editor/CanvasEditor",
     "name": "Default"
