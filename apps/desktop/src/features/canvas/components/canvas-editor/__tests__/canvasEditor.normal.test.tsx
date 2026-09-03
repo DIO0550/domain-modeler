@@ -90,7 +90,6 @@ const renderEditor = (initialDocument?: Document): HTMLDivElement => {
   act(() => {
     root.render(
       <CanvasEditor
-        zoom={1}
         saveStatus="saved"
         initialDocument={initialDocument}
       />,

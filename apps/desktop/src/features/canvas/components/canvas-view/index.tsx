@@ -1,6 +1,7 @@
 import {
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -9,6 +10,7 @@ import {
   STICKY_TYPES,
   type Point,
   type StickyType,
+  type Viewport as ViewportModel,
 } from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../../domains/sticky-appearance";
 import {
@@ -16,6 +18,7 @@ import {
   type SaveIndicatorStatus,
 } from "../../domains/save-indicator";
 import { ZoomLabel } from "../../domains/zoom-label";
+import type { ViewportSurfaceInteraction } from "../../hooks";
 
 /** ツールバーの undo / redo。有効なときだけハンドラを持つ。 */
 export type HistoryButton =
@@ -43,7 +46,8 @@ export const HistoryButton = {
 } as const;
 
 type CanvasViewProps = Readonly<{
-  zoom: number;
+  viewport: ViewportModel;
+  viewportInteraction?: ViewportSurfaceInteraction;
   saveStatus: SaveIndicatorStatus;
   undo: HistoryButton;
   redo: HistoryButton;
@@ -69,7 +73,8 @@ type CanvasViewProps = Readonly<{
  * @returns キャンバス画面。
  */
 export function CanvasView({
-  zoom,
+  viewport,
+  viewportInteraction,
   saveStatus,
   undo,
   redo,
@@ -87,7 +92,7 @@ export function CanvasView({
   const selectedType = selectedTypeProp ?? uncontrolledType;
   const appearances = StickyAppearance.all();
   const saveIndicator = SaveIndicator.create(saveStatus);
-  const zoomLabel = ZoomLabel.toPercent(zoom);
+  const zoomLabel = ZoomLabel.toPercent(viewport.zoom);
 
   const selectType = (type: StickyType): void => {
     if (selectedTypeProp === undefined) {
@@ -110,6 +115,8 @@ export function CanvasView({
         )}
       </CanvasToolbar>
       <CanvasSurface
+        viewport={viewport}
+        viewportInteraction={viewportInteraction}
         onClick={onSurfaceClick}
         onDoubleClick={onSurfaceDoubleClick}
         onKeyDown={onSurfaceKeyDown}
@@ -282,19 +289,30 @@ function HistoryControlButton({ label, button }: HistoryControlButtonProps) {
 }
 
 type CanvasSurfaceProps = Readonly<{
+  viewport: ViewportModel;
+  viewportInteraction?: ViewportSurfaceInteraction;
   children?: ReactNode;
   onClick?: (point: Point) => void;
   onDoubleClick?: (point: Point) => void;
   onKeyDown?: (key: "Enter" | "Escape" | "Delete" | "Backspace") => void;
 }>;
 
+type CanvasSurfaceStyle = CSSProperties &
+  Readonly<{
+    "--canvas-grid-position-x": string;
+    "--canvas-grid-position-y": string;
+    "--canvas-grid-size": string;
+  }>;
+
 /**
  * パンとズームだけで移動する無限キャンバス領域。スクロールバーは持たない。
  *
- * @param props キャンバス上に置く付箋などの子要素とポインタ操作。
+ * @param props キャンバス上に置く付箋などの子要素、viewport、ポインタ操作。
  * @returns キャンバス面。
  */
 function CanvasSurface({
+  viewport,
+  viewportInteraction,
   children,
   onClick,
   onDoubleClick,
@@ -310,13 +328,30 @@ function CanvasSurface({
     clearTimeout(pendingClick.current);
     pendingClick.current = undefined;
   };
+  const style: CanvasSurfaceStyle = {
+    "--canvas-grid-position-x": `${viewport.x}px`,
+    "--canvas-grid-position-y": `${viewport.y}px`,
+    "--canvas-grid-size": `${24 * viewport.zoom}px`,
+  };
 
   return (
     <div
       className="canvas-surface"
       role="region"
       aria-label="キャンバス"
-      tabIndex={onKeyDown === undefined ? undefined : 0}
+      tabIndex={
+        onKeyDown === undefined && viewportInteraction === undefined
+          ? undefined
+          : 0
+      }
+      data-panning={viewportInteraction?.isPanning}
+      style={style}
+      onPointerDownCapture={viewportInteraction?.onPointerDown}
+      onPointerMove={viewportInteraction?.onPointerMove}
+      onPointerUp={viewportInteraction?.onPointerUp}
+      onPointerCancel={viewportInteraction?.onPointerCancel}
+      onClickCapture={viewportInteraction?.onClickCapture}
+      onWheel={viewportInteraction?.onWheel}
       onClick={(event) => {
         if (onClick === undefined) {
           return;
@@ -346,9 +381,31 @@ function CanvasSurface({
         onDoubleClick(surfacePointFromMouse(event));
       }}
       onKeyDown={(event) => {
-        handleSurfaceKeyDown(event, onKeyDown);
+        viewportInteraction?.onKeyDown(event);
+        if (!event.defaultPrevented) {
+          handleSurfaceKeyDown(event, onKeyDown);
+        }
       }}
+      onKeyUp={viewportInteraction?.onKeyUp}
+      onBlur={viewportInteraction?.onBlur}
     >
+      <CanvasWorld viewport={viewport}>{children}</CanvasWorld>
+    </div>
+  );
+}
+
+type CanvasWorldProps = Readonly<{
+  viewport: ViewportModel;
+  children?: ReactNode;
+}>;
+
+/** viewport の移動と拡大率をキャンバス上の全要素へ適用する。 */
+function CanvasWorld({ viewport, children }: CanvasWorldProps) {
+  const style: CSSProperties = {
+    transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+  };
+  return (
+    <div className="canvas-world" style={style}>
       {children}
     </div>
   );

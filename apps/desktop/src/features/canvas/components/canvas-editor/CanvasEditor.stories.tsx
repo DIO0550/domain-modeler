@@ -78,14 +78,12 @@ const clickSurfaceAt = async (
 
 export const Default: Story = {
   args: {
-    zoom: 1,
     saveStatus: "saved",
   },
 };
 
 export const AllProps: Story = {
   args: {
-    zoom: 1,
     saveStatus: "saving",
     initialDocument: documentWithEvent,
   },
@@ -96,7 +94,6 @@ export const AllProps: Story = {
 
 export const Editing: Story = {
   args: {
-    zoom: 1,
     saveStatus: "saved",
     initialDocument: documentWithEvent,
   },
@@ -113,7 +110,6 @@ export const Editing: Story = {
 
 export const CreatingConnection: Story = {
   args: {
-    zoom: 1,
     saveStatus: "saved",
     initialDocument: documentWithTwoStickies,
   },
@@ -126,7 +122,6 @@ export const CreatingConnection: Story = {
 
 export const EdgeCases: Story = {
   args: {
-    zoom: 0.1,
     saveStatus: "failed",
   },
   play: async ({ canvas }) => {

@@ -470,10 +470,23 @@ body,
   min-height: 0;
   overflow: hidden;
   overscroll-behavior: none;
+  touch-action: none;
   scrollbar-width: none;
   background-color: var(--canvas-surface-bg);
   background-image: radial-gradient(var(--canvas-grid-dot) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-position:
+    var(--canvas-grid-position-x) var(--canvas-grid-position-y);
+  background-size: var(--canvas-grid-size) var(--canvas-grid-size);
+}
+
+.canvas-surface[data-panning="true"] {
+  cursor: grabbing;
+}
+
+.canvas-world {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
 }
 
 .canvas-surface::-webkit-scrollbar {

@@ -134,6 +134,7 @@ export type UseConnectionInteractionsResult = UseStickyInteractionsResult &
     changeConnectionDraft: (draftLabel: string) => void;
     commitConnectionEdit: () => void;
     pressDelete: () => void;
+    changeViewport: (change: (current: Viewport) => Viewport) => void;
   }>;
 
 /**
@@ -255,5 +256,19 @@ export function useConnectionInteractions(
     pressDelete: () => {
       setInteraction(ConnectionInteraction.pressDelete);
     },
+    changeViewport: (change) => {
+      updateBoard((current) =>
+        StickyInteraction.changeViewport(
+          current,
+          change(current.workingDocument.viewport),
+        ),
+      );
+    },
   };
 }
+
+export {
+  useViewportInteractions,
+  type UseViewportInteractionsResult,
+  type ViewportSurfaceInteraction,
+} from "./use-viewport-interactions";

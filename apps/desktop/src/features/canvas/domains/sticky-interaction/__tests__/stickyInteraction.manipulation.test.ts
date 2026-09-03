@@ -227,3 +227,33 @@ test("リサイズを取り消すと開始前の矩形へ戻して履歴へ積�
   expect(canceled.session).toEqual({ status: "selected", stickyId: draggedId });
   expect(StickyInteraction.hasUndo(canceled)).toBe(false);
 });
+
+
+test("viewport の変更は undo 履歴へ積まない", () => {
+  const viewport = { x: 80, y: -40, zoom: 1.5 };
+  const changed = StickyInteraction.changeViewport(
+    StickyInteraction.create(documentWithTwoStickies),
+    viewport,
+  );
+
+  expect(changed.workingDocument.viewport).toEqual(viewport);
+  expect(changed.history.current.viewport).toEqual(viewport);
+  expect(StickyInteraction.hasUndo(changed)).toBe(false);
+});
+
+test("文書操作を undo しても現在の viewport を維持する", () => {
+  const dragging = StickyInteraction.beginDrag(
+    StickyInteraction.create(documentWithTwoStickies),
+    draggedId,
+    { x: 20, y: 30 },
+  );
+  const moved = StickyInteraction.movePointer(dragging, { x: 60, y: 80 });
+  const committed = StickyInteraction.commitManipulation(moved);
+  const viewport = { x: -120, y: 64, zoom: 0.75 };
+  const changed = StickyInteraction.changeViewport(committed, viewport);
+  const undone = StickyInteraction.undo(changed);
+
+  expect(undone.workingDocument.viewport).toEqual(viewport);
+  expect(undone.history.current.viewport).toEqual(viewport);
+  expect(stickyIn(undone.workingDocument, draggedId)).toEqual(draggedSticky);
+});

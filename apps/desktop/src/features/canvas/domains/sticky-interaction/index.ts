@@ -8,6 +8,7 @@ import {
   type Sticky,
   type StickyId,
   type StickyType,
+  type Viewport,
 } from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../sticky-appearance";
 
@@ -144,6 +145,27 @@ export const StickyInteraction = {
     selectedType: StickyType,
   ): StickyInteraction {
     return { ...interaction, selectedType };
+  },
+
+  /**
+   * viewport を履歴へ積まずに更新する。
+   *
+   * @param interaction 変更前の操作状態。
+   * @param viewport 次の viewport。
+   * @returns 表示中と履歴上の現在文書へ viewport を反映した操作状態。
+   */
+  changeViewport(
+    interaction: StickyInteraction,
+    viewport: Viewport,
+  ): StickyInteraction {
+    return {
+      ...interaction,
+      history: {
+        ...interaction.history,
+        current: { ...interaction.history.current, viewport },
+      },
+      workingDocument: { ...interaction.workingDocument, viewport },
+    };
   },
 
   /**
@@ -732,12 +754,18 @@ const commitSession = (interaction: StickyInteraction): StickyInteraction => {
 const withHistory = (
   interaction: StickyInteraction,
   history: History,
-): StickyInteraction => ({
-  ...interaction,
-  history,
-  workingDocument: history.current,
-  session: sessionIfStickyExists(interaction.session, history.current),
-});
+): StickyInteraction => {
+  const current = {
+    ...history.current,
+    viewport: interaction.workingDocument.viewport,
+  };
+  return {
+    ...interaction,
+    history: { ...history, current },
+    workingDocument: current,
+    session: sessionIfStickyExists(interaction.session, current),
+  };
+};
 
 /**
  * 対象の付箋が残っていれば選択を維持し、消えていれば解除する。
