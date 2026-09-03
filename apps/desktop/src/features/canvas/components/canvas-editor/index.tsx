@@ -1,7 +1,8 @@
 import type { Document } from "@domain-modeler/canvas-core";
 import type { SaveIndicatorStatus } from "../../domains/save-indicator";
+import { ConnectionSession } from "../../domains/connection-session";
 import { StickySession } from "../../domains/sticky-interaction";
-import { useStickyInteractions } from "../../hooks";
+import { useConnectionInteractions } from "../../hooks";
 import { Sticky, StickyChrome } from "../sticky";
 import { CanvasView, HistoryButton } from "../canvas-view";
 import { ConnectionLayer } from "../connection-layer";
@@ -23,7 +24,15 @@ export function CanvasEditor({
   saveStatus,
   initialDocument,
 }: CanvasEditorProps) {
-  const board = useStickyInteractions(initialDocument);
+  const board = useConnectionInteractions(initialDocument);
+  const connectionModeActive = ConnectionSession.isCreating(
+    board.connectionSession,
+  );
+  const connectionToolStatus =
+    board.connectionSession.status === "selectingSource" ||
+    board.connectionSession.status === "selectingTarget"
+      ? board.connectionSession.status
+      : "inactive";
 
   return (
     <CanvasView
@@ -48,10 +57,30 @@ export function CanvasEditor({
           board.pressEnter();
           return;
         }
-        board.pressEscape();
+        if (key === "Escape") {
+          board.pressEscape();
+          return;
+        }
+        board.pressDelete();
+      }}
+      connectionTool={{
+        status: connectionToolStatus,
+        errorMessage: board.connectionError.some
+          ? board.connectionError.value.message
+          : undefined,
+        onToggle: board.toggleConnectionMode,
       }}
     >
-      <ConnectionLayer document={board.document} />
+      <ConnectionLayer
+        document={board.document}
+        interaction={{
+          session: board.connectionSession,
+          onSelect: board.selectConnection,
+          onEdit: board.editConnection,
+          onDraftChange: board.changeConnectionDraft,
+          onCommitEdit: board.commitConnectionEdit,
+        }}
+      />
       {board.stickies.map((sticky) => (
         <Sticky
           key={sticky.id}
@@ -63,18 +92,38 @@ export function CanvasEditor({
               onCommit: board.commitEdit,
             },
           )}
-          onActivate={() => {
-            board.select(sticky.id);
-          }}
-          manipulation={{
-            onDragStart: (point) => {
-              board.beginDrag(sticky.id, point);
-            },
-            onResizeStart: board.beginResize,
-            onPointerMove: board.movePointer,
-            onPointerCommit: board.commitManipulation,
-            onPointerCancel: board.cancelManipulation,
-          }}
+          connectionEndpoint={
+            ConnectionSession.isSource(board.connectionSession, sticky.id)
+              ? "source"
+              : undefined
+          }
+          onActivate={
+            connectionModeActive
+              ? undefined
+              : () => {
+                  board.select(sticky.id);
+              }
+          }
+          onKeyActivate={
+            connectionModeActive
+              ? () => {
+                  board.selectConnectionEndpoint(sticky.id);
+                }
+              : undefined
+          }
+          manipulation={
+            connectionModeActive
+              ? undefined
+              : {
+                  onDragStart: (point) => {
+                    board.beginDrag(sticky.id, point);
+                  },
+                  onResizeStart: board.beginResize,
+                  onPointerMove: board.movePointer,
+                  onPointerCommit: board.commitManipulation,
+                  onPointerCancel: board.cancelManipulation,
+                }
+          }
         />
       ))}
     </CanvasView>

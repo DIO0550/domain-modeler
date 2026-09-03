@@ -24,6 +24,10 @@ type ConnectionLabelAppearance =
 /** core の解決結果から組み立てた接続線の表示。 */
 export type ConnectionAppearance = Readonly<{
   route: ConnectionRoute;
+  endpoints: Readonly<{
+    from: ConnectionSegment["from"];
+    to: ConnectionSegment["to"];
+  }>;
   status: ConnectionStatus;
   label: ConnectionLabelAppearance;
   tooltip: string;
@@ -57,6 +61,7 @@ export const ConnectionAppearance = {
       .join(" / ");
     return OptionValue.some({
       route,
+      endpoints: { from: segment.value.from, to: segment.value.to },
       status,
       label:
         connection.label.length === 0

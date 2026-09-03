@@ -38,6 +38,20 @@ const documentWithEvent = {
   ],
 };
 
+const documentWithTwoStickies = {
+  ...documentWithEvent,
+  stickies: [
+    ...documentWithEvent.stickies,
+    StickyModel.create(
+      StickyId.create("stk_command0000"),
+      STICKY_TYPES.command,
+      "通知する",
+      { x: 280, y: 24 },
+      { width: 160, height: 100 },
+    ),
+  ],
+};
+
 /**
  * キャンバス面の指定位置をクリックする。
  *
@@ -94,6 +108,19 @@ export const Editing: Story = {
       target: surface,
       coords: { clientX: rect.left + 40, clientY: rect.top + 40 },
     });
+  },
+};
+
+export const CreatingConnection: Story = {
+  args: {
+    zoom: 1,
+    saveStatus: "saved",
+    initialDocument: documentWithTwoStickies,
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "接続" }));
+    await clickSurfaceAt(canvas, { x: 48, y: 48 });
+    await clickSurfaceAt(canvas, { x: 304, y: 48 });
   },
 };
 

@@ -341,7 +341,8 @@ body,
 }
 
 .canvas-palette,
-.canvas-history {
+.canvas-history,
+.canvas-connection {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -353,8 +354,15 @@ body,
   border-left: 1px solid var(--canvas-toolbar-border);
 }
 
+.canvas-connection {
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--canvas-toolbar-border);
+}
+
 .canvas-palette__button,
-.canvas-history__button {
+.canvas-history__button,
+.canvas-connection__button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -372,12 +380,14 @@ body,
 }
 
 .canvas-palette__button:hover,
-.canvas-history__button:hover {
+.canvas-history__button:hover,
+.canvas-connection__button:hover {
   background: var(--tab-item-hover-bg);
 }
 
 .canvas-palette__button:focus-visible,
-.canvas-history__button:focus-visible {
+.canvas-history__button:focus-visible,
+.canvas-connection__button:focus-visible {
   outline: 2px solid var(--tab-change-mark);
   outline-offset: -2px;
 }
@@ -385,6 +395,26 @@ body,
 .canvas-palette__button--selected {
   background: var(--tab-item-active-bg);
   border-color: var(--canvas-toolbar-border);
+}
+
+.canvas-connection__button--active {
+  background: var(--tab-item-active-bg);
+  border-color: var(--sticky-selected-ring);
+}
+
+.canvas-connection__instruction {
+  color: var(--shell-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.canvas-connection__error {
+  max-width: 320px;
+  overflow: hidden;
+  color: var(--canvas-status-failed);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .canvas-history__button--disabled,
@@ -458,10 +488,49 @@ body,
   pointer-events: none;
 }
 
+.connection-layer--editing {
+  z-index: 2;
+}
+
 .connection-layer__hit-area,
 .connection-layer__path {
   fill: none;
   pointer-events: stroke;
+  vector-effect: non-scaling-stroke;
+}
+
+.connection-layer__connection[data-connection-session="selected"]
+  .connection-layer__path,
+.connection-layer__connection[data-connection-session="editing"]
+  .connection-layer__path {
+  stroke: var(--sticky-selected-ring);
+  stroke-width: 3;
+}
+
+.connection-layer__connection[data-connection-session="selected"]
+  .connection-layer__label
+  rect,
+.connection-layer__connection[data-connection-session="editing"]
+  .connection-layer__label
+  rect {
+  stroke: var(--sticky-selected-ring);
+  stroke-width: 2;
+}
+
+.connection-layer__connection:focus {
+  outline: none;
+}
+
+.connection-layer__connection:focus-visible .connection-layer__path {
+  stroke: var(--sticky-selected-ring);
+  stroke-width: 4;
+}
+
+.connection-layer__endpoints circle {
+  fill: var(--connection-label-bg);
+  stroke: var(--sticky-selected-ring);
+  stroke-width: 2;
+  pointer-events: none;
   vector-effect: non-scaling-stroke;
 }
 
@@ -499,6 +568,24 @@ body,
   fill: var(--connection-label-text);
   font: 600 12px/1.2 Inter, "Hiragino Sans", "Noto Sans JP", sans-serif;
   pointer-events: none;
+}
+
+.connection-layer__label-editor {
+  overflow: visible;
+  pointer-events: all;
+}
+
+.connection-layer__label-editor input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  padding: 5px 8px;
+  border: 2px solid var(--sticky-selected-ring);
+  border-radius: 6px;
+  outline: none;
+  background: var(--connection-label-bg);
+  color: var(--connection-label-text);
+  font: 600 12px/1.2 Inter, "Hiragino Sans", "Noto Sans JP", sans-serif;
 }
 
 .canvas-status {
@@ -713,4 +800,8 @@ body,
 .canvas-surface:focus-visible {
   outline: 2px solid var(--tab-change-mark);
   outline-offset: -2px;
+}
+
+.sticky[data-connection-endpoint="source"] {
+  filter: drop-shadow(0 0 5px var(--sticky-selected-ring));
 }

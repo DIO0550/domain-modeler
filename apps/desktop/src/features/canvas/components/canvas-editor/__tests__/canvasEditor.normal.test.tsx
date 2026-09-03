@@ -155,6 +155,15 @@ const doubleClickSurface = (
     surface.dispatchEvent(
       new MouseEvent("click", {
         bubbles: true,
+        detail: 1,
+        clientX: point.x,
+        clientY: point.y,
+      }),
+    );
+    surface.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        detail: 2,
         clientX: point.x,
         clientY: point.y,
       }),
@@ -693,4 +702,158 @@ test("初期文書の接続は付箋と同じキャンバス面に描画する",
     connection?.querySelector(".connection-layer__label")?.textContent,
   ).toBe("通知");
   expect(surface?.querySelectorAll("article")).toHaveLength(2);
+});
+
+test("接続モードで始点と終点を選ぶと接続線を作成して選択する", () => {
+  const host = renderEditor(documentWithTwoStickies);
+
+  act(() => {
+    buttonNamed(host, "接続").click();
+  });
+  expect(buttonNamed(host, "接続").getAttribute("aria-pressed")).toBe("true");
+  expect(host.textContent).toContain("始点の付箋を選択");
+
+  clickSurface(host, { x: 20, y: 30 });
+  expect(host.textContent).toContain("終点の付箋を選択");
+  expect(
+    host
+      .querySelector('[data-sticky-id="stk_existing000"]')
+      ?.getAttribute("data-connection-endpoint"),
+  ).toBe("source");
+
+  clickSurface(host, { x: 260, y: 30 });
+
+  const connection = host.querySelector("[data-connection-id]");
+  expect(connection?.getAttribute("data-connection-session")).toBe("selected");
+  expect(connection?.querySelectorAll(".connection-layer__endpoints circle")).toHaveLength(2);
+  expect(buttonNamed(host, "接続").getAttribute("aria-pressed")).toBe("false");
+});
+
+test("接続モードはEnterとSpaceで始点と終点を選べる", () => {
+  const host = renderEditor(documentWithTwoStickies);
+  const source = host.querySelector('[data-sticky-id="stk_existing000"]');
+  const target = host.querySelector('[data-sticky-id="stk_front0000000"]');
+
+  act(() => {
+    buttonNamed(host, "接続").click();
+  });
+  act(() => {
+    source?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+  });
+  expect(host.textContent).toContain("終点の付箋を選択");
+
+  act(() => {
+    target?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: " ", bubbles: true }),
+    );
+  });
+
+  expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(1);
+  expect(buttonNamed(host, "接続").getAttribute("aria-pressed")).toBe("false");
+});
+
+test("接続モード中の付箋ダブルクリックは端点選択を進めない", () => {
+  const host = renderEditor(documentWithTwoStickies);
+
+  act(() => {
+    buttonNamed(host, "接続").click();
+  });
+  doubleClickSurface(host, { x: 20, y: 30 });
+
+  expect(host.textContent).toContain("始点の付箋を選択");
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(0);
+});
+
+test("接続モードで同じ付箋を2回選んでも自己参照を作成せずcoreエラーを表示する", () => {
+  const host = renderEditor(documentWithTwoStickies);
+
+  act(() => {
+    buttonNamed(host, "接続").click();
+  });
+  clickSurface(host, { x: 20, y: 30 });
+  clickSurface(host, { x: 20, y: 30 });
+
+  expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(0);
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe(
+    "A sticky cannot connect to itself",
+  );
+  expect(host.textContent).toContain("終点の付箋を選択");
+});
+
+test("接続線をダブルクリックするとラベルをインライン編集して確定できる", () => {
+  const host = renderEditor(documentWithConnection);
+  const connection = host.querySelector('[data-connection-id="con_existing000"]');
+
+  act(() => {
+    connection?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+  });
+  const foundInput = host.querySelector('input[aria-label="接続ラベル"]');
+  const input =
+    foundInput instanceof HTMLInputElement
+      ? foundInput
+      : document.createElement("input");
+  expect(input.closest(".connection-layer")?.classList).toContain(
+    "connection-layer--editing",
+  );
+  act(() => {
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    nativeSetter?.call(input, "配信");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  act(() => {
+    input.blur();
+  });
+
+  expect(host.querySelector('input[aria-label="接続ラベル"]')).toBeNull();
+  expect(host.querySelector(".connection-layer__label")?.textContent).toBe("配信");
+});
+
+test("選択中の接続でDeleteを押すと接続だけを削除してundoで戻せる", () => {
+  const host = renderEditor(documentWithConnection);
+  const connection = host.querySelector('[data-connection-id="con_existing000"]');
+  const surface = host.querySelector(".canvas-surface");
+
+  act(() => {
+    connection?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  act(() => {
+    surface?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Delete", bubbles: true }),
+    );
+  });
+
+  expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(0);
+  expect(host.querySelectorAll("article")).toHaveLength(2);
+
+  act(() => {
+    buttonNamed(host, "元に戻す").click();
+  });
+  expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(1);
+});
+
+test("フォーカス中の接続はSpaceで選択してDeleteで削除できる", () => {
+  const host = renderEditor(documentWithConnection);
+  const connection = host.querySelector('[data-connection-id="con_existing000"]');
+
+  act(() => {
+    connection?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: " ", bubbles: true }),
+    );
+  });
+  expect(connection?.getAttribute("data-connection-session")).toBe("selected");
+
+  act(() => {
+    connection?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Delete", bubbles: true }),
+    );
+  });
+
+  expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(0);
+  expect(host.querySelectorAll("article")).toHaveLength(2);
 });
