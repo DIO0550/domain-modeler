@@ -2,7 +2,10 @@ import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vitest";
 import {
-  Viewport,
+  Sticky,
+  StickyId,
+  STICKY_TYPES,
+  type Sticky as StickyModel,
   type Viewport as ViewportModel,
 } from "@domain-modeler/canvas-core";
 import {
@@ -25,6 +28,7 @@ afterEach(() => {
 
 const renderHook = (
   initialViewport: ViewportModel,
+  stickies: readonly StickyModel[] = [],
 ): { current: UseViewportInteractionsResult | undefined } => {
   const latest: { current: UseViewportInteractionsResult | undefined } = {
     current: undefined,
@@ -35,9 +39,13 @@ const renderHook = (
 
   const Probe = () => {
     const [viewport, setViewport] = useState(initialViewport);
-    latest.current = useViewportInteractions(viewport, (change) => {
-      setViewport(change);
-    });
+    latest.current = useViewportInteractions(
+      viewport,
+      stickies,
+      (change) => {
+        setViewport(change);
+      },
+    );
     return null;
   };
 
@@ -55,6 +63,26 @@ const renderHook = (
     },
   });
   return latest;
+};
+
+const surfaceWithRect = (
+  rect: Readonly<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  }>,
+): HTMLDivElement => {
+  const surface = document.createElement("div");
+  surface.getBoundingClientRect = () => ({
+    ...rect,
+    x: rect.left,
+    y: rect.top,
+    right: rect.left + rect.width,
+    bottom: rect.top + rect.height,
+    toJSON: () => ({}),
+  });
+  return surface;
 };
 
 test("pan はスクリーン座標の移動量を viewport へ加える", () => {
@@ -80,30 +108,48 @@ test("zoom 前後でカーソル下のワールド座標を維持する", () => 
   expect(latest.current?.viewport.zoom).toBe(2);
 });
 
-test("reset は viewport を既定値へ戻す", () => {
-  const latest = renderHook({ x: 80, y: -40, zoom: 2 });
-
+test("全体表示は全付箋が収まる viewport へ変更する", () => {
+  const stickies = [
+    Sticky.create(
+      StickyId.create("stk_left0000000"),
+      STICKY_TYPES.event,
+      "left",
+      { x: -100, y: 50 },
+      { width: 200, height: 100 },
+    ),
+    Sticky.create(
+      StickyId.create("stk_right000000"),
+      STICKY_TYPES.command,
+      "right",
+      { x: 300, y: 250 },
+      { width: 100, height: 50 },
+    ),
+  ];
+  const latest = renderHook({ x: 80, y: -40, zoom: 2 }, stickies);
+  const surface = surfaceWithRect({
+    left: 0,
+    top: 0,
+    width: 1000,
+    height: 500,
+  });
   act(() => {
-    latest.current?.reset();
+    latest.current?.surfaceInteraction.bindSurface(surface);
   });
 
-  expect(latest.current?.viewport).toEqual(Viewport.default());
-});
+  act(() => {
+    latest.current?.fitAll();
+  });
 
+  expect(latest.current?.viewport).toEqual({ x: 200, y: -100, zoom: 2 });
+});
 
 test("client 座標はキャンバス面を原点としてワールド座標へ変換する", () => {
   const latest = renderHook({ x: 10, y: 20, zoom: 2 });
-  const surface = document.createElement("div");
-  surface.getBoundingClientRect = () => ({
-    x: 100,
-    y: 50,
+  const surface = surfaceWithRect({
+    left: 100,
+    top: 50,
     width: 800,
     height: 600,
-    top: 50,
-    left: 100,
-    bottom: 650,
-    right: 900,
-    toJSON: () => ({}),
   });
   act(() => {
     latest.current?.surfaceInteraction.bindSurface(surface);

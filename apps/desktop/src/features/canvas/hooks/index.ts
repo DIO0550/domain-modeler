@@ -274,3 +274,4 @@ export {
   type UseViewportInteractionsResult,
   type ViewportSurfaceInteraction,
 } from "./use-viewport-interactions";
+export { useCanvasSurface } from "./use-canvas-surface";

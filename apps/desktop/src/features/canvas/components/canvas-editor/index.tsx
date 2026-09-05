@@ -28,6 +28,7 @@ export function CanvasEditor({
   const board = useConnectionInteractions(initialDocument);
   const viewport = useViewportInteractions(
     board.document.viewport,
+    board.document.stickies,
     board.changeViewport,
   );
   const connectionModeActive = ConnectionSession.isCreating(

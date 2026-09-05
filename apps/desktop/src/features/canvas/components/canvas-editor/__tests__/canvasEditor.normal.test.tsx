@@ -1013,6 +1013,87 @@ test("中ボタンドラッグで pan する", () => {
   );
 });
 
+test("pointer capture を失うと pan を中止する", () => {
+  const host = renderEditor();
+  const surface = canvasSurfaceOf(host);
+
+  act(() => {
+    surface.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 1,
+        pointerId: 20,
+        clientX: 80,
+        clientY: 90,
+      }),
+    );
+    surface.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        button: 1,
+        pointerId: 20,
+        clientX: 100,
+        clientY: 110,
+      }),
+    );
+    surface.dispatchEvent(
+      new PointerEvent("lostpointercapture", {
+        bubbles: true,
+        pointerId: 20,
+      }),
+    );
+  });
+  const transformAtCancel = canvasWorldOf(host).style.transform;
+
+  act(() => {
+    surface.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        button: 1,
+        pointerId: 20,
+        clientX: 140,
+        clientY: 150,
+      }),
+    );
+  });
+
+  expect(transformAtCancel).toBe("translate(20px, 20px) scale(1)");
+  expect(canvasWorldOf(host).style.transform).toBe(transformAtCancel);
+  expect(surface.getAttribute("data-panning")).toBe("false");
+});
+
+test("window が blur すると pan とクリック抑止を解除する", () => {
+  const host = renderEditor();
+  const surface = canvasSurfaceOf(host);
+
+  act(() => {
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        code: "Space",
+        key: " ",
+      }),
+    );
+    surface.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        pointerId: 20,
+        clientX: 80,
+        clientY: 90,
+      }),
+    );
+    window.dispatchEvent(new Event("blur"));
+  });
+  clickSurface(host, { x: 120, y: 130 });
+
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(0px, 0px) scale(1)",
+  );
+  expect(surface.getAttribute("data-panning")).toBe("false");
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+});
+
 test("修飾キーなしのホイールで pan する", () => {
   const host = renderEditor();
   const surface = canvasSurfaceOf(host);
@@ -1043,7 +1124,7 @@ test("Ctrl ホイールの前後でカーソル下のワールド座標を維持
   );
 });
 
-test("Ctrl+0 で viewport を既定値へ戻す", () => {
+test("付箋がないとき Ctrl+0 で viewport を既定値へ戻す", () => {
   const initialDocument = {
     ...Document.empty(),
     viewport: { x: 80, y: -40, zoom: 2 },
@@ -1068,6 +1149,46 @@ test("Ctrl+0 で viewport を既定値へ戻す", () => {
   expect(host.querySelector('[aria-label="ズーム 100%"]')).not.toBeNull();
 });
 
+test("Ctrl+0 で全付箋をキャンバス面へ収める", () => {
+  const spreadDocument = {
+    ...Document.empty(),
+    stickies: [
+      StickyModel.create(
+        StickyId.create("stk_farleft00000"),
+        STICKY_TYPES.event,
+        "left",
+        { x: -100, y: 50 },
+        { width: 200, height: 100 },
+      ),
+      StickyModel.create(
+        StickyId.create("stk_farright0000"),
+        STICKY_TYPES.command,
+        "right",
+        { x: 300, y: 250 },
+        { width: 100, height: 50 },
+      ),
+    ],
+    viewport: { x: 80, y: -40, zoom: 0.5 },
+  };
+  const host = renderEditor(spreadDocument);
+  const surface = canvasSurfaceOf(host);
+
+  act(() => {
+    surface.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+        key: "0",
+      }),
+    );
+  });
+
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(160px, 20px) scale(1.6)",
+  );
+  expect(host.querySelector('[aria-label="ズーム 160%"]')).not.toBeNull();
+});
 
 test("pan 中も接続作成セッションを維持する", () => {
   const host = renderEditor(documentWithTwoStickies);
@@ -1114,7 +1235,7 @@ test("本文編集中でも Ctrl+0 で viewport をリセットする", () => {
   });
 
   expect(canvasWorldOf(host).style.transform).toBe(
-    "translate(0px, 0px) scale(1)",
+    "translate(40px, 20px) scale(4)",
   );
   expect(editorOf(host)).toBe(editor);
 });

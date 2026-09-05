@@ -9,8 +9,10 @@ import {
 import {
   Viewport,
   type Point,
+  type Sticky,
   type Viewport as ViewportModel,
 } from "@domain-modeler/canvas-core";
+import { EventTargetEx } from "@/utils/EventTargetEx";
 
 type ViewportChange = (current: ViewportModel) => ViewportModel;
 type ChangeViewport = (change: ViewportChange) => void;
@@ -30,6 +32,7 @@ export type ViewportSurfaceInteraction = Readonly<{
   onPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerCancel: (event: PointerEvent<HTMLDivElement>) => void;
+  onLostPointerCapture: (event: PointerEvent<HTMLDivElement>) => void;
   onClickCapture: (event: MouseEvent<HTMLDivElement>) => void;
   bindSurface: (surface: HTMLDivElement | null) => void;
   onWheel: (
@@ -45,7 +48,7 @@ export type UseViewportInteractionsResult = Readonly<{
   toWorldClientPoint: (point: Point) => Point;
   panBy: (delta: Point) => void;
   zoomAt: (zoom: number, fixedPoint: Point) => void;
-  reset: () => void;
+  fitAll: () => void;
   surfaceInteraction: ViewportSurfaceInteraction;
 }>;
 
@@ -53,11 +56,13 @@ export type UseViewportInteractionsResult = Readonly<{
  * viewport の pan/zoom と座標変換を扱う。
  *
  * @param viewport 現在の viewport。
+ * @param stickies 全体表示の対象にする付箋。
  * @param changeViewport viewport の更新関数。
  * @returns 座標変換と CanvasSurface 用の操作。
  */
 export function useViewportInteractions(
   viewport: ViewportModel,
+  stickies: readonly Sticky[],
   changeViewport: ChangeViewport,
 ): UseViewportInteractionsResult {
   const [isPanning, setIsPanning] = useState(false);
@@ -78,9 +83,19 @@ export function useViewportInteractions(
     },
     [changeViewport],
   );
-  const reset = useCallback(() => {
-    changeViewport(() => Viewport.default());
-  }, [changeViewport]);
+  const fitAll = useCallback(() => {
+    const surface = surfaceElement.current;
+    if (surface === null) {
+      return;
+    }
+    const rect = surface.getBoundingClientRect();
+    changeViewport(() =>
+      Viewport.fitStickies(stickies, {
+        width: rect.width,
+        height: rect.height,
+      }),
+    );
+  }, [changeViewport, stickies]);
   const stepZoom = useCallback(
     (factor: number) => {
       const surface = surfaceElement.current;
@@ -98,7 +113,7 @@ export function useViewportInteractions(
   const bindSurface = useCallback((surface: HTMLDivElement | null) => {
     surfaceElement.current = surface;
   }, []);
-  const stopPanning = useCallback((pointerId: number) => {
+  const finishPanning = useCallback((pointerId: number) => {
     if (
       panningPointer.current.status !== "panning" ||
       panningPointer.current.pointerId !== pointerId
@@ -108,9 +123,23 @@ export function useViewportInteractions(
     panningPointer.current = { status: "idle" };
     setIsPanning(false);
   }, []);
+  const cancelPanning = useCallback((pointerId?: number) => {
+    const current = panningPointer.current;
+    if (
+      pointerId !== undefined &&
+      (current.status !== "panning" || current.pointerId !== pointerId)
+    ) {
+      return;
+    }
+    suppressClick.current = false;
+    panningPointer.current = { status: "idle" };
+    if (current.status === "panning") {
+      setIsPanning(false);
+    }
+  }, []);
   const handleWheel = useCallback(
     (event: globalThis.WheelEvent, surface: HTMLDivElement) => {
-      if (isTextEntryEventTarget(event.target)) {
+      if (EventTargetEx.isTextEntry(event.target)) {
         if (event.ctrlKey || event.metaKey) {
           event.preventDefault();
         }
@@ -140,7 +169,7 @@ export function useViewportInteractions(
       const modified = event.ctrlKey || event.metaKey;
       if (modified && event.key === "0") {
         event.preventDefault();
-        reset();
+        fitAll();
         return;
       }
       if (modified && (event.key === "=" || event.key === "+")) {
@@ -155,7 +184,7 @@ export function useViewportInteractions(
       }
       if (
         event.code !== "Space" ||
-        isTextEntryEventTarget(event.target)
+        EventTargetEx.isTextEntry(event.target)
       ) {
         return;
       }
@@ -169,6 +198,7 @@ export function useViewportInteractions(
     };
     const handleBlur = (): void => {
       spacePressed.current = false;
+      cancelPanning();
     };
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
@@ -178,7 +208,7 @@ export function useViewportInteractions(
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", handleBlur);
     };
-  }, [reset, stepZoom]);
+  }, [cancelPanning, fitAll, stepZoom]);
 
   return {
     viewport,
@@ -193,7 +223,7 @@ export function useViewportInteractions(
     },
     panBy,
     zoomAt,
-    reset,
+    fitAll,
     surfaceInteraction: {
       isPanning,
       bindSurface,
@@ -231,11 +261,13 @@ export function useViewportInteractions(
         panningPointer.current = { ...current, point };
       },
       onPointerUp: (event) => {
-        stopPanning(event.pointerId);
+        finishPanning(event.pointerId);
       },
       onPointerCancel: (event) => {
-        suppressClick.current = false;
-        stopPanning(event.pointerId);
+        cancelPanning(event.pointerId);
+      },
+      onLostPointerCapture: (event) => {
+        cancelPanning(event.pointerId);
       },
       onClickCapture: (event) => {
         if (!suppressClick.current) {
@@ -265,6 +297,3 @@ const wheelDelta = (
   }
   return { x: event.deltaX, y: event.deltaY };
 };
-
-const isTextEntryEventTarget = (target: EventTarget | null): boolean =>
-  target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement;

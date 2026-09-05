@@ -1,5 +1,5 @@
 import type { Point } from "../point";
-import type { Size } from "../sticky";
+import { Size, type Sticky } from "../sticky";
 
 export interface Viewport {
   readonly x: number;
@@ -74,6 +74,60 @@ export const Viewport = {
     x: viewport.x + delta.x,
     y: viewport.y + delta.y,
   }),
+  /**
+   * 全付箋が画面内へ収まる表示範囲を生成する。
+   * @param stickies 表示する付箋。
+   * @param screenSize 表示領域のスクリーン座標系サイズ。
+   * @returns 付箋全体を中央へ収めた表示範囲。付箋が無いか表示領域が不正なら既定値。
+   */
+  fitStickies: (
+    stickies: readonly Sticky[],
+    screenSize: Size,
+  ): Viewport => {
+    const [first, ...rest] = stickies;
+    if (first === undefined || !Size.isValid(screenSize)) {
+      return Viewport.default();
+    }
+    const bounds = rest.reduce(
+      (current, sticky) => ({
+        left: Math.min(current.left, sticky.position.x),
+        top: Math.min(current.top, sticky.position.y),
+        right: Math.max(
+          current.right,
+          sticky.position.x + sticky.size.width,
+        ),
+        bottom: Math.max(
+          current.bottom,
+          sticky.position.y + sticky.size.height,
+        ),
+      }),
+      {
+        left: first.position.x,
+        top: first.position.y,
+        right: first.position.x + first.size.width,
+        bottom: first.position.y + first.size.height,
+      },
+    );
+    const boundsSize = {
+      width: bounds.right - bounds.left,
+      height: bounds.bottom - bounds.top,
+    };
+    const zoom = Viewport.clampZoom(
+      Math.min(
+        screenSize.width / boundsSize.width,
+        screenSize.height / boundsSize.height,
+      ),
+    );
+    const boundsCenter = {
+      x: (bounds.left + bounds.right) / 2,
+      y: (bounds.top + bounds.bottom) / 2,
+    };
+    return {
+      x: screenSize.width / 2 - boundsCenter.x * zoom,
+      y: screenSize.height / 2 - boundsCenter.y * zoom,
+      zoom,
+    };
+  },
   /**
    * 指定したスクリーン座標を不動点として表示範囲をズームする。
    * @param viewport ズーム前の表示範囲。

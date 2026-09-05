@@ -1,6 +1,4 @@
 import {
-  useCallback,
-  useEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -20,7 +18,8 @@ import {
   type SaveIndicatorStatus,
 } from "../../domains/save-indicator";
 import { ZoomLabel } from "../../domains/zoom-label";
-import type { ViewportSurfaceInteraction } from "../../hooks";
+import { useCanvasSurface, type ViewportSurfaceInteraction } from "../../hooks";
+import { EventTargetEx } from "@/utils/EventTargetEx";
 
 /** ツールバーの undo / redo。有効なときだけハンドラを持つ。 */
 export type HistoryButton =
@@ -320,7 +319,7 @@ function CanvasSurface({
   onDoubleClick,
   onKeyDown,
 }: CanvasSurfaceProps) {
-  const surfaceRef = useRef<HTMLDivElement>(null);
+  const surfaceRef = useCanvasSurface(viewportInteraction);
   const pendingClick = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -337,33 +336,9 @@ function CanvasSurface({
     "--canvas-grid-size": `${24 * viewport.zoom}px`,
   };
 
-  const bindSurface = viewportInteraction?.bindSurface;
-  const setSurfaceRef = useCallback(
-    (surface: HTMLDivElement | null) => {
-      surfaceRef.current = surface;
-      bindSurface?.(surface);
-    },
-    [bindSurface],
-  );
-
-  useEffect(() => {
-    const surface = surfaceRef.current;
-    const onWheel = viewportInteraction?.onWheel;
-    if (surface === null || onWheel === undefined) {
-      return;
-    }
-    const handleWheel = (event: globalThis.WheelEvent): void => {
-      onWheel(event, surface);
-    };
-    surface.addEventListener("wheel", handleWheel, { passive: false });
-    return () => {
-      surface.removeEventListener("wheel", handleWheel);
-    };
-  }, [viewportInteraction?.onWheel]);
-
   return (
     <div
-      ref={setSurfaceRef}
+      ref={surfaceRef}
       className="canvas-surface"
       role="region"
       aria-label="キャンバス"
@@ -378,12 +353,13 @@ function CanvasSurface({
       onPointerMove={viewportInteraction?.onPointerMove}
       onPointerUp={viewportInteraction?.onPointerUp}
       onPointerCancel={viewportInteraction?.onPointerCancel}
+      onLostPointerCapture={viewportInteraction?.onLostPointerCapture}
       onClickCapture={viewportInteraction?.onClickCapture}
       onClick={(event) => {
         if (onClick === undefined) {
           return;
         }
-        if (isTextEntryEventTarget(event.target)) {
+        if (EventTargetEx.isTextEntry(event.target)) {
           return;
         }
         const point = surfacePointFromMouse(event);
@@ -401,7 +377,7 @@ function CanvasSurface({
         if (onDoubleClick === undefined) {
           return;
         }
-        if (isTextEntryEventTarget(event.target)) {
+        if (EventTargetEx.isTextEntry(event.target)) {
           return;
         }
         cancelPendingClick();
@@ -448,15 +424,6 @@ const surfacePointFromMouse = (event: MouseEvent<HTMLDivElement>): Point => {
 };
 
 /**
- * イベントの発生元がテキスト入力か判定する。
- *
- * @param target イベントの発生元。
- * @returns textarea または input なら true。
- */
-const isTextEntryEventTarget = (target: EventTarget | null): boolean =>
-  target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement;
-
-/**
  * Enter / Esc / Delete / Backspace をキャンバス操作へ渡す。
  * テキスト編集中の Enter と削除キーは入力へ譲る。
  * IME 変換中のキーは確定や選択解除に使わない。
@@ -485,7 +452,7 @@ const handleSurfaceKeyDown = (
     return;
   }
   if (event.key === "Delete" || event.key === "Backspace") {
-    if (isTextEntryEventTarget(event.target)) {
+    if (EventTargetEx.isTextEntry(event.target)) {
       return;
     }
     event.preventDefault();
@@ -495,7 +462,7 @@ const handleSurfaceKeyDown = (
   if (event.key !== "Enter") {
     return;
   }
-  if (isTextEntryEventTarget(event.target)) {
+  if (EventTargetEx.isTextEntry(event.target)) {
     return;
   }
   event.preventDefault();
