@@ -212,6 +212,38 @@ test("中ボタンドラッグで pan する", () => {
   );
 });
 
+test("中ボタンで pan した直後の左クリックで付箋を作成できる", () => {
+  const host = renderEditor();
+  panSurface(canvasSurfaceOf(host), 1, [
+    { x: 80, y: 90 },
+    { x: 60, y: 130 },
+  ]);
+
+  clickSurface(host, { x: 120, y: 130 });
+
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+});
+
+test("中ボタンで pan した直後の左クリックで既存の付箋を選択できる", () => {
+  const host = renderEditor(existingStickyDocument);
+  panSurface(canvasSurfaceOf(host), 1, [
+    { x: 80, y: 90 },
+    { x: 60, y: 130 },
+  ]);
+
+  act(() => {
+    articleOf(host).dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 20,
+        clientY: 90,
+      }),
+    );
+  });
+
+  expect(articleOf(host).getAttribute("data-sticky-session")).toBe("selected");
+});
+
 test("pointer capture を失うと pan を中止する", () => {
   const host = renderEditor();
   const surface = canvasSurfaceOf(host);

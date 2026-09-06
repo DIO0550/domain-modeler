@@ -23,6 +23,7 @@ type PanningPointer =
   | Readonly<{
       status: "panning";
       pointerId: number;
+      button: 0 | 1;
       point: Point;
     }>;
 
@@ -252,6 +253,7 @@ export function useViewportInteractions(
         panningPointer.current = {
           status: "panning",
           pointerId: event.pointerId,
+          button: startsWithMiddleButton ? 1 : 0,
           point: { x: event.clientX, y: event.clientY },
         };
         suppressClick.current = startsWithSpace;
@@ -266,7 +268,11 @@ export function useViewportInteractions(
           return;
         }
         const point = { x: event.clientX, y: event.clientY };
-        if (point.x !== current.point.x || point.y !== current.point.y) {
+        // 中ボタンの終了は click を発火しないため、左ドラッグだけを抑止する。
+        if (
+          current.button === 0 &&
+          (point.x !== current.point.x || point.y !== current.point.y)
+        ) {
           suppressClick.current = true;
         }
         panBy({
