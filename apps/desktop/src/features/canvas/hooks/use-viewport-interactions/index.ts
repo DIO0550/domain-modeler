@@ -193,7 +193,9 @@ export function useViewportInteractions(
       ) {
         return;
       }
-      event.preventDefault();
+      if (!EventTargetEx.isInteractive(event.target)) {
+        event.preventDefault();
+      }
       spacePressed.current = true;
     };
     const handleKeyUp = (event: globalThis.KeyboardEvent): void => {

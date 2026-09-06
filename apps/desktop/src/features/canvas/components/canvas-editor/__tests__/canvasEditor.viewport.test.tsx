@@ -516,3 +516,43 @@ test("Ctrl+= と Ctrl+- はキャンバス中心を固定して段階ズーム�
   });
   expect(host.querySelector('[aria-label="ズーム 100%"]')).not.toBeNull();
 });
+
+test("ツールバーボタンの Space キーによる標準操作を妨げない", () => {
+  const host = renderEditor();
+  const toolbarButton = buttonNamed(host, "Domain Event");
+  const event = new KeyboardEvent("keydown", {
+    bubbles: true,
+    cancelable: true,
+    code: "Space",
+    key: " ",
+  });
+
+  act(() => {
+    toolbarButton.focus();
+    toolbarButton.dispatchEvent(event);
+    toolbarButton.dispatchEvent(
+      new KeyboardEvent("keyup", { bubbles: true, code: "Space", key: " " }),
+    );
+  });
+
+  expect(event.defaultPrevented).toBe(false);
+});
+
+test("キャンバス上の Space キーではページスクロールを抑止する", () => {
+  const host = renderEditor();
+  const event = new KeyboardEvent("keydown", {
+    bubbles: true,
+    cancelable: true,
+    code: "Space",
+    key: " ",
+  });
+
+  act(() => {
+    canvasSurfaceOf(host).dispatchEvent(event);
+    window.dispatchEvent(
+      new KeyboardEvent("keyup", { code: "Space", key: " " }),
+    );
+  });
+
+  expect(event.defaultPrevented).toBe(true);
+});
