@@ -1,9 +1,0 @@
-import{n as e}from"./chunk-BneVvdWh.js";import{t}from"./jsx-runtime-DXFqSddf.js";import{b as n,f as r,h as i,l as a,r as o,t as s,y as c}from"./sticky-CTFopB4w.js";import{n as l,t as u}from"./connection-layer-Dr5VvWIV.js";var d,f,p,m,h,g,_,v,y,b,x;e((()=>{a(),o(),l(),d=t(),f=n.create(`stk_actor000000`),p=n.create(`stk_command0000`),m=n.create(`stk_aggregate000`),h=n.create(`stk_event000000`),g=[c.create(f,`actor`,`購買担当`,{x:40,y:80},{width:120,height:80}),c.create(p,`command`,`注文を確定する`,{x:260,y:70},{width:160,height:100}),c.create(m,`aggregate`,`注文`,{x:530,y:50},{width:200,height:140}),c.create(h,`event`,`注文が確定した`,{x:300,y:300},{width:160,height:100})],_=[{id:i.create(`con_actor_command`),from:f,to:p,fromAnchor:`right`,toAnchor:`left`,label:`操作`,note:``},{id:i.create(`con_command_aggregate`),from:p,to:m,label:`処理`,note:``},{id:i.create(`con_command_event`),from:p,to:h,fromAnchor:`bottom`,toAnchor:`top`,label:`ルール外`,note:``}],v={...r.empty(`接続線サンプル`),stickies:g,connections:_},y={component:u,parameters:{layout:`fullscreen`}},b={args:{document:v},render:e=>(0,d.jsxs)(`div`,{className:`sticky-story`,children:[(0,d.jsx)(u,{...e}),e.document.stickies.map(e=>(0,d.jsx)(s,{sticky:e},e.id))]})},b.parameters={...b.parameters,docs:{...b.parameters?.docs,source:{originalSource:`{
-  args: {
-    document: sampleDocument
-  },
-  render: args => <div className="sticky-story">
-      <ConnectionLayer {...args} />
-      {args.document.stickies.map(sticky => <Sticky key={sticky.id} sticky={sticky} />)}
-    </div>
-}`,...b.parameters?.docs?.source}}},x=[`Default`]}))();export{b as Default,x as __namedExportsOrder,y as default};
