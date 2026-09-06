@@ -38,7 +38,7 @@ const renderCanvasView = (props: {
   act(() => {
     root.render(
       <CanvasView
-        zoom={props.zoom ?? 1}
+        viewport={{ x: 0, y: 0, zoom: props.zoom ?? 1 }}
         saveStatus={props.saveStatus ?? "saved"}
         undo={props.undo ?? disabledHistory}
         redo={props.redo ?? disabledHistory}

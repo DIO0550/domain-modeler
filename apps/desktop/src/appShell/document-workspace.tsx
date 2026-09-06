@@ -1,4 +1,3 @@
-import { Viewport } from "@domain-modeler/canvas-core";
 import { CanvasEditor } from "@/features/canvas";
 import { TabsState } from "./tabs";
 
@@ -35,7 +34,6 @@ export function DocumentWorkspace({ tabsState }: DocumentWorkspaceProps) {
         {missingBanner}
         <CanvasEditor
           key={activeTab.path}
-          zoom={Viewport.default().zoom}
           saveStatus="saved"
         />
       </main>

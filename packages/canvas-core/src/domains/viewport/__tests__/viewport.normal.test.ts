@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { Sticky, StickyId, STICKY_TYPES } from "../../sticky";
 import { Viewport } from "..";
 
 test("ワールド座標とスクリーン座標を相互変換する", () => {
@@ -30,6 +31,37 @@ test("スクリーン座標系の移動量でパンする", () => {
     zoom: 2,
   });
   expect(viewport).toEqual({ x: 100, y: -50, zoom: 2 });
+});
+
+test("全付箋が画面内へ収まるように中央へ表示する", () => {
+  const stickies = [
+    Sticky.create(
+      StickyId.create("stk_left0000000"),
+      STICKY_TYPES.event,
+      "left",
+      { x: -100, y: 50 },
+      { width: 200, height: 100 },
+    ),
+    Sticky.create(
+      StickyId.create("stk_right000000"),
+      STICKY_TYPES.command,
+      "right",
+      { x: 300, y: 250 },
+      { width: 100, height: 50 },
+    ),
+  ];
+
+  expect(Viewport.fitStickies(stickies, { width: 1000, height: 500 })).toEqual({
+    x: 200,
+    y: -100,
+    zoom: 2,
+  });
+});
+
+test("付箋が無い全体表示では既定の表示範囲へ戻す", () => {
+  expect(Viewport.fitStickies([], { width: 1000, height: 500 })).toEqual(
+    Viewport.default(),
+  );
 });
 
 test("指定したスクリーン座標を不動点としてズームする", () => {

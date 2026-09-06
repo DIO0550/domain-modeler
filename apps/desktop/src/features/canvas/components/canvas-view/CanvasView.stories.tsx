@@ -62,7 +62,7 @@ const allStickies = StickyAppearance.all().map((appearance, index) => {
 
 export const Default: Story = {
   args: {
-    zoom: 1,
+    viewport: { x: 0, y: 0, zoom: 1 },
     saveStatus: "saved",
     undo: disabledHistory,
     redo: disabledHistory,
@@ -71,7 +71,7 @@ export const Default: Story = {
 
 export const AllTypes: Story = {
   args: {
-    zoom: 1,
+    viewport: { x: 0, y: 0, zoom: 1 },
     saveStatus: "saved",
     undo: disabledHistory,
     redo: disabledHistory,
@@ -81,7 +81,7 @@ export const AllTypes: Story = {
 
 export const AllProps: Story = {
   args: {
-    zoom: 1.5,
+    viewport: { x: 0, y: 0, zoom: 1.5 },
     saveStatus: "saving",
     undo: { availability: "enabled", onClick: fn() },
     redo: { availability: "enabled", onClick: fn() },
@@ -93,7 +93,7 @@ export const AllProps: Story = {
 
 export const Saving: Story = {
   args: {
-    zoom: 1,
+    viewport: { x: 0, y: 0, zoom: 1 },
     saveStatus: "saving",
     undo: disabledHistory,
     redo: disabledHistory,
@@ -102,7 +102,7 @@ export const Saving: Story = {
 
 export const Failed: Story = {
   args: {
-    zoom: 1,
+    viewport: { x: 0, y: 0, zoom: 1 },
     saveStatus: "failed",
     undo: disabledHistory,
     redo: disabledHistory,
@@ -111,7 +111,7 @@ export const Failed: Story = {
 
 export const HistoryEnabled: Story = {
   args: {
-    zoom: 1,
+    viewport: { x: 0, y: 0, zoom: 1 },
     saveStatus: "saved",
     undo: { availability: "enabled", onClick: fn() },
     redo: { availability: "enabled", onClick: fn() },
@@ -120,7 +120,7 @@ export const HistoryEnabled: Story = {
 
 export const ZoomMin: Story = {
   args: {
-    zoom: 0.1,
+    viewport: { x: 0, y: 0, zoom: 0.1 },
     saveStatus: "saved",
     undo: disabledHistory,
     redo: disabledHistory,
@@ -129,7 +129,7 @@ export const ZoomMin: Story = {
 
 export const ZoomMax: Story = {
   args: {
-    zoom: 4,
+    viewport: { x: 0, y: 0, zoom: 4 },
     saveStatus: "saved",
     undo: disabledHistory,
     redo: disabledHistory,
@@ -138,7 +138,7 @@ export const ZoomMax: Story = {
 
 export const EdgeCases: Story = {
   args: {
-    zoom: 0.1,
+    viewport: { x: 0, y: 0, zoom: 0.1 },
     saveStatus: "failed",
     undo: HistoryButton.enabled(fn()),
     redo: HistoryButton.disabled(),

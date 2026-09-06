@@ -1,6 +1,7 @@
 import {
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -9,6 +10,7 @@ import {
   STICKY_TYPES,
   type Point,
   type StickyType,
+  type Viewport as ViewportModel,
 } from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../../domains/sticky-appearance";
 import {
@@ -16,6 +18,8 @@ import {
   type SaveIndicatorStatus,
 } from "../../domains/save-indicator";
 import { ZoomLabel } from "../../domains/zoom-label";
+import { useCanvasSurface, type ViewportSurfaceInteraction } from "../../hooks";
+import { EventTargetEx } from "@/utils/EventTargetEx";
 
 /** ツールバーの undo / redo。有効なときだけハンドラを持つ。 */
 export type HistoryButton =
@@ -43,7 +47,8 @@ export const HistoryButton = {
 } as const;
 
 type CanvasViewProps = Readonly<{
-  zoom: number;
+  viewport: ViewportModel;
+  viewportInteraction?: ViewportSurfaceInteraction;
   saveStatus: SaveIndicatorStatus;
   undo: HistoryButton;
   redo: HistoryButton;
@@ -69,7 +74,8 @@ type CanvasViewProps = Readonly<{
  * @returns キャンバス画面。
  */
 export function CanvasView({
-  zoom,
+  viewport,
+  viewportInteraction,
   saveStatus,
   undo,
   redo,
@@ -87,7 +93,7 @@ export function CanvasView({
   const selectedType = selectedTypeProp ?? uncontrolledType;
   const appearances = StickyAppearance.all();
   const saveIndicator = SaveIndicator.create(saveStatus);
-  const zoomLabel = ZoomLabel.toPercent(zoom);
+  const zoomLabel = ZoomLabel.toPercent(viewport.zoom);
 
   const selectType = (type: StickyType): void => {
     if (selectedTypeProp === undefined) {
@@ -110,6 +116,8 @@ export function CanvasView({
         )}
       </CanvasToolbar>
       <CanvasSurface
+        viewport={viewport}
+        viewportInteraction={viewportInteraction}
         onClick={onSurfaceClick}
         onDoubleClick={onSurfaceDoubleClick}
         onKeyDown={onSurfaceKeyDown}
@@ -282,24 +290,36 @@ function HistoryControlButton({ label, button }: HistoryControlButtonProps) {
 }
 
 type CanvasSurfaceProps = Readonly<{
+  viewport: ViewportModel;
+  viewportInteraction?: ViewportSurfaceInteraction;
   children?: ReactNode;
   onClick?: (point: Point) => void;
   onDoubleClick?: (point: Point) => void;
   onKeyDown?: (key: "Enter" | "Escape" | "Delete" | "Backspace") => void;
 }>;
 
+type CanvasSurfaceStyle = CSSProperties &
+  Readonly<{
+    "--canvas-grid-position-x": string;
+    "--canvas-grid-position-y": string;
+    "--canvas-grid-size": string;
+  }>;
+
 /**
  * パンとズームだけで移動する無限キャンバス領域。スクロールバーは持たない。
  *
- * @param props キャンバス上に置く付箋などの子要素とポインタ操作。
+ * @param props キャンバス上に置く付箋などの子要素、viewport、ポインタ操作。
  * @returns キャンバス面。
  */
 function CanvasSurface({
+  viewport,
+  viewportInteraction,
   children,
   onClick,
   onDoubleClick,
   onKeyDown,
 }: CanvasSurfaceProps) {
+  const surfaceRef = useCanvasSurface(viewportInteraction);
   const pendingClick = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -310,18 +330,42 @@ function CanvasSurface({
     clearTimeout(pendingClick.current);
     pendingClick.current = undefined;
   };
+  const style: CanvasSurfaceStyle = {
+    "--canvas-grid-position-x": `${viewport.x}px`,
+    "--canvas-grid-position-y": `${viewport.y}px`,
+    "--canvas-grid-size": `${24 * viewport.zoom}px`,
+  };
 
   return (
     <div
+      ref={surfaceRef}
       className="canvas-surface"
       role="region"
       aria-label="キャンバス"
-      tabIndex={onKeyDown === undefined ? undefined : 0}
+      tabIndex={
+        onKeyDown === undefined && viewportInteraction === undefined
+          ? undefined
+          : 0
+      }
+      data-panning={viewportInteraction?.isPanning}
+      style={style}
+      onPointerDownCapture={(event) => {
+        viewportInteraction?.onPointerDown(
+          event,
+          event.target === event.currentTarget ||
+            event.target === event.currentTarget.firstElementChild,
+        );
+      }}
+      onPointerMove={viewportInteraction?.onPointerMove}
+      onPointerUp={viewportInteraction?.onPointerUp}
+      onPointerCancel={viewportInteraction?.onPointerCancel}
+      onLostPointerCapture={viewportInteraction?.onLostPointerCapture}
+      onClickCapture={viewportInteraction?.onClickCapture}
       onClick={(event) => {
         if (onClick === undefined) {
           return;
         }
-        if (isTextEntryEventTarget(event.target)) {
+        if (EventTargetEx.isTextEntry(event.target)) {
           return;
         }
         const point = surfacePointFromMouse(event);
@@ -339,7 +383,7 @@ function CanvasSurface({
         if (onDoubleClick === undefined) {
           return;
         }
-        if (isTextEntryEventTarget(event.target)) {
+        if (EventTargetEx.isTextEntry(event.target)) {
           return;
         }
         cancelPendingClick();
@@ -349,6 +393,23 @@ function CanvasSurface({
         handleSurfaceKeyDown(event, onKeyDown);
       }}
     >
+      <CanvasWorld viewport={viewport}>{children}</CanvasWorld>
+    </div>
+  );
+}
+
+type CanvasWorldProps = Readonly<{
+  viewport: ViewportModel;
+  children?: ReactNode;
+}>;
+
+/** viewport の移動と拡大率をキャンバス上の全要素へ適用する。 */
+function CanvasWorld({ viewport, children }: CanvasWorldProps) {
+  const style: CSSProperties = {
+    transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+  };
+  return (
+    <div className="canvas-world" style={style}>
       {children}
     </div>
   );
@@ -367,15 +428,6 @@ const surfacePointFromMouse = (event: MouseEvent<HTMLDivElement>): Point => {
     y: event.clientY - rect.top,
   };
 };
-
-/**
- * イベントの発生元がテキスト入力か判定する。
- *
- * @param target イベントの発生元。
- * @returns textarea または input なら true。
- */
-const isTextEntryEventTarget = (target: EventTarget | null): boolean =>
-  target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement;
 
 /**
  * Enter / Esc / Delete / Backspace をキャンバス操作へ渡す。
@@ -406,7 +458,7 @@ const handleSurfaceKeyDown = (
     return;
   }
   if (event.key === "Delete" || event.key === "Backspace") {
-    if (isTextEntryEventTarget(event.target)) {
+    if (EventTargetEx.isTextEntry(event.target)) {
       return;
     }
     event.preventDefault();
@@ -416,7 +468,7 @@ const handleSurfaceKeyDown = (
   if (event.key !== "Enter") {
     return;
   }
-  if (isTextEntryEventTarget(event.target)) {
+  if (EventTargetEx.isTextEntry(event.target)) {
     return;
   }
   event.preventDefault();

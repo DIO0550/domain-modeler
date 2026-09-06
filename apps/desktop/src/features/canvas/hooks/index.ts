@@ -9,6 +9,7 @@ import type {
   Sticky,
   StickyId,
   StickyType,
+  Viewport,
 } from "@domain-modeler/canvas-core";
 import { ConnectionInteraction } from "../domains/connection-interaction";
 import { ConnectionSession } from "../domains/connection-session";
@@ -134,6 +135,7 @@ export type UseConnectionInteractionsResult = UseStickyInteractionsResult &
     changeConnectionDraft: (draftLabel: string) => void;
     commitConnectionEdit: () => void;
     pressDelete: () => void;
+    changeViewport: (change: (current: Viewport) => Viewport) => void;
   }>;
 
 /**
@@ -255,5 +257,21 @@ export function useConnectionInteractions(
     pressDelete: () => {
       setInteraction(ConnectionInteraction.pressDelete);
     },
+    changeViewport: (change) => {
+      setInteraction((current) => ({
+        ...current,
+        board: StickyInteraction.changeViewport(
+          current.board,
+          change(current.board.workingDocument.viewport),
+        ),
+      }));
+    },
   };
 }
+
+export {
+  useViewportInteractions,
+  type UseViewportInteractionsResult,
+  type ViewportSurfaceInteraction,
+} from "./use-viewport-interactions";
+export { useCanvasSurface } from "./use-canvas-surface";

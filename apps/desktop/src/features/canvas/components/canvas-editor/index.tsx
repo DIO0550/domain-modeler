@@ -2,13 +2,15 @@ import type { Document } from "@domain-modeler/canvas-core";
 import type { SaveIndicatorStatus } from "../../domains/save-indicator";
 import { ConnectionSession } from "../../domains/connection-session";
 import { StickySession } from "../../domains/sticky-interaction";
-import { useConnectionInteractions } from "../../hooks";
+import {
+  useConnectionInteractions,
+  useViewportInteractions,
+} from "../../hooks";
 import { Sticky, StickyChrome } from "../sticky";
 import { CanvasView, HistoryButton } from "../canvas-view";
 import { ConnectionLayer } from "../connection-layer";
 
 type CanvasEditorProps = Readonly<{
-  zoom: number;
   saveStatus: SaveIndicatorStatus;
   initialDocument?: Document;
 }>;
@@ -16,15 +18,19 @@ type CanvasEditorProps = Readonly<{
 /**
  * 付箋の作成・選択・本文編集ができるキャンバス画面。
  *
- * @param props ズーム、保存状態、初期文書。
+ * @param props 保存状態、初期文書。
  * @returns 操作可能なキャンバス。
  */
 export function CanvasEditor({
-  zoom,
   saveStatus,
   initialDocument,
 }: CanvasEditorProps) {
   const board = useConnectionInteractions(initialDocument);
+  const viewport = useViewportInteractions(
+    board.document.viewport,
+    board.document.stickies,
+    board.changeViewport,
+  );
   const connectionModeActive = ConnectionSession.isCreating(
     board.connectionSession,
   );
@@ -36,7 +42,8 @@ export function CanvasEditor({
 
   return (
     <CanvasView
-      zoom={zoom}
+      viewport={viewport.viewport}
+      viewportInteraction={viewport.surfaceInteraction}
       saveStatus={saveStatus}
       undo={
         board.hasUndo
@@ -50,8 +57,12 @@ export function CanvasEditor({
       }
       selectedType={board.selectedType}
       onSelectType={board.selectType}
-      onSurfaceClick={board.clickAt}
-      onSurfaceDoubleClick={board.doubleClickAt}
+      onSurfaceClick={(point) => {
+        board.clickAt(viewport.toWorldPoint(point));
+      }}
+      onSurfaceDoubleClick={(point) => {
+        board.doubleClickAt(viewport.toWorldPoint(point));
+      }}
       onSurfaceKeyDown={(key) => {
         if (key === "Enter") {
           board.pressEnter();
@@ -116,10 +127,14 @@ export function CanvasEditor({
               ? undefined
               : {
                   onDragStart: (point) => {
-                    board.beginDrag(sticky.id, point);
+                    board.beginDrag(sticky.id, viewport.toWorldClientPoint(point));
                   },
-                  onResizeStart: board.beginResize,
-                  onPointerMove: board.movePointer,
+                  onResizeStart: (corner, point) => {
+                    board.beginResize(corner, viewport.toWorldClientPoint(point));
+                  },
+                  onPointerMove: (point) => {
+                    board.movePointer(viewport.toWorldClientPoint(point));
+                  },
                   onPointerCommit: board.commitManipulation,
                   onPointerCancel: board.cancelManipulation,
                 }
