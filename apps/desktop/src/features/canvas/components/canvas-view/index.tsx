@@ -349,7 +349,13 @@ function CanvasSurface({
       }
       data-panning={viewportInteraction?.isPanning}
       style={style}
-      onPointerDownCapture={viewportInteraction?.onPointerDown}
+      onPointerDownCapture={(event) => {
+        viewportInteraction?.onPointerDown(
+          event,
+          event.target === event.currentTarget ||
+            event.target === event.currentTarget.firstElementChild,
+        );
+      }}
       onPointerMove={viewportInteraction?.onPointerMove}
       onPointerUp={viewportInteraction?.onPointerUp}
       onPointerCancel={viewportInteraction?.onPointerCancel}

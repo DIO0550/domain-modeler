@@ -13,6 +13,7 @@ import {
   type Viewport as ViewportModel,
 } from "@domain-modeler/canvas-core";
 import { EventTargetEx } from "@/utils/EventTargetEx";
+import { WheelEventEx } from "@/utils/WheelEventEx";
 
 type ViewportChange = (current: ViewportModel) => ViewportModel;
 type ChangeViewport = (change: ViewportChange) => void;
@@ -28,7 +29,10 @@ type PanningPointer =
 /** CanvasSurface が viewport の DOM 操作を受け取るためのハンドラ。 */
 export type ViewportSurfaceInteraction = Readonly<{
   isPanning: boolean;
-  onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
+  onPointerDown: (
+    event: PointerEvent<HTMLDivElement>,
+    startsOnBackground: boolean,
+  ) => void;
   onPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
   onPointerCancel: (event: PointerEvent<HTMLDivElement>) => void;
@@ -146,7 +150,7 @@ export function useViewportInteractions(
         return;
       }
       event.preventDefault();
-      const delta = wheelDelta(event, surface);
+      const delta = WheelEventEx.toPixelDelta(event, surface);
       if (event.ctrlKey || event.metaKey) {
         const rect = surface.getBoundingClientRect();
         const fixedPoint = {
@@ -227,14 +231,22 @@ export function useViewportInteractions(
     surfaceInteraction: {
       isPanning,
       bindSurface,
-      onPointerDown: (event) => {
+      onPointerDown: (event, startsOnBackground) => {
         const startsWithMiddleButton = event.button === 1;
         const startsWithSpace =
           event.button === 0 && spacePressed.current;
-        if (!startsWithMiddleButton && !startsWithSpace) {
+        const startsWithBackground =
+          event.button === 0 && startsOnBackground;
+        if (
+          !startsWithMiddleButton &&
+          !startsWithSpace &&
+          !startsWithBackground
+        ) {
           return;
         }
-        event.preventDefault();
+        if (startsWithMiddleButton || startsWithSpace) {
+          event.preventDefault();
+        }
         event.stopPropagation();
         event.currentTarget.setPointerCapture(event.pointerId);
         panningPointer.current = {
@@ -254,6 +266,9 @@ export function useViewportInteractions(
           return;
         }
         const point = { x: event.clientX, y: event.clientY };
+        if (point.x !== current.point.x || point.y !== current.point.y) {
+          suppressClick.current = true;
+        }
         panBy({
           x: point.x - current.point.x,
           y: point.y - current.point.y,
@@ -281,19 +296,3 @@ export function useViewportInteractions(
     },
   };
 }
-
-const wheelDelta = (
-  event: globalThis.WheelEvent,
-  surface: HTMLDivElement,
-): Point => {
-  if (event.deltaMode === 1) {
-    return { x: event.deltaX * 16, y: event.deltaY * 16 };
-  }
-  if (event.deltaMode === 2) {
-    return {
-      x: event.deltaX * surface.clientWidth,
-      y: event.deltaY * surface.clientHeight,
-    };
-  }
-  return { x: event.deltaX, y: event.deltaY };
-};
