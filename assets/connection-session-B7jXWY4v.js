@@ -1,0 +1,1 @@
+import{n as e}from"./chunk-BneVvdWh.js";var t,n=e((()=>{t={isCreating(e){return e.status===`selectingSource`||e.status===`selectingTarget`},statusOf(e,t){return e.status===`idle`||e.status===`selectingSource`||e.status===`selectingTarget`||e.connectionId!==t?`plain`:e.status},isSource(e,t){return e.status===`selectingTarget`&&e.sourceId===t}}}));export{n,t};
