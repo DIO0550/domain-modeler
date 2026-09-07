@@ -294,12 +294,18 @@ export const ConnectionInteraction = {
   },
 
   /**
-   * 選択中の接続を削除し、履歴へ1エントリ積む。
+   * 選択中の付箋または接続を削除し、履歴へ1エントリ積む。
    *
    * @param interaction 削除前の状態。
    * @returns 接続削除後の状態。接続を選択していなければ入力を返す。
    */
   pressDelete(interaction: ConnectionInteraction): ConnectionInteraction {
+    if (interaction.session.status === "idle") {
+      return {
+        ...interaction,
+        board: StickyInteractionValue.pressDelete(interaction.board),
+      };
+    }
     if (interaction.session.status !== "selected") {
       return interaction;
     }

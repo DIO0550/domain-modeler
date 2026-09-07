@@ -4,12 +4,17 @@ export const EventTargetEx = {
    * イベントの発生元がテキスト入力か判定する。
    *
    * @param target イベントの発生元。
-   * @returns textarea または input なら true。
+   * @returns 標準入力、select、contenteditable 内なら true。
    */
   isTextEntry(target: EventTarget | null): boolean {
     return (
       target instanceof HTMLTextAreaElement ||
-      target instanceof HTMLInputElement
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLSelectElement ||
+      (target instanceof Element &&
+        target.closest(
+          '[contenteditable]:not([contenteditable="false"]), [role="textbox"]',
+        ) !== null)
     );
   },
   /**

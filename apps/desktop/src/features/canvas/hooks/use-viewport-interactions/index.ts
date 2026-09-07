@@ -40,10 +40,7 @@ export type ViewportSurfaceInteraction = Readonly<{
   onLostPointerCapture: (event: PointerEvent<HTMLDivElement>) => void;
   onClickCapture: (event: MouseEvent<HTMLDivElement>) => void;
   bindSurface: (surface: HTMLDivElement | null) => void;
-  onWheel: (
-    event: globalThis.WheelEvent,
-    surface: HTMLDivElement,
-  ) => void;
+  onWheel: (event: globalThis.WheelEvent, surface: HTMLDivElement) => void;
 }>;
 
 /** viewport と座標変換、pan/zoom 操作。 */
@@ -54,6 +51,7 @@ export type UseViewportInteractionsResult = Readonly<{
   panBy: (delta: Point) => void;
   zoomAt: (zoom: number, fixedPoint: Point) => void;
   fitAll: () => void;
+  stepZoom: (factor: number) => void;
   surfaceInteraction: ViewportSurfaceInteraction;
 }>;
 
@@ -171,26 +169,14 @@ export function useViewportInteractions(
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent): void => {
-      const modified = event.ctrlKey || event.metaKey;
-      if (modified && event.key === "0") {
-        event.preventDefault();
-        fitAll();
-        return;
-      }
-      if (modified && (event.key === "=" || event.key === "+")) {
-        event.preventDefault();
-        stepZoom(1.2);
-        return;
-      }
-      if (modified && event.key === "-") {
-        event.preventDefault();
-        stepZoom(1 / 1.2);
-        return;
-      }
       if (
-        event.code !== "Space" ||
-        EventTargetEx.isTextEntry(event.target)
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.keyCode === 229
       ) {
+        return;
+      }
+      if (event.code !== "Space" || EventTargetEx.isTextEntry(event.target)) {
         return;
       }
       if (!EventTargetEx.isInteractive(event.target)) {
@@ -215,7 +201,7 @@ export function useViewportInteractions(
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", handleBlur);
     };
-  }, [cancelPanning, fitAll, stepZoom]);
+  }, [cancelPanning]);
 
   return {
     viewport,
@@ -231,15 +217,14 @@ export function useViewportInteractions(
     panBy,
     zoomAt,
     fitAll,
+    stepZoom,
     surfaceInteraction: {
       isPanning,
       bindSurface,
       onPointerDown: (event, startsOnBackground) => {
         const startsWithMiddleButton = event.button === 1;
-        const startsWithSpace =
-          event.button === 0 && spacePressed.current;
-        const startsWithBackground =
-          event.button === 0 && startsOnBackground;
+        const startsWithSpace = event.button === 0 && spacePressed.current;
+        const startsWithBackground = event.button === 0 && startsOnBackground;
         if (
           !startsWithMiddleButton &&
           !startsWithSpace &&

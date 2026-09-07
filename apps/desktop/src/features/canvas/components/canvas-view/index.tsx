@@ -57,9 +57,8 @@ type CanvasViewProps = Readonly<{
   onSelectType?: (type: StickyType) => void;
   onSurfaceClick?: (point: Point) => void;
   onSurfaceDoubleClick?: (point: Point) => void;
-  onSurfaceKeyDown?: (
-    key: "Enter" | "Escape" | "Delete" | "Backspace",
-  ) => void;
+  onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
+  onSurfaceKeyDown?: (key: "Enter" | "Escape" | "Delete" | "Backspace") => void;
   connectionTool?: Readonly<{
     status: "inactive" | "selectingSource" | "selectingTarget";
     errorMessage?: string;
@@ -85,6 +84,7 @@ export function CanvasView({
   onSurfaceClick,
   onSurfaceDoubleClick,
   onSurfaceKeyDown,
+  onKeyDown,
   connectionTool,
 }: CanvasViewProps) {
   const [uncontrolledType, setUncontrolledType] = useState<StickyType>(
@@ -103,7 +103,7 @@ export function CanvasView({
   };
 
   return (
-    <div className="canvas-view">
+    <div className="canvas-view" onKeyDown={onKeyDown}>
       <CanvasToolbar>
         <Palette
           appearances={appearances}
@@ -447,6 +447,11 @@ const handleSurfaceKeyDown = (
     return;
   }
   if (
+    event.defaultPrevented ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey ||
+    event.shiftKey ||
     event.nativeEvent.isComposing ||
     event.nativeEvent.keyCode === 229
   ) {
