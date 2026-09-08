@@ -194,3 +194,77 @@ test("別キャンバスと画面外にはショートカットを適用しな�
   expect(first.querySelector('[aria-label="ズーム 120%"]')).not.toBeNull();
   expect(second.querySelector('[aria-label="ズーム 100%"]')).not.toBeNull();
 });
+
+test.each(["Delete", "Backspace"])("フォーカス中の付箋を %s で削除してもキーだけで undo/redo できる", async (key) => {
+  const host = renderEditor(existingStickyDocument);
+  clickSurface(host, { x: 20, y: 30 });
+  articleOf(host).focus();
+  expect(document.activeElement).toBe(articleOf(host));
+  press(document.activeElement ?? document.body, { key });
+  await Promise.resolve();
+  expect(host.querySelectorAll("article")).toHaveLength(0);
+  expect(document.activeElement).toBe(host.querySelector(".canvas-surface"));
+  press(document.activeElement ?? document.body, { key: "z", ctrlKey: true });
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+  press(document.activeElement ?? document.body, { key: "z", ctrlKey: true, shiftKey: true });
+  expect(host.querySelectorAll("article")).toHaveLength(0);
+});
+
+test("フォーカス中の接続を削除してもキーだけで undo できる", async () => {
+  const host = renderEditor(documentWithConnection);
+  const connection = host.querySelector<SVGGElement>("[data-connection-id]");
+  if (connection === null) {
+    throw new Error("接続がない");
+  }
+  connection.focus();
+  expect(document.activeElement).toBe(connection);
+  press(document.activeElement ?? document.body, { key: " " });
+  press(document.activeElement ?? document.body, { key: "Delete" });
+  await Promise.resolve();
+  expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(0);
+  expect(document.activeElement).toBe(host.querySelector(".canvas-surface"));
+  press(document.activeElement ?? document.body, { key: "z", metaKey: true });
+  expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(1);
+});
+
+test("貼り付けた付箋にフォーカスして undo してもキーだけで redo できる", async () => {
+  const host = renderEditor(existingStickyDocument);
+  clickSurface(host, { x: 20, y: 30 });
+  articleOf(host).focus();
+  press(document.activeElement ?? document.body, { key: "c", ctrlKey: true });
+  press(document.activeElement ?? document.body, { key: "v", ctrlKey: true });
+  const pasted = host.querySelector<HTMLElement>("article:last-child");
+  if (pasted === null) {
+    throw new Error("貼り付けた付箋がない");
+  }
+  pasted.focus();
+  expect(document.activeElement).toBe(pasted);
+  press(document.activeElement ?? document.body, { key: "z", ctrlKey: true });
+  await Promise.resolve();
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+  expect(document.activeElement).toBe(host.querySelector(".canvas-surface"));
+  press(document.activeElement ?? document.body, { key: "z", ctrlKey: true, shiftKey: true });
+  expect(host.querySelectorAll("article")).toHaveLength(2);
+});
+
+test("削除後に別キャンバスへ移ったフォーカスを奪わない", async () => {
+  const first = renderEditor(existingStickyDocument);
+  const second = renderEditor(existingStickyDocument);
+  clickSurface(first, { x: 20, y: 30 });
+  articleOf(first).focus();
+  press(document.activeElement ?? document.body, { key: "Delete" });
+  const other = buttonNamed(second, "Domain Event");
+  other.focus();
+  await Promise.resolve();
+  expect(document.activeElement).toBe(other);
+  expect(first.querySelectorAll("article")).toHaveLength(0);
+});
+
+test("ズームで要素が残る場合は付箋のフォーカスを維持する", async () => {
+  const host = renderEditor(existingStickyDocument);
+  articleOf(host).focus();
+  press(document.activeElement ?? document.body, { key: "^", code: "Equal", ctrlKey: true });
+  await Promise.resolve();
+  expect(document.activeElement).toBe(articleOf(host));
+  expect(host.querySelector('[aria-label="ズーム 120%"]')).not.toBeNull();
+});

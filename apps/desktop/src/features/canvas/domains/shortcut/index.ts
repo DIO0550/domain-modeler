@@ -1,6 +1,4 @@
-import { Option } from "@domain-modeler/canvas-core";
-
-import type { ValueOf } from "@/types/value-of";
+import { Option, type ValueOf } from "@domain-modeler/canvas-core";
 
 /** キャンバスが受け付けるキーボード操作の語彙。 */
 export const CANVAS_SHORTCUTS = {
@@ -24,6 +22,7 @@ export const CanvasShortcut = {
   create(
     event: Readonly<{
       key: string;
+      code?: string;
       ctrlKey: boolean;
       metaKey: boolean;
       shiftKey: boolean;
@@ -45,11 +44,22 @@ export const CanvasShortcut = {
     if (key === "z") {
       return Option.some(event.shiftKey ? CANVAS_SHORTCUTS.redo : CANVAS_SHORTCUTS.undo);
     }
-    if (event.shiftKey && (key === "]" || key === "}")) {
+    // 記号は入力文字に加え US 配列の物理位置でも受け付ける。
+    // AltGraph を要する配列でも Alt を押さない代替操作を提供する。
+    if (
+      event.shiftKey &&
+      (key === "]" || key === "}" || event.code === "BracketRight")
+    ) {
       return Option.some(CANVAS_SHORTCUTS.front);
     }
-    if (key === "+" || key === "=") {
+    if (key === "+" || key === "=" || event.code === "Equal") {
       return Option.some(CANVAS_SHORTCUTS.zoomIn);
+    }
+    if (key === "0" || event.code === "Digit0") {
+      return Option.some(CANVAS_SHORTCUTS.fitAll);
+    }
+    if (key === "-" || event.code === "Minus") {
+      return Option.some(CANVAS_SHORTCUTS.zoomOut);
     }
     if (event.shiftKey) {
       return Option.none();
@@ -59,10 +69,6 @@ export const CanvasShortcut = {
         return Option.some(CANVAS_SHORTCUTS.copy);
       case "v":
         return Option.some(CANVAS_SHORTCUTS.paste);
-      case "0":
-        return Option.some(CANVAS_SHORTCUTS.fitAll);
-      case "-":
-        return Option.some(CANVAS_SHORTCUTS.zoomOut);
       default:
         return Option.none();
     }

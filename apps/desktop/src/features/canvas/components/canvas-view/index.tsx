@@ -102,8 +102,36 @@ export function CanvasView({
     onSelectType?.(type);
   };
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    const canvas = event.currentTarget;
+    const ownerDocument = canvas.ownerDocument;
+    const focused = ownerDocument.activeElement;
+    onKeyDown?.(event);
+    if (
+      !event.defaultPrevented ||
+      focused === null ||
+      !canvas.contains(focused)
+    ) {
+      return;
+    }
+    // React のイベント更新で削除された要素だけを対象にする。
+    // 別の操作が既にフォーカスを移していれば、その移動を優先する。
+    queueMicrotask(() => {
+      if (
+        !canvas.isConnected ||
+        focused.isConnected ||
+        ownerDocument.activeElement !== ownerDocument.body
+      ) {
+        return;
+      }
+      canvas
+        .querySelector<HTMLElement>(".canvas-surface")
+        ?.focus({ preventScroll: true });
+    });
+  };
+
   return (
-    <div className="canvas-view" onKeyDown={onKeyDown}>
+    <div className="canvas-view" onKeyDown={handleKeyDown}>
       <CanvasToolbar>
         <Palette
           appearances={appearances}
