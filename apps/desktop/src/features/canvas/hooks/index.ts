@@ -135,6 +135,9 @@ export type UseConnectionInteractionsResult = UseStickyInteractionsResult &
     changeConnectionDraft: (draftLabel: string) => void;
     commitConnectionEdit: () => void;
     pressDelete: () => void;
+    copy: () => void;
+    paste: () => void;
+    bringToFront: () => void;
     changeViewport: (change: (current: Viewport) => Viewport) => void;
   }>;
 
@@ -154,9 +157,12 @@ export function useConnectionInteractions(
   const updateBoard = (
     advance: (current: typeof board) => typeof board,
   ): void => {
-    setInteraction((current) =>
-      ConnectionInteraction.withBoard(current, advance(current.board)),
-    );
+    setInteraction((current) => {
+      const nextBoard = advance(current.board);
+      return nextBoard === current.board
+        ? current
+        : ConnectionInteraction.withBoard(current, nextBoard);
+    });
   };
 
   return {
@@ -176,7 +182,9 @@ export function useConnectionInteractions(
       updateBoard((current) => StickyInteraction.select(current, stickyId));
     },
     clickAt: (point) => {
-      setInteraction((current) => ConnectionInteraction.clickAt(current, point));
+      setInteraction((current) =>
+        ConnectionInteraction.clickAt(current, point),
+      );
     },
     doubleClickAt: (point) => {
       setInteraction((current) => {
@@ -253,6 +261,15 @@ export function useConnectionInteractions(
     },
     commitConnectionEdit: () => {
       setInteraction(ConnectionInteraction.commitEdit);
+    },
+    copy: () => {
+      updateBoard(StickyInteraction.copy);
+    },
+    paste: () => {
+      updateBoard(StickyInteraction.paste);
+    },
+    bringToFront: () => {
+      updateBoard(StickyInteraction.bringToFront);
     },
     pressDelete: () => {
       setInteraction(ConnectionInteraction.pressDelete);

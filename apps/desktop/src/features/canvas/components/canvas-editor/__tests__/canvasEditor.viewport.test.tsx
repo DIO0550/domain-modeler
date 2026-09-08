@@ -112,9 +112,9 @@ test("文書の viewport を全キャンバス要素へ適用する", () => {
   );
   expect(host.querySelector('[aria-label="ズーム 150%"]')).not.toBeNull();
   expect(canvasWorldOf(host).querySelectorAll("article")).toHaveLength(2);
-  expect(canvasWorldOf(host).querySelectorAll("[data-connection-id]")).toHaveLength(
-    1,
-  );
+  expect(
+    canvasWorldOf(host).querySelectorAll("[data-connection-id]"),
+  ).toHaveLength(1);
 });
 
 test("空白部の左ドラッグで pan し、付箋を作成しない", () => {
@@ -445,7 +445,7 @@ test("本文エディタ上のホイールはキャンバスを移動しない",
   );
 });
 
-test("本文編集中でも Ctrl+0 で viewport をリセットする", () => {
+test("本文編集中の Ctrl+0 は viewport を変更しない", () => {
   const initialDocument = {
     ...existingStickyDocument,
     viewport: { x: 80, y: -40, zoom: 2 },
@@ -466,7 +466,7 @@ test("本文編集中でも Ctrl+0 で viewport をリセットする", () => {
   });
 
   expect(canvasWorldOf(host).style.transform).toBe(
-    "translate(40px, 20px) scale(4)",
+    "translate(80px, -40px) scale(2)",
   );
   expect(editorOf(host)).toBe(editor);
 });

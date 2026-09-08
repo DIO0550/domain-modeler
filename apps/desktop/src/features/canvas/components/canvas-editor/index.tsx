@@ -1,3 +1,5 @@
+import { CANVAS_SHORTCUTS, CanvasShortcut } from "../../domains/shortcut";
+import { EventTargetEx } from "@/utils/EventTargetEx";
 import type { Document } from "@domain-modeler/canvas-core";
 import type { SaveIndicatorStatus } from "../../domains/save-indicator";
 import { ConnectionSession } from "../../domains/connection-session";
@@ -42,6 +44,35 @@ export function CanvasEditor({
 
   return (
     <CanvasView
+      onKeyDown={(event) => {
+        if (
+          event.defaultPrevented ||
+          EventTargetEx.isTextEntry(event.target) ||
+          board.session.status === "editing" ||
+          board.session.status === "dragging" ||
+          board.session.status === "resizing" ||
+          board.connectionSession.status === "editing"
+        ) {
+          return;
+        }
+        const shortcut = CanvasShortcut.create(event.nativeEvent);
+        if (!shortcut.some) {
+          return;
+        }
+        event.preventDefault();
+        const actions: Record<CanvasShortcut, () => void> = {
+          [CANVAS_SHORTCUTS.undo]: board.undo,
+          [CANVAS_SHORTCUTS.redo]: board.redo,
+          [CANVAS_SHORTCUTS.delete]: board.pressDelete,
+          [CANVAS_SHORTCUTS.copy]: board.copy,
+          [CANVAS_SHORTCUTS.paste]: board.paste,
+          [CANVAS_SHORTCUTS.front]: board.bringToFront,
+          [CANVAS_SHORTCUTS.fitAll]: viewport.fitAll,
+          [CANVAS_SHORTCUTS.zoomIn]: () => viewport.stepZoom(1.2),
+          [CANVAS_SHORTCUTS.zoomOut]: () => viewport.stepZoom(1 / 1.2),
+        };
+        actions[shortcut.value]();
+      }}
       viewport={viewport.viewport}
       viewportInteraction={viewport.surfaceInteraction}
       saveStatus={saveStatus}
@@ -113,7 +144,7 @@ export function CanvasEditor({
               ? undefined
               : () => {
                   board.select(sticky.id);
-              }
+                }
           }
           onKeyActivate={
             connectionModeActive
@@ -127,10 +158,16 @@ export function CanvasEditor({
               ? undefined
               : {
                   onDragStart: (point) => {
-                    board.beginDrag(sticky.id, viewport.toWorldClientPoint(point));
+                    board.beginDrag(
+                      sticky.id,
+                      viewport.toWorldClientPoint(point),
+                    );
                   },
                   onResizeStart: (corner, point) => {
-                    board.beginResize(corner, viewport.toWorldClientPoint(point));
+                    board.beginResize(
+                      corner,
+                      viewport.toWorldClientPoint(point),
+                    );
                   },
                   onPointerMove: (point) => {
                     board.movePointer(viewport.toWorldClientPoint(point));

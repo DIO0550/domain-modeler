@@ -1,6 +1,7 @@
 import {
   Document,
   History,
+  Option,
   type Point,
   ReplaceDocumentCommand,
   type Size,
@@ -110,6 +111,7 @@ const MINIMUM_STICKY_SIZE = { width: 60, height: 40 } as const;
 
 /** キャンバス上の付箋作成・選択・編集と、その履歴。 */
 export type StickyInteraction = Readonly<{
+  clipboard: Option<Sticky>;
   history: History;
   workingDocument: Document;
   selectedType: StickyType;
@@ -126,11 +128,109 @@ export const StickyInteraction = {
    */
   create(document: Document = Document.empty()): StickyInteraction {
     return {
+      clipboard: Option.none(),
       history: History.create(document),
       workingDocument: document,
       selectedType: STICKY_TYPES.event,
       session: { status: "idle" },
     };
+  },
+
+  /** 選択した付箋のスナップショットを保持する。コピーは履歴に積まない。 */
+  copy(interaction: StickyInteraction): StickyInteraction {
+    if (interaction.session.status !== "selected") {
+      return interaction;
+    }
+    return {
+      ...interaction,
+      clipboard: Document.stickyById(
+        interaction.workingDocument,
+        interaction.session.stickyId,
+      ),
+    };
+  },
+
+  /** コピーした付箋を新しい ID で右下へ24ずらして貼り付け、選択する。 */
+  paste(interaction: StickyInteraction): StickyInteraction {
+    if (
+      !interaction.clipboard.some ||
+      (interaction.session.status !== "idle" &&
+        interaction.session.status !== "selected")
+    ) {
+      return interaction;
+    }
+    const source = interaction.clipboard.value;
+    const added = Document.addSticky(
+      interaction.workingDocument,
+      source.type,
+      source.text,
+      { x: source.position.x + 24, y: source.position.y + 24 },
+      source.size,
+    );
+    if (!added.ok) {
+      return interaction;
+    }
+    const pasted = added.value.stickies[added.value.stickies.length - 1];
+    if (pasted === undefined) {
+      return interaction;
+    }
+    return {
+      ...StickyInteraction.withDocument(interaction, added.value),
+      clipboard: Option.some(pasted),
+      session: { status: "selected", stickyId: pasted.id },
+    };
+  },
+
+  /** 選択した付箋と接続を削除する。undo では接続も復元する。 */
+  pressDelete(interaction: StickyInteraction): StickyInteraction {
+    if (interaction.session.status !== "selected") {
+      return interaction;
+    }
+    const document = Document.removeSticky(
+      interaction.workingDocument,
+      interaction.session.stickyId,
+    );
+    return {
+      ...StickyInteraction.withDocument(interaction, document),
+      session: { status: "idle" },
+    };
+  },
+
+  /** 選択した付箋を最前面へ移し、変更がある場合だけ履歴に積む。 */
+  bringToFront(interaction: StickyInteraction): StickyInteraction {
+    if (
+      interaction.session.status !== "selected" ||
+      interaction.workingDocument.stickies[
+        interaction.workingDocument.stickies.length - 1
+      ]?.id === interaction.session.stickyId
+    ) {
+      return interaction;
+    }
+    return StickyInteraction.withDocument(
+      interaction,
+      Document.bringStickyToFront(
+        interaction.workingDocument,
+        interaction.session.stickyId,
+      ),
+    );
+  },
+
+  /** 文書変更を共有履歴へ1操作として記録する。 */
+  withDocument(
+    interaction: StickyInteraction,
+    document: Document,
+  ): StickyInteraction {
+    if (document === interaction.workingDocument) {
+      return interaction;
+    }
+    const history = History.execute(
+      interaction.history,
+      ReplaceDocumentCommand.create({
+        previous: interaction.history.current,
+        next: document,
+      }),
+    );
+    return { ...interaction, history, workingDocument: history.current };
   },
 
   /**
@@ -329,10 +429,7 @@ export const StickyInteraction = {
    * @param point 現在のポインタ座標。
    * @returns 中間文書を更新した操作状態。連続操作中でなければ入力を返す。
    */
-  movePointer(
-    interaction: StickyInteraction,
-    point: Point,
-  ): StickyInteraction {
+  movePointer(interaction: StickyInteraction, point: Point): StickyInteraction {
     if (interaction.session.status === "dragging") {
       const position = draggedPosition(interaction.session, point);
       return {
@@ -597,6 +694,7 @@ const createEditingSticky = (
     }),
   );
   return {
+    ...interaction,
     history,
     workingDocument: history.current,
     selectedType: interaction.selectedType,
@@ -640,14 +738,8 @@ const draggedPosition = (
   session: Extract<StickySession, { status: "dragging" }>,
   point: Point,
 ): Point => ({
-  x:
-    session.originalSticky.position.x +
-    point.x -
-    session.pointerOrigin.x,
-  y:
-    session.originalSticky.position.y +
-    point.y -
-    session.pointerOrigin.y,
+  x: session.originalSticky.position.x + point.x - session.pointerOrigin.x,
+  y: session.originalSticky.position.y + point.y - session.pointerOrigin.y,
 });
 
 /**
