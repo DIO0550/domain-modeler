@@ -43,6 +43,10 @@ test.each([
 test.each([
   [{ key: "à", code: "Digit0" }, "fitAll"],
   [{ key: "0", code: "Digit0", shiftKey: true }, "fitAll"],
+  [{ key: "=", code: "Digit0", shiftKey: true }, "fitAll"],
+  [{ key: "+", code: "Digit0", shiftKey: true }, "fitAll"],
+  [{ key: "0", code: "Equal", shiftKey: true }, "zoomIn"],
+  [{ key: "=", code: "Minus", shiftKey: true }, "zoomOut"],
   [{ key: "0", code: "Numpad0", shiftKey: true }, "fitAll"],
   [{ key: "^", code: "Equal" }, "zoomIn"],
   [{ key: ")", code: "Minus" }, "zoomOut"],

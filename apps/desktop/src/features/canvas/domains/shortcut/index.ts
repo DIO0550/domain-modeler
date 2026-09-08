@@ -40,6 +40,17 @@ export const CanvasShortcut = {
         ? Option.some(CANVAS_SHORTCUTS.delete)
         : Option.none();
     }
+    // Shift による入力文字が別操作の記号になっても物理位置を優先する。
+    switch (event.code) {
+      case "Digit0":
+        return Option.some(CANVAS_SHORTCUTS.fitAll);
+      case "Equal":
+        return Option.some(CANVAS_SHORTCUTS.zoomIn);
+      case "Minus":
+        return Option.some(CANVAS_SHORTCUTS.zoomOut);
+      default:
+        break;
+    }
     const key = event.key.toLowerCase();
     if (key === "z") {
       return Option.some(event.shiftKey ? CANVAS_SHORTCUTS.redo : CANVAS_SHORTCUTS.undo);
@@ -52,13 +63,13 @@ export const CanvasShortcut = {
     ) {
       return Option.some(CANVAS_SHORTCUTS.front);
     }
-    if (key === "+" || key === "=" || event.code === "Equal") {
+    if (key === "+" || key === "=") {
       return Option.some(CANVAS_SHORTCUTS.zoomIn);
     }
-    if (key === "0" || event.code === "Digit0") {
+    if (key === "0") {
       return Option.some(CANVAS_SHORTCUTS.fitAll);
     }
-    if (key === "-" || event.code === "Minus") {
+    if (key === "-") {
       return Option.some(CANVAS_SHORTCUTS.zoomOut);
     }
     if (event.shiftKey) {
