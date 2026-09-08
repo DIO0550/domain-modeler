@@ -1,4 +1,4 @@
-import { CanvasShortcut } from "../../domains/shortcut";
+import { CANVAS_SHORTCUTS, CanvasShortcut } from "../../domains/shortcut";
 import { EventTargetEx } from "@/utils/EventTargetEx";
 import type { Document } from "@domain-modeler/canvas-core";
 import type { SaveIndicatorStatus } from "../../domains/save-indicator";
@@ -55,21 +55,21 @@ export function CanvasEditor({
         ) {
           return;
         }
-        const shortcut = CanvasShortcut.fromKey(event.nativeEvent);
+        const shortcut = CanvasShortcut.create(event.nativeEvent);
         if (!shortcut.some) {
           return;
         }
         event.preventDefault();
         const actions: Record<CanvasShortcut, () => void> = {
-          undo: board.undo,
-          redo: board.redo,
-          delete: board.pressDelete,
-          copy: board.copy,
-          paste: board.paste,
-          front: board.bringToFront,
-          fitAll: viewport.fitAll,
-          zoomIn: () => viewport.stepZoom(1.2),
-          zoomOut: () => viewport.stepZoom(1 / 1.2),
+          [CANVAS_SHORTCUTS.undo]: board.undo,
+          [CANVAS_SHORTCUTS.redo]: board.redo,
+          [CANVAS_SHORTCUTS.delete]: board.pressDelete,
+          [CANVAS_SHORTCUTS.copy]: board.copy,
+          [CANVAS_SHORTCUTS.paste]: board.paste,
+          [CANVAS_SHORTCUTS.front]: board.bringToFront,
+          [CANVAS_SHORTCUTS.fitAll]: viewport.fitAll,
+          [CANVAS_SHORTCUTS.zoomIn]: () => viewport.stepZoom(1.2),
+          [CANVAS_SHORTCUTS.zoomOut]: () => viewport.stepZoom(1 / 1.2),
         };
         actions[shortcut.value]();
       }}

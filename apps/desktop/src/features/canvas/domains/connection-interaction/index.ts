@@ -2,11 +2,9 @@ import {
   type CanvasError,
   type ConnectionId,
   Document,
-  History,
   type Option,
   Option as OptionValue,
   type Point,
-  ReplaceDocumentCommand,
   type StickyId,
 } from "@domain-modeler/canvas-core";
 import {
@@ -350,17 +348,8 @@ const executeDocumentChange = (
   if (document === board.workingDocument) {
     return board;
   }
-  const history = History.execute(
-    board.history,
-    ReplaceDocumentCommand.create({
-      previous: board.history.current,
-      next: document,
-    }),
-  );
   return {
-    ...board,
-    history,
-    workingDocument: history.current,
+    ...StickyInteractionValue.withDocument(board, document),
     session: { status: "idle" },
   };
 };
