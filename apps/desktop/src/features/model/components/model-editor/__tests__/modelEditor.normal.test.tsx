@@ -57,7 +57,7 @@ test("空行と末尾の改行を含む全文を表示する", () => {
 test("編集中の不完全な構文も全文として親へ反映する", () => {
   const editor = setup("data Order = string");
   act(() => {
-    // Native setter bypasses React's value tracker, just as browser input does.
+    // ブラウザ入力と同様に、ネイティブの setter で React の値追跡を経由せず更新する。
     const setter = Object.getOwnPropertyDescriptor(
       HTMLTextAreaElement.prototype,
       "value",
@@ -102,6 +102,31 @@ test("全文更新後に元の位置が存在しない場合は文書先頭へ�
   select(input, 15, 15);
   render("//");
   expect([input.selectionStart, input.selectionEnd]).toEqual([0, 0]);
+});
+
+test("IME変換中は選択を復元せず、確定位置を次の全文更新で保持する", () => {
+  const { input, render } = setup("data Order = string");
+  select(input, 5, 10);
+  act(() => {
+    input.dispatchEvent(
+      new CompositionEvent("compositionstart", { bubbles: true }),
+    );
+  });
+
+  const composingText = "data Order = string // へんかん";
+  render(composingText);
+  // value 更新時にブラウザが置いた末尾位置を、変換前の選択範囲へ戻さない。
+  expect([input.selectionStart, input.selectionEnd]).toEqual([
+    composingText.length,
+    composingText.length,
+  ]);
+
+  act(() => {
+    input.setSelectionRange(8, 8, "none");
+    input.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+  });
+  render("data Order = string // 変換確定");
+  expect([input.selectionStart, input.selectionEnd]).toEqual([8, 8]);
 });
 
 test("外部更新で別の入力欄からフォーカスを奪わない", () => {

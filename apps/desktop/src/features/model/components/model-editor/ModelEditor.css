@@ -5,8 +5,8 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  color: #202938;
-  background: #fff;
+  color: var(--shell-text);
+  background: var(--model-editor-bg);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 14px;
   line-height: 24px;
@@ -17,9 +17,9 @@
   flex: 0 0 auto;
   min-width: 3.5em;
   overflow: hidden;
-  color: #667085;
-  background: #f7f8fa;
-  border-right: 1px solid #e4e7ec;
+  color: var(--shell-muted);
+  background: var(--model-editor-gutter-bg);
+  border-right: 1px solid var(--model-editor-border);
   text-align: right;
   user-select: none;
 }
@@ -50,6 +50,6 @@
 }
 
 .model-editor__input:focus-visible {
-  outline: 2px solid #4f6bed;
+  outline: 2px solid var(--model-editor-focus);
   outline-offset: -2px;
 }

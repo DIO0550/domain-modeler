@@ -7,7 +7,12 @@ type ModelEditorProps = Readonly<{
   onChange: (text: string) => void;
 }>;
 
-/** Plain-text .dmodel input. The owner must accept edits synchronously. */
+/**
+ * 行番号付きの .dmodel プレーンテキスト入力欄。全文は親が保持する。
+ *
+ * @param props 全文と変更通知。親は通知された全文を同期的に反映する。
+ * @returns 選択範囲とカーソル位置を保持するテキストエディタ。
+ */
 export function ModelEditor({ value, onChange }: ModelEditorProps) {
   const gutterRef = useRef<HTMLDivElement>(null);
   const selection = useTextSelection(value);
