@@ -183,5 +183,20 @@
     "id": "features-canvas-components-sticky--selected",
     "title": "features/canvas/components/Sticky",
     "name": "Selected"
+  },
+  {
+    "id": "model-modeleditor--default",
+    "title": "Model/ModelEditor",
+    "name": "Default"
+  },
+  {
+    "id": "model-modeleditor--empty",
+    "title": "Model/ModelEditor",
+    "name": "Empty"
+  },
+  {
+    "id": "model-modeleditor--long-document",
+    "title": "Model/ModelEditor",
+    "name": "Long Document"
   }
 ]
