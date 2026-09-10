@@ -17,6 +17,10 @@
   --shell-bg: #f4f4f5;
   --shell-text: #18181b;
   --shell-muted: #71717a;
+  --model-editor-bg: #ffffff;
+  --model-editor-gutter-bg: #f7f8fa;
+  --model-editor-border: #e4e7ec;
+  --model-editor-focus: #4f6bed;
   --tab-bar-bg: #e4e4e7;
   --tab-bar-border: #d4d4d8;
   --tab-item-bg: transparent;
@@ -58,6 +62,10 @@
     --shell-bg: #18181b;
     --shell-text: #fafafa;
     --shell-muted: #a1a1aa;
+    --model-editor-bg: #18181b;
+    --model-editor-gutter-bg: #27272a;
+    --model-editor-border: #3f3f46;
+    --model-editor-focus: #60a5fa;
     --tab-bar-bg: #27272a;
     --tab-bar-border: #3f3f46;
     --tab-item-bg: transparent;

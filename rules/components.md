@@ -103,6 +103,7 @@ function useEmailField() {
 
 ## その他
 
+- テーマに応じて変わる文字・背景・境界・フォーカス色は `App.css` のテーマ変数を使い、ライト・ダーク両方の配色を定義する
 - 1コンポーネント1責務。表示と状態管理・データ取得を同居させない(ロジックは hooks / services 側)
 - ドメイン知識を持たない汎用コンポーネントは `src/components/`、feature 固有は `features/<x>/components/`
 - props はオブジェクトで受け、必要最小限に絞る。使わない props を「将来のため」に足さない
