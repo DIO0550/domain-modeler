@@ -10,7 +10,11 @@ import { useTextSelection } from "../use-text-selection";
 
 type TextEditingSession =
   | Readonly<{ status: "idle" }>
-  | Readonly<{ status: "composing"; text: string }>;
+  | Readonly<{
+      status: "composing";
+      text: string;
+      parentTextAtStart: string;
+    }>;
 
 type UseTextEditingProps = Readonly<{
   value: string;
@@ -34,7 +38,8 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps) {
     selection.rememberSelection(event);
     const text = event.currentTarget.value;
     if (session.status === "composing") {
-      setSession({ status: "composing", text });
+      setSession({ ...session, text });
+      return;
     }
     onChange(text);
   };
@@ -43,7 +48,11 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps) {
     event: CompositionEvent<HTMLTextAreaElement>,
   ) => {
     selection.onCompositionStart();
-    setSession({ status: "composing", text: event.currentTarget.value });
+    setSession({
+      status: "composing",
+      text: event.currentTarget.value,
+      parentTextAtStart: value,
+    });
   };
 
   const handleCompositionEnd = (
@@ -52,7 +61,7 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps) {
     selection.onCompositionEnd(event);
     const composedText = event.currentTarget.value;
     const externalUpdatePending =
-      session.status === "composing" && value !== session.text;
+      session.status === "composing" && value !== session.parentTextAtStart;
     if (!externalUpdatePending && composedText !== value) {
       onChange(composedText);
     }
