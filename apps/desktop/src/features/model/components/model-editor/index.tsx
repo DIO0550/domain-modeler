@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useTextSelection } from "../../hooks/use-text-selection";
+import { useTextEditing } from "../../hooks/use-text-editing";
 import "./ModelEditor.css";
 
 type ModelEditorProps = Readonly<{
@@ -15,8 +15,8 @@ type ModelEditorProps = Readonly<{
  */
 export function ModelEditor({ value, onChange }: ModelEditorProps) {
   const gutterRef = useRef<HTMLDivElement>(null);
-  const selection = useTextSelection(value);
-  const lines = value.split(/\r\n|\r|\n/);
+  const editing = useTextEditing({ value, onChange });
+  const lines = editing.value.split(/\r\n|\r|\n/);
 
   return (
     <div className="model-editor">
@@ -28,21 +28,19 @@ export function ModelEditor({ value, onChange }: ModelEditorProps) {
         </div>
       </div>
       <textarea
-        ref={selection.inputRef}
+        ref={editing.inputRef}
         className="model-editor__input"
         aria-label="ドメインモデルのテキスト"
-        value={value}
+        value={editing.value}
         wrap="off"
         spellCheck={false}
         autoCapitalize="off"
         autoCorrect="off"
-        onChange={(event) => {
-          selection.rememberSelection(event);
-          onChange(event.currentTarget.value);
-        }}
-        onSelect={selection.rememberSelection}
-        onCompositionStart={selection.onCompositionStart}
-        onCompositionEnd={selection.onCompositionEnd}
+        onChange={editing.onChange}
+        onSelect={editing.onSelect}
+        onKeyDown={editing.onKeyDown}
+        onCompositionStart={editing.onCompositionStart}
+        onCompositionEnd={editing.onCompositionEnd}
         onScroll={(event) => {
           if (gutterRef.current !== null) {
             gutterRef.current.scrollTop = event.currentTarget.scrollTop;
