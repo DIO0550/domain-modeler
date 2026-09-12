@@ -27,6 +27,16 @@ export const Default: Story = {
   },
 };
 export const Empty: Story = { args: { value: "" } };
+export const ParseError: Story = {
+  args: {
+    value: "data 数量 = int constrained 10..1\ndata 注文ID = string\n",
+  },
+};
+export const UndefinedReference: Story = {
+  args: {
+    value: "data 注文 = 未検証の注文 OR 検証済みの注文\n",
+  },
+};
 export const LongDocument: Story = {
   args: {
     value: Array.from(

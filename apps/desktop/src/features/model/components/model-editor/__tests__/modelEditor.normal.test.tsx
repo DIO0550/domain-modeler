@@ -1,52 +1,18 @@
 import { act } from "react";
-import { createRoot } from "react-dom/client";
 import { afterEach, expect, test } from "vitest";
-import { ModelEditor } from "../index";
+import {
+  createEditorRenderer,
+  select,
+  setNativeTextareaValue,
+} from "./modelEditor.test-support";
 
-const cleanup: (() => void)[] = [];
+const editors = createEditorRenderer();
 afterEach(() => {
-  cleanup.splice(0).forEach((dispose) => dispose());
+  editors.unmountAll();
 });
 
-function setup(initialValue: string) {
-  const host = document.createElement("div");
-  document.body.append(host);
-  const root = createRoot(host);
-  let text = initialValue;
-  const render = (value: string) => {
-    text = value;
-    act(() => root.render(<ModelEditor value={text} onChange={render} />));
-  };
-  render(initialValue);
-  cleanup.push(() => {
-    act(() => root.unmount());
-    host.remove();
-  });
-  const found = host.querySelector("textarea");
-  const input =
-    found instanceof HTMLTextAreaElement
-      ? found
-      : document.createElement("textarea");
-  return { host, input, render, text: () => text };
-}
-
-function setNativeTextareaValue(input: HTMLTextAreaElement, value: string) {
-  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(
-    input,
-    value,
-  );
-}
-
-function select(input: HTMLTextAreaElement, start: number, end: number) {
-  act(() => {
-    input.focus();
-    input.setSelectionRange(start, end, "backward");
-    input.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true }));
-  });
-}
-
 test("空文書にも1行目が表示される", () => {
-  const { host, input } = setup("");
+  const { host, input } = editors.setup("");
   expect(input.value).toBe("");
   expect(host.querySelector(".model-editor__line-numbers")?.textContent).toBe(
     "1",
@@ -55,7 +21,7 @@ test("空文書にも1行目が表示される", () => {
 
 test("空行と末尾の改行を含む全文を表示する", () => {
   const text = "// コメント\n\ndata Broken =\n";
-  const { host, input } = setup(text);
+  const { host, input } = editors.setup(text);
   expect(input.value).toBe(text);
   expect(
     host.querySelector(".model-editor__line-numbers")?.children.length,
@@ -63,7 +29,7 @@ test("空行と末尾の改行を含む全文を表示する", () => {
 });
 
 test("編集中の不完全な構文も全文として親へ反映する", () => {
-  const editor = setup("data Order = string");
+  const editor = editors.setup("data Order = string");
   act(() => {
     // ブラウザ入力と同様に、ネイティブの setter で React の値追跡を経由せず更新する。
     setNativeTextareaValue(editor.input, "data Order =\n  未確定\n");
@@ -76,7 +42,7 @@ test("編集中の不完全な構文も全文として親へ反映する", () =>
 });
 
 test("親の再描画後も選択範囲と向きを維持する", () => {
-  const { input, render } = setup("data Order = string");
+  const { input, render } = editors.setup("data Order = string");
   select(input, 5, 10);
   render("data Order = string");
   expect([
@@ -87,7 +53,7 @@ test("親の再描画後も選択範囲と向きを維持する", () => {
 });
 
 test("全文が外部から置き換わっても有効な選択範囲は維持する", () => {
-  const { input, render } = setup("data Order = string");
+  const { input, render } = editors.setup("data Order = string");
   select(input, 5, 10);
   render("data Order = int\n");
   expect(input.value).toBe("data Order = int\n");
@@ -99,14 +65,14 @@ test("全文が外部から置き換わっても有効な選択範囲は維持�
 });
 
 test("全文更新後に元の位置が存在しない場合は文書先頭へ戻る", () => {
-  const { input, render } = setup("data Order = string");
+  const { input, render } = editors.setup("data Order = string");
   select(input, 15, 15);
   render("//");
   expect([input.selectionStart, input.selectionEnd]).toEqual([0, 0]);
 });
 
 test("IME変換中は外部の全文更新を表示せず、変換確定後に反映する", () => {
-  const { input, render } = setup("data Order = string");
+  const { input, render } = editors.setup("data Order = string");
   select(input, 5, 10);
   act(() => {
     input.dispatchEvent(
@@ -126,7 +92,7 @@ test("IME変換中は外部の全文更新を表示せず、変換確定後に�
 });
 
 test("IME変換中の入力は保留中の外部更新を親で上書きしない", () => {
-  const editor = setup("data Order = string");
+  const editor = editors.setup("data Order = string");
   act(() => {
     editor.input.dispatchEvent(
       new CompositionEvent("compositionstart", { bubbles: true }),
@@ -151,7 +117,7 @@ test("IME変換中の入力は保留中の外部更新を親で上書きしな�
 });
 
 test("IME変換確定後のinputは保留中の外部更新を上書きしない", () => {
-  const editor = setup("data Order = string");
+  const editor = editors.setup("data Order = string");
   act(() => {
     editor.input.dispatchEvent(
       new CompositionEvent("compositionstart", { bubbles: true }),
@@ -176,7 +142,7 @@ test("IME変換確定後のinputは保留中の外部更新を上書きしない
 });
 
 test("確定inputが先に発火した場合は次の通常入力を破棄しない", async () => {
-  const editor = setup("data Order = string");
+  const editor = editors.setup("data Order = string");
   act(() => {
     editor.input.dispatchEvent(
       new CompositionEvent("compositionstart", { bubbles: true }),
@@ -202,7 +168,7 @@ test("確定inputが先に発火した場合は次の通常入力を破棄しな
 });
 
 test("IME変換の確定値は確定後のinputイベントを待たず親へ反映する", () => {
-  const editor = setup("data Order = string");
+  const editor = editors.setup("data Order = string");
   act(() => {
     editor.input.dispatchEvent(
       new CompositionEvent("compositionstart", { bubbles: true }),
@@ -219,7 +185,7 @@ test("IME変換の確定値は確定後のinputイベントを待たず親へ反
 });
 
 test("Tab入力はフォーカスを移動せず選択位置へスペース2個を挿入する", () => {
-  const editor = setup("data Order = string");
+  const editor = editors.setup("data Order = string");
   select(editor.input, 5, 5);
   const keydown = new KeyboardEvent("keydown", {
     bubbles: true,
@@ -234,7 +200,7 @@ test("Tab入力はフォーカスを移動せず選択位置へスペース2個�
 });
 
 test("Shift+Tab入力は横取りせず既定のフォーカス移動へ委ねる", () => {
-  const editor = setup("data Order = string");
+  const editor = editors.setup("data Order = string");
   select(editor.input, 5, 5);
   const keydown = new KeyboardEvent("keydown", {
     bubbles: true,
@@ -248,7 +214,7 @@ test("Shift+Tab入力は横取りせず既定のフォーカス移動へ委ね�
 });
 
 test("改行入力は現在行のインデントを引き継ぐ", () => {
-  const editor = setup("data Order =\n  OrderId AND Customer");
+  const editor = editors.setup("data Order =\n  OrderId AND Customer");
   select(editor.input, editor.input.value.length, editor.input.value.length);
   act(() => {
     editor.input.dispatchEvent(
@@ -267,7 +233,7 @@ test("改行入力は現在行のインデントを引き継ぐ", () => {
 });
 
 test("IME変換中のEnter入力は自動インデントとして横取りしない", () => {
-  const editor = setup("  OrderId");
+  const editor = editors.setup("  OrderId");
   act(() => {
     editor.input.dispatchEvent(
       new CompositionEvent("compositionstart", { bubbles: true }),
@@ -284,7 +250,7 @@ test("IME変換中のEnter入力は自動インデントとして横取りしな
 });
 
 test("外部更新で別の入力欄からフォーカスを奪わない", () => {
-  const { input, render, host } = setup("data Order = string");
+  const { input, render, host } = editors.setup("data Order = string");
   select(input, 5, 10);
   const other = document.createElement("button");
   host.append(other);
@@ -294,7 +260,7 @@ test("外部更新で別の入力欄からフォーカスを奪わない", () =>
 });
 
 test("縦スクロールに行番号が追従する", () => {
-  const { host, input } = setup("data A = string\n".repeat(100));
+  const { host, input } = editors.setup("data A = string\n".repeat(100));
   act(() => {
     input.scrollTop = 240;
     input.dispatchEvent(new Event("scroll", { bubbles: true }));
