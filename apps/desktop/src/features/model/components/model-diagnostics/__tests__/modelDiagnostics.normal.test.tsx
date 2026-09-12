@@ -92,6 +92,10 @@ test("未定義バッジをクリックすると末尾にスタブを追記し�
   const badge = host.querySelector(
     "button.preview-data-card__undefined-badge",
   );
+  const badgeButton =
+    badge instanceof HTMLButtonElement
+      ? badge
+      : document.createElement("button");
   const found = host.querySelector("textarea");
   const input =
     found instanceof HTMLTextAreaElement
@@ -99,7 +103,8 @@ test("未定義バッジをクリックすると末尾にスタブを追記し�
       : document.createElement("textarea");
 
   act(() => {
-    badge?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    badgeButton.focus();
+    badgeButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
 
   const stubLine = "data 未定義型 = string // TODO 詳細化";
@@ -107,6 +112,7 @@ test("未定義バッジをクリックすると末尾にスタブを追記し�
   const stubOffset = `${source}\n`.length;
 
   expect(input.value).toBe(expected);
+  expect(document.activeElement).toBe(input);
   expect([input.selectionStart, input.selectionEnd]).toEqual([
     stubOffset,
     stubOffset,

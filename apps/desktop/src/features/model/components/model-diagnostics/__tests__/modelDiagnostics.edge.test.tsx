@@ -55,6 +55,10 @@ test("未定義の型参照名をクリックしてもスタブを追記して�
   const nameButton = host.querySelector(
     "button.preview-data-card__type-name--undefined",
   );
+  const typeNameButton =
+    nameButton instanceof HTMLButtonElement
+      ? nameButton
+      : document.createElement("button");
   const found = host.querySelector("textarea");
   const input =
     found instanceof HTMLTextAreaElement
@@ -62,13 +66,15 @@ test("未定義の型参照名をクリックしてもスタブを追記して�
       : document.createElement("textarea");
 
   act(() => {
-    nameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    typeNameButton.focus();
+    typeNameButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
 
   const stubOffset = `${source}\n`.length;
   expect(input.value).toBe(
     `${source}\ndata 未定義型 = string // TODO 詳細化`,
   );
+  expect(document.activeElement).toBe(input);
   expect([input.selectionStart, input.selectionEnd]).toEqual([
     stubOffset,
     stubOffset,

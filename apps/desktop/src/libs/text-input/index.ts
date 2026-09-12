@@ -40,11 +40,13 @@ const scrollToLine = (input: HTMLTextAreaElement, line: number): void => {
 export const TextInput = {
   /**
    * 選択範囲を1回の入力操作として置き換える。
+   * ネイティブ undo に積むため、入力欄へフォーカスしてから置換する。
    *
    * @param input 編集対象のテキスト入力欄。
    * @param edit 置換範囲と挿入文字列。
    */
   applyEdit(input: HTMLTextAreaElement, edit: TextInputEdit): void {
+    input.focus();
     input.setSelectionRange(edit.start, edit.end);
 
     // execCommand は非推奨だが、現行WebViewでネイティブundo履歴へ
