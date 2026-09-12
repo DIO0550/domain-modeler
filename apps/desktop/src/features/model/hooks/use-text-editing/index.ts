@@ -3,6 +3,8 @@ import {
   type ChangeEvent,
   type CompositionEvent,
   type KeyboardEvent,
+  type RefObject,
+  type SyntheticEvent,
 } from "react";
 import { TextInput } from "@/libs/text-input";
 import { TextEdit } from "../../domains/text-edit";
@@ -22,13 +24,24 @@ type UseTextEditingProps = Readonly<{
   onChange: (text: string) => void;
 }>;
 
+/** textarea へ渡す全文と入力イベント。IME変換中は親の全文より表示中テキストを優先する。 */
+export type TextEditing = Readonly<{
+  inputRef: RefObject<HTMLTextAreaElement | null>;
+  value: string;
+  onChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+  onSelect: (event: SyntheticEvent<HTMLTextAreaElement>) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onCompositionStart: (event: CompositionEvent<HTMLTextAreaElement>) => void;
+  onCompositionEnd: (event: CompositionEvent<HTMLTextAreaElement>) => void;
+}>;
+
 /**
  * `.dmodel` の入力支援とIME変換中の表示境界を管理する。
  *
  * @param props 親が保持する全文と変更通知。
  * @returns textareaへ渡す全文・参照・入力イベントハンドラ。
  */
-export function useTextEditing({ value, onChange }: UseTextEditingProps) {
+export function useTextEditing({ value, onChange }: UseTextEditingProps): TextEditing {
   const [session, setSession] = useState<TextEditingSession>({
     status: "idle",
   });

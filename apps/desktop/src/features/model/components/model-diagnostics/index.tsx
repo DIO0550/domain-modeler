@@ -3,7 +3,8 @@ import {
   type Declaration as DeclarationValue,
 } from "@domain-modeler/model-core";
 import { AnalyzedModel } from "../../domains/analyzed-model";
-import { ModelEditor } from "../model-editor";
+import { useTextEditing } from "../../hooks/use-text-editing";
+import { ModelEditorDisplay } from "../model-editor";
 import { PreviewDataCard } from "../preview-data-card";
 import { PreviewErrorPlaceholder } from "../preview-error-placeholder";
 import { PreviewWorkflowCard } from "../preview-workflow-card";
@@ -22,11 +23,12 @@ type ModelDiagnosticsProps = Readonly<{
  * @returns 左右分割の診断付きモデル編集画面。
  */
 export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
-  const analyzed = AnalyzedModel.create(value);
+  const editing = useTextEditing({ value, onChange });
+  const analyzed = AnalyzedModel.create(editing.value);
   return (
     <div className="model-diagnostics">
       <section className="model-diagnostics__editor" aria-label="テキストエディタ">
-        <ModelEditor value={value} onChange={onChange} />
+        <ModelEditorDisplay editing={editing} />
       </section>
       <section
         className="model-diagnostics__preview"

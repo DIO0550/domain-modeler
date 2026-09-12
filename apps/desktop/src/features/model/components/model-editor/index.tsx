@@ -4,7 +4,10 @@ import {
   EditorDiagnostic,
   type EditorLineView,
 } from "../../domains/editor-diagnostic";
-import { useTextEditing } from "../../hooks/use-text-editing";
+import {
+  useTextEditing,
+  type TextEditing,
+} from "../../hooks/use-text-editing";
 import "./ModelEditor.css";
 
 type ModelEditorProps = Readonly<{
@@ -20,9 +23,23 @@ type ModelEditorProps = Readonly<{
  * @returns 選択範囲とカーソル位置を保持するテキストエディタ。
  */
 export function ModelEditor({ value, onChange }: ModelEditorProps) {
+  const editing = useTextEditing({ value, onChange });
+  return <ModelEditorDisplay editing={editing} />;
+}
+
+type ModelEditorDisplayProps = Readonly<{
+  editing: TextEditing;
+}>;
+
+/**
+ * 表示中テキストに診断を重ねた入力欄。IME変換中は親の全文より表示中テキストを使う。
+ *
+ * @param props textarea へ渡す全文と入力イベント。
+ * @returns 行番号と診断付きの入力欄。
+ */
+export function ModelEditorDisplay({ editing }: ModelEditorDisplayProps) {
   const gutterRef = useRef<HTMLDivElement>(null);
   const diagnosticsRef = useRef<HTMLDivElement>(null);
-  const editing = useTextEditing({ value, onChange });
   const lineViews = useMemo(() => {
     const analyzed = AnalyzedModel.create(editing.value);
     return EditorDiagnostic.lineViews(editing.value, analyzed.diagnostics);
