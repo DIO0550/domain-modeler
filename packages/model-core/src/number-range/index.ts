@@ -32,4 +32,19 @@ export const NumberRange = {
    * @returns 上限のみの数値範囲。
    */
   maxOnly: (max: number): NumberRange => ({ bound: "maxOnly", max }),
+  /**
+   * 制約構文と同じ範囲表記にする(model-format.md §6)。
+   * @param range 数値範囲。
+   * @returns `1..100` / `1..` / `..100`。
+   */
+  toSource: (range: NumberRange): string => {
+    switch (range.bound) {
+      case "both":
+        return `${range.min}..${range.max}`;
+      case "minOnly":
+        return `${range.min}..`;
+      case "maxOnly":
+        return `..${range.max}`;
+    }
+  },
 } as const;
