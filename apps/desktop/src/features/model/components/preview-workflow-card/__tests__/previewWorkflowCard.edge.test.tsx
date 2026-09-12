@@ -230,6 +230,11 @@ test("IN の + は直後の型参照と同じまとまりになる", () => {
   expect(groupedTerm?.querySelector(".preview-workflow-card__separator")?.textContent).toBe(
     "+",
   );
+  expect(
+    groupedTerm
+      ?.querySelector(".preview-workflow-card__separator")
+      ?.getAttribute("aria-hidden"),
+  ).toBeNull();
   expect(groupedTerm?.querySelector(".preview-workflow-card__type-name")?.textContent).toBe(
     "在庫状況",
   );

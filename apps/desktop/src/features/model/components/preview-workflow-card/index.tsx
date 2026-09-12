@@ -119,7 +119,7 @@ function WorkflowTerm({
   }
   return (
     <span className="preview-workflow-card__term">
-      <span className="preview-workflow-card__separator" aria-hidden="true">
+      <span className="preview-workflow-card__separator">
         {leadingSeparator}
       </span>
       {typeRefView}
