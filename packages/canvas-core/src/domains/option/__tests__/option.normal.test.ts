@@ -7,6 +7,7 @@ test("値ありは保持した値を返す", () => {
   expect(option).toEqual({ some: true, value: 42 });
   expect(Option.isSome(option)).toBe(true);
   expect(Option.isNone(option)).toBe(false);
+  expect(Option.unwrap(option)).toBe(42);
 });
 
 test("値なしは値を持たない状態を返す", () => {

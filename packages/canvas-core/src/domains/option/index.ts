@@ -37,4 +37,16 @@ export const Option = {
    * @returns 値を持たない場合は `true`。
    */
   isNone: <T>(option: Option<T>): option is None => !option.some,
+  /**
+   * 値を取り出す。値がない場合は例外を投げる(テスト専用)。
+   * @param option 取り出し対象の `Option`。
+   * @returns 保持している値。
+   * @throws 値がない `Option` を渡した場合。
+   */
+  unwrap: <T>(option: Option<T>): T => {
+    if (option.some) {
+      return option.value;
+    }
+    throw new Error("Tried to unwrap None");
+  },
 };
