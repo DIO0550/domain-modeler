@@ -28,3 +28,9 @@ test("下限のみの範囲は 下限.. の構文になる", () => {
 test("上限のみの範囲は ..上限 の構文になる", () => {
   expect(NumberRange.toSource(NumberRange.maxOnly(100))).toBe("..100");
 });
+
+test("10の21乗の下限は指数表記せず桁を並べる", () => {
+  expect(NumberRange.toSource(NumberRange.minOnly(1e21))).toBe(
+    "1000000000000000000000..",
+  );
+});
