@@ -34,7 +34,7 @@ test("単一参照の data 宣言は ALIAS プレビューになる", () => {
   expect(preview).toEqual({
     kind: "ALIAS",
     name: "注文ID",
-    term: { term, isUndefined: false },
+    term: { term, resolution: "primitive" },
   });
 });
 
@@ -67,8 +67,8 @@ test("AND 連結の data 宣言は RECORD プレビューになる", () => {
     kind: "RECORD",
     name: "検証済みの注文",
     fields: [
-      { term: fields[0], isUndefined: false },
-      { term: fields[1], isUndefined: false },
+      { term: fields[0], resolution: "defined" },
+      { term: fields[1], resolution: "defined" },
     ],
   });
 });
@@ -102,8 +102,8 @@ test("OR 連結の data 宣言は CHOICE プレビューになる", () => {
     kind: "CHOICE",
     name: "注文",
     cases: [
-      { term: cases[0], isUndefined: false },
-      { term: cases[1], isUndefined: false },
+      { term: cases[0], resolution: "defined" },
+      { term: cases[1], resolution: "defined" },
     ],
   });
 });
@@ -200,7 +200,7 @@ test("上限のみの数値制約は VALUE プレビューで decimal ..100 に�
   });
 });
 
-test("未定義の名前付き型参照は isUndefined になる", () => {
+test("未定義の名前付き型参照は undefined 解決になる", () => {
   const term = TypeTerm.create({
     name: "顧客情報",
     isPrimitive: false,
@@ -210,11 +210,11 @@ test("未定義の名前付き型参照は isUndefined になる", () => {
 
   expect(PreviewTypeRef.create(term, new Set(["顧客情報"]))).toEqual({
     term,
-    isUndefined: true,
+    resolution: "undefined",
   });
 });
 
-test("定義済みの名前付き型参照は isUndefined にならない", () => {
+test("定義済みの名前付き型参照は defined 解決になる", () => {
   const term = TypeTerm.create({
     name: "注文ID",
     isPrimitive: false,
@@ -224,11 +224,11 @@ test("定義済みの名前付き型参照は isUndefined にならない", () =
 
   expect(PreviewTypeRef.create(term, new Set(["顧客情報"]))).toEqual({
     term,
-    isUndefined: false,
+    resolution: "defined",
   });
 });
 
-test("プリミティブ型は未定義名に含まれていても isUndefined にならない", () => {
+test("プリミティブ型は未定義名に含まれていても primitive 解決になる", () => {
   const term = TypeTerm.create({
     name: "string",
     isPrimitive: true,
@@ -238,6 +238,6 @@ test("プリミティブ型は未定義名に含まれていても isUndefined �
 
   expect(PreviewTypeRef.create(term, new Set(["string"]))).toEqual({
     term,
-    isUndefined: false,
+    resolution: "primitive",
   });
 });

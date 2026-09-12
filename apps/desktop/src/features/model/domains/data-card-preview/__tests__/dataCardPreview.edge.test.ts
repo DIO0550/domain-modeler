@@ -45,9 +45,9 @@ test("RECORD の一部フィールドだけ未定義になる", () => {
     kind: "RECORD",
     name: "注文",
     fields: [
-      { term: fields[0], isUndefined: false },
-      { term: fields[1], isUndefined: true },
-      { term: fields[2], isUndefined: false },
+      { term: fields[0], resolution: "defined" },
+      { term: fields[1], resolution: "undefined" },
+      { term: fields[2], resolution: "primitive" },
     ],
   });
 });
@@ -81,8 +81,8 @@ test("CHOICE の全ケースが未定義でもプレビューを組み立てる"
     kind: "CHOICE",
     name: "注文",
     cases: [
-      { term: cases[0], isUndefined: true },
-      { term: cases[1], isUndefined: true },
+      { term: cases[0], resolution: "undefined" },
+      { term: cases[1], resolution: "undefined" },
     ],
   });
 });
@@ -107,6 +107,6 @@ test("ALIAS の後置修飾付き未定義参照を保持する", () => {
   expect(preview).toEqual({
     kind: "ALIAS",
     name: "明細一覧",
-    term: { term, isUndefined: true },
+    term: { term, resolution: "undefined" },
   });
 });

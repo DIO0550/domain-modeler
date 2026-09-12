@@ -6,13 +6,33 @@ import {
   type NumberRange as NumberRangeValue,
   type Primitive,
   type TypeTerm as TypeTermValue,
+  type ValueOf,
 } from "@domain-modeler/model-core";
 
-/** プレビュー上の型参照。未定義ならバッジ表示の対象になる。 */
-export type PreviewTypeRef = Readonly<{
-  term: TypeTermValue;
-  isUndefined: boolean;
-}>;
+/** プレビュー上の型参照の解決状態。 */
+export const PREVIEW_TYPE_RESOLUTIONS = {
+  primitive: "primitive",
+  defined: "defined",
+  undefined: "undefined",
+} as const;
+
+/** プレビュー上の型参照の解決状態。 */
+export type PreviewTypeResolution = ValueOf<typeof PREVIEW_TYPE_RESOLUTIONS>;
+
+/** プレビュー上の型参照。プリミティブ・定義済み・未定義は同時に成り立たない。 */
+export type PreviewTypeRef =
+  | Readonly<{
+      resolution: typeof PREVIEW_TYPE_RESOLUTIONS.primitive;
+      term: TypeTermValue;
+    }>
+  | Readonly<{
+      resolution: typeof PREVIEW_TYPE_RESOLUTIONS.defined;
+      term: TypeTermValue;
+    }>
+  | Readonly<{
+      resolution: typeof PREVIEW_TYPE_RESOLUTIONS.undefined;
+      term: TypeTermValue;
+    }>;
 
 /** ALIAS カードのプレビュー。 */
 export type AliasDataCardPreview = Readonly<{
@@ -62,12 +82,28 @@ export const PreviewTypeRef = {
     term: TypeTermValue,
     undefinedTypeNames: ReadonlySet<string>,
   ): PreviewTypeRef {
-    return {
-      term,
-      isUndefined:
-        TypeTerm.isResolvable(term) && undefinedTypeNames.has(term.name),
-    };
+    if (!TypeTerm.isResolvable(term)) {
+      return { resolution: PREVIEW_TYPE_RESOLUTIONS.primitive, term };
+    }
+    if (undefinedTypeNames.has(term.name)) {
+      return { resolution: PREVIEW_TYPE_RESOLUTIONS.undefined, term };
+    }
+    return { resolution: PREVIEW_TYPE_RESOLUTIONS.defined, term };
   },
+  /**
+   * 未定義バッジの対象か判定する。
+   * @param typeRef プレビュー用の型参照。
+   * @returns 未定義の名前付き参照なら `true`。
+   */
+  isUndefined: (typeRef: PreviewTypeRef): boolean =>
+    typeRef.resolution === PREVIEW_TYPE_RESOLUTIONS.undefined,
+  /**
+   * プリミティブ型の参照か判定する。
+   * @param typeRef プレビュー用の型参照。
+   * @returns プリミティブなら `true`。
+   */
+  isPrimitive: (typeRef: PreviewTypeRef): boolean =>
+    typeRef.resolution === PREVIEW_TYPE_RESOLUTIONS.primitive,
 } as const;
 
 /** data 宣言からプレビューカードを組み立てる関数群。 */

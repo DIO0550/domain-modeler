@@ -5,7 +5,7 @@ import {
 } from "@domain-modeler/model-core";
 import {
   DataCardPreview,
-  type PreviewTypeRef,
+  PreviewTypeRef,
 } from "../../domains/data-card-preview";
 import "./PreviewDataCard.css";
 
@@ -155,7 +155,7 @@ type TypeRefViewProps = Readonly<{
  * @returns 型参照の表示。
  */
 function TypeRefView({ typeRef }: TypeRefViewProps) {
-  const badge = typeRef.isUndefined ? (
+  const badge = PreviewTypeRef.isUndefined(typeRef) ? (
     <span className="preview-data-card__undefined-badge">未定義</span>
   ) : null;
   return (
@@ -178,10 +178,10 @@ function TypeRefView({ typeRef }: TypeRefViewProps) {
  * @returns 未定義・プリミティブの修飾を含む class。
  */
 const typeNameClassName = (typeRef: PreviewTypeRef): string => {
-  const undefinedClass = typeRef.isUndefined
+  const undefinedClass = PreviewTypeRef.isUndefined(typeRef)
     ? ["preview-data-card__type-name--undefined"]
     : [];
-  const primitiveClass = typeRef.term.isPrimitive
+  const primitiveClass = PreviewTypeRef.isPrimitive(typeRef)
     ? ["preview-data-card__type-name--primitive"]
     : [];
   const classNames = [
