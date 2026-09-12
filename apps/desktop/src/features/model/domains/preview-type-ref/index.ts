@@ -70,6 +70,13 @@ export const PreviewTypeRef = {
   isUndefined: (typeRef: PreviewTypeRef): boolean =>
     typeRef.resolution === PREVIEW_TYPE_RESOLUTIONS.undefined,
   /**
+   * 定義済みの名前付き参照か判定する。
+   * @param typeRef プレビュー用の型参照。
+   * @returns 定義済みなら `true`。
+   */
+  isDefined: (typeRef: PreviewTypeRef): boolean =>
+    typeRef.resolution === PREVIEW_TYPE_RESOLUTIONS.defined,
+  /**
    * プリミティブ型の参照か判定する。
    * @param typeRef プレビュー用の型参照。
    * @returns プリミティブなら `true`。
