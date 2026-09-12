@@ -15,3 +15,14 @@ test.each(["注文 名", "注文\n名", "注文\t名", " 注文", "注文 "])(
 test("コロンなしの input は予約語ではないが識別子として使える", () => {
   expect(Identifier.isAcceptable("input")).toBe(true);
 });
+
+test.each(["123", "A=B", ".", "/", "1st"])(
+  "識別子1トークンにならない %s は拒否される",
+  (text: string) => {
+    expect(Identifier.isAcceptable(text)).toBe(false);
+  },
+);
+
+test("コロンなしの input は予約語ではないが識別子として使える", () => {
+  expect(Identifier.isAcceptable("input")).toBe(true);
+});

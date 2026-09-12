@@ -28,6 +28,22 @@ test("空の名前へのリネームは失敗する", () => {
   });
 });
 
+test.each(["123", "A=B", ".", "/"])(
+  "識別子1トークンにならない %s へのリネームは失敗する",
+  (nextName: string) => {
+    expect(
+      IdentifierRename.create({
+        source: "data 注文ID = string",
+        ranges: [SourceRange.onLine(1, 6, 10)],
+        nextName,
+      }),
+    ).toEqual({
+      ok: false,
+      error: "invalid_identifier",
+    });
+  },
+);
+
 test("出現位置が無い名前は失敗する", () => {
   expect(
     IdentifierRename.create({
