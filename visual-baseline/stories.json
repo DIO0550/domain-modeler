@@ -185,6 +185,21 @@
     "name": "Selected"
   },
   {
+    "id": "features-model-components-preview-data-card-previewdatacard--all-props",
+    "title": "features/model/components/preview-data-card/PreviewDataCard",
+    "name": "All Props"
+  },
+  {
+    "id": "features-model-components-preview-data-card-previewdatacard--default",
+    "title": "features/model/components/preview-data-card/PreviewDataCard",
+    "name": "Default"
+  },
+  {
+    "id": "features-model-components-preview-data-card-previewdatacard--edge-cases",
+    "title": "features/model/components/preview-data-card/PreviewDataCard",
+    "name": "Edge Cases"
+  },
+  {
     "id": "model-modeleditor--default",
     "title": "Model/ModelEditor",
     "name": "Default"
