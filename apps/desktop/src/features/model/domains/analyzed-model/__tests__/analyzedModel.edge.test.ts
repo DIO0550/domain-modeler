@@ -140,6 +140,22 @@ data 注文 = 注文ID`;
   });
 });
 
+test("既に宣言されている名前へのリネームは失敗する", () => {
+  const analyzed = AnalyzedModel.create(
+    "data 注文ID = string\ndata 注文 = 注文ID",
+  );
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      decl: namedDeclAt(analyzed, 0),
+      nextName: "注文",
+    }),
+  ).toEqual({
+    ok: false,
+    error: "name_collision",
+  });
+});
+
 test("再宣言のうち先のカードをリネームすると参照も置換し後の宣言は残す", () => {
   const source = `data 注文ID = string
 data 注文ID = int

@@ -4,6 +4,7 @@ import {
   Parse,
   ReferenceTable,
   Resolve,
+  Result,
   SourceRange,
   TypeTerm,
   type DefinitionTable as DefinitionTableValue,
@@ -14,13 +15,14 @@ import {
   type Result as ResultType,
   type SourceRange as SourceRangeValue,
   type Token,
+  type ValueOf,
 } from "@domain-modeler/model-core";
 import { Option, type Option as OptionType } from "@/utils/Option";
 import { CaretPosition, type CaretPosition as CaretPositionValue } from "../caret-position";
 import {
+  IDENTIFIER_RENAME_ERRORS,
   IdentifierRename,
   type IdentifierRename as IdentifierRenameValue,
-  type IdentifierRenameError,
 } from "../identifier-rename";
 
 /** パースと参照解決をまとめた文書。 */
@@ -33,6 +35,15 @@ export type AnalyzedModel = Readonly<{
   references: ReferenceTableValue;
   undefinedTypeNames: ReadonlySet<string>;
 }>;
+
+/** 解析済み文書のリネーム失敗理由。 */
+export const ANALYZED_MODEL_RENAME_ERRORS = {
+  ...IDENTIFIER_RENAME_ERRORS,
+  nameCollision: "name_collision",
+} as const;
+
+/** 解析済み文書のリネーム失敗理由。 */
+export type AnalyzedModelRenameError = ValueOf<typeof ANALYZED_MODEL_RENAME_ERRORS>;
 
 /**
  * 未定義の型名を定義表から集める。
@@ -150,12 +161,18 @@ export const AnalyzedModel = {
    *
    * @param model 解析済みの文書。
    * @param params 対象の宣言と新しい識別子。
-   * @returns 1回分の編集と先頭出現のキャレット。名前が識別子でない、または出現が無ければ失敗。
+   * @returns 1回分の編集と先頭出現のキャレット。名前が識別子でない、既に使われている、または出現が無ければ失敗。
    */
   rename(
     model: AnalyzedModel,
     params: Readonly<{ decl: NamedDeclValue; nextName: string }>,
-  ): ResultType<IdentifierRenameValue, IdentifierRenameError> {
+  ): ResultType<IdentifierRenameValue, AnalyzedModelRenameError> {
+    if (
+      DefinitionTable.has(model.definitions, params.nextName) &&
+      params.nextName !== params.decl.name
+    ) {
+      return Result.err(ANALYZED_MODEL_RENAME_ERRORS.nameCollision);
+    }
     return IdentifierRename.create({
       source: model.source,
       ranges: rangesForRename(model, params.decl),

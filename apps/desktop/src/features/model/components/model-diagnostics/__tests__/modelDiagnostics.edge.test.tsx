@@ -210,6 +210,39 @@ data 商品ID = int
 data 注文 = 注文ID`);
 });
 
+test("既にある宣言名へリネームしても文書は変わらない", () => {
+  const source = "data 注文ID = string\ndata 注文 = 注文ID";
+  const host = diagnostics.render(source);
+  const button = host.querySelector(
+    'button[aria-label="「注文ID」をリネーム"]',
+  );
+  const found = host.querySelector("textarea");
+  const input =
+    found instanceof HTMLTextAreaElement
+      ? found
+      : document.createElement("textarea");
+
+  act(() => {
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const nameField = host.querySelector('input[aria-label="新しい名前"]');
+  const nameInput =
+    nameField instanceof HTMLInputElement
+      ? nameField
+      : document.createElement("input");
+  act(() => {
+    nameInput.focus();
+    nameInput.value = "注文";
+    nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    nameInput.form?.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+  });
+
+  expect(input.value).toBe(source);
+});
+
+
 test("workflow雛形をカーソル位置へ挿入し名前部分を選択する", () => {
   const source = "data 注文ID = string\n";
   const host = diagnostics.render(source);
