@@ -52,7 +52,8 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps): TextEd
   const [session, setSession] = useState<TextEditingSession>({
     status: "idle",
   });
-  const displayedText = session.status === "composing" ? session.text : value;
+  const editorValue = TextInput.toApiValue(value);
+  const displayedText = session.status === "composing" ? session.text : editorValue;
   const selection = useTextSelection(displayedText);
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {

@@ -81,6 +81,67 @@ test("未定義の型参照名をクリックしてもスタブを追記して�
   ]);
 });
 
+test("CRLF の文書でもリネーム位置がずれない", () => {
+  const source = "data 注文ID = string\r\ndata 注文 = 注文ID";
+  const host = diagnostics.render(source);
+  const button = host.querySelector(
+    'button[aria-label="「注文ID」をリネーム"]',
+  );
+  const found = host.querySelector("textarea");
+  const input =
+    found instanceof HTMLTextAreaElement
+      ? found
+      : document.createElement("textarea");
+
+  act(() => {
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const nameField = host.querySelector('input[aria-label="新しい名前"]');
+  const nameInput =
+    nameField instanceof HTMLInputElement
+      ? nameField
+      : document.createElement("input");
+  act(() => {
+    nameInput.focus();
+    nameInput.value = "商品ID";
+    nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    nameInput.form?.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+  });
+
+  expect(input.value).toBe("data 商品ID = string\ndata 注文 = 商品ID");
+});
+
+test("CRLF の文書でも雛形挿入位置がずれない", () => {
+  const source = "data 注文ID = string\r\n";
+  const host = diagnostics.render(source);
+  const found = host.querySelector("textarea");
+  const input =
+    found instanceof HTMLTextAreaElement
+      ? found
+      : document.createElement("textarea");
+  const insertButton = Array.from(host.querySelectorAll("button")).find(
+    (button) => button.textContent === "data雛形",
+  );
+
+  act(() => {
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+    insertButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  const expected = "data 注文ID = string\ndata 名前 = string";
+  const nameStart = "data 注文ID = string\ndata ".length;
+  const nameEnd = nameStart + "名前".length;
+
+  expect(input.value).toBe(expected);
+  expect([input.selectionStart, input.selectionEnd]).toEqual([
+    nameStart,
+    nameEnd,
+  ]);
+});
+
 test("コメント内の同名文字列はリネームしない", () => {
   const source = "data 注文ID = string // 注文ID";
   const host = diagnostics.render(source);

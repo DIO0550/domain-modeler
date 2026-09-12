@@ -45,6 +45,16 @@ const scrollToLine = (input: HTMLTextAreaElement, line: number): void => {
 /** ブラウザ標準のテキスト入力履歴を保って入力欄を編集する関数群。 */
 export const TextInput = {
   /**
+   * テキスト入力欄の API 値が使う改行(LF)へ正規化する。
+   * ブラウザは CRLF / CR を LF として `selectionStart` を数える。
+   *
+   * @param text 文書全文。
+   * @returns LF 改行の全文。
+   */
+  toApiValue(text: string): string {
+    return text.replace(/\r\n|\r/g, "\n");
+  },
+  /**
    * 選択範囲を1回の入力操作として置き換える。
    * ネイティブ undo に積むため、入力欄へフォーカスしてから置換する。
    *
