@@ -195,6 +195,20 @@ test("Tab入力はフォーカスを移動せず選択位置へスペース2個�
   expect([editor.input.selectionStart, editor.input.selectionEnd]).toEqual([7, 7]);
 });
 
+test("Shift+Tab入力は横取りせず既定のフォーカス移動へ委ねる", () => {
+  const editor = setup("data Order = string");
+  select(editor.input, 5, 5);
+  const keydown = new KeyboardEvent("keydown", {
+    bubbles: true,
+    cancelable: true,
+    key: "Tab",
+    shiftKey: true,
+  });
+  act(() => editor.input.dispatchEvent(keydown));
+  expect(editor.text()).toBe("data Order = string");
+  expect(keydown.defaultPrevented).toBe(false);
+});
+
 test("改行入力は現在行のインデントを引き継ぐ", () => {
   const editor = setup("data Order =\n  OrderId AND Customer");
   select(editor.input, editor.input.value.length, editor.input.value.length);
