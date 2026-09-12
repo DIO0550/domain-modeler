@@ -166,7 +166,7 @@ export const Tokenizer = {
    * @returns 出現順のトークン列。
    */
   tokenize: (source: string): readonly DslToken[] => {
-    const lines = source.split("\n").map(stripTrailingCr);
+    const lines = source.split(/\r\n|\r|\n/).map(stripTrailingCr);
     return lines.flatMap((line, index) => tokenizeLine(line, index + 1));
   },
 } as const;

@@ -26,3 +26,11 @@ test.each([
 test("空配列では循環位置の要素は無い", () => {
   expect(ArrayEx.atWrapped([], 0)).toBeUndefined();
 });
+
+test("先に現れた値を残して重複を除く", () => {
+  expect(ArrayEx.unique(["a", "b", "a", "c", "b"])).toEqual(["a", "b", "c"]);
+});
+
+test("空配列の unique は空のまま", () => {
+  expect(ArrayEx.unique([])).toEqual([]);
+});

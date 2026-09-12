@@ -5,7 +5,7 @@ import { ModelEditor } from "./index";
 function EditableModel({ value: initialValue }: { value: string }) {
   const [value, setValue] = useState(initialValue);
   return (
-    <div style={{ height: "calc(100vh - 32px)", minHeight: 240 }}>
+    <div className="model-editor-story">
       <ModelEditor value={value} onChange={setValue} />
     </div>
   );
@@ -22,11 +22,27 @@ type Story = StoryObj<typeof ModelEditor>;
 
 export const Default: Story = {
   args: {
-    value:
-      "// 注文モデル\ndata OrderId = string\n\ndata Order =\n  id: OrderId\n  quantity: int\n",
+    value: `// 注文モデル
+data OrderId = string
+data Quantity = int
+
+data Order =
+  OrderId
+  AND Quantity
+`,
   },
 };
 export const Empty: Story = { args: { value: "" } };
+export const ParseError: Story = {
+  args: {
+    value: "data 数量 = int constrained 10..1\ndata 注文ID = string\n",
+  },
+};
+export const UndefinedReference: Story = {
+  args: {
+    value: "data 注文 = 未検証の注文 OR 検証済みの注文\n",
+  },
+};
 export const LongDocument: Story = {
   args: {
     value: Array.from(

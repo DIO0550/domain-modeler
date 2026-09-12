@@ -14,4 +14,13 @@ export const ArrayEx = {
     const wrapped = ((index % items.length) + items.length) % items.length;
     return items[wrapped];
   },
+  /**
+   * 出現順を保ったまま重複する値を除く。
+   *
+   * @param items 対象の配列。
+   * @returns 先に現れた値だけを残した配列。
+   */
+  unique<T>(items: readonly T[]): readonly T[] {
+    return items.filter((item, index) => items.indexOf(item) === index);
+  },
 } as const;
