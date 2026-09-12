@@ -1,16 +1,24 @@
-import{a as e,n as t}from"./chunk-BneVvdWh.js";import{t as n}from"./iframe-Bcvnyfod.js";import{t as r}from"./jsx-runtime-DXFqSddf.js";import{n as i,t as a}from"./model-editor-hmBvcUV9.js";function o({value:e}){let[t,n]=(0,s.useState)(e);return(0,c.jsx)(`div`,{className:`model-editor-story`,children:(0,c.jsx)(a,{value:t,onChange:n})})}var s,c,l,u,d,f,p,m,h;t((()=>{s=e(n(),1),i(),c=r(),l={component:a,title:`Model/ModelEditor`,render:e=>(0,c.jsx)(o,{value:e.value}),argTypes:{onChange:{control:!1}}},u={args:{value:`// 注文モデル
+import{a as e,n as t}from"./chunk-BneVvdWh.js";import{t as n}from"./iframe-DI4n58vC.js";import{t as r}from"./jsx-runtime-DXFqSddf.js";import{n as i,t as a}from"./model-editor-DZGEf9w8.js";function o({value:e}){let[t,n]=(0,s.useState)(e);return(0,c.jsx)(`div`,{className:`model-editor-story`,children:(0,c.jsx)(a,{value:t,onChange:n})})}var s,c,l,u,d,f,p,m,h;t((()=>{s=e(n(),1),i(),c=r(),l={component:a,title:`Model/ModelEditor`,render:e=>(0,c.jsx)(o,{value:e.value}),argTypes:{onChange:{control:!1}}},u={args:{value:`// 注文モデル
 data OrderId = string
+data Quantity = int
 
 data Order =
-  id: OrderId
-  quantity: int
+  OrderId
+  AND Quantity
 `}},d={args:{value:``}},f={args:{value:`data 数量 = int constrained 10..1
 data 注文ID = string
 `}},p={args:{value:`data 注文 = 未検証の注文 OR 検証済みの注文
 `}},m={args:{value:Array.from({length:150},(e,t)=>`data Item${t+1} = string // ${`長い行 `.repeat(30)}`).join(`
 `)}},u.parameters={...u.parameters,docs:{...u.parameters?.docs,source:{originalSource:`{
   args: {
-    value: "// 注文モデル\\ndata OrderId = string\\n\\ndata Order =\\n  id: OrderId\\n  quantity: int\\n"
+    value: \`// 注文モデル
+data OrderId = string
+data Quantity = int
+
+data Order =
+  OrderId
+  AND Quantity
+\`
   }
 }`,...u.parameters?.docs?.source}}},d.parameters={...d.parameters,docs:{...d.parameters?.docs,source:{originalSource:`{
   args: {
