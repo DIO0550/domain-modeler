@@ -58,7 +58,7 @@ export const PreviewTypeRef = {
    * @param undefinedTypeNames 未定義の型名。
    * @returns プレビュー用の型参照。
    */
-  of(
+  create(
     term: TypeTermValue,
     undefinedTypeNames: ReadonlySet<string>,
   ): PreviewTypeRef {
@@ -78,7 +78,7 @@ export const DataCardPreview = {
    * @param undefinedTypeNames 未定義の型名。
    * @returns ALIAS / RECORD / CHOICE / VALUE のプレビュー。
    */
-  of(
+  create(
     decl: DataDecl,
     undefinedTypeNames: ReadonlySet<string>,
   ): DataCardPreview {
@@ -87,7 +87,7 @@ export const DataCardPreview = {
         return {
           kind: DATA_CARD_KINDS.ALIAS,
           name: decl.name,
-          term: PreviewTypeRef.of(decl.typeExpr.term, undefinedTypeNames),
+          term: PreviewTypeRef.create(decl.typeExpr.term, undefinedTypeNames),
         };
       case "record":
         return {
@@ -124,7 +124,7 @@ const previewTypeRefs = (
   terms: readonly TypeTermValue[],
   undefinedTypeNames: ReadonlySet<string>,
 ): readonly PreviewTypeRef[] =>
-  terms.map((term) => PreviewTypeRef.of(term, undefinedTypeNames));
+  terms.map((term) => PreviewTypeRef.create(term, undefinedTypeNames));
 
 /**
  * VALUE カードに出すプリミティブ型と制約の見出しを組み立てる。

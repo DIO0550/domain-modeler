@@ -31,7 +31,7 @@ test("RECORD の一部フィールドだけ未定義になる", () => {
       range,
     }),
   ];
-  const preview = DataCardPreview.of(
+  const preview = DataCardPreview.create(
     DataDecl.create({
       name: "注文",
       nameRange: range,
@@ -67,7 +67,7 @@ test("CHOICE の全ケースが未定義でもプレビューを組み立てる"
       range,
     }),
   ];
-  const preview = DataCardPreview.of(
+  const preview = DataCardPreview.create(
     DataDecl.create({
       name: "注文",
       nameRange: range,
@@ -94,7 +94,7 @@ test("ALIAS の後置修飾付き未定義参照を保持する", () => {
     modifiers: [TYPE_MODIFIERS.list, TYPE_MODIFIERS.option],
     range,
   });
-  const preview = DataCardPreview.of(
+  const preview = DataCardPreview.create(
     DataDecl.create({
       name: "明細一覧",
       nameRange: range,

@@ -21,7 +21,7 @@ test("単一参照の data 宣言は ALIAS プレビューになる", () => {
     modifiers: [],
     range,
   });
-  const preview = DataCardPreview.of(
+  const preview = DataCardPreview.create(
     DataDecl.create({
       name: "注文ID",
       nameRange: range,
@@ -53,7 +53,7 @@ test("AND 連結の data 宣言は RECORD プレビューになる", () => {
       range,
     }),
   ];
-  const preview = DataCardPreview.of(
+  const preview = DataCardPreview.create(
     DataDecl.create({
       name: "検証済みの注文",
       nameRange: range,
@@ -88,7 +88,7 @@ test("OR 連結の data 宣言は CHOICE プレビューになる", () => {
       range,
     }),
   ];
-  const preview = DataCardPreview.of(
+  const preview = DataCardPreview.create(
     DataDecl.create({
       name: "注文",
       nameRange: range,
@@ -109,7 +109,7 @@ test("OR 連結の data 宣言は CHOICE プレビューになる", () => {
 });
 
 test("制約付き data 宣言は VALUE プレビューで int 1..100 になる", () => {
-  const preview = DataCardPreview.of(
+  const preview = DataCardPreview.create(
     DataDecl.create({
       name: "注文数量",
       nameRange: range,
@@ -132,7 +132,7 @@ test("制約付き data 宣言は VALUE プレビューで int 1..100 になる"
 });
 
 test("文字列長制約は VALUE プレビューで string 1..50 になる", () => {
-  const preview = DataCardPreview.of(
+  const preview = DataCardPreview.create(
     DataDecl.create({
       name: "顧客名",
       nameRange: range,
@@ -155,7 +155,7 @@ test("文字列長制約は VALUE プレビューで string 1..50 になる", ()
 });
 
 test("下限のみの数値制約は VALUE プレビューで int 1.. になる", () => {
-  const preview = DataCardPreview.of(
+  const preview = DataCardPreview.create(
     DataDecl.create({
       name: "下限数量",
       nameRange: range,
@@ -178,7 +178,7 @@ test("下限のみの数値制約は VALUE プレビューで int 1.. になる"
 });
 
 test("上限のみの数値制約は VALUE プレビューで decimal ..100 になる", () => {
-  const preview = DataCardPreview.of(
+  const preview = DataCardPreview.create(
     DataDecl.create({
       name: "上限数量",
       nameRange: range,
@@ -208,7 +208,7 @@ test("未定義の名前付き型参照は isUndefined になる", () => {
     range,
   });
 
-  expect(PreviewTypeRef.of(term, new Set(["顧客情報"]))).toEqual({
+  expect(PreviewTypeRef.create(term, new Set(["顧客情報"]))).toEqual({
     term,
     isUndefined: true,
   });
@@ -222,7 +222,7 @@ test("定義済みの名前付き型参照は isUndefined にならない", () =
     range,
   });
 
-  expect(PreviewTypeRef.of(term, new Set(["顧客情報"]))).toEqual({
+  expect(PreviewTypeRef.create(term, new Set(["顧客情報"]))).toEqual({
     term,
     isUndefined: false,
   });
@@ -236,7 +236,7 @@ test("プリミティブ型は未定義名に含まれていても isUndefined �
     range,
   });
 
-  expect(PreviewTypeRef.of(term, new Set(["string"]))).toEqual({
+  expect(PreviewTypeRef.create(term, new Set(["string"]))).toEqual({
     term,
     isUndefined: false,
   });

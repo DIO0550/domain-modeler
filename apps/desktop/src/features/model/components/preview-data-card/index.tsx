@@ -26,7 +26,7 @@ export function PreviewDataCard({
   decl,
   undefinedTypeNames = EMPTY_TYPE_NAMES,
 }: PreviewDataCardProps) {
-  const preview = DataCardPreview.of(decl, undefinedTypeNames);
+  const preview = DataCardPreview.create(decl, undefinedTypeNames);
   return (
     <article
       className="preview-data-card"
