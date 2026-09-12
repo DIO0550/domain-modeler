@@ -25,8 +25,19 @@ type NameEdit =
 export function DeclName({ name, className, onRename }: DeclNameProps) {
   const [edit, setEdit] = useState<NameEdit>({ status: "idle" });
   const canceling = useRef(false);
+  const committed = useRef(false);
+
+  const startEditing = (): void => {
+    committed.current = false;
+    canceling.current = false;
+    setEdit({ status: "editing", draft: name });
+  };
 
   const finish = (nextName: string): void => {
+    if (committed.current) {
+      return;
+    }
+    committed.current = true;
     setEdit({ status: "idle" });
     if (onRename === undefined || nextName === name || nextName.length === 0) {
       return;
@@ -92,7 +103,7 @@ export function DeclName({ name, className, onRename }: DeclNameProps) {
         type="button"
         className="decl-name-button"
         aria-label={`「${name}」をリネーム`}
-        onClick={() => setEdit({ status: "editing", draft: name })}
+        onClick={startEditing}
       >
         {name}
       </button>
