@@ -14,6 +14,10 @@ type TextEditingSession =
       status: "composing";
       text: string;
       parentTextAtStart: string;
+    }>
+  | Readonly<{
+      status: "discarding-composition-input";
+      text: string;
     }>;
 
 type UseTextEditingProps = Readonly<{
@@ -35,12 +39,19 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps) {
   const selection = useTextSelection(displayedText);
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    selection.rememberSelection(event);
     const text = event.currentTarget.value;
     if (session.status === "composing") {
+      selection.rememberSelection(event);
       setSession({ ...session, text });
       return;
     }
+    if (session.status === "discarding-composition-input") {
+      setSession({ status: "idle" });
+      if (text === session.text) {
+        return;
+      }
+    }
+    selection.rememberSelection(event);
     onChange(text);
   };
 
@@ -62,7 +73,11 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps) {
     const composedText = event.currentTarget.value;
     const externalUpdatePending =
       session.status === "composing" && value !== session.parentTextAtStart;
-    if (!externalUpdatePending && composedText !== value) {
+    if (externalUpdatePending) {
+      setSession({ status: "discarding-composition-input", text: composedText });
+      return;
+    }
+    if (composedText !== value) {
       onChange(composedText);
     }
     setSession({ status: "idle" });
