@@ -1,11 +1,11 @@
 {
-  "reportVersion": "1ad4490bf1640e765549f7ea05aca771badbbe6c",
+  "reportVersion": "3a1041d09c5acddcf94364d35733381cfed06afd",
   "maxDiffRatio": 0.002,
-  "changed": 3,
+  "changed": 0,
   "new": 0,
   "deleted": 0,
-  "passed": 52,
-  "failed": 3,
+  "passed": 55,
+  "failed": 0,
   "results": [
     {
       "story": "appshell-menu-bar-menubar--all-props",
@@ -494,12 +494,12 @@
       "title": "features/model/components/preview-data-card/PreviewDataCard",
       "name": "All Props",
       "status": "passed",
-      "reason": "match",
-      "diffPixels": 0,
-      "diffRatio": 0,
+      "reason": "within-threshold",
+      "diffPixels": 311,
+      "diffRatio": 0.0003,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": false
+      "hasDiff": true
     },
     {
       "story": "features-model-components-preview-data-card-previewdatacard--default",
@@ -520,12 +520,12 @@
       "title": "features/model/components/preview-data-card/PreviewDataCard",
       "name": "Edge Cases",
       "status": "passed",
-      "reason": "match",
-      "diffPixels": 0,
+      "reason": "within-threshold",
+      "diffPixels": 38,
       "diffRatio": 0,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": false
+      "hasDiff": true
     },
     {
       "story": "features-model-components-preview-error-placeholder-previewerrorplaceholder--all-props",
@@ -597,23 +597,23 @@
       "id": "features-model-components-preview-workflow-card-previewworkflowcard--edge-cases",
       "title": "features/model/components/preview-workflow-card/PreviewWorkflowCard",
       "name": "Edge Cases",
-      "status": "changed",
-      "reason": "pixel-diff",
-      "diffPixels": 8724,
-      "diffRatio": 0.0095,
+      "status": "passed",
+      "reason": "match",
+      "diffPixels": 0,
+      "diffRatio": 0,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": true
+      "hasDiff": false
     },
     {
       "story": "model-modeldiagnostics--all-props",
       "id": "model-modeldiagnostics--all-props",
       "title": "Model/ModelDiagnostics",
       "name": "All Props",
-      "status": "changed",
-      "reason": "pixel-diff",
-      "diffPixels": 2186,
-      "diffRatio": 0.0024,
+      "status": "passed",
+      "reason": "within-threshold",
+      "diffPixels": 39,
+      "diffRatio": 0,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
@@ -623,13 +623,13 @@
       "id": "model-modeldiagnostics--default",
       "title": "Model/ModelDiagnostics",
       "name": "Default",
-      "status": "changed",
-      "reason": "pixel-diff",
-      "diffPixels": 6473,
-      "diffRatio": 0.006999999999999999,
+      "status": "passed",
+      "reason": "match",
+      "diffPixels": 0,
+      "diffRatio": 0,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": true
+      "hasDiff": false
     },
     {
       "story": "model-modeldiagnostics--edge-cases",
@@ -637,12 +637,12 @@
       "title": "Model/ModelDiagnostics",
       "name": "Edge Cases",
       "status": "passed",
-      "reason": "within-threshold",
-      "diffPixels": 711,
-      "diffRatio": 0.0008,
+      "reason": "match",
+      "diffPixels": 0,
+      "diffRatio": 0,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": true
+      "hasDiff": false
     },
     {
       "story": "model-modeldiagnostics--empty",
