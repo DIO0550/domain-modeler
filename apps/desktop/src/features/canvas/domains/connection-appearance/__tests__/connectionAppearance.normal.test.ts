@@ -1,9 +1,9 @@
-// @test-rules-disable no-conditional
 import { expect, test } from "vitest";
 import {
   type Connection,
   ConnectionId,
   Document,
+  Option,
   Sticky,
   StickyId,
   StickyIndex,
@@ -47,16 +47,11 @@ const alignedConnection: Connection = {
 const alignedStickyIndex = StickyIndex.create(alignedDocument.stickies);
 
 test("向かい合うアンカーを水平に結べる接続は直線になる", () => {
-  const appearance = ConnectionAppearance.create(
-    alignedStickyIndex,
-    alignedConnection,
+  const appearance = Option.unwrap(
+    ConnectionAppearance.create(alignedStickyIndex, alignedConnection),
   );
 
-  expect(appearance.some).toBe(true);
-  if (!appearance.some) {
-    return;
-  }
-  expect(appearance.value.route).toEqual({
+  expect(appearance.route).toEqual({
     shape: "straight",
     path: "M 140 80 L 260 80",
     midpoint: { x: 200, y: 80 },
@@ -97,34 +92,30 @@ test("空文字のラベルは表示しない", () => {
 });
 
 test("向かい合わないアンカーの接続は辺の法線方向へ出る三次ベジェ曲線になる", () => {
-  const appearance = ConnectionAppearance.create(alignedStickyIndex, {
-    ...alignedConnection,
-    fromAnchor: "bottom",
-    toAnchor: "top",
-  });
+  const appearance = Option.unwrap(
+    ConnectionAppearance.create(alignedStickyIndex, {
+      ...alignedConnection,
+      fromAnchor: "bottom",
+      toAnchor: "top",
+    }),
+  );
 
-  expect(appearance.some).toBe(true);
-  if (!appearance.some) {
-    return;
-  }
-  expect(appearance.value.route.shape).toBe("curve");
-  expect(appearance.value.route.path).toContain(" C ");
+  expect(appearance.route.shape).toBe("curve");
+  expect(appearance.route.path).toContain(" C ");
 });
 
 test("接続ルール外の種別ペアは警告と推奨接続先を返す", () => {
-  const appearance = ConnectionAppearance.create(alignedStickyIndex, {
-    ...alignedConnection,
-    from: commandId,
-    to: actorId,
-  });
+  const appearance = Option.unwrap(
+    ConnectionAppearance.create(alignedStickyIndex, {
+      ...alignedConnection,
+      from: commandId,
+      to: actorId,
+    }),
+  );
 
-  expect(appearance.some).toBe(true);
-  if (!appearance.some) {
-    return;
-  }
-  expect(appearance.value.status).toBe("warning");
-  expect(appearance.value.tooltip).toContain("推奨ルール外");
-  expect(appearance.value.tooltip).toContain("Aggregate / External System");
+  expect(appearance.status).toBe("warning");
+  expect(appearance.tooltip).toContain("推奨ルール外");
+  expect(appearance.tooltip).toContain("Aggregate / External System");
 });
 
 test("参照先が存在せずcoreで端点を解決できない接続は表示を返さない", () => {

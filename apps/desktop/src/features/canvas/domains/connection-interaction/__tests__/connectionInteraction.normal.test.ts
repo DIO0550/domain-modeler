@@ -1,4 +1,3 @@
-// @test-rules-disable no-conditional
 import { expect, test } from "vitest";
 import {
   type Connection,
@@ -139,10 +138,8 @@ test("始点に選んだ付箋がundoで消えたら接続作成を終了する"
     ConnectionInteraction.create(),
     { x: 40, y: 60 },
   );
-  const stickyId = createdSticky.board.workingDocument.stickies[0]?.id;
-  if (stickyId === undefined) {
-    throw new Error("付箋が作成されていません");
-  }
+  expect(createdSticky.board.workingDocument.stickies).toHaveLength(1);
+  const stickyId = createdSticky.board.workingDocument.stickies[0].id;
   const selectingTarget = ConnectionInteraction.selectEndpoint(
     ConnectionInteraction.toggleMode(createdSticky),
     stickyId,

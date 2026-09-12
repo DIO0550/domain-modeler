@@ -1,4 +1,3 @@
-// @test-rules-disable no-conditional
 import { act } from "react";
 import { expect, test } from "vitest";
 import {
@@ -214,10 +213,8 @@ test.each(["Delete", "Backspace"])("フォーカス中の付箋を %s で削除�
 test("フォーカス中の接続を削除してもキーだけで undo できる", async () => {
   const host = renderEditor(documentWithConnection);
   const connection = host.querySelector<SVGGElement>("[data-connection-id]");
-  if (connection === null) {
-    throw new Error("接続がない");
-  }
-  connection.focus();
+  expect(connection).not.toBeNull();
+  connection?.focus();
   expect(document.activeElement).toBe(connection);
   press(document.activeElement ?? document.body, { key: " " });
   press(document.activeElement ?? document.body, { key: "Delete" });
@@ -235,10 +232,8 @@ test("貼り付けた付箋にフォーカスして undo してもキーだけ�
   press(document.activeElement ?? document.body, { key: "c", ctrlKey: true });
   press(document.activeElement ?? document.body, { key: "v", ctrlKey: true });
   const pasted = host.querySelector<HTMLElement>("article:last-child");
-  if (pasted === null) {
-    throw new Error("貼り付けた付箋がない");
-  }
-  pasted.focus();
+  expect(pasted).not.toBeNull();
+  pasted?.focus();
   expect(document.activeElement).toBe(pasted);
   press(document.activeElement ?? document.body, { key: "z", ctrlKey: true });
   await Promise.resolve();
