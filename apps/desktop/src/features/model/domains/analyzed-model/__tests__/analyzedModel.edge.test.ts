@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "..";
+import { namedDeclAt } from "./analyzedModel.test-support";
 
 test("空文書は診断も未定義名も無い", () => {
   const analyzed = AnalyzedModel.create("");
@@ -59,7 +60,7 @@ test("コメント内の同名文字列はリネームしない", () => {
 
   expect(
     AnalyzedModel.rename(analyzed, {
-      currentName: "注文ID",
+      decl: namedDeclAt(analyzed, 0),
       nextName: "商品ID",
     }),
   ).toEqual({
@@ -83,7 +84,7 @@ data 注文明細 = 注文`;
 
   expect(
     AnalyzedModel.rename(analyzed, {
-      currentName: "注文",
+      decl: namedDeclAt(analyzed, 0),
       nextName: "依頼",
     }),
   ).toEqual({
@@ -116,3 +117,54 @@ data 注文ID = int`);
     Option.some({ offset: 0, line: 1 }),
   );
 });
+
+test("再宣言のうち後のカードをリネームしても先の宣言と参照は残る", () => {
+  const source = `data 注文ID = string
+data 注文ID = int
+data 注文 = 注文ID`;
+  const analyzed = AnalyzedModel.create(source);
+  const start = source.lastIndexOf("data 注文ID = int") + "data ".length;
+  const end = start + "注文ID".length;
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      decl: namedDeclAt(analyzed, 1),
+      nextName: "商品ID",
+    }),
+  ).toEqual({
+    ok: true,
+    value: {
+      edit: { start, end, replacement: "商品ID" },
+      caret: { offset: start, line: 2 },
+    },
+  });
+});
+
+test("再宣言のうち先のカードをリネームすると参照も置換し後の宣言は残す", () => {
+  const source = `data 注文ID = string
+data 注文ID = int
+data 注文 = 注文ID`;
+  const analyzed = AnalyzedModel.create(source);
+  const start = source.indexOf("注文ID");
+  const end = source.lastIndexOf("注文ID") + "注文ID".length;
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      decl: namedDeclAt(analyzed, 0),
+      nextName: "商品ID",
+    }),
+  ).toEqual({
+    ok: true,
+    value: {
+      edit: {
+        start,
+        end,
+        replacement: `商品ID = string
+data 注文ID = int
+data 注文 = 商品ID`,
+      },
+      caret: { offset: start, line: 1 },
+    },
+  });
+});
+

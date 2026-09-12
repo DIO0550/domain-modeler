@@ -3,6 +3,7 @@ import {
   Declaration,
   Result,
   type Declaration as DeclarationValue,
+  type NamedDecl as NamedDeclValue,
 } from "@domain-modeler/model-core";
 import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "../../domains/analyzed-model";
@@ -79,16 +80,16 @@ export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
     insertStub(typeRef.term.name);
   };
 
-  const renameDeclaration = (names: Readonly<{
-    currentName: string;
+  const renameDeclaration = (params: Readonly<{
+    decl: NamedDeclValue;
     nextName: string;
   }>) => {
-    const renamed = AnalyzedModel.rename(analyzed, names);
+    const renamed = AnalyzedModel.rename(analyzed, params);
     if (Result.isErr(renamed)) {
       return;
     }
     editing.applyEdit(renamed.value.edit, renamed.value.caret);
-    scrollPreviewTo(names.nextName);
+    scrollPreviewTo(params.nextName);
   };
 
   const insertTemplate = (template: DeclTemplateValue) => {
@@ -158,7 +159,7 @@ type PreviewDeclItemProps = Readonly<{
   analyzed: AnalyzedModel;
   onTypeRefClick: (typeRef: PreviewTypeRefValue) => void;
   onUndefinedBadgeClick: (typeRef: PreviewTypeRefValue) => void;
-  onRename: (names: Readonly<{ currentName: string; nextName: string }>) => void;
+  onRename: (params: Readonly<{ decl: NamedDeclValue; nextName: string }>) => void;
 }>;
 
 /**
@@ -183,7 +184,7 @@ function PreviewDeclItem({
     );
   }
   const handleRename = (nextName: string) => {
-    onRename({ currentName: decl.name, nextName });
+    onRename({ decl, nextName });
   };
   if (Declaration.isData(decl)) {
     return (

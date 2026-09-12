@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { Declaration } from "@domain-modeler/model-core";
 import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "..";
+import { namedDeclAt } from "./analyzedModel.test-support";
 
 test("正しい文書は診断が空になる", () => {
   const analyzed = AnalyzedModel.create("data 注文ID = string");
@@ -66,7 +67,7 @@ test("宣言名と型参照を1回の編集でリネームする", () => {
 
   expect(
     AnalyzedModel.rename(analyzed, {
-      currentName: "注文ID",
+      decl: namedDeclAt(analyzed, 0),
       nextName: "商品ID",
     }),
   ).toEqual({

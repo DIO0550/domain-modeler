@@ -4,12 +4,15 @@ import {
   Parse,
   ReferenceTable,
   Resolve,
+  SourceRange,
   TypeTerm,
   type DefinitionTable as DefinitionTableValue,
   type Diagnostic,
   type Document,
+  type NamedDecl as NamedDeclValue,
   type ReferenceTable as ReferenceTableValue,
   type Result as ResultType,
+  type SourceRange as SourceRangeValue,
   type Token,
 } from "@domain-modeler/model-core";
 import { Option, type Option as OptionType } from "@/utils/Option";
@@ -50,6 +53,49 @@ const collectUndefinedTypeNames = (
         .filter((term) => !DefinitionTable.has(definitions, term.name))
         .map((term) => term.name),
     ),
+  );
+};
+
+/**
+ * 同じ名前の他宣言の名前範囲を返す。
+ *
+ * @param model 解析済みの文書。
+ * @param target リネーム対象の宣言。
+ * @returns 対象以外の同名宣言の名前範囲。
+ */
+const otherDuplicateNameRanges = (
+  model: AnalyzedModel,
+  target: NamedDeclValue,
+): readonly SourceRangeValue[] =>
+  model.document.declarations
+    .filter(NamedDecl.is)
+    .filter((decl) => decl.name === target.name)
+    .filter((decl) => !SourceRange.equals(decl.nameRange, target.nameRange))
+    .map((decl) => decl.nameRange);
+
+/**
+ * クリックした宣言に対して置換する出現範囲を返す。
+ * 先頭の定義なら参照も含め、再宣言ならその名前だけを対象にする。
+ *
+ * @param model 解析済みの文書。
+ * @param target リネーム対象の宣言。
+ * @returns 置換するソース範囲。
+ */
+const rangesForRename = (
+  model: AnalyzedModel,
+  target: NamedDeclValue,
+): readonly SourceRangeValue[] => {
+  const allRanges = ReferenceTable.rangesOf(model.references, target.name);
+  const defined = model.definitions[target.name];
+  const isCanonical =
+    defined !== undefined &&
+    SourceRange.equals(defined.nameRange, target.nameRange);
+  if (!isCanonical) {
+    return [target.nameRange];
+  }
+  const skipped = otherDuplicateNameRanges(model, target);
+  return allRanges.filter((range) =>
+    skipped.every((other) => !SourceRange.equals(range, other)),
   );
 };
 
@@ -100,19 +146,20 @@ export const AnalyzedModel = {
   /**
    * 宣言名と型参照の出現を新しい名前へ一括置換する。
    * 置換対象は参照表のトークン位置だけで、コメント内の同名文字列は含まない。
+   * 同名の再宣言があるときは、クリックした宣言を他と区別する。
    *
    * @param model 解析済みの文書。
-   * @param names 現在の識別子と新しい識別子。
+   * @param params 対象の宣言と新しい識別子。
    * @returns 1回分の編集と先頭出現のキャレット。名前が識別子でない、または出現が無ければ失敗。
    */
   rename(
     model: AnalyzedModel,
-    names: Readonly<{ currentName: string; nextName: string }>,
+    params: Readonly<{ decl: NamedDeclValue; nextName: string }>,
   ): ResultType<IdentifierRenameValue, IdentifierRenameError> {
     return IdentifierRename.create({
       source: model.source,
-      ranges: ReferenceTable.rangesOf(model.references, names.currentName),
-      nextName: names.nextName,
+      ranges: rangesForRename(model, params.decl),
+      nextName: params.nextName,
     });
   },
 } as const;

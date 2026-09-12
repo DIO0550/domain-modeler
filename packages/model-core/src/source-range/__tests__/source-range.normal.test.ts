@@ -52,3 +52,15 @@ test("複数行の範囲は両端の行を含む", () => {
 test("空範囲でも開始行を含む", () => {
   expect(SourceRange.coversLine(SourceRange.onLine(4, 1, 1), 4)).toBe(true);
 });
+
+test("同じ位置の範囲は equals が真になる", () => {
+  expect(
+    SourceRange.equals(SourceRange.onLine(1, 6, 10), SourceRange.onLine(1, 6, 10)),
+  ).toBe(true);
+});
+
+test("桁が違う範囲は equals が偽になる", () => {
+  expect(
+    SourceRange.equals(SourceRange.onLine(1, 6, 10), SourceRange.onLine(1, 6, 11)),
+  ).toBe(false);
+});

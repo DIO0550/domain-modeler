@@ -174,6 +174,42 @@ test("コメント内の同名文字列はリネームしない", () => {
   expect(input.value).toBe("data 商品ID = string // 注文ID");
 });
 
+test("再宣言の後のカードをリネームしても先の宣言は残る", () => {
+  const source = `data 注文ID = string
+data 注文ID = int
+data 注文 = 注文ID`;
+  const host = diagnostics.render(source);
+  const buttons = host.querySelectorAll(
+    'button[aria-label="「注文ID」をリネーム"]',
+  );
+  const found = host.querySelector("textarea");
+  const input =
+    found instanceof HTMLTextAreaElement
+      ? found
+      : document.createElement("textarea");
+
+  act(() => {
+    buttons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const nameField = host.querySelector('input[aria-label="新しい名前"]');
+  const nameInput =
+    nameField instanceof HTMLInputElement
+      ? nameField
+      : document.createElement("input");
+  act(() => {
+    nameInput.focus();
+    nameInput.value = "商品ID";
+    nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    nameInput.form?.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+  });
+
+  expect(input.value).toBe(`data 注文ID = string
+data 商品ID = int
+data 注文 = 注文ID`);
+});
+
 test("workflow雛形をカーソル位置へ挿入し名前部分を選択する", () => {
   const source = "data 注文ID = string\n";
   const host = diagnostics.render(source);
