@@ -145,7 +145,45 @@ test("未定義の型参照は点線下線と未定義バッジを表示する",
   expect(
     host.querySelector(".preview-workflow-card__undefined-badge")?.textContent,
   ).toBe("未定義");
-  expect(errorName?.tagName).toBe("BUTTON");
+  expect(errorName?.tagName).toBe("SPAN");
+});
+
+test("クリック通知が無いとき名前付き参照はボタンにしない", () => {
+  const host = cards.render(
+    WorkflowDecl.create({
+      name: "通知する",
+      nameRange: range,
+      input: WorkflowSection.create(
+        [
+          TypeTerm.create({
+            name: "通知依頼",
+            isPrimitive: false,
+            modifiers: [],
+            range,
+          }),
+        ],
+        range,
+      ),
+      output: WorkflowSection.create(
+        [
+          TypeTerm.create({
+            name: "通知済みイベント",
+            isPrimitive: false,
+            modifiers: [],
+            range,
+          }),
+        ],
+        range,
+      ),
+      error: WorkflowErrorClause.absent(),
+      range,
+    }),
+  );
+
+  expect(host.querySelector("button.preview-workflow-card__type-name")).toBeNull();
+  expect(host.querySelector(".preview-workflow-card__type-name")?.tagName).toBe(
+    "SPAN",
+  );
 });
 
 test("IN の + は直後の型参照と同じまとまりになる", () => {

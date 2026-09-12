@@ -134,7 +134,7 @@ type TypeRefViewProps = Readonly<{
 
 /**
  * 型参照名、後置修飾、未定義バッジを並べて表示する。
- * 名前付き参照はクリック可能なボタンにする。
+ * 名前付き参照は、クリック通知があるときだけボタンにする。
  *
  * @param props プレビュー用の型参照とクリック。
  * @returns 型参照の表示。
@@ -165,21 +165,24 @@ type TypeNameProps = Readonly<{
 }>;
 
 /**
- * プリミティブはテキスト、名前付き参照はクリック可能なボタンにする。
+ * プリミティブ、またはクリック通知が無い名前付き参照はテキストにする。
+ * 通知がある名前付き参照だけをボタンにする。
  *
  * @param props プレビュー用の型参照とクリック。
  * @returns 型名。
  */
 function TypeName({ typeRef, onTypeRefClick }: TypeNameProps) {
   const className = typeNameClassName(typeRef);
-  if (PreviewTypeRef.isPrimitive(typeRef)) {
+  const isButton =
+    onTypeRefClick !== undefined && !PreviewTypeRef.isPrimitive(typeRef);
+  if (!isButton) {
     return <span className={className}>{typeRef.term.name}</span>;
   }
   return (
     <button
       type="button"
       className={`${className} preview-workflow-card__type-name-button`}
-      onClick={() => onTypeRefClick?.(typeRef)}
+      onClick={() => onTypeRefClick(typeRef)}
     >
       {typeRef.term.name}
     </button>
