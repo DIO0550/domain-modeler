@@ -67,6 +67,14 @@
   gap: 8px;
 }
 
+.preview-data-card__choice-item {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
 .preview-data-card__pill {
   display: inline-flex;
   max-width: 100%;

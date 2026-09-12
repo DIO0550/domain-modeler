@@ -128,6 +128,41 @@ test("list と option を重ねた修飾は両方のタグになる", () => {
   ).toEqual(["list", "option"]);
 });
 
+test("CHOICE の or は直後のケースと同じまとまりになる", () => {
+  const host = cards.render(
+    DataDecl.create({
+      name: "注文",
+      nameRange: range,
+      typeExpr: TypeExpr.choice(
+        [
+          TypeTerm.create({
+            name: "未検証の注文",
+            isPrimitive: false,
+            modifiers: [],
+            range,
+          }),
+          TypeTerm.create({
+            name: "検証済みの注文",
+            isPrimitive: false,
+            modifiers: [],
+            range,
+          }),
+        ],
+        range,
+      ),
+      range,
+    }),
+  );
+  const groupedCase = host.querySelector(".preview-data-card__choice-item:nth-child(2)");
+
+  expect(
+    groupedCase?.querySelector(".preview-data-card__or")?.textContent,
+  ).toBe("or");
+  expect(
+    groupedCase?.querySelector(".preview-data-card__pill")?.textContent,
+  ).toBe("検証済みの注文");
+});
+
 test("CHOICE の3ケースは or を2つ挟む", () => {
   const host = cards.render(
     DataDecl.create({

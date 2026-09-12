@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import {
   DATA_CARD_KINDS,
   type DataDecl,
@@ -121,13 +120,15 @@ function ChoiceCase({ typeRef, leadingSeparator }: ChoiceCaseProps) {
     </span>
   );
   if (leadingSeparator === "none") {
-    return pill;
+    return (
+      <span className="preview-data-card__choice-item">{pill}</span>
+    );
   }
   return (
-    <Fragment>
+    <span className="preview-data-card__choice-item">
       <span className="preview-data-card__or">or</span>
       {pill}
-    </Fragment>
+    </span>
   );
 }
 
