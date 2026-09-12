@@ -65,3 +65,21 @@ data 注文ID = string`;
     { kind: "plain", text: "data 注文ID = string" },
   ]);
 });
+
+test("多数行の末尾にある未定義参照だけを警告セグメントにする", () => {
+  const source = `${"data Ok = string\n".repeat(40)}data 注文 = 未定義型`;
+  const views = EditorDiagnostic.lineViews(
+    source,
+    AnalyzedModel.create(source).diagnostics,
+  );
+
+  expect(
+    views.slice(0, 40).every((view) =>
+      view.segments.every((segment) => segment.kind === "plain"),
+    ),
+  ).toBe(true);
+  expect(views[40]?.segments).toEqual([
+    { kind: "plain", text: "data 注文 = " },
+    { kind: "warning", text: "未定義型" },
+  ]);
+});

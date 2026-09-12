@@ -134,18 +134,48 @@ const segmentsOf = (
 };
 
 /**
+ * 診断を行番号へ一度だけ振り分ける。
+ * @param lines 表示中の各行。
+ * @param diagnostics パースと参照解決の診断。
+ * @returns 行ごとの警告桁範囲とエラー診断。
+ */
+const bucketByLine = (
+  lines: readonly string[],
+  diagnostics: readonly Diagnostic[],
+): Readonly<{
+  warnings: readonly (readonly ColumnRange[])[];
+  errors: readonly (readonly Diagnostic[])[];
+}> => {
+  const warnings = lines.map((): ColumnRange[] => []);
+  const errors = lines.map((): Diagnostic[] => []);
+  for (const diagnostic of diagnostics) {
+    const first = Math.max(1, diagnostic.range.startLine);
+    const last = Math.min(lines.length, diagnostic.range.endLine);
+    for (let line = first; line <= last; line += 1) {
+      const text = lines[line - 1] ?? "";
+      if (diagnostic.severity === DIAGNOSTIC_SEVERITIES.warning) {
+        warnings[line - 1]?.push(
+          ...clipWarningToLine(diagnostic.range, line, text.length),
+        );
+      }
+      if (diagnostic.severity === DIAGNOSTIC_SEVERITIES.error) {
+        errors[line - 1]?.push(diagnostic);
+      }
+    }
+  }
+  return { warnings, errors };
+};
+
+/**
  * 行のエラー装飾を決める。
  * @param line 行番号(1始まり)。
- * @param errors エラー診断。
+ * @param covering その行を覆うエラー診断。
  * @returns エラーなし、または背景と開始行のメッセージ。
  */
 const errorMarkOf = (
   line: number,
-  errors: readonly Diagnostic[],
+  covering: readonly Diagnostic[],
 ): EditorLineErrorMark => {
-  const covering = errors.filter((diagnostic) =>
-    SourceRange.coversLine(diagnostic.range, line),
-  );
   if (covering.length === 0) {
     return { kind: "none" };
   }
@@ -171,22 +201,11 @@ export const EditorDiagnostic = {
     diagnostics: readonly Diagnostic[],
   ): readonly EditorLineView[] {
     const lines = splitLines(source);
-    const errors = diagnostics.filter(
-      (diagnostic) => diagnostic.severity === DIAGNOSTIC_SEVERITIES.error,
-    );
-    const warnings = diagnostics.filter(
-      (diagnostic) => diagnostic.severity === DIAGNOSTIC_SEVERITIES.warning,
-    );
-    return lines.map((text, index) => {
-      const line = index + 1;
-      const warningRanges = warnings.flatMap((diagnostic) =>
-        clipWarningToLine(diagnostic.range, line, text.length),
-      );
-      return {
-        line,
-        segments: segmentsOf(text, warningRanges),
-        errorMark: errorMarkOf(line, errors),
-      };
-    });
+    const buckets = bucketByLine(lines, diagnostics);
+    return lines.map((text, index) => ({
+      line: index + 1,
+      segments: segmentsOf(text, buckets.warnings[index] ?? []),
+      errorMark: errorMarkOf(index + 1, buckets.errors[index] ?? []),
+    }));
   },
 } as const;
