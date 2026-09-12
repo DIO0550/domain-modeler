@@ -49,3 +49,31 @@ test("縦スクロールに診断レイヤが追従する", () => {
   });
   expect(host.querySelector(".model-editor__diagnostics")?.scrollTop).toBe(240);
 });
+
+test("パースエラーは入力欄の説明として読み上げられる", () => {
+  const { host, input } = editors.setup("data 数量 = int constrained 10..1");
+  const describedBy = input.getAttribute("aria-describedby");
+
+  expect(input.getAttribute("aria-invalid")).toBe("true");
+  expect(describedBy).not.toBeNull();
+  expect(
+    host.querySelector(`#${CSS.escape(describedBy ?? "")}`)?.textContent,
+  ).toBe("範囲の下限が上限を超えています");
+});
+
+test("未定義参照も入力欄の説明に含め無効状態にはしない", () => {
+  const { host, input } = editors.setup("data 注文 = 未定義型");
+  const describedBy = input.getAttribute("aria-describedby");
+
+  expect(input.getAttribute("aria-invalid")).toBe("false");
+  expect(
+    host.querySelector(`#${CSS.escape(describedBy ?? "")}`)?.textContent,
+  ).toBe("「未定義型」は未定義です");
+});
+
+test("正しい文書では入力欄を無効状態にせず説明も付けない", () => {
+  const { input } = editors.setup("data 注文ID = string");
+
+  expect(input.getAttribute("aria-invalid")).toBe("false");
+  expect(input.getAttribute("aria-describedby")).toBeNull();
+});

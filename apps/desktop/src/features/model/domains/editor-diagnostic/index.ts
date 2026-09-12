@@ -208,4 +208,27 @@ export const EditorDiagnostic = {
       errorMark: errorMarkOf(index + 1, buckets.errors[index] ?? []),
     }));
   },
+  /**
+   * 読み上げ用に、エラーを無効状態として説明文へまとめる。
+   * 警告は説明に含めるが無効状態にはしない。
+   * @param diagnostics パースと参照解決の診断。
+   * @returns 入力欄へ渡す無効状態と説明文。
+   */
+  accessibleSummary(
+    diagnostics: readonly Diagnostic[],
+  ): Readonly<{ invalid: boolean; description: string }> {
+    const errors = diagnostics.filter(
+      (diagnostic) => diagnostic.severity === DIAGNOSTIC_SEVERITIES.error,
+    );
+    const warnings = diagnostics.filter(
+      (diagnostic) => diagnostic.severity === DIAGNOSTIC_SEVERITIES.warning,
+    );
+    return {
+      invalid: errors.length > 0,
+      description: ArrayEx.unique([
+        ...errors.map((diagnostic) => diagnostic.message),
+        ...warnings.map((diagnostic) => diagnostic.message),
+      ]).join(" "),
+    };
+  },
 } as const;

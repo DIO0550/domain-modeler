@@ -1,4 +1,4 @@
-import { useMemo, useRef, type RefObject, type UIEvent } from "react";
+import { useMemo, useRef, useId, type RefObject, type UIEvent } from "react";
 import { AnalyzedModel } from "../../domains/analyzed-model";
 import {
   EditorDiagnostic,
@@ -40,9 +40,16 @@ type ModelEditorDisplayProps = Readonly<{
 export function ModelEditorDisplay({ editing }: ModelEditorDisplayProps) {
   const gutterRef = useRef<HTMLDivElement>(null);
   const diagnosticsRef = useRef<HTMLDivElement>(null);
-  const lineViews = useMemo(() => {
+  const summaryId = useId();
+  const { lineViews, summary } = useMemo(() => {
     const analyzed = AnalyzedModel.create(editing.value);
-    return EditorDiagnostic.lineViews(editing.value, analyzed.diagnostics);
+    return {
+      lineViews: EditorDiagnostic.lineViews(
+        editing.value,
+        analyzed.diagnostics,
+      ),
+      summary: EditorDiagnostic.accessibleSummary(analyzed.diagnostics),
+    };
   }, [editing.value]);
 
   return (
@@ -63,6 +70,10 @@ export function ModelEditorDisplay({ editing }: ModelEditorDisplayProps) {
           ref={editing.inputRef}
           className="model-editor__input"
           aria-label="ドメインモデルのテキスト"
+          aria-invalid={summary.invalid}
+          aria-describedby={
+            summary.description.length > 0 ? summaryId : undefined
+          }
           value={editing.value}
           wrap="off"
           spellCheck={false}
@@ -75,6 +86,11 @@ export function ModelEditorDisplay({ editing }: ModelEditorDisplayProps) {
           onCompositionEnd={editing.onCompositionEnd}
           onScroll={(event) => syncEditorScroll(event, gutterRef, diagnosticsRef)}
         />
+        {summary.description.length > 0 ? (
+          <p id={summaryId} className="model-editor__a11y-summary">
+            {summary.description}
+          </p>
+        ) : null}
       </div>
     </div>
   );

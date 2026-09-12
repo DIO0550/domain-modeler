@@ -94,3 +94,34 @@ test("同じ行の複数エラーは出現順のメッセージを集める", ()
     messages: ["宣言の形が不正です", "識別子が必要です"],
   });
 });
+
+test("パースエラーは読み上げ用の説明文と無効状態になる", () => {
+  const source = "data 数量 = int constrained 10..1";
+  expect(
+    EditorDiagnostic.accessibleSummary(
+      AnalyzedModel.create(source).diagnostics,
+    ),
+  ).toEqual({
+    invalid: true,
+    description: "範囲の下限が上限を超えています",
+  });
+});
+
+test("未定義参照は読み上げ用の説明文になり無効状態にはしない", () => {
+  const source = "data 注文 = 未定義型";
+  expect(
+    EditorDiagnostic.accessibleSummary(
+      AnalyzedModel.create(source).diagnostics,
+    ),
+  ).toEqual({
+    invalid: false,
+    description: "「未定義型」は未定義です",
+  });
+});
+
+test("診断が無い文書は読み上げ用の説明文を空にする", () => {
+  expect(EditorDiagnostic.accessibleSummary([])).toEqual({
+    invalid: false,
+    description: "",
+  });
+});
