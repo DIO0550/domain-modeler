@@ -1,3 +1,4 @@
+import { act } from "react";
 import { afterEach, expect, test } from "vitest";
 import {
   Constraint,
@@ -9,6 +10,7 @@ import {
   TypeExpr,
   TypeTerm,
 } from "@domain-modeler/model-core";
+import type { PreviewTypeRef } from "../../../domains/preview-type-ref";
 import { createCardRenderer } from "./previewDataCard.test-support";
 
 const range = SourceRange.onLine(1, 1, 40);
@@ -205,4 +207,73 @@ test("未定義の型参照は点線下線と未定義バッジを表示する",
   expect(
     host.querySelector(".preview-data-card__undefined-badge")?.textContent,
   ).toBe("未定義");
+});
+
+test("名前付き型参照をクリックするとその参照を通知する", () => {
+  const clicked: PreviewTypeRef[] = [];
+  const host = cards.render(
+    DataDecl.create({
+      name: "注文",
+      nameRange: range,
+      typeExpr: TypeExpr.alias(
+        TypeTerm.create({
+          name: "注文ID",
+          isPrimitive: false,
+          modifiers: [],
+          range,
+        }),
+        range,
+      ),
+      range,
+    }),
+    undefined,
+    (typeRef) => {
+      clicked.push(typeRef);
+    },
+  );
+  const button = host.querySelector("button.preview-data-card__type-name");
+
+  act(() => {
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  expect(clicked).toHaveLength(1);
+  expect(clicked[0]?.term.name).toBe("注文ID");
+  expect(clicked[0]?.resolution).toBe("defined");
+});
+
+test("未定義バッジをクリックするとその参照を通知する", () => {
+  const clicked: PreviewTypeRef[] = [];
+  const host = cards.render(
+    DataDecl.create({
+      name: "注文",
+      nameRange: range,
+      typeExpr: TypeExpr.alias(
+        TypeTerm.create({
+          name: "検証エラー",
+          isPrimitive: false,
+          modifiers: [],
+          range,
+        }),
+        range,
+      ),
+      range,
+    }),
+    new Set(["検証エラー"]),
+    undefined,
+    (typeRef) => {
+      clicked.push(typeRef);
+    },
+  );
+  const badge = host.querySelector(
+    "button.preview-data-card__undefined-badge",
+  );
+
+  act(() => {
+    badge?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  expect(clicked).toHaveLength(1);
+  expect(clicked[0]?.term.name).toBe("検証エラー");
+  expect(clicked[0]?.resolution).toBe("undefined");
 });

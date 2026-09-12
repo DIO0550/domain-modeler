@@ -171,6 +171,19 @@
   line-height: 1.4;
 }
 
+.preview-workflow-card__undefined-badge-button {
+  margin: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.preview-workflow-card__undefined-badge-button:focus-visible {
+  outline: 2px solid var(--model-editor-focus);
+  outline-offset: 2px;
+}
+
 .preview-workflow-card-story {
   box-sizing: border-box;
   width: min(520px, 100%);

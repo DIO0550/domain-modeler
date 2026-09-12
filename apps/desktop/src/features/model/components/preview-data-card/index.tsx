@@ -13,17 +13,21 @@ const EMPTY_TYPE_NAMES: ReadonlySet<string> = new Set();
 type PreviewDataCardProps = Readonly<{
   decl: DataDecl;
   undefinedTypeNames?: ReadonlySet<string>;
+  onTypeRefClick?: (typeRef: PreviewTypeRef) => void;
+  onUndefinedBadgeClick?: (typeRef: PreviewTypeRef) => void;
 }>;
 
 /**
  * data 宣言を ALIAS / RECORD / CHOICE / VALUE のカードとして表示する。
  *
- * @param props data 宣言と、未定義として示す型名。
+ * @param props data 宣言、未定義として示す型名、型参照と未定義バッジのクリック。
  * @returns 構造化プレビューの data カード。
  */
 export function PreviewDataCard({
   decl,
   undefinedTypeNames = EMPTY_TYPE_NAMES,
+  onTypeRefClick,
+  onUndefinedBadgeClick,
 }: PreviewDataCardProps) {
   const preview = DataCardPreview.create(decl, undefinedTypeNames);
   return (
@@ -38,7 +42,11 @@ export function PreviewDataCard({
         <p className="preview-data-card__kind">{preview.kind}</p>
       </header>
       <div className="preview-data-card__body">
-        <DataCardBody preview={preview} />
+        <DataCardBody
+          preview={preview}
+          onTypeRefClick={onTypeRefClick}
+          onUndefinedBadgeClick={onUndefinedBadgeClick}
+        />
       </div>
     </article>
   );
@@ -46,17 +54,29 @@ export function PreviewDataCard({
 
 type DataCardBodyProps = Readonly<{
   preview: DataCardPreview;
+  onTypeRefClick?: (typeRef: PreviewTypeRef) => void;
+  onUndefinedBadgeClick?: (typeRef: PreviewTypeRef) => void;
 }>;
 
 /**
  * カード種別ごとの本体を描画する。
  *
- * @param props プレビュー。
+ * @param props プレビューとクリック。
  * @returns 種別ごとの本体。
  */
-function DataCardBody({ preview }: DataCardBodyProps) {
+function DataCardBody({
+  preview,
+  onTypeRefClick,
+  onUndefinedBadgeClick,
+}: DataCardBodyProps) {
   if (preview.kind === DATA_CARD_KINDS.ALIAS) {
-    return <TypeRefView typeRef={preview.term} />;
+    return (
+      <TypeRefView
+        typeRef={preview.term}
+        onTypeRefClick={onTypeRefClick}
+        onUndefinedBadgeClick={onUndefinedBadgeClick}
+      />
+    );
   }
   if (preview.kind === DATA_CARD_KINDS.RECORD) {
     return (
@@ -66,29 +86,45 @@ function DataCardBody({ preview }: DataCardBodyProps) {
             key={`${field.term.name}-${index}`}
             className="preview-data-card__record-field"
           >
-            <TypeRefView typeRef={field} />
+            <TypeRefView
+              typeRef={field}
+              onTypeRefClick={onTypeRefClick}
+              onUndefinedBadgeClick={onUndefinedBadgeClick}
+            />
           </li>
         ))}
       </ul>
     );
   }
   if (preview.kind === DATA_CARD_KINDS.CHOICE) {
-    return <ChoiceCases cases={preview.cases} />;
+    return (
+      <ChoiceCases
+        cases={preview.cases}
+        onTypeRefClick={onTypeRefClick}
+        onUndefinedBadgeClick={onUndefinedBadgeClick}
+      />
+    );
   }
   return <p className="preview-data-card__value">{preview.caption}</p>;
 }
 
 type ChoiceCasesProps = Readonly<{
   cases: readonly PreviewTypeRef[];
+  onTypeRefClick?: (typeRef: PreviewTypeRef) => void;
+  onUndefinedBadgeClick?: (typeRef: PreviewTypeRef) => void;
 }>;
 
 /**
  * CHOICE のケースをピルで横並びにし、間に or を挟む。
  *
- * @param props ケースの型参照。
+ * @param props ケースの型参照とクリック。
  * @returns ピルと or の列。
  */
-function ChoiceCases({ cases }: ChoiceCasesProps) {
+function ChoiceCases({
+  cases,
+  onTypeRefClick,
+  onUndefinedBadgeClick,
+}: ChoiceCasesProps) {
   return (
     <div className="preview-data-card__choice">
       {cases.map((typeRef, index) => (
@@ -96,6 +132,8 @@ function ChoiceCases({ cases }: ChoiceCasesProps) {
           key={`${typeRef.term.name}-${index}`}
           typeRef={typeRef}
           leadingSeparator={choiceSeparator(index)}
+          onTypeRefClick={onTypeRefClick}
+          onUndefinedBadgeClick={onUndefinedBadgeClick}
         />
       ))}
     </div>
@@ -105,18 +143,29 @@ function ChoiceCases({ cases }: ChoiceCasesProps) {
 type ChoiceCaseProps = Readonly<{
   typeRef: PreviewTypeRef;
   leadingSeparator: "none" | "or";
+  onTypeRefClick?: (typeRef: PreviewTypeRef) => void;
+  onUndefinedBadgeClick?: (typeRef: PreviewTypeRef) => void;
 }>;
 
 /**
  * CHOICE の1ケースを、必要なら先行する or 付きで描画する。
  *
- * @param props ケースと先行区切り。
+ * @param props ケースと先行区切りとクリック。
  * @returns or とピル。
  */
-function ChoiceCase({ typeRef, leadingSeparator }: ChoiceCaseProps) {
+function ChoiceCase({
+  typeRef,
+  leadingSeparator,
+  onTypeRefClick,
+  onUndefinedBadgeClick,
+}: ChoiceCaseProps) {
   const pill = (
     <span className="preview-data-card__pill">
-      <TypeRefView typeRef={typeRef} />
+      <TypeRefView
+        typeRef={typeRef}
+        onTypeRefClick={onTypeRefClick}
+        onUndefinedBadgeClick={onUndefinedBadgeClick}
+      />
     </span>
   );
   if (leadingSeparator === "none") {
@@ -147,21 +196,24 @@ const choiceSeparator = (index: number): ChoiceCaseProps["leadingSeparator"] => 
 
 type TypeRefViewProps = Readonly<{
   typeRef: PreviewTypeRef;
+  onTypeRefClick?: (typeRef: PreviewTypeRef) => void;
+  onUndefinedBadgeClick?: (typeRef: PreviewTypeRef) => void;
 }>;
 
 /**
  * 型参照名、後置修飾、未定義バッジを並べて表示する。
  *
- * @param props プレビュー用の型参照。
+ * @param props プレビュー用の型参照とクリック。
  * @returns 型参照の表示。
  */
-function TypeRefView({ typeRef }: TypeRefViewProps) {
-  const badge = PreviewTypeRef.isUndefined(typeRef) ? (
-    <span className="preview-data-card__undefined-badge">未定義</span>
-  ) : null;
+function TypeRefView({
+  typeRef,
+  onTypeRefClick,
+  onUndefinedBadgeClick,
+}: TypeRefViewProps) {
   return (
     <span className="preview-data-card__type-ref">
-      <span className={typeNameClassName(typeRef)}>{typeRef.term.name}</span>
+      <TypeName typeRef={typeRef} onTypeRefClick={onTypeRefClick} />
       {typeRef.term.modifiers.map((modifier, index) => (
         <span
           key={`${modifier}-${index}`}
@@ -170,8 +222,74 @@ function TypeRefView({ typeRef }: TypeRefViewProps) {
           {modifier}
         </span>
       ))}
-      {badge}
+      <UndefinedBadge
+        typeRef={typeRef}
+        onUndefinedBadgeClick={onUndefinedBadgeClick}
+      />
     </span>
+  );
+}
+
+type TypeNameProps = Readonly<{
+  typeRef: PreviewTypeRef;
+  onTypeRefClick?: (typeRef: PreviewTypeRef) => void;
+}>;
+
+/**
+ * プリミティブ、またはクリック通知が無い名前付き参照はテキストにする。
+ * 通知がある名前付き参照だけをボタンにする。
+ *
+ * @param props プレビュー用の型参照とクリック。
+ * @returns 型名。
+ */
+function TypeName({ typeRef, onTypeRefClick }: TypeNameProps) {
+  const className = typeNameClassName(typeRef);
+  const isButton =
+    onTypeRefClick !== undefined && !PreviewTypeRef.isPrimitive(typeRef);
+  if (!isButton) {
+    return <span className={className}>{typeRef.term.name}</span>;
+  }
+  return (
+    <button
+      type="button"
+      className={`${className} preview-data-card__type-name-button`}
+      onClick={() => onTypeRefClick(typeRef)}
+    >
+      {typeRef.term.name}
+    </button>
+  );
+}
+
+type UndefinedBadgeProps = Readonly<{
+  typeRef: PreviewTypeRef;
+  onUndefinedBadgeClick?: (typeRef: PreviewTypeRef) => void;
+}>;
+
+/**
+ * 未定義参照のバッジを出す。クリック通知があるときはスタブ生成のボタンにする。
+ *
+ * @param props プレビュー用の型参照とバッジのクリック。
+ * @returns バッジ。未定義でなければ何も出さない。
+ */
+function UndefinedBadge({
+  typeRef,
+  onUndefinedBadgeClick,
+}: UndefinedBadgeProps) {
+  if (!PreviewTypeRef.isUndefined(typeRef)) {
+    return null;
+  }
+  if (onUndefinedBadgeClick === undefined) {
+    return <span className="preview-data-card__undefined-badge">未定義</span>;
+  }
+  return (
+    <button
+      type="button"
+      className="preview-data-card__undefined-badge preview-data-card__undefined-badge-button"
+      aria-label={`未定義の「${typeRef.term.name}」のスタブを生成`}
+      onClick={() => onUndefinedBadgeClick(typeRef)}
+    >
+      未定義
+    </button>
   );
 }
 

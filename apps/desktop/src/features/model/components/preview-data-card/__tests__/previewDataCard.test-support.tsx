@@ -1,6 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { DataDecl } from "@domain-modeler/model-core";
+import type { PreviewTypeRef } from "../../../domains/preview-type-ref";
 import { PreviewDataCard } from "../index";
 
 type RenderedCard = Readonly<{
@@ -12,6 +13,8 @@ type CardRenderer = Readonly<{
   render: (
     decl: DataDecl,
     undefinedTypeNames?: ReadonlySet<string>,
+    onTypeRefClick?: (typeRef: PreviewTypeRef) => void,
+    onUndefinedBadgeClick?: (typeRef: PreviewTypeRef) => void,
   ) => HTMLDivElement;
   unmountAll: () => void;
 }>;
@@ -23,7 +26,7 @@ type CardRenderer = Readonly<{
 export const createCardRenderer = (): CardRenderer => {
   const rendered: RenderedCard[] = [];
   return {
-    render: (decl, undefinedTypeNames) => {
+    render: (decl, undefinedTypeNames, onTypeRefClick, onUndefinedBadgeClick) => {
       const host = document.createElement("div");
       document.body.append(host);
       const root: Root = createRoot(host);
@@ -32,6 +35,8 @@ export const createCardRenderer = (): CardRenderer => {
           <PreviewDataCard
             decl={decl}
             undefinedTypeNames={undefinedTypeNames}
+            onTypeRefClick={onTypeRefClick}
+            onUndefinedBadgeClick={onUndefinedBadgeClick}
           />,
         );
       });

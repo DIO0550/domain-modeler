@@ -14,6 +14,7 @@ type CardRenderer = Readonly<{
     decl: WorkflowDecl,
     undefinedTypeNames?: ReadonlySet<string>,
     onTypeRefClick?: (typeRef: PreviewTypeRef) => void,
+    onUndefinedBadgeClick?: (typeRef: PreviewTypeRef) => void,
   ) => HTMLDivElement;
   unmountAll: () => void;
 }>;
@@ -25,7 +26,7 @@ type CardRenderer = Readonly<{
 export const createCardRenderer = (): CardRenderer => {
   const rendered: RenderedCard[] = [];
   return {
-    render: (decl, undefinedTypeNames, onTypeRefClick) => {
+    render: (decl, undefinedTypeNames, onTypeRefClick, onUndefinedBadgeClick) => {
       const host = document.createElement("div");
       document.body.append(host);
       const root: Root = createRoot(host);
@@ -35,6 +36,7 @@ export const createCardRenderer = (): CardRenderer => {
             decl={decl}
             undefinedTypeNames={undefinedTypeNames}
             onTypeRefClick={onTypeRefClick}
+            onUndefinedBadgeClick={onUndefinedBadgeClick}
           />,
         );
       });

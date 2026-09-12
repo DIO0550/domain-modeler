@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 import {
   Constraint,
   DataDecl,
@@ -135,9 +136,15 @@ const openRangeCard = DataDecl.create({
 
 const meta: Meta<typeof PreviewDataCard> = {
   component: PreviewDataCard,
+  args: {
+    onTypeRefClick: fn(),
+    onUndefinedBadgeClick: fn(),
+  },
   argTypes: {
     decl: { control: false },
     undefinedTypeNames: { control: false },
+    onTypeRefClick: { control: false },
+    onUndefinedBadgeClick: { control: false },
   },
   decorators: [
     (Story) => (
