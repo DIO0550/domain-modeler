@@ -37,4 +37,13 @@ export const SourceRange = {
     endLine: end.endLine,
     endColumn: end.endColumn,
   }),
+  /**
+   * 範囲が指定した行を含むか判定する。
+   * 空範囲でも開始行(終了行)は含む。
+   * @param range 判定する範囲。
+   * @param line 行番号(1始まり)。
+   * @returns 行が範囲内なら `true`。
+   */
+  coversLine: (range: SourceRange, line: number): boolean =>
+    line >= range.startLine && line <= range.endLine,
 } as const;
