@@ -128,6 +128,31 @@ test("list と option を重ねた修飾は両方のタグになる", () => {
   ).toEqual(["list", "option"]);
 });
 
+test("同じ後置修飾を重ねると同じタグが並ぶ", () => {
+  const host = cards.render(
+    DataDecl.create({
+      name: "明細一覧",
+      nameRange: range,
+      typeExpr: TypeExpr.alias(
+        TypeTerm.create({
+          name: "注文明細",
+          isPrimitive: false,
+          modifiers: [TYPE_MODIFIERS.list, TYPE_MODIFIERS.list],
+          range,
+        }),
+        range,
+      ),
+      range,
+    }),
+  );
+
+  expect(
+    Array.from(host.querySelectorAll(".preview-data-card__modifier")).map(
+      (tag) => tag.textContent,
+    ),
+  ).toEqual(["list", "list"]);
+});
+
 test("CHOICE の or は直後のケースと同じまとまりになる", () => {
   const host = cards.render(
     DataDecl.create({

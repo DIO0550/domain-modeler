@@ -162,8 +162,11 @@ function TypeRefView({ typeRef }: TypeRefViewProps) {
   return (
     <span className="preview-data-card__type-ref">
       <span className={typeNameClassName(typeRef)}>{typeRef.term.name}</span>
-      {typeRef.term.modifiers.map((modifier) => (
-        <span key={modifier} className="preview-data-card__modifier">
+      {typeRef.term.modifiers.map((modifier, index) => (
+        <span
+          key={`${modifier}-${index}`}
+          className="preview-data-card__modifier"
+        >
           {modifier}
         </span>
       ))}
