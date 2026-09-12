@@ -105,11 +105,9 @@ test("接続のラベル編集と削除は付箋操作と同じundo履歴を使�
     latest.current?.clickAt({ x: 40, y: 40 });
     latest.current?.clickAt({ x: 260, y: 40 });
   });
-  const connectionId = latest.current?.connections[0]?.id;
   act(() => {
-    if (connectionId !== undefined) {
-      latest.current?.editConnection(connectionId);
-    }
+    const current = latest.current;
+    current?.editConnection(current.connections[0].id);
   });
   act(() => {
     latest.current?.changeConnectionDraft("操作");

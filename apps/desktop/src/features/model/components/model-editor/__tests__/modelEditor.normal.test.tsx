@@ -22,11 +22,19 @@ function setup(initialValue: string) {
     act(() => root.unmount());
     host.remove();
   });
-  const input = host.querySelector("textarea");
-  if (input === null) {
-    throw new Error("Editor input missing");
-  }
+  const found = host.querySelector("textarea");
+  const input =
+    found instanceof HTMLTextAreaElement
+      ? found
+      : document.createElement("textarea");
   return { host, input, render, text: () => text };
+}
+
+function setNativeTextareaValue(input: HTMLTextAreaElement, value: string) {
+  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(
+    input,
+    value,
+  );
 }
 
 function select(input: HTMLTextAreaElement, start: number, end: number) {
@@ -58,14 +66,7 @@ test("編集中の不完全な構文も全文として親へ反映する", () =>
   const editor = setup("data Order = string");
   act(() => {
     // ブラウザ入力と同様に、ネイティブの setter で React の値追跡を経由せず更新する。
-    const setter = Object.getOwnPropertyDescriptor(
-      HTMLTextAreaElement.prototype,
-      "value",
-    )?.set;
-    if (setter === undefined) {
-      throw new Error("Native value setter missing");
-    }
-    setter.call(editor.input, "data Order =\n  未確定\n");
+    setNativeTextareaValue(editor.input, "data Order =\n  未確定\n");
     editor.input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   expect(editor.text()).toBe("data Order =\n  未確定\n");
@@ -133,15 +134,8 @@ test("IME変換中の入力は保留中の外部更新を親で上書きしな�
   });
   editor.render("data External = string");
 
-  const setter = Object.getOwnPropertyDescriptor(
-    HTMLTextAreaElement.prototype,
-    "value",
-  )?.set;
-  if (setter === undefined) {
-    throw new Error("Native value setter missing");
-  }
   act(() => {
-    setter.call(editor.input, "data 注文 = string");
+    setNativeTextareaValue(editor.input, "data 注文 = string");
     editor.input.dispatchEvent(new InputEvent("input", { bubbles: true }));
   });
   expect(editor.text()).toBe("data External = string");
@@ -165,15 +159,8 @@ test("IME変換確定後のinputは保留中の外部更新を上書きしない
   });
   editor.render("data External = string");
 
-  const setter = Object.getOwnPropertyDescriptor(
-    HTMLTextAreaElement.prototype,
-    "value",
-  )?.set;
-  if (setter === undefined) {
-    throw new Error("Native value setter missing");
-  }
   act(() => {
-    setter.call(editor.input, "data 注文 = string");
+    setNativeTextareaValue(editor.input, "data 注文 = string");
     editor.input.dispatchEvent(
       new CompositionEvent("compositionend", { bubbles: true }),
     );
@@ -181,7 +168,7 @@ test("IME変換確定後のinputは保留中の外部更新を上書きしない
   expect(editor.input.value).toBe("data External = string");
 
   act(() => {
-    setter.call(editor.input, "data 注文 = string");
+    setNativeTextareaValue(editor.input, "data 注文 = string");
     editor.input.dispatchEvent(new InputEvent("input", { bubbles: true }));
   });
   expect(editor.text()).toBe("data External = string");
@@ -197,15 +184,8 @@ test("確定inputが先に発火した場合は次の通常入力を破棄しな
   });
   editor.render("data External = string");
 
-  const setter = Object.getOwnPropertyDescriptor(
-    HTMLTextAreaElement.prototype,
-    "value",
-  )?.set;
-  if (setter === undefined) {
-    throw new Error("Native value setter missing");
-  }
   act(() => {
-    setter.call(editor.input, "data 注文 = string");
+    setNativeTextareaValue(editor.input, "data 注文 = string");
     editor.input.dispatchEvent(new InputEvent("input", { bubbles: true }));
     editor.input.dispatchEvent(
       new CompositionEvent("compositionend", { bubbles: true }),
@@ -214,7 +194,7 @@ test("確定inputが先に発火した場合は次の通常入力を破棄しな
   await act(async () => Promise.resolve());
 
   act(() => {
-    setter.call(editor.input, "data 注文 = string");
+    setNativeTextareaValue(editor.input, "data 注文 = string");
     editor.input.dispatchEvent(new InputEvent("input", { bubbles: true }));
   });
   expect(editor.text()).toBe("data 注文 = string");
@@ -228,15 +208,8 @@ test("IME変換の確定値は確定後のinputイベントを待たず親へ反
       new CompositionEvent("compositionstart", { bubbles: true }),
     );
   });
-  const setter = Object.getOwnPropertyDescriptor(
-    HTMLTextAreaElement.prototype,
-    "value",
-  )?.set;
-  if (setter === undefined) {
-    throw new Error("Native value setter missing");
-  }
   act(() => {
-    setter.call(editor.input, "data 注文 = string");
+    setNativeTextareaValue(editor.input, "data 注文 = string");
     editor.input.dispatchEvent(
       new CompositionEvent("compositionend", { bubbles: true }),
     );

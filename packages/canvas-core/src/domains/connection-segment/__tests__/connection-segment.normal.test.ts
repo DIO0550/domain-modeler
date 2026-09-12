@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { Connection, ConnectionId } from "../../connection";
 import { type Document, Document as DocumentValue } from "../../document";
 import { ConnectionSegment } from "..";
+import { Option } from "../../option";
 import { Sticky, StickyId } from "../../sticky";
 import { StickyIndex } from "../../sticky-index";
 
@@ -40,16 +41,14 @@ test("向かい合うアンカーを水平に結べる接続は直線経路に�
     "right",
     "left",
   );
-  const segment = ConnectionSegment.create(
-    StickyIndex.create(document.stickies),
-    connection,
+  const segment = Option.unwrap(
+    ConnectionSegment.create(
+      StickyIndex.create(document.stickies),
+      connection,
+    ),
   );
 
-  expect(segment.some).toBe(true);
-  if (!segment.some) {
-    return;
-  }
-  expect(ConnectionSegment.toRoute(segment.value)).toEqual({
+  expect(ConnectionSegment.toRoute(segment)).toEqual({
     shape: "straight",
     path: "M 140 80 L 260 80",
     midpoint: { x: 200, y: 80 },
@@ -67,16 +66,14 @@ test("向かい合わないアンカーの接続は辺の法線方向へ出る�
     "bottom",
     "top",
   );
-  const segment = ConnectionSegment.create(
-    StickyIndex.create(document.stickies),
-    connection,
+  const segment = Option.unwrap(
+    ConnectionSegment.create(
+      StickyIndex.create(document.stickies),
+      connection,
+    ),
   );
 
-  expect(segment.some).toBe(true);
-  if (!segment.some) {
-    return;
-  }
-  expect(ConnectionSegment.toRoute(segment.value)).toEqual({
+  expect(ConnectionSegment.toRoute(segment)).toEqual({
     shape: "curve",
     path: "M 80 120 C 80 230.055, 340 -80.055, 340 30",
     midpoint: { x: 210, y: 75 },
@@ -105,18 +102,16 @@ test("曲線上の座標は接続線の許容距離内になる", () => {
     "bottom",
     "top",
   );
-  const segment = ConnectionSegment.create(
-    StickyIndex.create(document.stickies),
-    connection,
+  const segment = Option.unwrap(
+    ConnectionSegment.create(
+      StickyIndex.create(document.stickies),
+      connection,
+    ),
   );
 
-  expect(segment.some).toBe(true);
-  if (!segment.some) {
-    return;
-  }
   expect(
     ConnectionSegment.contains(
-      segment.value,
+      segment,
       { x: 120.625, y: 136.89046875 },
       8,
     ),
@@ -134,17 +129,14 @@ test("曲線から離れた始点と終点を結ぶ直線上の座標は許容�
     "bottom",
     "top",
   );
-  const segment = ConnectionSegment.create(
-    StickyIndex.create(document.stickies),
-    connection,
+  const segment = Option.unwrap(
+    ConnectionSegment.create(
+      StickyIndex.create(document.stickies),
+      connection,
+    ),
   );
 
-  expect(segment.some).toBe(true);
-  if (!segment.some) {
-    return;
-  }
-
   expect(
-    ConnectionSegment.contains(segment.value, { x: 145, y: 97.5 }, 8),
+    ConnectionSegment.contains(segment, { x: 145, y: 97.5 }, 8),
   ).toBe(false);
 });
