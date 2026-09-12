@@ -1,3 +1,4 @@
+// @test-rules-disable no-conditional
 import { act } from "react";
 import { expect, test } from "vitest";
 import {

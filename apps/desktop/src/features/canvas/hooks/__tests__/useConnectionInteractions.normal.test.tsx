@@ -1,3 +1,4 @@
+// @test-rules-disable no-conditional
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vitest";

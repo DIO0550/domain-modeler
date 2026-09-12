@@ -1,3 +1,4 @@
+// @test-rules-disable no-conditional
 import { expect, test } from "vitest";
 import { Connection, ConnectionId } from "../../connection";
 import { type Document, Document as DocumentValue } from "../../document";
