@@ -36,6 +36,10 @@ export type TextEditing = Readonly<{
   onCompositionEnd: (event: CompositionEvent<HTMLTextAreaElement>) => void;
   moveCaret: (caret: CaretPosition) => void;
   applyEdit: (edit: TextEdit, caret: CaretPosition) => void;
+  applyEditSelecting: (
+    edit: TextEdit,
+    range: Readonly<{ start: number; end: number; line: number }>,
+  ) => void;
 }>;
 
 /**
@@ -136,13 +140,24 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps): TextEd
     selection.moveTo(caret);
   };
 
-  const applyEdit = (edit: TextEdit, caret: CaretPosition) => {
+  const applyEditSelecting = (
+    edit: TextEdit,
+    range: Readonly<{ start: number; end: number; line: number }>,
+  ) => {
     const input = selection.inputRef.current;
     if (input === null) {
       return;
     }
     TextInput.applyEdit(input, edit);
-    selection.moveTo(caret);
+    selection.select(range);
+  };
+
+  const applyEdit = (edit: TextEdit, caret: CaretPosition) => {
+    applyEditSelecting(edit, {
+      start: caret.offset,
+      end: caret.offset,
+      line: caret.line,
+    });
   };
 
   return {
@@ -155,5 +170,6 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps): TextEd
     onCompositionEnd: handleCompositionEnd,
     moveCaret,
     applyEdit,
+    applyEditSelecting,
   };
 }

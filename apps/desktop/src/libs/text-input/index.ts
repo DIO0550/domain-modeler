@@ -9,6 +9,12 @@ type TextInputCaret = Readonly<{
   line: number;
 }>;
 
+type TextInputSelection = Readonly<{
+  start: number;
+  end: number;
+  line: number;
+}>;
+
 const FALLBACK_LINE_HEIGHT_PX = 24;
 
 /**
@@ -86,10 +92,24 @@ export const TextInput = {
    * @param caret 0始まりのオフセットと 1始まりの行。
    */
   moveCaret(input: HTMLTextAreaElement, caret: TextInputCaret): void {
-    const clamped = Math.max(0, Math.min(caret.offset, input.value.length));
+    TextInput.select(input, {
+      start: caret.offset,
+      end: caret.offset,
+      line: caret.line,
+    });
+  },
+  /**
+   * 選択範囲を指定し、その行が見えるようスクロールする。
+   *
+   * @param input テキスト入力欄。
+   * @param selection 0始まりの開始・終了と 1始まりの行。
+   */
+  select(input: HTMLTextAreaElement, selection: TextInputSelection): void {
+    const start = Math.max(0, Math.min(selection.start, input.value.length));
+    const end = Math.max(0, Math.min(selection.end, input.value.length));
     input.focus();
-    input.setSelectionRange(clamped, clamped, "none");
-    scrollToLine(input, caret.line);
+    input.setSelectionRange(start, end, "forward");
+    scrollToLine(input, selection.line);
     input.dispatchEvent(new Event("scroll", { bubbles: true }));
   },
 } as const;
