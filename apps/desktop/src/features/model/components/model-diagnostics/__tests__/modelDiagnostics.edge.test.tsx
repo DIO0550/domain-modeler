@@ -81,6 +81,67 @@ test("未定義の型参照名をクリックしてもスタブを追記して�
   ]);
 });
 
+test("コメント内の同名文字列はリネームしない", () => {
+  const source = "data 注文ID = string // 注文ID";
+  const host = diagnostics.render(source);
+  const button = host.querySelector(
+    'button[aria-label="「注文ID」をリネーム"]',
+  );
+  const found = host.querySelector("textarea");
+  const input =
+    found instanceof HTMLTextAreaElement
+      ? found
+      : document.createElement("textarea");
+
+  act(() => {
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const nameField = host.querySelector('input[aria-label="新しい名前"]');
+  const nameInput =
+    nameField instanceof HTMLInputElement
+      ? nameField
+      : document.createElement("input");
+  act(() => {
+    nameInput.focus();
+    nameInput.value = "商品ID";
+    nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    nameInput.form?.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+  });
+
+  expect(input.value).toBe("data 商品ID = string // 注文ID");
+});
+
+test("workflow雛形をカーソル位置へ挿入し名前部分を選択する", () => {
+  const source = "data 注文ID = string\n";
+  const host = diagnostics.render(source);
+  const found = host.querySelector("textarea");
+  const input =
+    found instanceof HTMLTextAreaElement
+      ? found
+      : document.createElement("textarea");
+  const insertButton = Array.from(host.querySelectorAll("button")).find(
+    (button) => button.textContent === "workflow雛形",
+  );
+
+  act(() => {
+    input.focus();
+    input.setSelectionRange(source.length, source.length);
+    insertButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  const expected = `${source}workflow 名前 =\n  input: string\n  output: string`;
+  const nameStart = `${source}workflow `.length;
+  const nameEnd = nameStart + "名前".length;
+
+  expect(input.value).toBe(expected);
+  expect([input.selectionStart, input.selectionEnd]).toEqual([
+    nameStart,
+    nameEnd,
+  ]);
+});
+
 test("IME変換中に親の全文が変わってもプレビューは表示中のテキストに従う", () => {
   const host = document.createElement("div");
   document.body.append(host);
