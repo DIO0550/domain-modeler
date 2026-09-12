@@ -139,6 +139,7 @@
 .preview-data-card-story {
   box-sizing: border-box;
   width: min(520px, 100%);
+  min-width: 360px;
   padding: 24px;
   background: var(--shell-bg);
 }
