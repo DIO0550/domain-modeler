@@ -200,6 +200,21 @@
     "name": "Edge Cases"
   },
   {
+    "id": "features-model-components-preview-workflow-card-previewworkflowcard--all-props",
+    "title": "features/model/components/preview-workflow-card/PreviewWorkflowCard",
+    "name": "All Props"
+  },
+  {
+    "id": "features-model-components-preview-workflow-card-previewworkflowcard--default",
+    "title": "features/model/components/preview-workflow-card/PreviewWorkflowCard",
+    "name": "Default"
+  },
+  {
+    "id": "features-model-components-preview-workflow-card-previewworkflowcard--edge-cases",
+    "title": "features/model/components/preview-workflow-card/PreviewWorkflowCard",
+    "name": "Edge Cases"
+  },
+  {
     "id": "model-modeleditor--default",
     "title": "Model/ModelEditor",
     "name": "Default"
