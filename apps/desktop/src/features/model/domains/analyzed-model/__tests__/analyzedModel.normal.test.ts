@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { Declaration } from "@domain-modeler/model-core";
+import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "..";
 
 test("正しい文書は診断が空になる", () => {
@@ -45,4 +46,42 @@ test("パースエラーがあっても文書とトークンを返す", () => {
   );
   expect(analyzed.document.declarations.some(Declaration.isError)).toBe(true);
   expect(analyzed.tokens.length).toBeGreaterThan(0);
+});
+
+test("定義済みの型名は宣言先頭のキャレットになる", () => {
+  const analyzed = AnalyzedModel.create(
+    "data 注文ID = string\ndata 注文 = 注文ID",
+  );
+
+  expect(AnalyzedModel.caretOfDefinition(analyzed, "注文ID")).toEqual(
+    Option.some({ offset: 0, line: 1 }),
+  );
+});
+
+test("後方の定義にもジャンプできる", () => {
+  const source = "data 注文 = 注文ID\ndata 注文ID = string";
+  const analyzed = AnalyzedModel.create(source);
+
+  expect(AnalyzedModel.caretOfDefinition(analyzed, "注文ID")).toEqual(
+    Option.some({
+      offset: "data 注文 = 注文ID\n".length,
+      line: 2,
+    }),
+  );
+});
+
+test("workflow 宣言の名前にもジャンプできる", () => {
+  const source = `data 依頼 = string
+workflow 通知する =
+  input: 依頼
+  output: string
+`;
+  const analyzed = AnalyzedModel.create(source);
+
+  expect(AnalyzedModel.caretOfDefinition(analyzed, "通知する")).toEqual(
+    Option.some({
+      offset: "data 依頼 = string\n".length,
+      line: 2,
+    }),
+  );
 });

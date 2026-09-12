@@ -15,19 +15,21 @@ type PreviewWorkflowCardProps = Readonly<{
   decl: WorkflowDecl;
   undefinedTypeNames?: ReadonlySet<string>;
   onTypeRefClick?: (typeRef: PreviewTypeRefValue) => void;
+  onUndefinedBadgeClick?: (typeRef: PreviewTypeRefValue) => void;
 }>;
 
 /**
  * workflow 宣言を IN / OUT / ERR のカードとして表示する。
  * error 節が無いときは ERR 行を出さない。
  *
- * @param props workflow 宣言、未定義として示す型名、型参照のクリック。
+ * @param props workflow 宣言、未定義として示す型名、型参照と未定義バッジのクリック。
  * @returns 構造化プレビューの workflow カード。
  */
 export function PreviewWorkflowCard({
   decl,
   undefinedTypeNames = EMPTY_TYPE_NAMES,
   onTypeRefClick,
+  onUndefinedBadgeClick,
 }: PreviewWorkflowCardProps) {
   const preview = WorkflowCardPreview.create(decl, undefinedTypeNames);
   return (
@@ -47,6 +49,7 @@ export function PreviewWorkflowCard({
             key={section.kind}
             section={section}
             onTypeRefClick={onTypeRefClick}
+            onUndefinedBadgeClick={onUndefinedBadgeClick}
           />
         ))}
       </div>
@@ -57,6 +60,7 @@ export function PreviewWorkflowCard({
 type WorkflowSectionRowProps = Readonly<{
   section: WorkflowCardSection;
   onTypeRefClick?: (typeRef: PreviewTypeRefValue) => void;
+  onUndefinedBadgeClick?: (typeRef: PreviewTypeRefValue) => void;
 }>;
 
 /**
@@ -68,6 +72,7 @@ type WorkflowSectionRowProps = Readonly<{
 function WorkflowSectionRow({
   section,
   onTypeRefClick,
+  onUndefinedBadgeClick,
 }: WorkflowSectionRowProps) {
   return (
     <div
@@ -85,6 +90,7 @@ function WorkflowSectionRow({
             typeRef={typeRef}
             leadingSeparator={termSeparator(section.separator, index)}
             onTypeRefClick={onTypeRefClick}
+            onUndefinedBadgeClick={onUndefinedBadgeClick}
           />
         ))}
       </div>
@@ -96,6 +102,7 @@ type WorkflowTermProps = Readonly<{
   typeRef: PreviewTypeRefValue;
   leadingSeparator: "+" | "or" | "none";
   onTypeRefClick?: (typeRef: PreviewTypeRefValue) => void;
+  onUndefinedBadgeClick?: (typeRef: PreviewTypeRefValue) => void;
 }>;
 
 /**
@@ -108,9 +115,14 @@ function WorkflowTerm({
   typeRef,
   leadingSeparator,
   onTypeRefClick,
+  onUndefinedBadgeClick,
 }: WorkflowTermProps) {
   const typeRefView = (
-    <TypeRefView typeRef={typeRef} onTypeRefClick={onTypeRefClick} />
+    <TypeRefView
+      typeRef={typeRef}
+      onTypeRefClick={onTypeRefClick}
+      onUndefinedBadgeClick={onUndefinedBadgeClick}
+    />
   );
   if (leadingSeparator === "none") {
     return (
@@ -130,6 +142,7 @@ function WorkflowTerm({
 type TypeRefViewProps = Readonly<{
   typeRef: PreviewTypeRefValue;
   onTypeRefClick?: (typeRef: PreviewTypeRefValue) => void;
+  onUndefinedBadgeClick?: (typeRef: PreviewTypeRefValue) => void;
 }>;
 
 /**
@@ -139,10 +152,11 @@ type TypeRefViewProps = Readonly<{
  * @param props プレビュー用の型参照とクリック。
  * @returns 型参照の表示。
  */
-function TypeRefView({ typeRef, onTypeRefClick }: TypeRefViewProps) {
-  const badge = PreviewTypeRef.isUndefined(typeRef) ? (
-    <span className="preview-workflow-card__undefined-badge">未定義</span>
-  ) : null;
+function TypeRefView({
+  typeRef,
+  onTypeRefClick,
+  onUndefinedBadgeClick,
+}: TypeRefViewProps) {
   return (
     <span className="preview-workflow-card__type-ref">
       <TypeName typeRef={typeRef} onTypeRefClick={onTypeRefClick} />
@@ -154,7 +168,10 @@ function TypeRefView({ typeRef, onTypeRefClick }: TypeRefViewProps) {
           {modifier}
         </span>
       ))}
-      {badge}
+      <UndefinedBadge
+        typeRef={typeRef}
+        onUndefinedBadgeClick={onUndefinedBadgeClick}
+      />
     </span>
   );
 }
@@ -185,6 +202,41 @@ function TypeName({ typeRef, onTypeRefClick }: TypeNameProps) {
       onClick={() => onTypeRefClick(typeRef)}
     >
       {typeRef.term.name}
+    </button>
+  );
+}
+
+type UndefinedBadgeProps = Readonly<{
+  typeRef: PreviewTypeRefValue;
+  onUndefinedBadgeClick?: (typeRef: PreviewTypeRefValue) => void;
+}>;
+
+/**
+ * 未定義参照のバッジを出す。クリック通知があるときはスタブ生成のボタンにする。
+ *
+ * @param props プレビュー用の型参照とバッジのクリック。
+ * @returns バッジ。未定義でなければ何も出さない。
+ */
+function UndefinedBadge({
+  typeRef,
+  onUndefinedBadgeClick,
+}: UndefinedBadgeProps) {
+  if (!PreviewTypeRef.isUndefined(typeRef)) {
+    return null;
+  }
+  if (onUndefinedBadgeClick === undefined) {
+    return (
+      <span className="preview-workflow-card__undefined-badge">未定義</span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="preview-workflow-card__undefined-badge preview-workflow-card__undefined-badge-button"
+      aria-label={`未定義の「${typeRef.term.name}」のスタブを生成`}
+      onClick={() => onUndefinedBadgeClick(typeRef)}
+    >
+      未定義
     </button>
   );
 }

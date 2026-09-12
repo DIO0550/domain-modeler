@@ -245,3 +245,53 @@ test("名前付き型参照をクリックするとその参照を通知する",
   expect(clicked[0]?.term.name).toBe("未検証の注文");
   expect(clicked[0]?.resolution).toBe("defined");
 });
+
+test("未定義バッジをクリックするとその参照を通知する", () => {
+  const clicked: PreviewTypeRef[] = [];
+  const host = cards.render(
+    WorkflowDecl.create({
+      name: "注文を確定する",
+      nameRange: range,
+      input: WorkflowSection.create(
+        [
+          TypeTerm.create({
+            name: "検証エラー",
+            isPrimitive: false,
+            modifiers: [],
+            range,
+          }),
+        ],
+        range,
+      ),
+      output: WorkflowSection.create(
+        [
+          TypeTerm.create({
+            name: "確定イベント",
+            isPrimitive: false,
+            modifiers: [],
+            range,
+          }),
+        ],
+        range,
+      ),
+      error: WorkflowErrorClause.absent(),
+      range,
+    }),
+    new Set(["検証エラー"]),
+    undefined,
+    (typeRef) => {
+      clicked.push(typeRef);
+    },
+  );
+  const badge = host.querySelector(
+    "button.preview-workflow-card__undefined-badge",
+  );
+
+  act(() => {
+    badge?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  expect(clicked).toHaveLength(1);
+  expect(clicked[0]?.term.name).toBe("検証エラー");
+  expect(clicked[0]?.resolution).toBe("undefined");
+});

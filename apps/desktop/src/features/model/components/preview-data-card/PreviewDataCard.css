@@ -121,6 +121,34 @@
   text-underline-offset: 3px;
 }
 
+.preview-data-card__type-name-button {
+  appearance: none;
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.preview-data-card__type-name-button:not(
+  .preview-data-card__type-name--undefined
+) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.preview-data-card__type-name-button:focus-visible {
+  outline: 2px solid var(--model-editor-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .preview-data-card__modifier {
   padding: 1px 6px;
   border-radius: 999px;
@@ -142,6 +170,19 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1.4;
+}
+
+.preview-data-card__undefined-badge-button {
+  appearance: none;
+  display: inline;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.preview-data-card__undefined-badge-button:focus-visible {
+  outline: 2px solid var(--model-editor-focus);
+  outline-offset: 2px;
 }
 
 .preview-data-card-story {

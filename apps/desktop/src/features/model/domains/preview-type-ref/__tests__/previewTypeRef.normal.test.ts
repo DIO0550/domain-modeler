@@ -77,3 +77,28 @@ test("型参照項の列を出現順のプレビュー参照にする", () => {
     { term: primitive, resolution: "primitive" },
   ]);
 });
+
+test("定義済み参照だけ isDefined が真になる", () => {
+  const defined = PreviewTypeRef.create(
+    TypeTerm.create({
+      name: "注文ID",
+      isPrimitive: false,
+      modifiers: [],
+      range,
+    }),
+    new Set(["顧客情報"]),
+  );
+  const missing = PreviewTypeRef.create(
+    TypeTerm.create({
+      name: "顧客情報",
+      isPrimitive: false,
+      modifiers: [],
+      range,
+    }),
+    new Set(["顧客情報"]),
+  );
+
+  expect(PreviewTypeRef.isDefined(defined)).toBe(true);
+  expect(PreviewTypeRef.isDefined(missing)).toBe(false);
+  expect(PreviewTypeRef.isUndefined(defined)).toBe(false);
+});

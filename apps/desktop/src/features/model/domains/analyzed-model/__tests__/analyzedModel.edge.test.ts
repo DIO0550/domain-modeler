@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "..";
 
 test("空文書は診断も未定義名も無い", () => {
@@ -40,4 +41,29 @@ data 注文ID = 未定義型`);
     }),
   ]);
   expect(analyzed.undefinedTypeNames).toEqual(new Set(["未定義型"]));
+});
+
+test("未定義の型名はジャンプ先が無い", () => {
+  const analyzed = AnalyzedModel.create("data 注文 = 未定義型");
+
+  expect(AnalyzedModel.caretOfDefinition(analyzed, "未定義型")).toEqual(
+    Option.none(),
+  );
+});
+
+test("プリミティブ型名はジャンプ先が無い", () => {
+  const analyzed = AnalyzedModel.create("data 注文ID = string");
+
+  expect(AnalyzedModel.caretOfDefinition(analyzed, "string")).toEqual(
+    Option.none(),
+  );
+});
+
+test("同名が複数あるときは先頭の定義へジャンプする", () => {
+  const analyzed = AnalyzedModel.create(`data 注文ID = string
+data 注文ID = int`);
+
+  expect(AnalyzedModel.caretOfDefinition(analyzed, "注文ID")).toEqual(
+    Option.some({ offset: 0, line: 1 }),
+  );
 });

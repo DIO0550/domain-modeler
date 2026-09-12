@@ -7,6 +7,7 @@ import {
   type SyntheticEvent,
 } from "react";
 import { TextInput } from "@/libs/text-input";
+import type { CaretPosition } from "../../domains/caret-position";
 import { TextEdit } from "../../domains/text-edit";
 import { useTextSelection } from "../use-text-selection";
 
@@ -33,6 +34,8 @@ export type TextEditing = Readonly<{
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onCompositionStart: (event: CompositionEvent<HTMLTextAreaElement>) => void;
   onCompositionEnd: (event: CompositionEvent<HTMLTextAreaElement>) => void;
+  moveCaret: (caret: CaretPosition) => void;
+  applyEdit: (edit: TextEdit, caret: CaretPosition) => void;
 }>;
 
 /**
@@ -129,6 +132,19 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps): TextEd
     TextInput.applyEdit(input, edit);
   };
 
+  const moveCaret = (caret: CaretPosition) => {
+    selection.moveTo(caret);
+  };
+
+  const applyEdit = (edit: TextEdit, caret: CaretPosition) => {
+    const input = selection.inputRef.current;
+    if (input === null) {
+      return;
+    }
+    TextInput.applyEdit(input, edit);
+    selection.moveTo(caret);
+  };
+
   return {
     inputRef: selection.inputRef,
     value: displayedText,
@@ -137,5 +153,7 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps): TextEd
     onKeyDown: handleKeyDown,
     onCompositionStart: handleCompositionStart,
     onCompositionEnd: handleCompositionEnd,
+    moveCaret,
+    applyEdit,
   };
 }

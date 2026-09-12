@@ -1,4 +1,6 @@
 import { useLayoutEffect, useRef, type SyntheticEvent } from "react";
+import { TextInput } from "@/libs/text-input";
+import type { CaretPosition } from "../../domains/caret-position";
 
 /**
  * 制御されたテキストの更新前後で選択範囲とカーソル位置を保持する。
@@ -25,6 +27,19 @@ export function useTextSelection(value: string) {
     };
   };
 
+  const moveTo = (caret: CaretPosition) => {
+    selection.current = {
+      start: caret.offset,
+      end: caret.offset,
+      direction: "none",
+    };
+    const input = inputRef.current;
+    if (input === null) {
+      return;
+    }
+    TextInput.moveCaret(input, caret);
+  };
+
   useLayoutEffect(() => {
     const input = inputRef.current;
     if (input === null || composing.current) {
@@ -49,6 +64,7 @@ export function useTextSelection(value: string) {
   return {
     inputRef,
     rememberSelection,
+    moveTo,
     onCompositionStart: () => {
       composing.current = true;
     },
