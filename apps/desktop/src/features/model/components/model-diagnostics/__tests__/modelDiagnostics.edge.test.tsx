@@ -31,6 +31,50 @@ test("workflow の未定義参照もプレビューに未定義バッジを出�
   ).toEqual(["未定義", "未定義"]);
 });
 
+test("後方の定義をクリックするとその宣言行へジャンプする", () => {
+  const source = "data 注文 = 注文ID\ndata 注文ID = string";
+  const host = diagnostics.render(source);
+  const button = host.querySelector("button.preview-data-card__type-name");
+  const found = host.querySelector("textarea");
+  const input =
+    found instanceof HTMLTextAreaElement
+      ? found
+      : document.createElement("textarea");
+
+  act(() => {
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  const offset = "data 注文 = 注文ID\n".length;
+  expect([input.selectionStart, input.selectionEnd]).toEqual([offset, offset]);
+});
+
+test("未定義の型参照名をクリックしてもスタブを追記してその行へジャンプする", () => {
+  const source = "data 注文 = 未定義型";
+  const host = diagnostics.render(source);
+  const nameButton = host.querySelector(
+    "button.preview-data-card__type-name--undefined",
+  );
+  const found = host.querySelector("textarea");
+  const input =
+    found instanceof HTMLTextAreaElement
+      ? found
+      : document.createElement("textarea");
+
+  act(() => {
+    nameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  const stubOffset = `${source}\n`.length;
+  expect(input.value).toBe(
+    `${source}\ndata 未定義型 = string // TODO 詳細化`,
+  );
+  expect([input.selectionStart, input.selectionEnd]).toEqual([
+    stubOffset,
+    stubOffset,
+  ]);
+});
+
 test("IME変換中に親の全文が変わってもプレビューは表示中のテキストに従う", () => {
   const host = document.createElement("div");
   document.body.append(host);

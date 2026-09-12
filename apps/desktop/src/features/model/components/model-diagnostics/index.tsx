@@ -1,8 +1,16 @@
+import { useRef } from "react";
 import {
   Declaration,
+  Result,
   type Declaration as DeclarationValue,
 } from "@domain-modeler/model-core";
+import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "../../domains/analyzed-model";
+import {
+  PreviewTypeRef,
+  type PreviewTypeRef as PreviewTypeRefValue,
+} from "../../domains/preview-type-ref";
+import { StubInsertion } from "../../domains/stub-insertion";
 import { useTextEditing } from "../../hooks/use-text-editing";
 import { ModelEditorDisplay } from "../model-editor";
 import { PreviewDataCard } from "../preview-data-card";
@@ -25,12 +33,58 @@ type ModelDiagnosticsProps = Readonly<{
 export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
   const editing = useTextEditing({ value, onChange });
   const analyzed = AnalyzedModel.create(editing.value);
+  const previewRef = useRef<HTMLElement>(null);
+
+  const scrollPreviewTo = (name: string) => {
+    const scroll = () => {
+      previewRef.current
+        ?.querySelector(`[data-decl-name="${CSS.escape(name)}"]`)
+        ?.scrollIntoView({ block: "nearest" });
+    };
+    scroll();
+    requestAnimationFrame(scroll);
+  };
+
+  const jumpToDefinition = (name: string) => {
+    const caret = AnalyzedModel.caretOfDefinition(analyzed, name);
+    if (Option.isNone(caret)) {
+      return;
+    }
+    editing.moveCaret(caret.value);
+    scrollPreviewTo(name);
+  };
+
+  const insertStub = (name: string) => {
+    const insertion = StubInsertion.atDocumentEnd({
+      source: editing.value,
+      name,
+    });
+    if (Result.isErr(insertion)) {
+      return;
+    }
+    editing.applyEdit(insertion.value.edit, insertion.value.caret);
+    scrollPreviewTo(name);
+  };
+
+  const handleTypeRefClick = (typeRef: PreviewTypeRefValue) => {
+    if (PreviewTypeRef.isDefined(typeRef)) {
+      jumpToDefinition(typeRef.term.name);
+      return;
+    }
+    insertStub(typeRef.term.name);
+  };
+
+  const handleUndefinedBadgeClick = (typeRef: PreviewTypeRefValue) => {
+    insertStub(typeRef.term.name);
+  };
+
   return (
     <div className="model-diagnostics">
       <section className="model-diagnostics__editor" aria-label="テキストエディタ">
         <ModelEditorDisplay editing={editing} />
       </section>
       <section
+        ref={previewRef}
         className="model-diagnostics__preview"
         aria-label="構造化プレビュー"
       >
@@ -39,6 +93,8 @@ export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
             key={declarationKey(decl)}
             decl={decl}
             analyzed={analyzed}
+            onTypeRefClick={handleTypeRefClick}
+            onUndefinedBadgeClick={handleUndefinedBadgeClick}
           />
         ))}
       </section>
@@ -49,15 +105,22 @@ export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
 type PreviewDeclItemProps = Readonly<{
   decl: DeclarationValue;
   analyzed: AnalyzedModel;
+  onTypeRefClick: (typeRef: PreviewTypeRefValue) => void;
+  onUndefinedBadgeClick: (typeRef: PreviewTypeRefValue) => void;
 }>;
 
 /**
  * 宣言を data / workflow カード、またはエラープレースホルダとして出す。
  *
- * @param props 宣言と解析結果。
+ * @param props 宣言と解析結果とプレビュー操作。
  * @returns プレビュー項目。
  */
-function PreviewDeclItem({ decl, analyzed }: PreviewDeclItemProps) {
+function PreviewDeclItem({
+  decl,
+  analyzed,
+  onTypeRefClick,
+  onUndefinedBadgeClick,
+}: PreviewDeclItemProps) {
   if (Declaration.isError(decl)) {
     return (
       <PreviewErrorPlaceholder
@@ -71,6 +134,8 @@ function PreviewDeclItem({ decl, analyzed }: PreviewDeclItemProps) {
       <PreviewDataCard
         decl={decl}
         undefinedTypeNames={analyzed.undefinedTypeNames}
+        onTypeRefClick={onTypeRefClick}
+        onUndefinedBadgeClick={onUndefinedBadgeClick}
       />
     );
   }
@@ -78,6 +143,8 @@ function PreviewDeclItem({ decl, analyzed }: PreviewDeclItemProps) {
     <PreviewWorkflowCard
       decl={decl}
       undefinedTypeNames={analyzed.undefinedTypeNames}
+      onTypeRefClick={onTypeRefClick}
+      onUndefinedBadgeClick={onUndefinedBadgeClick}
     />
   );
 }
