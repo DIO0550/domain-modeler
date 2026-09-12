@@ -29,19 +29,20 @@ export const TextInput = {
       HTMLTextAreaElement.prototype,
       "value",
     )?.set;
+    const inputEvent = new InputEvent("input", {
+      bubbles: true,
+      data: edit.replacement,
+      inputType: "insertText",
+    });
     if (nativeValueSetter === undefined) {
       input.setRangeText(edit.replacement, edit.start, edit.end, "end");
-    } else {
-      nativeValueSetter.call(input, editedText);
-      const caret = edit.start + edit.replacement.length;
-      input.setSelectionRange(caret, caret);
+      input.dispatchEvent(inputEvent);
+      return;
     }
-    input.dispatchEvent(
-      new InputEvent("input", {
-        bubbles: true,
-        data: edit.replacement,
-        inputType: "insertText",
-      }),
-    );
+
+    nativeValueSetter.call(input, editedText);
+    const caret = edit.start + edit.replacement.length;
+    input.setSelectionRange(caret, caret);
+    input.dispatchEvent(inputEvent);
   },
 } as const;
