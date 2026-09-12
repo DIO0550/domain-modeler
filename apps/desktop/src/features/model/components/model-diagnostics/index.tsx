@@ -22,7 +22,7 @@ type ModelDiagnosticsProps = Readonly<{
  * @returns 左右分割の診断付きモデル編集画面。
  */
 export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
-  const analyzed = AnalyzedModel.from(value);
+  const analyzed = AnalyzedModel.create(value);
   return (
     <div className="model-diagnostics">
       <section className="model-diagnostics__editor" aria-label="テキストエディタ">

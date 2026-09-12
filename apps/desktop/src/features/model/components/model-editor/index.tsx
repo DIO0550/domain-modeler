@@ -24,7 +24,7 @@ export function ModelEditor({ value, onChange }: ModelEditorProps) {
   const diagnosticsRef = useRef<HTMLDivElement>(null);
   const editing = useTextEditing({ value, onChange });
   const lineViews = useMemo(() => {
-    const analyzed = AnalyzedModel.from(editing.value);
+    const analyzed = AnalyzedModel.create(editing.value);
     return EditorDiagnostic.lineViews(editing.value, analyzed.diagnostics);
   }, [editing.value]);
 

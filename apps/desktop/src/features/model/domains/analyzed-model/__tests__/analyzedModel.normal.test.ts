@@ -3,7 +3,7 @@ import { Declaration } from "@domain-modeler/model-core";
 import { AnalyzedModel } from "..";
 
 test("正しい文書は診断が空になる", () => {
-  const analyzed = AnalyzedModel.from("data 注文ID = string");
+  const analyzed = AnalyzedModel.create("data 注文ID = string");
 
   expect(analyzed.diagnostics).toEqual([]);
   expect(analyzed.undefinedTypeNames).toEqual(new Set());
@@ -13,7 +13,7 @@ test("正しい文書は診断が空になる", () => {
 test("パースエラーと未定義警告をまとめて返す", () => {
   const source = `data 数量 = int constrained 10..1
 data 注文 = 未定義型`;
-  const analyzed = AnalyzedModel.from(source);
+  const analyzed = AnalyzedModel.create(source);
 
   expect(analyzed.diagnostics).toEqual([
     expect.objectContaining({
@@ -29,7 +29,7 @@ data 注文 = 未定義型`;
 });
 
 test("前方参照は未定義警告にしない", () => {
-  const analyzed = AnalyzedModel.from(`data 注文 = 注文ID
+  const analyzed = AnalyzedModel.create(`data 注文 = 注文ID
 data 注文ID = string`);
 
   expect(analyzed.diagnostics).toEqual([]);
@@ -37,7 +37,7 @@ data 注文ID = string`);
 });
 
 test("パースエラーがあっても文書とトークンを返す", () => {
-  const analyzed = AnalyzedModel.from("data 注文 =");
+  const analyzed = AnalyzedModel.create("data 注文 =");
 
   expect(analyzed.diagnostics.length).toBeGreaterThan(0);
   expect(analyzed.diagnostics.every((diagnostic) => diagnostic.severity === "error")).toBe(

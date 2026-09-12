@@ -7,7 +7,7 @@ test("末尾改行があっても最終の空行を保持する", () => {
   const source = "data 注文ID = string\n";
   const views = EditorDiagnostic.lineViews(
     source,
-    AnalyzedModel.from(source).diagnostics,
+    AnalyzedModel.create(source).diagnostics,
   );
 
   expect(views.map((view) => view.segments)).toEqual([
@@ -20,7 +20,7 @@ test("CRLFでも未定義参照の桁位置で警告セグメントを切る", (
   const source = "data 注文 = 未定義型\r\n";
   const views = EditorDiagnostic.lineViews(
     source,
-    AnalyzedModel.from(source).diagnostics,
+    AnalyzedModel.create(source).diagnostics,
   );
 
   expect(views[0]?.segments).toEqual([
@@ -56,7 +56,7 @@ test("壊れた宣言の次の正しい行はエラーにしない", () => {
 data 注文ID = string`;
   const views = EditorDiagnostic.lineViews(
     source,
-    AnalyzedModel.from(source).diagnostics,
+    AnalyzedModel.create(source).diagnostics,
   );
 
   expect(views[0]?.errorMark.kind).toBe("error");

@@ -6,7 +6,7 @@ import { EditorDiagnostic } from "..";
 test("正しい行はエラー背景も警告下線も無い", () => {
   const source = "data 注文ID = string";
   expect(
-    EditorDiagnostic.lineViews(source, AnalyzedModel.from(source).diagnostics),
+    EditorDiagnostic.lineViews(source, AnalyzedModel.create(source).diagnostics),
   ).toEqual([
     {
       line: 1,
@@ -20,7 +20,7 @@ test("パースエラーの行は行末メッセージ付きのエラーにな�
   const source = "data 数量 = int constrained 10..1";
   const views = EditorDiagnostic.lineViews(
     source,
-    AnalyzedModel.from(source).diagnostics,
+    AnalyzedModel.create(source).diagnostics,
   );
 
   expect(views).toEqual([
@@ -39,7 +39,7 @@ test("未定義参照は警告セグメントになりエラーにはしない",
   const source = "data 注文 = 未定義型";
   const views = EditorDiagnostic.lineViews(
     source,
-    AnalyzedModel.from(source).diagnostics,
+    AnalyzedModel.create(source).diagnostics,
   );
 
   expect(views).toEqual([

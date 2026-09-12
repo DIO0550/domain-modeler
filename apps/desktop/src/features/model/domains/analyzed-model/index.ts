@@ -45,7 +45,7 @@ export const AnalyzedModel = {
    * @param source `.dmodel` テキスト。
    * @returns 文書・トークン・診断・未定義型名。
    */
-  from(source: string): AnalyzedModel {
+  create(source: string): AnalyzedModel {
     const parsed = Parse.parse(source);
     const resolved = Resolve.resolve(parsed.document);
     const diagnostics = [...parsed.diagnostics, ...resolved.diagnostics];
