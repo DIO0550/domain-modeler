@@ -172,12 +172,12 @@ export const AllProps: Story = {
       </div>
     ),
   ],
-  render: () => (
+  render: (args) => (
     <>
-      <PreviewDataCard decl={choiceCard} />
-      <PreviewDataCard decl={recordCard} />
-      <PreviewDataCard decl={aliasCard} />
-      <PreviewDataCard decl={valueCard} />
+      <PreviewDataCard {...args} decl={choiceCard} />
+      <PreviewDataCard {...args} decl={recordCard} />
+      <PreviewDataCard {...args} decl={aliasCard} />
+      <PreviewDataCard {...args} decl={valueCard} />
     </>
   ),
 };
@@ -190,14 +190,16 @@ export const EdgeCases: Story = {
       </div>
     ),
   ],
-  render: () => (
+  render: (args) => (
     <>
       <PreviewDataCard
+        {...args}
         decl={undefinedRecordCard}
         undefinedTypeNames={new Set(["顧客情報", "注文明細"])}
       />
-      <PreviewDataCard decl={openRangeCard} />
+      <PreviewDataCard {...args} decl={openRangeCard} />
       <PreviewDataCard
+        {...args}
         decl={choiceCard}
         undefinedTypeNames={new Set(["未検証の注文", "検証済みの注文"])}
       />
