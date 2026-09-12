@@ -188,6 +188,39 @@ test("IME変換確定後のinputは保留中の外部更新を上書きしない
   expect(editor.input.value).toBe("data External = string");
 });
 
+test("確定inputが先に発火した場合は次の通常入力を破棄しない", async () => {
+  const editor = setup("data Order = string");
+  act(() => {
+    editor.input.dispatchEvent(
+      new CompositionEvent("compositionstart", { bubbles: true }),
+    );
+  });
+  editor.render("data External = string");
+
+  const setter = Object.getOwnPropertyDescriptor(
+    HTMLTextAreaElement.prototype,
+    "value",
+  )?.set;
+  if (setter === undefined) {
+    throw new Error("Native value setter missing");
+  }
+  act(() => {
+    setter.call(editor.input, "data 注文 = string");
+    editor.input.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    editor.input.dispatchEvent(
+      new CompositionEvent("compositionend", { bubbles: true }),
+    );
+  });
+  await act(async () => Promise.resolve());
+
+  act(() => {
+    setter.call(editor.input, "data 注文 = string");
+    editor.input.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  });
+  expect(editor.text()).toBe("data 注文 = string");
+  expect(editor.input.value).toBe("data 注文 = string");
+});
+
 test("IME変換の確定値は確定後のinputイベントを待たず親へ反映する", () => {
   const editor = setup("data Order = string");
   act(() => {
