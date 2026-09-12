@@ -22,8 +22,14 @@ type Story = StoryObj<typeof ModelEditor>;
 
 export const Default: Story = {
   args: {
-    value:
-      "// 注文モデル\ndata OrderId = string\n\ndata Order =\n  id: OrderId\n  quantity: int\n",
+    value: `// 注文モデル
+data OrderId = string
+data Quantity = int
+
+data Order =
+  OrderId
+  AND Quantity
+`,
   },
 };
 export const Empty: Story = { args: { value: "" } };
