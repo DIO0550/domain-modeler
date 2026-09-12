@@ -51,6 +51,55 @@ test("未定義の型名はジャンプ先が無い", () => {
   );
 });
 
+test("コメント内の同名文字列はリネームしない", () => {
+  const source = "data 注文ID = string // 注文ID";
+  const analyzed = AnalyzedModel.create(source);
+  const start = source.indexOf("注文ID");
+  const end = start + "注文ID".length;
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      currentName: "注文ID",
+      nextName: "商品ID",
+    }),
+  ).toEqual({
+    ok: true,
+    value: {
+      edit: { start, end, replacement: "商品ID" },
+      caret: { offset: start, line: 1 },
+    },
+  });
+});
+
+test("部分一致する別識別子はリネームしない", () => {
+  const source = `data 注文 = 注文ID
+data 注文明細 = 注文
+data 注文ID = string`;
+  const analyzed = AnalyzedModel.create(source);
+  const span = `注文 = 注文ID
+data 注文明細 = 注文`;
+  const start = source.indexOf(span);
+  const end = start + span.length;
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      currentName: "注文",
+      nextName: "依頼",
+    }),
+  ).toEqual({
+    ok: true,
+    value: {
+      edit: {
+        start,
+        end,
+        replacement: `依頼 = 注文ID
+data 注文明細 = 依頼`,
+      },
+      caret: { offset: start, line: 1 },
+    },
+  });
+});
+
 test("プリミティブ型名はジャンプ先が無い", () => {
   const analyzed = AnalyzedModel.create("data 注文ID = string");
 

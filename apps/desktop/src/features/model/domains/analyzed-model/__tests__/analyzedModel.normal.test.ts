@@ -58,6 +58,30 @@ test("定義済みの型名は宣言先頭のキャレットになる", () => {
   );
 });
 
+test("宣言名と型参照を1回の編集でリネームする", () => {
+  const source = "data 注文ID = string\ndata 注文 = 注文ID";
+  const analyzed = AnalyzedModel.create(source);
+  const start = source.indexOf("注文ID");
+  const end = source.lastIndexOf("注文ID") + "注文ID".length;
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      currentName: "注文ID",
+      nextName: "商品ID",
+    }),
+  ).toEqual({
+    ok: true,
+    value: {
+      edit: {
+        start,
+        end,
+        replacement: "商品ID = string\ndata 注文 = 商品ID",
+      },
+      caret: { offset: start, line: 1 },
+    },
+  });
+});
+
 test("後方の定義にもジャンプできる", () => {
   const source = "data 注文 = 注文ID\ndata 注文ID = string";
   const analyzed = AnalyzedModel.create(source);
