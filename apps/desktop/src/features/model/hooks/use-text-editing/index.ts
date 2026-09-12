@@ -74,7 +74,8 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps) {
       event.nativeEvent.isComposing ||
       event.altKey ||
       event.ctrlKey ||
-      event.metaKey
+      event.metaKey ||
+      (event.key === "Tab" && event.shiftKey)
     ) {
       return;
     }
