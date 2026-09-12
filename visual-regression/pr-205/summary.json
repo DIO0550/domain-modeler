@@ -1,11 +1,11 @@
 {
-  "reportVersion": "c01f725af02e7a9210f47dddcf524f911b108b9d",
+  "reportVersion": "845a90e485546bef87852cb16f433396a3cb4d5d",
   "maxDiffRatio": 0.002,
-  "changed": 1,
+  "changed": 2,
   "new": 9,
   "deleted": 0,
-  "passed": 45,
-  "failed": 1,
+  "passed": 44,
+  "failed": 2,
   "results": [
     {
       "story": "appshell-menu-bar-menubar--all-props",
@@ -662,10 +662,10 @@
       "id": "model-modeleditor--default",
       "title": "Model/ModelEditor",
       "name": "Default",
-      "status": "passed",
-      "reason": "within-threshold",
-      "diffPixels": 483,
-      "diffRatio": 0.0005,
+      "status": "changed",
+      "reason": "pixel-diff",
+      "diffPixels": 2354,
+      "diffRatio": 0.0026,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
@@ -690,8 +690,8 @@
       "name": "Long Document",
       "status": "changed",
       "reason": "pixel-diff",
-      "diffPixels": 3157,
-      "diffRatio": 0.0034000000000000002,
+      "diffPixels": 49616,
+      "diffRatio": 0.0538,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
