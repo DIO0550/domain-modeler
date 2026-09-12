@@ -15,10 +15,7 @@ type TextEditingSession =
       text: string;
       parentTextAtStart: string;
     }>
-  | Readonly<{
-      status: "discarding-composition-input";
-      text: string;
-    }>;
+  | Readonly<{ status: "discarding-composition-input" }>;
 
 type UseTextEditingProps = Readonly<{
   value: string;
@@ -47,9 +44,7 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps) {
     }
     if (session.status === "discarding-composition-input") {
       setSession({ status: "idle" });
-      if (text === session.text) {
-        return;
-      }
+      return;
     }
     selection.rememberSelection(event);
     onChange(text);
@@ -74,7 +69,15 @@ export function useTextEditing({ value, onChange }: UseTextEditingProps) {
     const externalUpdatePending =
       session.status === "composing" && value !== session.parentTextAtStart;
     if (externalUpdatePending) {
-      setSession({ status: "discarding-composition-input", text: composedText });
+      setSession({ status: "discarding-composition-input" });
+      queueMicrotask(() => {
+        setSession((currentSession) => {
+          if (currentSession.status === "discarding-composition-input") {
+            return { status: "idle" };
+          }
+          return currentSession;
+        });
+      });
       return;
     }
     if (composedText !== value) {
