@@ -109,3 +109,13 @@
   outline: 2px solid var(--model-editor-focus);
   outline-offset: -2px;
 }
+
+.model-editor-story {
+  box-sizing: border-box;
+  width: min(720px, 100vw);
+  height: calc(100vh - 32px);
+  min-height: 240px;
+  overflow: hidden;
+  border: 1px solid var(--model-editor-border);
+  background: var(--model-editor-bg);
+}

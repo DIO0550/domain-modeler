@@ -5,7 +5,7 @@ import { ModelEditor } from "./index";
 function EditableModel({ value: initialValue }: { value: string }) {
   const [value, setValue] = useState(initialValue);
   return (
-    <div style={{ height: "calc(100vh - 32px)", minHeight: 240 }}>
+    <div className="model-editor-story">
       <ModelEditor value={value} onChange={setValue} />
     </div>
   );
