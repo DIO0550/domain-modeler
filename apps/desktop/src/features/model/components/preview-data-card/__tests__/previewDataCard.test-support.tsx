@@ -15,6 +15,7 @@ type CardRenderer = Readonly<{
     undefinedTypeNames?: ReadonlySet<string>,
     onTypeRefClick?: (typeRef: PreviewTypeRef) => void,
     onUndefinedBadgeClick?: (typeRef: PreviewTypeRef) => void,
+    onRename?: (nextName: string) => void,
   ) => HTMLDivElement;
   unmountAll: () => void;
 }>;
@@ -26,7 +27,13 @@ type CardRenderer = Readonly<{
 export const createCardRenderer = (): CardRenderer => {
   const rendered: RenderedCard[] = [];
   return {
-    render: (decl, undefinedTypeNames, onTypeRefClick, onUndefinedBadgeClick) => {
+    render: (
+      decl,
+      undefinedTypeNames,
+      onTypeRefClick,
+      onUndefinedBadgeClick,
+      onRename,
+    ) => {
       const host = document.createElement("div");
       document.body.append(host);
       const root: Root = createRoot(host);
@@ -37,6 +44,7 @@ export const createCardRenderer = (): CardRenderer => {
             undefinedTypeNames={undefinedTypeNames}
             onTypeRefClick={onTypeRefClick}
             onUndefinedBadgeClick={onUndefinedBadgeClick}
+            onRename={onRename}
           />,
         );
       });

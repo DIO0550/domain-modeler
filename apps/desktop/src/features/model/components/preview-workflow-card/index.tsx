@@ -7,6 +7,7 @@ import {
   WorkflowCardPreview,
   type WorkflowCardSection,
 } from "../../domains/workflow-card-preview";
+import { DeclName } from "../decl-name";
 import "./PreviewWorkflowCard.css";
 
 const EMPTY_TYPE_NAMES: ReadonlySet<string> = new Set();
@@ -16,13 +17,14 @@ type PreviewWorkflowCardProps = Readonly<{
   undefinedTypeNames?: ReadonlySet<string>;
   onTypeRefClick?: (typeRef: PreviewTypeRefValue) => void;
   onUndefinedBadgeClick?: (typeRef: PreviewTypeRefValue) => void;
+  onRename?: (nextName: string) => void;
 }>;
 
 /**
  * workflow 宣言を IN / OUT / ERR のカードとして表示する。
  * error 節が無いときは ERR 行を出さない。
  *
- * @param props workflow 宣言、未定義として示す型名、型参照と未定義バッジのクリック。
+ * @param props workflow 宣言、未定義として示す型名、型参照と未定義バッジのクリック、宣言名のリネーム。
  * @returns 構造化プレビューの workflow カード。
  */
 export function PreviewWorkflowCard({
@@ -30,6 +32,7 @@ export function PreviewWorkflowCard({
   undefinedTypeNames = EMPTY_TYPE_NAMES,
   onTypeRefClick,
   onUndefinedBadgeClick,
+  onRename,
 }: PreviewWorkflowCardProps) {
   const preview = WorkflowCardPreview.create(decl, undefinedTypeNames);
   return (
@@ -40,7 +43,11 @@ export function PreviewWorkflowCard({
       aria-label={`${preview.kind}: ${preview.name}`}
     >
       <header className="preview-workflow-card__header">
-        <h2 className="preview-workflow-card__name">{preview.name}</h2>
+        <DeclName
+          name={preview.name}
+          className="preview-workflow-card__name"
+          onRename={onRename}
+        />
         <p className="preview-workflow-card__kind">{preview.kind}</p>
       </header>
       <div className="preview-workflow-card__body">

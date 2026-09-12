@@ -1,0 +1,54 @@
+.decl-name-form {
+  margin: 0;
+  min-width: 0;
+}
+
+.decl-name-button {
+  appearance: none;
+  display: inline;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.decl-name-button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.decl-name-button:focus-visible {
+  outline: 2px solid var(--model-editor-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.decl-name-input {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 1px 4px;
+  border: 1px solid var(--model-editor-focus);
+  border-radius: 4px;
+  background: var(--preview-card-bg);
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+.decl-name-input:focus {
+  outline: 2px solid var(--model-editor-focus);
+  outline-offset: 1px;
+}

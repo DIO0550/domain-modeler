@@ -38,6 +38,17 @@ export const SourceRange = {
     endColumn: end.endColumn,
   }),
   /**
+   * 2つの範囲が同じ位置かを判定する。
+   * @param left 比較する範囲。
+   * @param right 比較する範囲。
+   * @returns 行と桁がすべて一致すれば `true`。
+   */
+  equals: (left: SourceRange, right: SourceRange): boolean =>
+    left.startLine === right.startLine &&
+    left.startColumn === right.startColumn &&
+    left.endLine === right.endLine &&
+    left.endColumn === right.endColumn,
+  /**
    * 範囲が指定した行を含むか判定する。
    * 空範囲でも開始行(終了行)は含む。
    * @param range 判定する範囲。

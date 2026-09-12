@@ -1,19 +1,22 @@
-import { ReservedWord } from "../reserved-word";
+import { TOKEN_KINDS } from "../token";
+import { Tokenizer } from "../tokenizer";
 
 /** 識別子として使える文字列かを判定する関数群。 */
 export const Identifier = {
   /**
-   * 予約語・空・空白含みを拒否し、識別子として使えるか判定する。
+   * トークナイザが識別子1トークンとして出す文字列かを判定する。
+   * 予約語・空・空白・数字・`=` `.` `/` を含む値は拒否する。
    * @param text 判定する文字列。
    * @returns 識別子として使える場合は `true`。
    */
   isAcceptable: (text: string): boolean => {
-    if (text.length === 0) {
-      return false;
-    }
-    if (/\s/u.test(text)) {
-      return false;
-    }
-    return !ReservedWord.is(text);
+    const tokens = Tokenizer.tokenize(text);
+    const [token] = tokens;
+    return (
+      tokens.length === 1 &&
+      token !== undefined &&
+      token.kind === TOKEN_KINDS.identifier &&
+      token.text === text
+    );
   },
 } as const;

@@ -3,9 +3,11 @@ import {
   Declaration,
   Result,
   type Declaration as DeclarationValue,
+  type NamedDecl as NamedDeclValue,
 } from "@domain-modeler/model-core";
 import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "../../domains/analyzed-model";
+import { DeclTemplate, type DeclTemplate as DeclTemplateValue } from "../../domains/decl-template";
 import {
   PreviewTypeRef,
   type PreviewTypeRef as PreviewTypeRefValue,
@@ -78,8 +80,57 @@ export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
     insertStub(typeRef.term.name);
   };
 
+  const renameDeclaration = (params: Readonly<{
+    decl: NamedDeclValue;
+    nextName: string;
+  }>) => {
+    const renamed = AnalyzedModel.rename(analyzed, params);
+    if (Result.isErr(renamed)) {
+      return;
+    }
+    editing.applyEdit(renamed.value.edit, renamed.value.caret);
+    scrollPreviewTo(params.nextName);
+  };
+
+  const insertTemplate = (template: DeclTemplateValue) => {
+    const input = editing.inputRef.current;
+    if (input === null) {
+      return;
+    }
+    const insertion = DeclTemplate.insert(template, {
+      source: editing.value,
+      start: input.selectionStart,
+      end: input.selectionEnd,
+    });
+    editing.applyEditSelecting(insertion.edit, {
+      start: insertion.nameStart,
+      end: insertion.nameEnd,
+      line: insertion.line,
+    });
+  };
+
   return (
     <div className="model-diagnostics">
+      <div
+        className="model-diagnostics__toolbar"
+        role="toolbar"
+        aria-label="編集支援"
+      >
+        <button
+          type="button"
+          className="model-diagnostics__toolbar-button"
+          onClick={() => insertTemplate(DeclTemplate.data())}
+        >
+          data雛形
+        </button>
+        <button
+          type="button"
+          className="model-diagnostics__toolbar-button"
+          onClick={() => insertTemplate(DeclTemplate.workflow())}
+        >
+          workflow雛形
+        </button>
+      </div>
       <section className="model-diagnostics__editor" aria-label="テキストエディタ">
         <ModelEditorDisplay editing={editing} />
       </section>
@@ -95,6 +146,7 @@ export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
             analyzed={analyzed}
             onTypeRefClick={handleTypeRefClick}
             onUndefinedBadgeClick={handleUndefinedBadgeClick}
+            onRename={renameDeclaration}
           />
         ))}
       </section>
@@ -107,6 +159,7 @@ type PreviewDeclItemProps = Readonly<{
   analyzed: AnalyzedModel;
   onTypeRefClick: (typeRef: PreviewTypeRefValue) => void;
   onUndefinedBadgeClick: (typeRef: PreviewTypeRefValue) => void;
+  onRename: (params: Readonly<{ decl: NamedDeclValue; nextName: string }>) => void;
 }>;
 
 /**
@@ -120,6 +173,7 @@ function PreviewDeclItem({
   analyzed,
   onTypeRefClick,
   onUndefinedBadgeClick,
+  onRename,
 }: PreviewDeclItemProps) {
   if (Declaration.isError(decl)) {
     return (
@@ -129,6 +183,9 @@ function PreviewDeclItem({
       />
     );
   }
+  const handleRename = (nextName: string) => {
+    onRename({ decl, nextName });
+  };
   if (Declaration.isData(decl)) {
     return (
       <PreviewDataCard
@@ -136,6 +193,7 @@ function PreviewDeclItem({
         undefinedTypeNames={analyzed.undefinedTypeNames}
         onTypeRefClick={onTypeRefClick}
         onUndefinedBadgeClick={onUndefinedBadgeClick}
+        onRename={handleRename}
       />
     );
   }
@@ -145,6 +203,7 @@ function PreviewDeclItem({
       undefinedTypeNames={analyzed.undefinedTypeNames}
       onTypeRefClick={onTypeRefClick}
       onUndefinedBadgeClick={onUndefinedBadgeClick}
+      onRename={handleRename}
     />
   );
 }

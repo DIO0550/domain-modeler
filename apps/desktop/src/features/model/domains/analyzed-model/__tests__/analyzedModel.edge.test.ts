@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "..";
+import { namedDeclAt } from "./analyzedModel.test-support";
 
 test("空文書は診断も未定義名も無い", () => {
   const analyzed = AnalyzedModel.create("");
@@ -51,6 +52,55 @@ test("未定義の型名はジャンプ先が無い", () => {
   );
 });
 
+test("コメント内の同名文字列はリネームしない", () => {
+  const source = "data 注文ID = string // 注文ID";
+  const analyzed = AnalyzedModel.create(source);
+  const start = source.indexOf("注文ID");
+  const end = start + "注文ID".length;
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      decl: namedDeclAt(analyzed, 0),
+      nextName: "商品ID",
+    }),
+  ).toEqual({
+    ok: true,
+    value: {
+      edit: { start, end, replacement: "商品ID" },
+      caret: { offset: start, line: 1 },
+    },
+  });
+});
+
+test("部分一致する別識別子はリネームしない", () => {
+  const source = `data 注文 = 注文ID
+data 注文明細 = 注文
+data 注文ID = string`;
+  const analyzed = AnalyzedModel.create(source);
+  const span = `注文 = 注文ID
+data 注文明細 = 注文`;
+  const start = source.indexOf(span);
+  const end = start + span.length;
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      decl: namedDeclAt(analyzed, 0),
+      nextName: "依頼",
+    }),
+  ).toEqual({
+    ok: true,
+    value: {
+      edit: {
+        start,
+        end,
+        replacement: `依頼 = 注文ID
+data 注文明細 = 依頼`,
+      },
+      caret: { offset: start, line: 1 },
+    },
+  });
+});
+
 test("プリミティブ型名はジャンプ先が無い", () => {
   const analyzed = AnalyzedModel.create("data 注文ID = string");
 
@@ -67,3 +117,70 @@ data 注文ID = int`);
     Option.some({ offset: 0, line: 1 }),
   );
 });
+
+test("再宣言のうち後のカードをリネームしても先の宣言と参照は残る", () => {
+  const source = `data 注文ID = string
+data 注文ID = int
+data 注文 = 注文ID`;
+  const analyzed = AnalyzedModel.create(source);
+  const start = source.lastIndexOf("data 注文ID = int") + "data ".length;
+  const end = start + "注文ID".length;
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      decl: namedDeclAt(analyzed, 1),
+      nextName: "商品ID",
+    }),
+  ).toEqual({
+    ok: true,
+    value: {
+      edit: { start, end, replacement: "商品ID" },
+      caret: { offset: start, line: 2 },
+    },
+  });
+});
+
+test("既に宣言されている名前へのリネームは失敗する", () => {
+  const analyzed = AnalyzedModel.create(
+    "data 注文ID = string\ndata 注文 = 注文ID",
+  );
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      decl: namedDeclAt(analyzed, 0),
+      nextName: "注文",
+    }),
+  ).toEqual({
+    ok: false,
+    error: "name_collision",
+  });
+});
+
+test("再宣言のうち先のカードをリネームすると参照も置換し後の宣言は残す", () => {
+  const source = `data 注文ID = string
+data 注文ID = int
+data 注文 = 注文ID`;
+  const analyzed = AnalyzedModel.create(source);
+  const start = source.indexOf("注文ID");
+  const end = source.lastIndexOf("注文ID") + "注文ID".length;
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      decl: namedDeclAt(analyzed, 0),
+      nextName: "商品ID",
+    }),
+  ).toEqual({
+    ok: true,
+    value: {
+      edit: {
+        start,
+        end,
+        replacement: `商品ID = string
+data 注文ID = int
+data 注文 = 商品ID`,
+      },
+      caret: { offset: start, line: 1 },
+    },
+  });
+});
+

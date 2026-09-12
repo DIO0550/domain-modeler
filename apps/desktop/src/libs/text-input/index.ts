@@ -9,6 +9,12 @@ type TextInputCaret = Readonly<{
   line: number;
 }>;
 
+type TextInputSelection = Readonly<{
+  start: number;
+  end: number;
+  line: number;
+}>;
+
 const FALLBACK_LINE_HEIGHT_PX = 24;
 
 /**
@@ -38,6 +44,16 @@ const scrollToLine = (input: HTMLTextAreaElement, line: number): void => {
 
 /** ブラウザ標準のテキスト入力履歴を保って入力欄を編集する関数群。 */
 export const TextInput = {
+  /**
+   * テキスト入力欄の API 値が使う改行(LF)へ正規化する。
+   * ブラウザは CRLF / CR を LF として `selectionStart` を数える。
+   *
+   * @param text 文書全文。
+   * @returns LF 改行の全文。
+   */
+  toApiValue(text: string): string {
+    return text.replace(/\r\n|\r/g, "\n");
+  },
   /**
    * 選択範囲を1回の入力操作として置き換える。
    * ネイティブ undo に積むため、入力欄へフォーカスしてから置換する。
@@ -86,10 +102,24 @@ export const TextInput = {
    * @param caret 0始まりのオフセットと 1始まりの行。
    */
   moveCaret(input: HTMLTextAreaElement, caret: TextInputCaret): void {
-    const clamped = Math.max(0, Math.min(caret.offset, input.value.length));
+    TextInput.select(input, {
+      start: caret.offset,
+      end: caret.offset,
+      line: caret.line,
+    });
+  },
+  /**
+   * 選択範囲を指定し、その行が見えるようスクロールする。
+   *
+   * @param input テキスト入力欄。
+   * @param selection 0始まりの開始・終了と 1始まりの行。
+   */
+  select(input: HTMLTextAreaElement, selection: TextInputSelection): void {
+    const start = Math.max(0, Math.min(selection.start, input.value.length));
+    const end = Math.max(0, Math.min(selection.end, input.value.length));
     input.focus();
-    input.setSelectionRange(clamped, clamped, "none");
-    scrollToLine(input, caret.line);
+    input.setSelectionRange(start, end, "forward");
+    scrollToLine(input, selection.line);
     input.dispatchEvent(new Event("scroll", { bubbles: true }));
   },
 } as const;

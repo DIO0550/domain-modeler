@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { Declaration } from "@domain-modeler/model-core";
 import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "..";
+import { namedDeclAt } from "./analyzedModel.test-support";
 
 test("正しい文書は診断が空になる", () => {
   const analyzed = AnalyzedModel.create("data 注文ID = string");
@@ -56,6 +57,30 @@ test("定義済みの型名は宣言先頭のキャレットになる", () => {
   expect(AnalyzedModel.caretOfDefinition(analyzed, "注文ID")).toEqual(
     Option.some({ offset: 0, line: 1 }),
   );
+});
+
+test("宣言名と型参照を1回の編集でリネームする", () => {
+  const source = "data 注文ID = string\ndata 注文 = 注文ID";
+  const analyzed = AnalyzedModel.create(source);
+  const start = source.indexOf("注文ID");
+  const end = source.lastIndexOf("注文ID") + "注文ID".length;
+
+  expect(
+    AnalyzedModel.rename(analyzed, {
+      decl: namedDeclAt(analyzed, 0),
+      nextName: "商品ID",
+    }),
+  ).toEqual({
+    ok: true,
+    value: {
+      edit: {
+        start,
+        end,
+        replacement: "商品ID = string\ndata 注文 = 商品ID",
+      },
+      caret: { offset: start, line: 1 },
+    },
+  });
 });
 
 test("後方の定義にもジャンプできる", () => {
