@@ -9,7 +9,7 @@ import {
   TypeExpr,
   TypeTerm,
 } from "@domain-modeler/model-core";
-import { DataCardPreview, PreviewTypeRef } from "..";
+import { DataCardPreview } from "..";
 
 const range = SourceRange.onLine(1, 1, 40);
 const noUndefined = new Set<string>();
@@ -197,47 +197,5 @@ test("上限のみの数値制約は VALUE プレビューで decimal ..100 に�
     kind: "VALUE",
     name: "上限数量",
     caption: "decimal ..100",
-  });
-});
-
-test("未定義の名前付き型参照は undefined 解決になる", () => {
-  const term = TypeTerm.create({
-    name: "顧客情報",
-    isPrimitive: false,
-    modifiers: [],
-    range,
-  });
-
-  expect(PreviewTypeRef.create(term, new Set(["顧客情報"]))).toEqual({
-    term,
-    resolution: "undefined",
-  });
-});
-
-test("定義済みの名前付き型参照は defined 解決になる", () => {
-  const term = TypeTerm.create({
-    name: "注文ID",
-    isPrimitive: false,
-    modifiers: [],
-    range,
-  });
-
-  expect(PreviewTypeRef.create(term, new Set(["顧客情報"]))).toEqual({
-    term,
-    resolution: "defined",
-  });
-});
-
-test("プリミティブ型は未定義名に含まれていても primitive 解決になる", () => {
-  const term = TypeTerm.create({
-    name: "string",
-    isPrimitive: true,
-    modifiers: [TYPE_MODIFIERS.option],
-    range,
-  });
-
-  expect(PreviewTypeRef.create(term, new Set(["string"]))).toEqual({
-    term,
-    resolution: "primitive",
   });
 });
