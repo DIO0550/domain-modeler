@@ -29,6 +29,19 @@ test("CRLFでも未定義参照の桁位置で警告セグメントを切る", (
   ]);
 });
 
+test("CRのみの改行でも未定義参照をその行の桁位置で切る", () => {
+  const source = "data 注文ID = string\rdata 注文 = 未定義型";
+  const views = EditorDiagnostic.lineViews(
+    source,
+    AnalyzedModel.create(source).diagnostics,
+  );
+
+  expect(views[1]?.segments).toEqual([
+    { kind: "plain", text: "data 注文 = " },
+    { kind: "warning", text: "未定義型" },
+  ]);
+});
+
 test("重なる警告範囲は1つの警告セグメントにまとめる", () => {
   const views = EditorDiagnostic.lineViews("abcdefghij", [
     Diagnostic.create("warning", "内側", SourceRange.onLine(1, 3, 6)),

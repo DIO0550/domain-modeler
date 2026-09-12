@@ -160,6 +160,21 @@ test("CRLF 改行でも行番号がずれない", () => {
   });
 });
 
+test("CR のみの改行でも行番号がずれない", () => {
+  const tokens = Tokenizer.tokenize("data 注文 = string\r// 次行");
+
+  expect(tokens[4]).toEqual({
+    kind: TOKEN_KINDS.comment,
+    text: "// 次行",
+    range: {
+      startLine: 2,
+      startColumn: 1,
+      endLine: 2,
+      endColumn: 6,
+    },
+  });
+});
+
 test("空文字入力でも例外を投げず blankLine 1件になる", () => {
   expect(Tokenizer.tokenize("")).toEqual([
     {
