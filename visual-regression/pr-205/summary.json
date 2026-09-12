@@ -1,5 +1,5 @@
 {
-  "reportVersion": "845a90e485546bef87852cb16f433396a3cb4d5d",
+  "reportVersion": "5ec233ff884bf4d372732ed7675b830a2f78ebfb",
   "maxDiffRatio": 0.002,
   "changed": 2,
   "new": 9,
@@ -664,8 +664,8 @@
       "name": "Default",
       "status": "changed",
       "reason": "pixel-diff",
-      "diffPixels": 2354,
-      "diffRatio": 0.0026,
+      "diffPixels": 2172,
+      "diffRatio": 0.0024,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
