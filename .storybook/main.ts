@@ -31,6 +31,12 @@ const config: StorybookConfig = {
               new URL("../packages/model-core/src/index.ts", import.meta.url),
             ),
           },
+          {
+            find: "@domain-modeler/scaffold",
+            replacement: fileURLToPath(
+              new URL("../packages/scaffold/src/index.ts", import.meta.url),
+            ),
+          },
         ],
       },
     });

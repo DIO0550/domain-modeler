@@ -93,10 +93,19 @@ importers:
       '@domain-modeler/model-core':
         specifier: workspace:*
         version: link:../../packages/model-core
+      '@domain-modeler/scaffold':
+        specifier: workspace:*
+        version: link:../../packages/scaffold
 
   packages/canvas-core: {}
 
   packages/model-core: {}
+
+  packages/scaffold:
+    dependencies:
+      '@domain-modeler/model-core':
+        specifier: workspace:*
+        version: link:../model-core
 
 packages:
 

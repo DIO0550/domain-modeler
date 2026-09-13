@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@domain-modeler/canvas-core": "workspace:*",
-    "@domain-modeler/model-core": "workspace:*"
+    "@domain-modeler/model-core": "workspace:*",
+    "@domain-modeler/scaffold": "workspace:*"
   }
 }

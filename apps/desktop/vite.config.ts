@@ -17,6 +17,9 @@ export default defineConfig(() => ({
       "@domain-modeler/model-core": fileURLToPath(
         new URL("../../packages/model-core/src/index.ts", import.meta.url),
       ),
+      "@domain-modeler/scaffold": fileURLToPath(
+        new URL("../../packages/scaffold/src/index.ts", import.meta.url),
+      ),
     },
   },
 

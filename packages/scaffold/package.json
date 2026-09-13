@@ -1,0 +1,12 @@
+{
+  "name": "@domain-modeler/scaffold",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@domain-modeler/model-core": "workspace:*"
+  }
+}
