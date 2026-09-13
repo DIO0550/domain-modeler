@@ -1,10 +1,9 @@
 import type { Document, Sticky } from "@domain-modeler/canvas-core";
 import { Result, Stub } from "@domain-modeler/model-core";
+import { Comment } from "../comment";
+import { CommandWorkflow } from "../command-workflow";
 import { Identifier } from "../identifier";
 import { Option } from "../option";
-
-/** Command の input 用 data に付ける接尾辞。 */
-const COMMAND_INPUT_SUFFIX = "コマンド";
 
 /** 生成ファイル先頭の説明コメント。 */
 const FILE_INTRO =
@@ -63,17 +62,19 @@ type ClassifiedSticky =
   | UnconvertedLine
   | typeof OMITTED;
 
-/** 出力済み data スタブの識別子と由来。 */
-type EmittedStub = Readonly<{
+/** 出力済み data / workflow の識別子と由来。 */
+type EmittedDeclaration = Readonly<{
   identifier: string;
-  nameSource: StubNameSource;
+  nameSource: StubNameSource | "workflow";
 }>;
 
 /** 出力欄の蓄積。 */
 type Sections = Readonly<{
   dataLines: readonly string[];
   unconvertedLines: readonly string[];
-  emittedStubs: readonly EmittedStub[];
+  emittedDeclarations: readonly EmittedDeclaration[];
+  acceptedStubs: readonly StubLine[];
+  workflowLines: readonly string[];
 }>;
 
 /** data 名の決め方。 */
@@ -83,33 +84,11 @@ type DataNameRule = Readonly<{
 }>;
 
 /**
- * テキストの各物理行をコメントにする。2行目以降は `// ` で始める。
- * @param prefix 先頭行に付ける接頭辞。
- * @param text コメントにするテキスト。
- * @returns コメント行。
- */
-const commentLines = (prefix: string, text: string): readonly string[] => {
-  const physicalLines = text.split(/\r?\n/u);
-  const [first = "", ...rest] = physicalLines;
-  const firstCommented = `${prefix}${first}`;
-  const restCommented = rest.map((line) => `// ${line}`);
-  return [firstCommented, ...restCommented];
-};
-
-/**
  * 識別子をそのまま data 名にする。
  * @param identifier 識別子。
  * @returns data 名。
  */
 const asDataName = (identifier: string): string => identifier;
-
-/**
- * Command の input 用 data 名にする。
- * @param identifier workflow 名になる識別子。
- * @returns `<識別子>コマンド`。
- */
-const asCommandInputName = (identifier: string): string =>
-  `${identifier}${COMMAND_INPUT_SUFFIX}`;
 
 /** Event / Aggregate / Read Model の data 名規則。 */
 const IDENTIFIER_DATA_NAME = {
@@ -120,7 +99,7 @@ const IDENTIFIER_DATA_NAME = {
 /** Command input の data 名規則。 */
 const COMMAND_INPUT_DATA_NAME = {
   nameSource: STUB_NAME_SOURCES.commandInput,
-  dataNameFromIdentifier: asCommandInputName,
+  dataNameFromIdentifier: CommandWorkflow.inputName,
 } as const satisfies DataNameRule;
 
 /**
@@ -130,7 +109,7 @@ const COMMAND_INPUT_DATA_NAME = {
  */
 const unconverted = (sticky: Sticky): UnconvertedLine => ({
   kind: "unconverted",
-  lines: commentLines(`// ${sticky.type}: `, sticky.text),
+  lines: Comment.lines({ prefix: `// ${sticky.type}: `, text: sticky.text }),
 });
 
 /**
@@ -180,7 +159,10 @@ const classifySticky = (sticky: Sticky): ClassifiedSticky => {
     case "hotspot":
       return {
         kind: "hotspot",
-        lines: commentLines(HOTSPOT_COMMENT_PREFIX, sticky.text),
+        lines: Comment.lines({
+          prefix: HOTSPOT_COMMENT_PREFIX,
+          text: sticky.text,
+        }),
       };
     case "actor":
     case "externalSystem":
@@ -222,26 +204,45 @@ const appendClassified = (
       };
     }
     case "stub": {
-      const emitted = sections.emittedStubs.find(
+      const workflowNames = CommandWorkflow.names(classified.sticky);
+      const workflowCollision = workflowNames.some((name) =>
+        sections.emittedDeclarations.some(
+          (stub) => stub.identifier === name && stub.nameSource !== "workflow",
+        ),
+      );
+      if (workflowCollision) {
+        return appendClassified(sections, unconverted(classified.sticky));
+      }
+      const emitted = sections.emittedDeclarations.find(
         (stub) => stub.identifier === classified.identifier,
       );
       if (emitted === undefined) {
         const dataLines = [...sections.dataLines, classified.line];
-        const emittedStubs = [
-          ...sections.emittedStubs,
+        const workflowDeclarations = workflowNames.map((identifier) => ({
+          identifier,
+          nameSource: "workflow" as const,
+        }));
+        const emittedDeclarations = [
+          ...sections.emittedDeclarations,
+          ...workflowDeclarations,
           {
             identifier: classified.identifier,
             nameSource: classified.nameSource,
           },
         ];
         return {
+          ...sections,
+          acceptedStubs: [...sections.acceptedStubs, classified],
           dataLines,
           unconvertedLines: sections.unconvertedLines,
-          emittedStubs,
+          emittedDeclarations,
         };
       }
       if (emitted.nameSource === classified.nameSource) {
-        return sections;
+        return {
+          ...sections,
+          acceptedStubs: [...sections.acceptedStubs, classified],
+        };
       }
       const collision = unconverted(classified.sticky);
       const unconvertedLines = [
@@ -282,13 +283,16 @@ const formatDmodel = (
   generatedOn: string,
   sections: Sections,
 ): string => {
-  const titleComment = commentLines(
-    "// ",
-    `${title} から生成 (${generatedOn})`,
-  ).join("\n");
+  const titleComment = Comment.lines({
+    prefix: "// ",
+    text: `${title} から生成 (${generatedOn})`,
+  }).join("\n");
   const header = `${titleComment}\n// ${FILE_INTRO}`;
   const dataSection = sectionText(DATA_SECTION_HEADER, sections.dataLines);
-  const workflowSection = sectionText(WORKFLOW_SECTION_HEADER, []);
+  const workflowSection = sectionText(
+    WORKFLOW_SECTION_HEADER,
+    sections.workflowLines,
+  );
   const unconvertedSection = sectionText(
     UNCONVERTED_SECTION_HEADER,
     sections.unconvertedLines,
@@ -299,7 +303,9 @@ const formatDmodel = (
 const EMPTY_SECTIONS: Sections = {
   dataLines: [],
   unconvertedLines: [],
-  emittedStubs: [],
+  emittedDeclarations: [],
+  acceptedStubs: [],
+  workflowLines: [],
 };
 
 /** キャンバス文書から .dmodel 叩き台テキストを生成する関数群。 */
@@ -307,7 +313,7 @@ export const Generate = {
   /**
    * キャンバス文書から .dmodel 叩き台テキストを生成する。
    * Event / Aggregate / Read Model / Command input の data スタブと
-   * Hotspot コメントを配列順で出し、Actor / External System / 空文字 /
+   * Command workflow と Hotspot コメントを配列順で出し、Actor / External System / 空文字 /
    * 識別子化できない付箋は未変換欄に残す。
    * @param document 変換元のキャンバス文書。
    * @param generatedOn 生成日(呼び出し側が決めた日付文字列)。
@@ -319,6 +325,17 @@ export const Generate = {
       appendClassified,
       EMPTY_SECTIONS,
     );
-    return formatDmodel(document.title, generatedOn, sections);
+    const acceptedStickies = sections.acceptedStubs.map((stub) => stub.sticky);
+    const workflowLines = CommandWorkflow.namesIn(acceptedStickies).map(
+      (name) =>
+        CommandWorkflow.toDmodelText(
+          { name, stickies: acceptedStickies },
+          document,
+        ),
+    );
+    return formatDmodel(document.title, generatedOn, {
+      ...sections,
+      workflowLines,
+    });
   },
 } as const;
