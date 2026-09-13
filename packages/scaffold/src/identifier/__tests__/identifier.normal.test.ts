@@ -54,6 +54,10 @@ test("同一テキストの付箋は1つの識別子に統合される", () => {
   expect(Identifier.unify(["注文", "顧客", "注文"])).toEqual(["注文", "顧客"]);
 });
 
+test("正規化後に同じ識別子になるテキストは1つに統合される", () => {
+  expect(Identifier.unify(["注文 確定", "注文\n確定"])).toEqual(["注文_確定"]);
+});
+
 test("日本語・予約語・空白混在のテキスト列を識別子化する", () => {
   const texts = ["注文確定", "data", "注文 確定", "input:"];
   const identifiers = Identifier.unify(texts);

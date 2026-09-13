@@ -50,16 +50,18 @@ export const Identifier = {
     return Option.some(identifier);
   },
   /**
-   * 付箋テキスト列を識別子化する。空文字は除き、同一テキストは先出順で1つに統合する。
+   * 付箋テキスト列を識別子化する。変換できないものは除き、正規化後の同一識別子は先出順で1つに統合する。
    * @param texts 付箋テキスト列。
    * @returns 識別子列。
    */
-  unify: (texts: readonly string[]): readonly string[] =>
-    [...new Set(texts)].flatMap((text) => {
+  unify: (texts: readonly string[]): readonly string[] => {
+    const identifiers = texts.flatMap((text) => {
       const identifier = Identifier.create(text);
       if (Option.isNone(identifier)) {
         return [];
       }
       return [identifier.value];
-    }),
+    });
+    return [...new Set(identifiers)];
+  },
 } as const;
