@@ -9,6 +9,14 @@ test("1行目の先頭はオフセット 0 になる", () => {
   ).toEqual(Option.some({ offset: 0, line: 1 }));
 });
 
+test("行と桁からも同じオフセットになる", () => {
+  const source = "data 注文 = string";
+
+  expect(CaretPosition.fromLineColumn(source, 1, 6)).toEqual(
+    Option.some({ offset: 5, line: 1 }),
+  );
+});
+
 test("同一行の桁は先頭からの文字数になる", () => {
   const source = "data 注文 = string";
 

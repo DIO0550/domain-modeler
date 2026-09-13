@@ -6,6 +6,7 @@ import {
   DataCardPreview,
   PreviewTypeRef,
 } from "../../domains/data-card-preview";
+import { DeclName } from "../decl-name";
 import "./PreviewDataCard.css";
 
 const EMPTY_TYPE_NAMES: ReadonlySet<string> = new Set();
@@ -15,12 +16,13 @@ type PreviewDataCardProps = Readonly<{
   undefinedTypeNames?: ReadonlySet<string>;
   onTypeRefClick?: (typeRef: PreviewTypeRef) => void;
   onUndefinedBadgeClick?: (typeRef: PreviewTypeRef) => void;
+  onRename?: (nextName: string) => void;
 }>;
 
 /**
  * data 宣言を ALIAS / RECORD / CHOICE / VALUE のカードとして表示する。
  *
- * @param props data 宣言、未定義として示す型名、型参照と未定義バッジのクリック。
+ * @param props data 宣言、未定義として示す型名、型参照と未定義バッジのクリック、宣言名のリネーム。
  * @returns 構造化プレビューの data カード。
  */
 export function PreviewDataCard({
@@ -28,6 +30,7 @@ export function PreviewDataCard({
   undefinedTypeNames = EMPTY_TYPE_NAMES,
   onTypeRefClick,
   onUndefinedBadgeClick,
+  onRename,
 }: PreviewDataCardProps) {
   const preview = DataCardPreview.create(decl, undefinedTypeNames);
   return (
@@ -38,7 +41,11 @@ export function PreviewDataCard({
       aria-label={`${preview.kind}: ${preview.name}`}
     >
       <header className="preview-data-card__header">
-        <h2 className="preview-data-card__name">{preview.name}</h2>
+        <DeclName
+          name={preview.name}
+          className="preview-data-card__name"
+          onRename={onRename}
+        />
         <p className="preview-data-card__kind">{preview.kind}</p>
       </header>
       <div className="preview-data-card__body">

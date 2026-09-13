@@ -295,3 +295,62 @@ test("未定義バッジをクリックするとその参照を通知する", ()
   expect(clicked[0]?.term.name).toBe("検証エラー");
   expect(clicked[0]?.resolution).toBe("undefined");
 });
+
+test("カード名をクリックして確定すると新しい名前を通知する", () => {
+  const renamed: string[] = [];
+  const host = cards.render(
+    WorkflowDecl.create({
+      name: "注文を確定する",
+      nameRange: range,
+      input: WorkflowSection.create(
+        [
+          TypeTerm.create({
+            name: "string",
+            isPrimitive: true,
+            modifiers: [],
+            range,
+          }),
+        ],
+        range,
+      ),
+      output: WorkflowSection.create(
+        [
+          TypeTerm.create({
+            name: "string",
+            isPrimitive: true,
+            modifiers: [],
+            range,
+          }),
+        ],
+        range,
+      ),
+      error: WorkflowErrorClause.absent(),
+      range,
+    }),
+    undefined,
+    undefined,
+    undefined,
+    (nextName) => {
+      renamed.push(nextName);
+    },
+  );
+  const button = host.querySelector(
+    'button[aria-label="「注文を確定する」をリネーム"]',
+  );
+
+  act(() => {
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const input = host.querySelector('input[aria-label="新しい名前"]');
+  const nameInput =
+    input instanceof HTMLInputElement ? input : document.createElement("input");
+  act(() => {
+    nameInput.value = "依頼を確定する";
+    nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    nameInput.form?.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+  });
+
+  expect(renamed).toEqual(["依頼を確定する"]);
+});

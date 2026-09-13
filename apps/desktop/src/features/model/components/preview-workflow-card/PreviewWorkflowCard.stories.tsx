@@ -126,12 +126,14 @@ const meta: Meta<typeof PreviewWorkflowCard> = {
   args: {
     onTypeRefClick: fn(),
     onUndefinedBadgeClick: fn(),
+    onRename: fn(),
   },
   argTypes: {
     decl: { control: false },
     undefinedTypeNames: { control: false },
     onTypeRefClick: { control: false },
     onUndefinedBadgeClick: { control: false },
+    onRename: { control: false },
   },
   decorators: [
     (Story) => (

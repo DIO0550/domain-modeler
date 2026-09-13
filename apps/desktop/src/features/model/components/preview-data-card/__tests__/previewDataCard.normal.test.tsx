@@ -277,3 +277,46 @@ test("未定義バッジをクリックするとその参照を通知する", ()
   expect(clicked[0]?.term.name).toBe("検証エラー");
   expect(clicked[0]?.resolution).toBe("undefined");
 });
+
+test("カード名をクリックして確定すると新しい名前を通知する", () => {
+  const renamed: string[] = [];
+  const host = cards.render(
+    DataDecl.create({
+      name: "注文ID",
+      nameRange: range,
+      typeExpr: TypeExpr.alias(
+        TypeTerm.create({
+          name: "string",
+          isPrimitive: true,
+          modifiers: [],
+          range,
+        }),
+        range,
+      ),
+      range,
+    }),
+    undefined,
+    undefined,
+    undefined,
+    (nextName) => {
+      renamed.push(nextName);
+    },
+  );
+  const button = host.querySelector('button[aria-label="「注文ID」をリネーム"]');
+
+  act(() => {
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const input = host.querySelector('input[aria-label="新しい名前"]');
+  const nameInput =
+    input instanceof HTMLInputElement ? input : document.createElement("input");
+  act(() => {
+    nameInput.value = "商品ID";
+    nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    nameInput.form?.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+  });
+
+  expect(renamed).toEqual(["商品ID"]);
+});

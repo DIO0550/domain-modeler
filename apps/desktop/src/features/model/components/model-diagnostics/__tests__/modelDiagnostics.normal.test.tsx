@@ -121,3 +121,67 @@ test("未定義バッジをクリックすると末尾にスタブを追記し�
     host.querySelector('[data-decl-name="未定義型"]'),
   ).not.toBeNull();
 });
+
+test("カード名からリネームすると宣言名と参照を一括置換する", () => {
+  const source = "data 注文ID = string\ndata 注文 = 注文ID";
+  const host = diagnostics.render(source);
+  const button = host.querySelector(
+    'button[aria-label="「注文ID」をリネーム"]',
+  );
+  const found = host.querySelector("textarea");
+  const input =
+    found instanceof HTMLTextAreaElement
+      ? found
+      : document.createElement("textarea");
+
+  act(() => {
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const nameField = host.querySelector('input[aria-label="新しい名前"]');
+  const nameInput =
+    nameField instanceof HTMLInputElement
+      ? nameField
+      : document.createElement("input");
+  act(() => {
+    nameInput.focus();
+    nameInput.value = "商品ID";
+    nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    nameInput.form?.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+  });
+
+  expect(input.value).toBe("data 商品ID = string\ndata 注文 = 商品ID");
+  expect(
+    host.querySelector('[data-decl-name="商品ID"]'),
+  ).not.toBeNull();
+});
+
+test("data雛形をカーソル位置へ挿入し名前部分を選択する", () => {
+  const source = "data 注文ID = string";
+  const host = diagnostics.render(source);
+  const found = host.querySelector("textarea");
+  const input =
+    found instanceof HTMLTextAreaElement
+      ? found
+      : document.createElement("textarea");
+  const insertButton = Array.from(host.querySelectorAll("button")).find(
+    (button) => button.textContent === "data雛形",
+  );
+
+  act(() => {
+    input.focus();
+    input.setSelectionRange(source.length, source.length);
+    insertButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  const expected = `${source}\ndata 名前 = string`;
+  const nameStart = `${source}\ndata `.length;
+  const nameEnd = nameStart + "名前".length;
+
+  expect(input.value).toBe(expected);
+  expect([input.selectionStart, input.selectionEnd]).toEqual([
+    nameStart,
+    nameEnd,
+  ]);
+});
