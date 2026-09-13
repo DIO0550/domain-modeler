@@ -63,6 +63,20 @@ test("同じ本文の Event と Command は別識別子の data スタブにな�
   expect(text).toContain("data 注文するコマンド = string // TODO 詳細化");
 });
 
+test("改行を含む Hotspot は各物理行をコメントにする", () => {
+  const text = dmodel([sticky("stk_hot", "hotspot", "在庫\n期限")]);
+
+  expect(text).toContain("// TODO(hotspot): 在庫\n// 期限");
+  expect(text.split("\n").includes("期限")).toBe(false);
+});
+
+test("改行を含む未変換付箋は各物理行をコメントにする", () => {
+  const text = dmodel([sticky("stk_actor", "actor", "顧客\n法人")]);
+
+  expect(text).toContain("// actor: 顧客\n// 法人");
+  expect(text.split("\n").includes("法人")).toBe(false);
+});
+
 test("付箋が無いキャンバスでも見出しだけ出力する", () => {
   expect(dmodel([])).toBe(`// 受注キャンバス から生成 (2026-09-13)
 // このファイルは叩き台です。TODO と未定義の警告を埋めて育ててください

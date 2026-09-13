@@ -35,13 +35,13 @@ type StubLine = Readonly<{
 /** Hotspot コメント行。 */
 type HotspotLine = Readonly<{
   kind: "hotspot";
-  line: string;
+  lines: readonly string[];
 }>;
 
 /** 未変換コメント行。 */
 type UnconvertedLine = Readonly<{
   kind: "unconverted";
-  line: string;
+  lines: readonly string[];
 }>;
 
 /** 付箋1枚の分類結果。 */
@@ -59,6 +59,20 @@ type Sections = Readonly<{
 }>;
 
 /**
+ * テキストの各物理行をコメントにする。2行目以降は `// ` で始める。
+ * @param prefix 先頭行に付ける接頭辞。
+ * @param text コメントにするテキスト。
+ * @returns コメント行。
+ */
+const commentLines = (prefix: string, text: string): readonly string[] => {
+  const physicalLines = text.split(/\r?\n/u);
+  const [first = "", ...rest] = physicalLines;
+  const firstCommented = `${prefix}${first}`;
+  const restCommented = rest.map((line) => `// ${line}`);
+  return [firstCommented, ...restCommented];
+};
+
+/**
  * 識別子をそのまま data 名にする。
  * @param identifier 識別子。
  * @returns data 名。
@@ -74,21 +88,13 @@ const asCommandInputName = (identifier: string): string =>
   `${identifier}${COMMAND_INPUT_SUFFIX}`;
 
 /**
- * 未変換コメント行を作る。
- * @param sticky 未変換の付箋。
- * @returns `// <種別>: <本文>`。
- */
-const unconvertedLine = (sticky: Sticky): string =>
-  `// ${sticky.type}: ${sticky.text}`;
-
-/**
  * 未変換として分類する。
  * @param sticky 未変換の付箋。
  * @returns 未変換の分類。
  */
 const unconverted = (sticky: Sticky): UnconvertedLine => ({
   kind: "unconverted",
-  line: unconvertedLine(sticky),
+  lines: commentLines(`// ${sticky.type}: `, sticky.text),
 });
 
 /**
@@ -136,7 +142,7 @@ const classifySticky = (sticky: Sticky): ClassifiedSticky => {
     case "hotspot":
       return {
         kind: "hotspot",
-        line: `${HOTSPOT_COMMENT_PREFIX}${sticky.text}`,
+        lines: commentLines(HOTSPOT_COMMENT_PREFIX, sticky.text),
       };
     case "actor":
     case "externalSystem":
@@ -159,16 +165,23 @@ const appendClassified = (
   switch (classified.kind) {
     case "omitted":
       return sections;
-    case "unconverted":
+    case "unconverted": {
+      const unconvertedLines = [
+        ...sections.unconvertedLines,
+        ...classified.lines,
+      ];
       return {
         ...sections,
-        unconvertedLines: [...sections.unconvertedLines, classified.line],
+        unconvertedLines,
       };
-    case "hotspot":
+    }
+    case "hotspot": {
+      const dataLines = [...sections.dataLines, ...classified.lines];
       return {
         ...sections,
-        dataLines: [...sections.dataLines, classified.line],
+        dataLines,
       };
+    }
     case "stub": {
       if (sections.stubIdentifiers.includes(classified.identifier)) {
         return sections;
@@ -211,7 +224,11 @@ const formatDmodel = (
   generatedOn: string,
   sections: Sections,
 ): string => {
-  const header = `// ${title} から生成 (${generatedOn})\n// ${FILE_INTRO}`;
+  const titleComment = commentLines(
+    "// ",
+    `${title} から生成 (${generatedOn})`,
+  ).join("\n");
+  const header = `${titleComment}\n// ${FILE_INTRO}`;
   const dataSection = sectionText(DATA_SECTION_HEADER, sections.dataLines);
   const workflowSection = sectionText(WORKFLOW_SECTION_HEADER, []);
   const unconvertedSection = sectionText(
