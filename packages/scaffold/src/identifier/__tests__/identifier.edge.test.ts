@@ -14,6 +14,17 @@ test("空文字だけの列は空の識別子列になる", () => {
   expect(Identifier.unify(["", ""])).toEqual([]);
 });
 
+test.each(["1st", "A=B", "注文/確定"])(
+  "識別子として使えない %s は変換対象外になる",
+  (text: string) => {
+    expect(Identifier.create(text)).toEqual(Option.none());
+  },
+);
+
+test("識別子として使えないテキストは識別子列から除外される", () => {
+  expect(Identifier.unify(["1st", "注文", "A=B"])).toEqual(["注文"]);
+});
+
 test.each([
   { text: "   ", expected: "___" },
   { text: "\n", expected: "_" },
