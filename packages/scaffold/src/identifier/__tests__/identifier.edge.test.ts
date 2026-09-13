@@ -50,6 +50,13 @@ test("空白置換後が予約語でなければ suffix は付かない", () => 
   expect(Identifier.create("da ta")).toEqual(Option.some("da_ta"));
 });
 
+test.each(["constructor", "toString"])(
+  "Object.prototype のキー %s は予約語として suffix しない",
+  (text: string) => {
+    expect(Identifier.create(text)).toEqual(Option.some(text));
+  },
+);
+
 test("同一の予約語テキストは1つの識別子に統合される", () => {
   expect(Identifier.unify(["data", "data"])).toEqual(["data_"]);
 });

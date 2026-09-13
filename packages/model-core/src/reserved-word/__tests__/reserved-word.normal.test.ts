@@ -15,6 +15,14 @@ test.each(["注文", "string", "input", "Data", "and", ""])(
   },
 );
 
+test.each(["constructor", "toString", "__proto__", "hasOwnProperty"])(
+  "Object.prototype のキー %s は予約語ではない",
+  (word: string) => {
+    expect(ReservedWord.is(word)).toBe(false);
+    expect(ReservedWord.matchedLength(word)).toBe(0);
+  },
+);
+
 test.each([
   { text: "data ", expected: 4 },
   { text: "workflow=", expected: 8 },

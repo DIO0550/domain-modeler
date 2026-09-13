@@ -32,10 +32,12 @@ const leadingWordLength = (text: string): number => {
 export const ReservedWord = {
   /**
    * 値が予約語か判定する。
+   * `Object.prototype` の継承キーは語彙に含めない。
    * @param value 判定する値。
    * @returns 予約語の場合は `true`。
    */
-  is: (value: string): value is ReservedWord => value in RESERVED_WORDS,
+  is: (value: string): value is ReservedWord =>
+    Object.prototype.hasOwnProperty.call(RESERVED_WORDS, value),
   /**
    * 先頭から予約語として最長一致する文字数を返す。一致しなければ 0。
    * `input:` / `output:` / `error:` はコロン込みで照合する。
@@ -46,12 +48,12 @@ export const ReservedWord = {
     const wordLength = leadingWordLength(text);
     if (wordLength > 0 && text[wordLength] === ":") {
       const candidate = text.slice(0, wordLength + 1);
-      if (candidate in RESERVED_WORDS) {
+      if (ReservedWord.is(candidate)) {
         return wordLength + 1;
       }
     }
     const withoutColon = text.slice(0, wordLength);
-    if (withoutColon in RESERVED_WORDS) {
+    if (ReservedWord.is(withoutColon)) {
       return wordLength;
     }
     return 0;
