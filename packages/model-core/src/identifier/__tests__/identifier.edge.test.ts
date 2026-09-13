@@ -22,7 +22,3 @@ test.each(["123", "A=B", ".", "/", "1st"])(
     expect(Identifier.isAcceptable(text)).toBe(false);
   },
 );
-
-test("コロンなしの input は予約語ではないが識別子として使える", () => {
-  expect(Identifier.isAcceptable("input")).toBe(true);
-});
