@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/canvas-core" },
     { "path": "./packages/model-core" },
+    { "path": "./packages/scaffold" },
     { "path": "./apps/desktop" }
   ]
 }
