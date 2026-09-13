@@ -25,11 +25,23 @@ const HOTSPOT_COMMENT_PREFIX = "// TODO(hotspot): ";
 /** この変換が扱わない付箋。Policy は workflow 変換の対象。 */
 const OMITTED = { kind: "omitted" } as const;
 
+/** data 名の由来。identifier は付箋テキストの識別子そのもの。 */
+const STUB_NAME_SOURCES = {
+  identifier: "identifier",
+  commandInput: "commandInput",
+} as const;
+
+/** data 名の由来。 */
+type StubNameSource =
+  (typeof STUB_NAME_SOURCES)[keyof typeof STUB_NAME_SOURCES];
+
 /** data スタブ行。 */
 type StubLine = Readonly<{
   kind: "stub";
   identifier: string;
+  nameSource: StubNameSource;
   line: string;
+  sticky: Sticky;
 }>;
 
 /** Hotspot コメント行。 */
@@ -51,11 +63,23 @@ type ClassifiedSticky =
   | UnconvertedLine
   | typeof OMITTED;
 
+/** 出力済み data スタブの識別子と由来。 */
+type EmittedStub = Readonly<{
+  identifier: string;
+  nameSource: StubNameSource;
+}>;
+
 /** 出力欄の蓄積。 */
 type Sections = Readonly<{
   dataLines: readonly string[];
   unconvertedLines: readonly string[];
-  stubIdentifiers: readonly string[];
+  emittedStubs: readonly EmittedStub[];
+}>;
+
+/** data 名の決め方。 */
+type DataNameRule = Readonly<{
+  nameSource: StubNameSource;
+  dataNameFromIdentifier: (identifier: string) => string;
 }>;
 
 /**
@@ -87,6 +111,18 @@ const asDataName = (identifier: string): string => identifier;
 const asCommandInputName = (identifier: string): string =>
   `${identifier}${COMMAND_INPUT_SUFFIX}`;
 
+/** Event / Aggregate / Read Model の data 名規則。 */
+const IDENTIFIER_DATA_NAME = {
+  nameSource: STUB_NAME_SOURCES.identifier,
+  dataNameFromIdentifier: asDataName,
+} as const satisfies DataNameRule;
+
+/** Command input の data 名規則。 */
+const COMMAND_INPUT_DATA_NAME = {
+  nameSource: STUB_NAME_SOURCES.commandInput,
+  dataNameFromIdentifier: asCommandInputName,
+} as const satisfies DataNameRule;
+
 /**
  * 未変換として分類する。
  * @param sticky 未変換の付箋。
@@ -100,18 +136,18 @@ const unconverted = (sticky: Sticky): UnconvertedLine => ({
 /**
  * 識別子化して data スタブにする。できない場合は未変換。
  * @param sticky 変換する付箋。
- * @param dataNameFromIdentifier 識別子から data 名を決める関数。
+ * @param dataNameRule data 名の決め方。
  * @returns スタブまたは未変換。
  */
 const stubOrUnconverted = (
   sticky: Sticky,
-  dataNameFromIdentifier: (identifier: string) => string,
+  dataNameRule: DataNameRule,
 ): ClassifiedSticky => {
   const identifier = Identifier.create(sticky.text);
   if (Option.isNone(identifier)) {
     return unconverted(sticky);
   }
-  const dataName = dataNameFromIdentifier(identifier.value);
+  const dataName = dataNameRule.dataNameFromIdentifier(identifier.value);
   const stub = Stub.generate(dataName);
   if (Result.isErr(stub)) {
     return unconverted(sticky);
@@ -119,7 +155,9 @@ const stubOrUnconverted = (
   return {
     kind: "stub",
     identifier: dataName,
+    nameSource: dataNameRule.nameSource,
     line: stub.value,
+    sticky,
   };
 };
 
@@ -136,9 +174,9 @@ const classifySticky = (sticky: Sticky): ClassifiedSticky => {
     case "event":
     case "aggregate":
     case "readModel":
-      return stubOrUnconverted(sticky, asDataName);
+      return stubOrUnconverted(sticky, IDENTIFIER_DATA_NAME);
     case "command":
-      return stubOrUnconverted(sticky, asCommandInputName);
+      return stubOrUnconverted(sticky, COMMAND_INPUT_DATA_NAME);
     case "hotspot":
       return {
         kind: "hotspot",
@@ -153,7 +191,8 @@ const classifySticky = (sticky: Sticky): ClassifiedSticky => {
 };
 
 /**
- * 分類結果を出力欄へ足す。同じ data 識別子は先出だけ残す。
+ * 分類結果を出力欄へ足す。同じ由来の同一識別子は先出だけ残し、
+ * Command 接尾辞など別由来の衝突は後着を未変換欄へ送る。
  * @param sections ここまでの出力欄。
  * @param classified 足す分類結果。
  * @returns 更新した出力欄。
@@ -183,16 +222,35 @@ const appendClassified = (
       };
     }
     case "stub": {
-      if (sections.stubIdentifiers.includes(classified.identifier)) {
+      const emitted = sections.emittedStubs.find(
+        (stub) => stub.identifier === classified.identifier,
+      );
+      if (emitted === undefined) {
+        const dataLines = [...sections.dataLines, classified.line];
+        const emittedStubs = [
+          ...sections.emittedStubs,
+          {
+            identifier: classified.identifier,
+            nameSource: classified.nameSource,
+          },
+        ];
+        return {
+          dataLines,
+          unconvertedLines: sections.unconvertedLines,
+          emittedStubs,
+        };
+      }
+      if (emitted.nameSource === classified.nameSource) {
         return sections;
       }
+      const collision = unconverted(classified.sticky);
+      const unconvertedLines = [
+        ...sections.unconvertedLines,
+        ...collision.lines,
+      ];
       return {
-        dataLines: [...sections.dataLines, classified.line],
-        unconvertedLines: sections.unconvertedLines,
-        stubIdentifiers: [
-          ...sections.stubIdentifiers,
-          classified.identifier,
-        ],
+        ...sections,
+        unconvertedLines,
       };
     }
   }
@@ -241,7 +299,7 @@ const formatDmodel = (
 const EMPTY_SECTIONS: Sections = {
   dataLines: [],
   unconvertedLines: [],
-  stubIdentifiers: [],
+  emittedStubs: [],
 };
 
 /** キャンバス文書から .dmodel 叩き台テキストを生成する関数群。 */

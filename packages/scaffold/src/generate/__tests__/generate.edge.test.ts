@@ -63,6 +63,28 @@ test("同じ本文の Event と Command は別識別子の data スタブにな�
   expect(text).toContain("data 注文するコマンド = string // TODO 詳細化");
 });
 
+test("Command 接尾辞が先出 Event の識別子と衝突する後着は未変換欄に残る", () => {
+  const text = dmodel([
+    sticky("stk_event", "event", "注文コマンド"),
+    sticky("stk_cmd", "command", "注文"),
+  ]);
+
+  expect(text).toContain("data 注文コマンド = string // TODO 詳細化");
+  expect(text).toContain("// command: 注文");
+  expect(text.match(/^data /gmu)).toHaveLength(1);
+});
+
+test("先に出た Command と識別子が衝突する Event は未変換欄に残る", () => {
+  const text = dmodel([
+    sticky("stk_cmd", "command", "注文"),
+    sticky("stk_event", "event", "注文コマンド"),
+  ]);
+
+  expect(text).toContain("data 注文コマンド = string // TODO 詳細化");
+  expect(text).toContain("// event: 注文コマンド");
+  expect(text.match(/^data /gmu)).toHaveLength(1);
+});
+
 test("改行を含む Hotspot は各物理行をコメントにする", () => {
   const text = dmodel([sticky("stk_hot", "hotspot", "在庫\n期限")]);
 
