@@ -230,6 +230,21 @@
     "name": "Edge Cases"
   },
   {
+    "id": "features-scaffold-components-scaffold-preview-scaffoldpreview--default",
+    "title": "features/scaffold/components/scaffold-preview/ScaffoldPreview",
+    "name": "Default"
+  },
+  {
+    "id": "features-scaffold-components-scaffold-preview-scaffoldpreview--empty",
+    "title": "features/scaffold/components/scaffold-preview/ScaffoldPreview",
+    "name": "Empty"
+  },
+  {
+    "id": "features-scaffold-components-scaffold-preview-scaffoldpreview--long-text",
+    "title": "features/scaffold/components/scaffold-preview/ScaffoldPreview",
+    "name": "Long Text"
+  },
+  {
     "id": "model-modeldiagnostics--all-props",
     "title": "Model/ModelDiagnostics",
     "name": "All Props"
