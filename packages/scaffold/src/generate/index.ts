@@ -4,6 +4,7 @@ import { Comment } from "../comment";
 import { CommandWorkflow } from "../command-workflow";
 import { Identifier } from "../identifier";
 import { Option } from "../option";
+import { PolicyWorkflow } from "../policy-workflow";
 
 /** 生成ファイル先頭の説明コメント。 */
 const FILE_INTRO =
@@ -21,8 +22,12 @@ const UNCONVERTED_SECTION_HEADER = "// ---- 未変換 ----";
 /** Hotspot コメントの接頭辞。 */
 const HOTSPOT_COMMENT_PREFIX = "// TODO(hotspot): ";
 
-/** この変換が扱わない付箋。Policy は workflow 変換の対象。 */
-const OMITTED = { kind: "omitted" } as const;
+/** data を伴わない Policy workflow。 */
+type PolicyLine = Readonly<{
+  kind: "policy";
+  identifier: string;
+  sticky: Sticky;
+}>;
 
 /** data 名の由来。identifier は付箋テキストの識別子そのもの。 */
 const STUB_NAME_SOURCES = {
@@ -56,16 +61,12 @@ type UnconvertedLine = Readonly<{
 }>;
 
 /** 付箋1枚の分類結果。 */
-type ClassifiedSticky =
-  | StubLine
-  | HotspotLine
-  | UnconvertedLine
-  | typeof OMITTED;
+type ClassifiedSticky = StubLine | HotspotLine | UnconvertedLine | PolicyLine;
 
 /** 出力済み data / workflow の識別子と由来。 */
 type EmittedDeclaration = Readonly<{
   identifier: string;
-  nameSource: StubNameSource | "workflow";
+  nameSource: StubNameSource | "workflow" | "policy";
 }>;
 
 /** 出力欄の蓄積。 */
@@ -73,7 +74,7 @@ type Sections = Readonly<{
   dataLines: readonly string[];
   unconvertedLines: readonly string[];
   emittedDeclarations: readonly EmittedDeclaration[];
-  acceptedStubs: readonly StubLine[];
+  acceptedDeclarations: readonly (StubLine | PolicyLine)[];
   workflowLines: readonly string[];
 }>;
 
@@ -141,7 +142,7 @@ const stubOrUnconverted = (
 };
 
 /**
- * 付箋1枚を data / hotspot / 未変換 / 対象外へ分類する。
+ * 付箋1枚を data / workflow / hotspot / 未変換へ分類する。
  * @param sticky 分類する付箋。
  * @returns 分類結果。
  */
@@ -167,8 +168,13 @@ const classifySticky = (sticky: Sticky): ClassifiedSticky => {
     case "actor":
     case "externalSystem":
       return unconverted(sticky);
-    case "policy":
-      return OMITTED;
+    case "policy": {
+      const identifier = Identifier.create(sticky.text);
+      if (Option.isNone(identifier)) {
+        return unconverted(sticky);
+      }
+      return { kind: "policy", identifier: identifier.value, sticky };
+    }
   }
 };
 
@@ -184,8 +190,29 @@ const appendClassified = (
   classified: ClassifiedSticky,
 ): Sections => {
   switch (classified.kind) {
-    case "omitted":
-      return sections;
+    case "policy": {
+      const emitted = sections.emittedDeclarations.find(
+        (declaration) => declaration.identifier === classified.identifier,
+      );
+      if (emitted !== undefined && emitted.nameSource !== "policy") {
+        return appendClassified(sections, unconverted(classified.sticky));
+      }
+      const acceptedDeclarations = [
+        ...sections.acceptedDeclarations,
+        classified,
+      ];
+      if (emitted !== undefined) {
+        return { ...sections, acceptedDeclarations };
+      }
+      const emittedDeclarations = [
+        ...sections.emittedDeclarations,
+        {
+          identifier: classified.identifier,
+          nameSource: "policy" as const,
+        },
+      ];
+      return { ...sections, acceptedDeclarations, emittedDeclarations };
+    }
     case "unconverted": {
       const unconvertedLines = [
         ...sections.unconvertedLines,
@@ -232,7 +259,7 @@ const appendClassified = (
         ];
         return {
           ...sections,
-          acceptedStubs: [...sections.acceptedStubs, classified],
+          acceptedDeclarations: [...sections.acceptedDeclarations, classified],
           dataLines,
           unconvertedLines: sections.unconvertedLines,
           emittedDeclarations,
@@ -241,7 +268,7 @@ const appendClassified = (
       if (emitted.nameSource === classified.nameSource) {
         return {
           ...sections,
-          acceptedStubs: [...sections.acceptedStubs, classified],
+          acceptedDeclarations: [...sections.acceptedDeclarations, classified],
         };
       }
       const collision = unconverted(classified.sticky);
@@ -304,7 +331,7 @@ const EMPTY_SECTIONS: Sections = {
   dataLines: [],
   unconvertedLines: [],
   emittedDeclarations: [],
-  acceptedStubs: [],
+  acceptedDeclarations: [],
   workflowLines: [],
 };
 
@@ -313,7 +340,7 @@ export const Generate = {
   /**
    * キャンバス文書から .dmodel 叩き台テキストを生成する。
    * Event / Aggregate / Read Model / Command input の data スタブと
-   * Command workflow と Hotspot コメントを配列順で出し、Actor / External System / 空文字 /
+   * Command / Policy workflow と Hotspot コメントを配列順で出し、Actor / External System / 空文字 /
    * 識別子化できない付箋は未変換欄に残す。
    * @param document 変換元のキャンバス文書。
    * @param generatedOn 生成日(呼び出し側が決めた日付文字列)。
@@ -325,13 +352,23 @@ export const Generate = {
       appendClassified,
       EMPTY_SECTIONS,
     );
-    const acceptedStickies = sections.acceptedStubs.map((stub) => stub.sticky);
-    const workflowLines = CommandWorkflow.namesIn(acceptedStickies).map(
-      (name) =>
-        CommandWorkflow.toDmodelText(
-          { name, stickies: acceptedStickies },
-          document,
-        ),
+    const acceptedStickies = sections.acceptedDeclarations.map(
+      (stub) => stub.sticky,
+    );
+    const workflowLines = sections.emittedDeclarations.flatMap(
+      (declaration) => {
+        const workflow = {
+          name: declaration.identifier,
+          stickies: acceptedStickies,
+        };
+        if (declaration.nameSource === "workflow") {
+          return [CommandWorkflow.toDmodelText(workflow, document)];
+        }
+        if (declaration.nameSource === "policy") {
+          return [PolicyWorkflow.toDmodelText(workflow, document)];
+        }
+        return [];
+      },
     );
     return formatDmodel(document.title, generatedOn, {
       ...sections,
