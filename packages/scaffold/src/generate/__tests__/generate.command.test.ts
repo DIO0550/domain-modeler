@@ -1,20 +1,6 @@
-import {
-  ConnectionId,
-  StickyId,
-  type Connection,
-} from "@domain-modeler/canvas-core";
 import { Parse, Resolve } from "@domain-modeler/model-core";
 import { expect, test } from "vitest";
-import { dmodel, sticky } from "./dmodel-fixture";
-
-/** 接続順を明示するテスト用の接続。 */
-const connection = (from: string, to: string, label = ""): Connection => ({
-  id: ConnectionId.create(`${from}-${to}-${label}`),
-  from: StickyId.create(from),
-  to: StickyId.create(to),
-  label,
-  note: "",
-});
+import { connection, dmodel, sticky } from "./dmodel-fixture";
 
 test("Command は input data と workflow を生成し Event が無ければ未定義 TODO を残す", () => {
   const text = dmodel([sticky("c", "command", "注文する")]);

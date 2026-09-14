@@ -2,6 +2,7 @@ import type { Document, Sticky } from "@domain-modeler/canvas-core";
 import { Comment } from "../comment";
 import { Identifier } from "../identifier";
 import { Option } from "../option";
+import { WorkflowPort } from "../workflow-port";
 
 /** 同一識別子の Command と、変換可能な接続先の付箋。 */
 export type CommandWorkflow = Readonly<{
@@ -77,17 +78,7 @@ export const CommandWorkflow = {
     );
     const comments = targets
       .filter((target) => target.kind === "comment")
-      .flatMap((target) => {
-        const destination = Comment.lines({
-          prefix: "// -> ",
-          text: target.text,
-        });
-        if (target.label.length === 0) {
-          return destination;
-        }
-        const label = Comment.lines({ prefix: "// ", text: target.label });
-        return [...destination, ...label];
-      });
+      .flatMap(Comment.connectionLines);
     const events = targets.filter((target) => target.kind === "event");
     const output = CommandWorkflow.outputText(events);
     const declaration = `workflow ${workflow.name} =\n  input: ${CommandWorkflow.inputName(workflow.name)}\n${output}`;
@@ -98,23 +89,11 @@ export const CommandWorkflow = {
   outputText: (
     events: readonly Readonly<{ text: string; label: string }>[],
   ): string => {
-    if (events.length === 0) {
-      return "  output: TODO結果イベント";
-    }
-    if (events.every((event) => event.label.length === 0)) {
-      const names = [...new Set(events.map((event) => event.text))];
-      return `  output: ${names.join(" OR ")}`;
-    }
-    const terms = events.map((event, index) => {
-      const prefix = index === 0 ? "  output: " : "    OR ";
-      const term = `${prefix}${event.text}`;
-      if (event.label.length === 0) {
-        return term;
-      }
-      return Comment.lines({ prefix: `${term} // `, text: event.label })
-        .map((line, lineIndex) => (lineIndex === 0 ? line : `    ${line}`))
-        .join("\n");
+    return WorkflowPort.toDmodelText({
+      direction: "output",
+      operator: "OR",
+      fallback: "TODO結果イベント",
+      terms: events,
     });
-    return terms.join("\n");
   },
 } as const;

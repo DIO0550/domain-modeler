@@ -1,5 +1,6 @@
 import {
   Document,
+  ConnectionId,
   StickyId,
   type Sticky,
   type Connection,
@@ -43,3 +44,16 @@ export const dmodel = (
     { ...Document.empty(TITLE), stickies, connections },
     GENERATED_ON,
   );
+
+/** 接続順を明示するテスト用の接続。 */
+export const connection = (
+  from: string,
+  to: string,
+  label = "",
+): Connection => ({
+  id: ConnectionId.create(`${from}-${to}-${label}`),
+  from: StickyId.create(from),
+  to: StickyId.create(to),
+  label,
+  note: "",
+});
