@@ -1,4 +1,9 @@
-import { Document, StickyId, type Sticky } from "@domain-modeler/canvas-core";
+import {
+  Document,
+  StickyId,
+  type Sticky,
+  type Connection,
+} from "@domain-modeler/canvas-core";
 import { Generate } from "..";
 
 const GENERATED_ON = "2026-09-13";
@@ -30,8 +35,11 @@ export const sticky = (
  * @param stickies キャンバスの付箋列。
  * @returns 生成した .dmodel テキスト。
  */
-export const dmodel = (stickies: readonly Sticky[]): string =>
+export const dmodel = (
+  stickies: readonly Sticky[],
+  connections: readonly Connection[] = [],
+): string =>
   Generate.toDmodelText(
-    { ...Document.empty(TITLE), stickies },
+    { ...Document.empty(TITLE), stickies, connections },
     GENERATED_ON,
   );

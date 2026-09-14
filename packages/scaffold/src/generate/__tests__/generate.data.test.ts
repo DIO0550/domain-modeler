@@ -55,6 +55,10 @@ data 注文一覧 = string // TODO 詳細化
 
 // ---- workflow ----
 
+workflow 注文する =
+  input: 注文するコマンド
+  output: TODO結果イベント
+
 // ---- 未変換 ----
 
 // actor: 顧客

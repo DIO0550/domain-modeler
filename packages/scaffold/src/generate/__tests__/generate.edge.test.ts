@@ -53,14 +53,15 @@ test("予約語の Command は識別子化してからコマンド接尾辞を�
   );
 });
 
-test("同じ本文の Event と Command は別識別子の data スタブになる", () => {
+test("同じ本文の先出 Event と workflow 名が衝突する Command は未変換になる", () => {
   const text = dmodel([
     sticky("stk_event", "event", "注文する"),
     sticky("stk_cmd", "command", "注文する"),
   ]);
 
   expect(text).toContain("data 注文する = string // TODO 詳細化");
-  expect(text).toContain("data 注文するコマンド = string // TODO 詳細化");
+  expect(text).not.toContain("data 注文するコマンド = string // TODO 詳細化");
+  expect(text).toContain("// command: 注文する");
 });
 
 test("Command 接尾辞が先出 Event の識別子と衝突する後着は未変換欄に残る", () => {
