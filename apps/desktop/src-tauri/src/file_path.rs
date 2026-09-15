@@ -12,11 +12,16 @@ use std::os::unix::fs::MetadataExt;
 /// 存在する最深の祖先を canonicalize してシンボリックリンクを解決する。
 /// 末尾が存在しない場合の名前の同一性は、対象ディレクトリで実際に確認した規則に従う。
 pub fn same_file_path(left: &str, right: &str) -> bool {
-    let Some(left_resolved) = resolved_path(Path::new(left)) else {
-        return left == right;
+    let left_path = crate::ipc_path::decode(left);
+    let right_path = crate::ipc_path::decode(right);
+    if left_path == right_path {
+        return true;
+    }
+    let Some(left_resolved) = resolved_path(&left_path) else {
+        return true;
     };
-    let Some(right_resolved) = resolved_path(Path::new(right)) else {
-        return left == right;
+    let Some(right_resolved) = resolved_path(&right_path) else {
+        return true;
     };
     if left_resolved == right_resolved {
         return true;
@@ -28,8 +33,10 @@ pub fn same_file_path(left: &str, right: &str) -> bool {
     let Some(right_parent) = right_resolved.parent() else {
         return false;
     };
-    if !same_directory(left_parent, right_parent) {
-        return false;
+    match same_directory(left_parent, right_parent) {
+        Some(true) => {}
+        Some(false) => return false,
+        None => return true,
     }
     let Some(left_name) = left_resolved.file_name() else {
         return false;
@@ -91,88 +98,127 @@ fn file_names_are_equivalent(
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
-    let prefix = format!(
-        ".domain-modeler-name-probe-{}-{}-",
-        std::process::id(),
-        nanos
-    );
+    let prefix = format!(".dm-probe-{}-{nanos:x}-", std::process::id());
+    let (left_name, right_name) = compact_probe_names(left_name, right_name);
     let mut left_probe_name = OsString::from(&prefix);
-    left_probe_name.push(left_name);
+    left_probe_name.push(&left_name);
     let mut right_probe_name = OsString::from(prefix);
-    right_probe_name.push(right_name);
-    let direct_result = probe_file_names(
+    right_probe_name.push(&right_name);
+    probe_file_names(
         &directory.join(left_probe_name),
         &directory.join(right_probe_name),
-    );
-    if direct_result.is_some() {
-        return direct_result;
-    }
+    )
+}
 
-    probe_file_names_in_temporary_directory(directory, left_name, right_name, nanos)
+/// コンポーネント長の上限を超えない範囲で、最初と最後の相違箇所を残す。
+fn compact_probe_names(left: &OsStr, right: &OsStr) -> (OsString, OsString) {
+    let left = left.to_string_lossy().chars().collect::<Vec<_>>();
+    let right = right.to_string_lossy().chars().collect::<Vec<_>>();
+    let common_start = left
+        .iter()
+        .zip(&right)
+        .take_while(|(left, right)| left == right)
+        .count();
+    let common_end = left
+        .iter()
+        .rev()
+        .zip(right.iter().rev())
+        .take_while(|(left, right)| left == right)
+        .count();
+    (
+        compact_probe_name(&left, common_start, common_end),
+        compact_probe_name(&right, common_start, common_end),
+    )
+}
+
+fn compact_probe_name(chars: &[char], common_start: usize, common_end: usize) -> OsString {
+    const CONTEXT: usize = 10;
+    let first_start = common_start.saturating_sub(CONTEXT);
+    let first_end = (common_start + CONTEXT).min(chars.len());
+    let last_difference = chars.len().saturating_sub(common_end);
+    let last_start = last_difference.saturating_sub(CONTEXT);
+    let last_end = (last_difference + CONTEXT).min(chars.len());
+    let mut compact = chars[first_start..first_end].iter().collect::<String>();
+    if last_start > first_end {
+        compact.push('-');
+        compact.extend(chars[last_start..last_end].iter().copied());
+    }
+    OsString::from(compact)
 }
 
 fn probe_file_names(left_probe: &Path, right_probe: &Path) -> Option<bool> {
-    let left_file = File::options()
-        .write(true)
-        .create_new(true)
-        .open(left_probe)
-        .ok()?;
-    let right_result = File::options()
-        .write(true)
-        .create_new(true)
-        .open(right_probe);
+    let left_file = open_probe(left_probe).ok()?;
+    let right_result = open_probe(right_probe);
     let equivalent = match right_result {
         Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
             Some(true)
         }
         Ok(right_file) => {
-            drop(right_file);
-            let _ = fs::remove_file(right_probe);
+            remove_probe_if_unchanged(right_probe, &right_file);
             Some(false)
         }
         Err(_) => None,
     };
-    drop(left_file);
-    let _ = fs::remove_file(left_probe);
+    remove_probe_if_unchanged(left_probe, &left_file);
     equivalent
 }
 
-fn probe_file_names_in_temporary_directory(
-    directory: &Path,
-    left_name: &OsStr,
-    right_name: &OsStr,
-    nanos: u128,
-) -> Option<bool> {
-    let probe_directory = directory.join(format!(
-        ".domain-modeler-name-probe-{}-{}",
-        std::process::id(),
-        nanos
-    ));
-    fs::create_dir(&probe_directory).ok()?;
-    let left_probe = probe_directory.join(left_name);
-    let equivalent = probe_file_names(&left_probe, &probe_directory.join(right_name));
-    let _ = fs::remove_dir(probe_directory);
-    equivalent
+fn open_probe(path: &Path) -> std::io::Result<File> {
+    let mut options = File::options();
+    options.write(true).create_new(true);
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x0400_0000;
+        options.custom_flags(FILE_FLAG_DELETE_ON_CLOSE);
+    }
+    options.open(path)
 }
 
 #[cfg(unix)]
-fn same_directory(left: &Path, right: &Path) -> bool {
+fn remove_probe_if_unchanged(path: &Path, file: &File) {
+    let Ok(opened) = file.metadata() else {
+        return;
+    };
+    let Ok(current) = fs::metadata(path) else {
+        return;
+    };
+    if opened.dev() == current.dev() && opened.ino() == current.ino() {
+        let _ = fs::remove_file(path);
+    }
+}
+
+#[cfg(windows)]
+fn remove_probe_if_unchanged(_path: &Path, file: &File) {
+    // FILE_FLAG_DELETE_ON_CLOSE removes the opened file object even if its name is replaced.
+    let _ = file;
+}
+
+#[cfg(not(any(unix, windows)))]
+fn remove_probe_if_unchanged(_path: &Path, _file: &File) {
+    // An unknown platform has no identity-safe cleanup primitive here. Leave the probe in place.
+}
+
+#[cfg(unix)]
+fn same_directory(left: &Path, right: &Path) -> Option<bool> {
     if left == right {
-        return true;
+        return Some(true);
     }
     let Ok(left_metadata) = fs::metadata(left) else {
-        return false;
+        return None;
     };
     let Ok(right_metadata) = fs::metadata(right) else {
-        return false;
+        return None;
     };
-    left_metadata.dev() == right_metadata.dev()
-        && left_metadata.ino() == right_metadata.ino()
+    Some(
+        left_metadata.dev() == right_metadata.dev()
+            && left_metadata.ino() == right_metadata.ino(),
+    )
 }
 
 #[cfg(not(unix))]
-fn same_directory(left: &Path, right: &Path) -> bool {
-    left == right
+fn same_directory(left: &Path, right: &Path) -> Option<bool> {
+    Some(left == right)
 }
 
 #[cfg(test)]

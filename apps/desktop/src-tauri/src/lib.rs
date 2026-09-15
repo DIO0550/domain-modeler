@@ -5,6 +5,7 @@ mod file_path;
 mod file_read;
 mod file_watch;
 mod file_write;
+mod ipc_path;
 
 #[cfg(test)]
 mod temp_workspace;

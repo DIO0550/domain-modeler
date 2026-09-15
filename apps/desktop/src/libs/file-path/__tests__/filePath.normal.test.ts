@@ -1,6 +1,6 @@
 import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 import { afterEach, expect, test } from "vitest";
-import { sameFilePath } from "..";
+import { displayFilePath, sameFilePath } from "..";
 
 afterEach(() => {
   clearMocks();
@@ -25,4 +25,13 @@ test("IPCを利用できなくても同一文字列のパスは一致する", as
 
   await expect(sameFilePath("/docs/draft.dmodel", "/docs/draft.dmodel"))
     .resolves.toBe(true);
+});
+
+test("非UTF-8パスの可逆IPC表現は表示部分だけを返す", () => {
+  expect(displayFilePath("\0domain-modeler-path-v1:unix:ff|/tmp/�/draft.dmodel"))
+    .toBe("/tmp/�/draft.dmodel");
+});
+
+test("通常のパスは表示時も変更しない", () => {
+  expect(displayFilePath("/tmp/注文.dmodel")).toBe("/tmp/注文.dmodel");
 });

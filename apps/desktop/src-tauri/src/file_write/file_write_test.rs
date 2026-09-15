@@ -1,5 +1,4 @@
 use std::fs;
-use std::io;
 
 use super::{write_utf8_file, FileWriteResult};
 use crate::temp_workspace::TempWorkspace;
@@ -35,21 +34,7 @@ fn 長い有効なファイル名でも新規作成できる() {
 }
 
 #[test]
-fn hard_linkを利用できなくても排他的に新規作成する() {
-    let workspace = TempWorkspace::create();
-    let target = workspace.path("draft.dmodel");
-    let result = super::publish_after_link(
-        Err(io::Error::new(io::ErrorKind::Unsupported, "unsupported")),
-        &target,
-        "draft",
-    );
-
-    assert!(result.is_ok());
-    assert_eq!(fs::read_to_string(target).unwrap(), "draft");
-}
-
-#[test]
-fn hard_link非対応時の作成も既存ファイルを上書きしない() {
+fn 排他的作成は既存ファイルを上書きしない() {
     let workspace = TempWorkspace::create();
     let target = workspace.path("draft.dmodel");
     fs::write(&target, "existing").unwrap();

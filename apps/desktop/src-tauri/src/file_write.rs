@@ -44,7 +44,8 @@ pub enum FileWriteResult {
 /// * `path` - 書き込むファイルのパス。
 /// * `contents` - 書き込む UTF-8 文字列。
 pub fn write_utf8_file(path: &str, contents: &str) -> FileWriteResult {
-    let target = Path::new(path);
+    let target_path = crate::ipc_path::decode(path);
+    let target = target_path.as_path();
     let Some(temp_path) = temp_path_in_same_dir(target) else {
         return write_failed(path, "path has no file name");
     };
@@ -60,7 +61,8 @@ pub fn write_utf8_file(path: &str, contents: &str) -> FileWriteResult {
 /// 新規 .dmodel を作成する。既存ファイルやシンボリックリンクは置換しない。
 /// 完全な内容を用意してから、対象パスを排他的に作成する。
 pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
-    let target = Path::new(path);
+    let target_path = crate::ipc_path::decode(path);
+    let target = target_path.as_path();
     if !target
         .extension()
         .and_then(|extension| extension.to_str())
@@ -72,53 +74,12 @@ pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
 }
 
 /// UTF-8 文書を排他的に新規作成する。既存ファイルやリンクは置換しない。
-/// 完全な内容を一時ファイルへ書いて hard link で公開し、未対応のファイルシステムでは
-/// create_new による排他的な直接作成へフォールバックする。
+/// create_new で対象 inode を直接保持し、可変な一時パスを再参照しない。
 pub fn create_utf8_file(path: &str, contents: &str) -> FileWriteResult {
-    let target = Path::new(path);
-    let Some(temp_path) = temp_path_in_same_dir(target) else {
-        return write_failed(path, "path has no file name");
-    };
-    let mut file = match File::options()
-        .write(true)
-        .create_new(true)
-        .open(&temp_path)
-    {
-        Ok(file) => file,
-        Err(error) => return write_failed(path, &error.to_string()),
-    };
-    let written = file.write_all(contents.as_bytes()).and_then(|()| file.sync_all());
-    drop(file);
-    if let Err(error) = written {
-        let _ = fs::remove_file(&temp_path);
-        return write_failed(path, &error.to_string());
-    }
-
-    match publish_new_file(&temp_path, target, contents) {
-        Ok(()) => {
-            let _ = fs::remove_file(&temp_path);
-            FileWriteResult::Ok
-        }
-        Err(error) => {
-            let _ = fs::remove_file(&temp_path);
-            write_failed(path, &error.to_string())
-        }
-    }
-}
-
-fn publish_new_file(temp_path: &Path, target: &Path, contents: &str) -> io::Result<()> {
-    publish_after_link(fs::hard_link(temp_path, target), target, contents)
-}
-
-fn publish_after_link(
-    link_result: io::Result<()>,
-    target: &Path,
-    contents: &str,
-) -> io::Result<()> {
-    match link_result {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Err(error),
-        Err(_) => create_new_file(target, contents),
+    let target = crate::ipc_path::decode(path);
+    match create_new_file(&target, contents) {
+        Ok(()) => FileWriteResult::Ok,
+        Err(error) => write_failed(path, &error.to_string()),
     }
 }
 

@@ -1,5 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 
+const ENCODED_PATH_PREFIX = "\0domain-modeler-path-v1:";
+
+/** IPC用の可逆パスから、人に見せる部分だけを返す。通常のパスは変更しない。 */
+export const displayFilePath = (path: string): string => {
+  if (!path.startsWith(ENCODED_PATH_PREFIX)) {
+    return path;
+  }
+  const separator = path.indexOf("|");
+  return separator < 0 ? path : path.slice(separator + 1);
+};
+
 /**
  * 2つのパスが同じファイルを表すかを、実行環境のファイルシステム規則で判定する。
  * IPC が利用できない場合も、少なくとも同一文字列のパスは一致として扱う。

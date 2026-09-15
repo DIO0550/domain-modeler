@@ -106,7 +106,7 @@ fn 削除済みファイルを指すシンボリックリンクも参照先と�
 
 #[cfg(unix)]
 #[test]
-fn 循環するシンボリックリンクは別パスと一致と判定しない() {
+fn 循環するシンボリックリンクは判定不能なので安全側で一致とみなす() {
     let workspace = TempWorkspace::create();
     let first = workspace.path("first.dmodel");
     let second = workspace.path("second.dmodel");
@@ -114,8 +114,22 @@ fn 循環するシンボリックリンクは別パスと一致と判定しな�
     std::os::unix::fs::symlink(&second, &first).unwrap();
     std::os::unix::fs::symlink(&first, &second).unwrap();
 
-    assert!(!super::same_file_path(
+    assert!(super::same_file_path(
         first.to_str().unwrap(),
         target.to_str().unwrap()
     ));
+}
+
+#[test]
+fn 長いファイル名の規則確認用コンポーネントは上限のある長さになる() {
+    use std::ffi::OsStr;
+
+    let left = format!("{}A{}", "前".repeat(120), "後".repeat(120));
+    let right = format!("{}a{}", "前".repeat(120), "後".repeat(120));
+    let (left_probe, right_probe) =
+        super::compact_probe_names(OsStr::new(&left), OsStr::new(&right));
+
+    assert!(left_probe.len() <= 164);
+    assert!(right_probe.len() <= 164);
+    assert_ne!(left_probe, right_probe);
 }
