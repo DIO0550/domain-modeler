@@ -4,6 +4,9 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(unix)]
+use std::os::unix::fs::MetadataExt;
+
 /// 2つのパスが同じファイルを表すかを判定する。
 ///
 /// 存在する最深の祖先を canonicalize してシンボリックリンクを解決する。
@@ -25,7 +28,7 @@ pub fn same_file_path(left: &str, right: &str) -> bool {
     let Some(right_parent) = right_resolved.parent() else {
         return false;
     };
-    if left_parent != right_parent {
+    if !same_directory(left_parent, right_parent) {
         return false;
     }
     let Some(left_name) = left_resolved.file_name() else {
@@ -90,6 +93,44 @@ fn file_names_are_equivalent(
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
+    let prefix = format!(
+        ".domain-modeler-name-probe-{}-{}-",
+        std::process::id(),
+        nanos
+    );
+    let mut left_probe_name = OsString::from(&prefix);
+    left_probe_name.push(left_name);
+    let mut right_probe_name = OsString::from(prefix);
+    right_probe_name.push(right_name);
+    let direct_result = probe_file_names(
+        &directory.join(left_probe_name),
+        &directory.join(right_probe_name),
+    );
+    if direct_result.is_some() {
+        return direct_result;
+    }
+
+    probe_file_names_in_temporary_directory(directory, left_name, right_name, nanos)
+}
+
+fn probe_file_names(left_probe: &Path, right_probe: &Path) -> Option<bool> {
+    let file = File::options()
+        .write(true)
+        .create_new(true)
+        .open(left_probe)
+        .ok()?;
+    let equivalent = fs::metadata(right_probe).is_ok();
+    drop(file);
+    let _ = fs::remove_file(left_probe);
+    Some(equivalent)
+}
+
+fn probe_file_names_in_temporary_directory(
+    directory: &Path,
+    left_name: &OsStr,
+    right_name: &OsStr,
+    nanos: u128,
+) -> Option<bool> {
     let probe_directory = directory.join(format!(
         ".domain-modeler-name-probe-{}-{}",
         std::process::id(),
@@ -97,18 +138,29 @@ fn file_names_are_equivalent(
     ));
     fs::create_dir(&probe_directory).ok()?;
     let left_probe = probe_directory.join(left_name);
-    let equivalent = File::options()
-        .write(true)
-        .create_new(true)
-        .open(&left_probe)
-        .ok()
-        .map(|file| {
-            drop(file);
-            fs::metadata(probe_directory.join(right_name)).is_ok()
-        });
-    let _ = fs::remove_file(left_probe);
+    let equivalent = probe_file_names(&left_probe, &probe_directory.join(right_name));
     let _ = fs::remove_dir(probe_directory);
     equivalent
+}
+
+#[cfg(unix)]
+fn same_directory(left: &Path, right: &Path) -> bool {
+    if left == right {
+        return true;
+    }
+    let Ok(left_metadata) = fs::metadata(left) else {
+        return false;
+    };
+    let Ok(right_metadata) = fs::metadata(right) else {
+        return false;
+    };
+    left_metadata.dev() == right_metadata.dev()
+        && left_metadata.ino() == right_metadata.ino()
+}
+
+#[cfg(not(unix))]
+fn same_directory(left: &Path, right: &Path) -> bool {
+    left == right
 }
 
 #[cfg(test)]

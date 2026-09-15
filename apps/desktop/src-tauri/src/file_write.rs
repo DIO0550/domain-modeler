@@ -129,7 +129,6 @@ fn create_new_file(target: &Path, contents: &str) -> io::Result<()> {
         .and_then(|()| file.sync_all())
     {
         drop(file);
-        let _ = fs::remove_file(target);
         return Err(error);
     }
     Ok(())
