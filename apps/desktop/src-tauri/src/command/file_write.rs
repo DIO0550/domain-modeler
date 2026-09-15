@@ -19,3 +19,9 @@ pub fn write_file(path: &str, contents: &str) -> FileWriteResult {
 pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
     crate::file_write::create_dmodel_file(path, contents)
 }
+
+/// 両種の文書を、既存ファイルを上書きせず新規保存する。
+#[tauri::command]
+pub fn create_file(path: &str, contents: &str) -> FileWriteResult {
+    crate::file_write::create_utf8_file(path, contents)
+}

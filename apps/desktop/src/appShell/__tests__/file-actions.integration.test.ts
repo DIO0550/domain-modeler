@@ -29,7 +29,7 @@ const setup = (selection: SavePathSelection) => {
   };
   const operations = {
     selectSavePath: async () => selection,
-    writeFile: async (
+    createFile: async (
       path: string,
       contents: string,
     ): Promise<FileWriteResult> => {

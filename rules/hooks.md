@@ -115,6 +115,8 @@ return <>{isLoading && <Spinner />}</>;
 - **ローディング状態を `isLoadingRef` で持たない**: スピナー・`disabled`・エラー UI に出すなら `useState` 一択
 - **連打防止の `inFlightRef` 禁止**: ボタンなら `useState` + `disabled` 属性が第一選択(DOM レベルで二重発火を遮断できる)
 - カスタムフックがハンドラを返す場合も同じ。フック内で `useState` を持ち、`isSubmitting` 等を一緒に返して呼び出し側で `disabled` に流す
+- ただしメニュー項目はフォーカス順を保つため `aria-disabled` と実行ハンドラのガードを併用する。無効表示だけで操作を遮断したとみなさない。
+- 背景タブの編集状態を保持する場合も、非表示のエディタのグローバル購読を動作させ続けない。`Activity` 等で非表示時に購読を解除し、押下中のキーやドラッグ状態も購読解除時に解放する。
 
 ```typescript
 // NG: ref で連打防止

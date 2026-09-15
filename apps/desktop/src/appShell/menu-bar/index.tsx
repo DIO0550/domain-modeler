@@ -216,7 +216,6 @@ function MenuCommandItem({
       className={menuItemClassName(availability)}
       role="menuitem"
       aria-disabled={isDisabled}
-      disabled={isDisabled}
       onClick={() => {
         onCommand(commandId);
       }}

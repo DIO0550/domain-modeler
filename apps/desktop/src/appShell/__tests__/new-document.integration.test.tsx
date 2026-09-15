@@ -33,6 +33,61 @@ const clickNamed = async (host: HTMLElement, name: string) => {
   await act(async () => button?.click());
 };
 
+test.each(["model", "canvas"])("開いている %s のパスを再選択しても編集状態を保持し再作成しない", async (kind) => {
+  const path = kind === "model" ? "/draft.dmodel" : "/draft.dcanvas";
+  const label = kind === "model" ? "新規ドメインモデル" : "新規キャンバス";
+  const files = new Map<string, string>();
+  mockIPC((command, payload) => {
+    if (command === "save_file_dialog") { return path; }
+    expect(command).toBe("create_file");
+    const { contents } = payload as { contents: string };
+    files.set(path, contents);
+    return { type: "ok" };
+  });
+  const host = renderApp();
+  await clickNamed(host, "ファイル");
+  await clickNamed(host, label);
+  const textarea = host.querySelector("textarea");
+  await act(async () => {
+    if (textarea !== null) {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(textarea, "// draft");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    host.querySelector(".canvas-world")?.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 50, clientY: 60 }));
+  });
+  // 外部削除後も、開いている編集セッションへの新規作成を拒否する。
+  files.delete(path);
+  await clickNamed(host, "ファイル");
+  await clickNamed(host, label);
+  expect(files.has(path)).toBe(false);
+  expect(host.querySelectorAll('[role="tab"]')).toHaveLength(1);
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain("開いている文書と同じパス");
+  if (kind === "model") {
+    expect(host.querySelector("textarea")?.value).toBe("// draft");
+    return;
+  }
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+});
+
+test.each(["model", "canvas"])("保存先選択後に競合した %s ファイルを保護しタブを追加しない", async (kind) => {
+  const path = kind === "model" ? "/existing.dmodel" : "/existing.dcanvas";
+  const files = new Map<string, string>();
+  mockIPC((command) => {
+    if (command === "save_file_dialog") {
+      files.set(path, "other process contents");
+      return path;
+    }
+    expect(command).toBe("create_file");
+    return { type: "err", error: { kind: "writeFailed", path, message: "already exists" } };
+  });
+  const host = renderApp();
+  await clickNamed(host, "ファイル");
+  await clickNamed(host, kind === "model" ? "新規ドメインモデル" : "新規キャンバス");
+  expect(files.get(path)).toBe("other process contents");
+  expect(host.querySelector('[role="tab"]')).toBeNull();
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain("already exists");
+});
+
 test.each([
   { kind: "canvas", label: "新規キャンバス", path: "/new.dcanvas", contents: Serialize.stringify(Document.empty()) },
   { kind: "model", label: "新規ドメインモデル", path: "/new.dmodel", contents: "" },
@@ -43,7 +98,7 @@ test.each([
       expect(payload).toEqual({ kind });
       return path;
     }
-    expect(command).toBe("write_file");
+    expect(command).toBe("create_file");
     expect(payload).toEqual({ path, contents });
     files.set(path, contents);
     return { type: "ok" };
@@ -78,7 +133,7 @@ test.each(["dialog", "write"])("%s の失敗を表示し、再操作で新規作
       if (failure === "dialog" && shouldFail) { throw new Error("dialog unavailable"); }
       return "/retry.dmodel";
     }
-    expect(command).toBe("write_file");
+    expect(command).toBe("create_file");
     if (shouldFail) { throw new Error("permission denied"); }
     return { type: "ok" };
   });
@@ -89,6 +144,7 @@ test.each(["dialog", "write"])("%s の失敗を表示し、再操作で新規作
   expect(host.querySelector('[role="alert"]')?.textContent).toContain(
     failure === "dialog" ? "dialog unavailable" : "permission denied",
   );
+  expect(host.querySelector('[role="alert"]')?.textContent).not.toContain("Error:");
   shouldFail = false;
   await clickNamed(host, "ファイル");
   await clickNamed(host, "新規ドメインモデル");
@@ -98,7 +154,11 @@ test.each(["dialog", "write"])("%s の失敗を表示し、再操作で新規作
 
 test("保存先を選択中は両方の新規作成操作を無効にする", async () => {
   let cancel: (value: null) => void = () => {};
-  mockIPC(() => new Promise<null>((resolve) => { cancel = resolve; }));
+  let dialogCount = 0;
+  mockIPC(() => {
+    dialogCount += 1;
+    return new Promise<null>((resolve) => { cancel = resolve; });
+  });
   const host = renderApp();
   await clickNamed(host, "ファイル");
   await clickNamed(host, "新規キャンバス");
@@ -107,9 +167,15 @@ test("保存先を選択中は両方の新規作成操作を無効にする", as
     (button) => button.textContent?.startsWith("新規"),
   );
   expect(buttons).toHaveLength(2);
-  expect(buttons.every((button) => button.disabled)).toBe(true);
+  expect(buttons.every((button) => button.getAttribute("aria-disabled") === "true")).toBe(true);
+  for (const button of buttons) {
+    button.focus();
+    expect(document.activeElement).toBe(button);
+    await act(async () => button.click());
+  }
+  expect(dialogCount).toBe(1);
   await act(async () => cancel(null));
-  expect(buttons.every((button) => !button.disabled)).toBe(true);
+  expect(buttons.every((button) => button.getAttribute("aria-disabled") === "false")).toBe(true);
 });
 
 
@@ -119,7 +185,7 @@ test("モデルの入力内容は別の文書を作成してから戻っても�
       const kind = (payload as { kind: string }).kind;
       return kind === "model" ? "/draft.dmodel" : "/board.dcanvas";
     }
-    expect(command).toBe("write_file");
+    expect(command).toBe("create_file");
     return { type: "ok" };
   });
   const host = renderApp();

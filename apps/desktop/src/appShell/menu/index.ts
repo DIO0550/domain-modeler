@@ -42,7 +42,6 @@ export const MenuState = {
  * 文書が開いているときだけ有効なコマンドの状態を返す。
  *
  * @param tabsState 開いている文書とアクティブタブ。
-   * @param isCreating 新規作成操作が進行中か。
  * @returns 文書があるときは enabled、無いときは disabled。
  */
 const documentCommandAvailability = (
@@ -58,7 +57,6 @@ const documentCommandAvailability = (
  * キャンバスからドメインモデルを生成するコマンドの状態を返す。
  *
  * @param tabsState 開いている文書とアクティブタブ。
-   * @param isCreating 新規作成操作が進行中か。
  * @returns アクティブタブがキャンバスのときだけ enabled。
  */
 const generateAvailability = (tabsState: TabsState): CommandAvailability => {

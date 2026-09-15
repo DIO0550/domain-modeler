@@ -21,6 +21,6 @@ export const selectSavePath = async (
     }
     return { status: "selected", path };
   } catch (caught) {
-    return { status: "dialogFailed", message: String(caught) };
+    return { status: "dialogFailed", message: caught instanceof Error ? caught.message : String(caught) };
   }
 };

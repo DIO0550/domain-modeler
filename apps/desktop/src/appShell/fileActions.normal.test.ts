@@ -12,7 +12,7 @@ import {
 
 type OperationCall =
   | Readonly<{ type: "selectSavePath"; documentType: "canvas" | "model" }>
-  | Readonly<{ type: "writeFile"; path: string; contents: string }>
+  | Readonly<{ type: "createFile"; path: string; contents: string }>
   | Readonly<{ type: "readFile"; path: string }>
   | Readonly<{ type: "openTab"; path: string; documentType: "canvas" | "model" }>
   | Readonly<{ type: "notifyError"; error: OpenDocumentError }>;
@@ -34,8 +34,8 @@ const operationsRecording = (
     calls.push({ type: "selectSavePath", documentType });
     return selection;
   },
-  writeFile: async (path, contents) => {
-    calls.push({ type: "writeFile", path, contents });
+  createFile: async (path, contents) => {
+    calls.push({ type: "createFile", path, contents });
     return writeResult;
   },
   openTab: (path, documentType) => {
@@ -84,7 +84,7 @@ test("キャンバスの保存先を選ぶと空の初期内容を書いてか�
   expect(calls).toEqual([
     { type: "selectSavePath", documentType: "canvas" },
     {
-      type: "writeFile",
+      type: "createFile",
       path: "/documents/context.dcanvas",
       contents: Serialize.stringify(Document.empty()),
     },
@@ -114,7 +114,7 @@ test("モデルの保存先を選ぶと空文字を書いてからタブを開�
   expect(calls).toEqual([
     { type: "selectSavePath", documentType: "model" },
     {
-      type: "writeFile",
+      type: "createFile",
       path: "/documents/order.dmodel",
       contents: "",
     },
@@ -162,7 +162,7 @@ test("初期内容を書き込めないとタブを開かない", async () => {
 
   expect(result).toEqual({ status: "writeFailed", error });
   expect(calls).toHaveLength(2);
-  expect(calls[1]?.type).toBe("writeFile");
+  expect(calls[1]?.type).toBe("createFile");
 });
 
 test("正しいキャンバスを読み込むと検証後にタブを開く", async () => {

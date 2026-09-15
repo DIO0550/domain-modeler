@@ -64,13 +64,13 @@ const writeFailureMessage = (caught: unknown): string => {
 };
 
 /**
- * UTF-8の文書を保存し、IPC例外も失敗結果として返す。
- * @param path 保存先のパス。
- * @param contents 保存する全文。
- * @returns 書き込み結果。
+ * 文書を排他的に新規作成する。既存パスは上書きしない。
+ * @param path 新規保存先。
+ * @param contents 作成する文書の全文。
+ * @returns 作成成功または書き込み失敗。
  */
-export const writeFile = (path: string, contents: string): Promise<FileWriteResult> =>
+export const createFile = (path: string, contents: string): Promise<FileWriteResult> =>
   writeFileAsResult(
-    (targetPath, text) => invoke<FileWriteResult>("write_file", { path: targetPath, contents: text }),
+    (targetPath, text) => invoke<FileWriteResult>("create_file", { path: targetPath, contents: text }),
     { path, contents },
   );

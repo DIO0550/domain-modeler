@@ -68,6 +68,13 @@ pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
     {
         return write_failed(path, "保存先には新規 .dmodel ファイルを指定してください");
     }
+    create_utf8_file(path, contents)
+}
+
+/// UTF-8 文書を排他的に新規作成する。既存ファイルやリンクは置換しない。
+/// 完全な内容を一時ファイルへ書き、hard_link で競合先を上書きせず公開する。
+pub fn create_utf8_file(path: &str, contents: &str) -> FileWriteResult {
+    let target = Path::new(path);
     let Some(temp_path) = temp_path_in_same_dir(target) else {
         return write_failed(path, "path has no file name");
     };

@@ -19,12 +19,12 @@ export type FileReadResult =
   | Readonly<{ type: "ok"; value: string }>
   | Readonly<{ type: "err"; error: FileReadError }>;
 
-/** 新規作成フローが利用する外部操作。 */
+/** 新規作成フローが利用する外部操作。createFile は既存パスを上書きしない。 */
 export type NewDocumentOperations = Readonly<{
   selectSavePath: (
     documentType: TabDocumentType,
   ) => Promise<SavePathSelection>;
-  writeFile: (path: string, contents: string) => Promise<FileWriteResult>;
+  createFile: (path: string, contents: string) => Promise<FileWriteResult>;
   openTab: (path: string, documentType: TabDocumentType) => void;
 }>;
 
@@ -64,18 +64,30 @@ export const FileActions = {
    *
    * @param documentType 作成する文書の種別。
    * @param operations 保存先選択、書き込み、タブ追加を行う外部操作。
+   * @param openPaths 編集中のため新規作成先として拒否するパス。
    * @returns 作成、キャンセル、ダイアログ失敗、または書き込み失敗の結果。
    */
   async createNewDocument(
     documentType: TabDocumentType,
     operations: NewDocumentOperations,
+    openPaths: readonly string[] = [],
   ): Promise<NewDocumentResult> {
     const selection = await operations.selectSavePath(documentType);
     if (selection.status !== "selected") {
       return selection;
     }
+    if (openPaths.includes(selection.path)) {
+      return {
+        status: "writeFailed",
+        error: {
+          kind: "writeFailed",
+          path: selection.path,
+          message: "開いている文書と同じパスには新規作成できません。別の保存先を選択してください。",
+        },
+      };
+    }
 
-    const writeResult = await operations.writeFile(
+    const writeResult = await operations.createFile(
       selection.path,
       initialContents(documentType),
     );

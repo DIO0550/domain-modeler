@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Activity, useState } from "react";
 import { ModelEditor } from "@/features/model";
 import { CanvasEditor } from "@/features/canvas";
 import type { TabsState, Tab } from "./tabs";
@@ -30,7 +30,9 @@ export function DocumentWorkspace({ tabsState }: DocumentWorkspaceProps) {
           className="document-workspace__document"
           hidden={tab.path !== tabsState.activePath}
         >
-          <DocumentEditor tab={tab} />
+          <Activity mode={tab.path === tabsState.activePath ? "visible" : "hidden"}>
+            <DocumentEditor tab={tab} />
+          </Activity>
         </section>
       ))}
     </main>
@@ -38,21 +40,21 @@ export function DocumentWorkspace({ tabsState }: DocumentWorkspaceProps) {
 }
 
 /** 文書ごとの編集セッションを保持し、タブ切り替えでも内容を維持する。 */
-function DocumentEditor({ tab: activeTab }: Readonly<{ tab: Tab }>) {
+function DocumentEditor({ tab }: Readonly<{ tab: Tab }>) {
   const [text, setText] = useState("");
   const missingBanner =
-    activeTab.fileState.status === "missing" ? (
+    tab.fileState.status === "missing" ? (
       <p className="document-workspace__banner" role="alert">
         ファイルが見つかりません。編集を続けるとこのパスに再作成されます。
       </p>
     ) : null;
 
-  if (activeTab.documentType === "canvas") {
+  if (tab.documentType === "canvas") {
     return (
       <>
         {missingBanner}
         <CanvasEditor
-          key={activeTab.path}
+          key={tab.path}
           saveStatus="saved"
         />
       </>

@@ -1,6 +1,6 @@
 import { useReducer } from "react";
 import { selectSavePath } from "@/libs/file-dialog";
-import { writeFile } from "@/libs/file-write";
+import { createFile } from "@/libs/file-write";
 import { FileActions, type NewDocumentResult } from "../fileActions";
 import { MenuState, type MenuCommandId } from "../menu";
 import { TabsState, type TabsAction } from "../tabs";
@@ -58,9 +58,10 @@ export function useAppShell(): UseAppShellResult {
         commandId === "newCanvas" ? "canvas" : "model",
         {
           selectSavePath,
-          writeFile,
+          createFile,
           openTab: (path, documentType) => dispatch({ type: "openTab", path, documentType }),
         },
+        tabsState.status === "active" ? tabsState.tabs.map((tab) => tab.path) : [],
       );
       dispatch({ type: "setCreation", creation: result });
       return;

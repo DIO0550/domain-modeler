@@ -114,6 +114,45 @@ test("モデル文書が前面のときはキャンバスツールバーを出�
   expect(host.querySelector('[aria-label="ドメインモデルのテキスト"]')).toBeInstanceOf(HTMLTextAreaElement);
 });
 
+test("背景のキャンバスは前面タブのSpaceパンを妨げず、切り替え後もビューポートを保持する", async () => {
+  const first = TabsState.reducer(TabsState.create(), {
+    type: "openTab", path: "/first.dcanvas", documentType: "canvas",
+  });
+  const second = TabsState.reducer(first, {
+    type: "openTab", path: "/second.dcanvas", documentType: "canvas",
+  });
+  const firstActive = TabsState.reducer(second, { type: "activateTab", path: "/first.dcanvas" });
+  const { host, rerender } = renderWorkspace(first);
+  await act(async () => rerender(second));
+  const surface = host.querySelector<HTMLElement>("section:not([hidden]) .canvas-surface");
+  expect(surface).not.toBeNull();
+  await act(async () => {
+    surface?.focus();
+    document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", {
+      bubbles: true, cancelable: true, key: " ", code: "Space",
+    }));
+    // 非背景の子要素上から開始するため、Spaceが届かない場合はパンしない。
+    const child = document.createElement("span");
+    surface?.append(child);
+    child.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, button: 0, pointerId: 20, clientX: 100, clientY: 80,
+    }));
+  });
+  expect(surface?.getAttribute("data-panning")).toBe("true");
+  await act(async () => {
+    surface?.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, button: 0, pointerId: 20, clientX: 132, clientY: 104,
+    }));
+  });
+  expect(host.querySelector<HTMLElement>("section:not([hidden]) .canvas-world")?.style.transform).toBe("translate(32px, 24px) scale(1)");
+  // キー・ポインターを押したまま切り替え、非表示中のkeyupも取りこぼさない。
+  await act(async () => rerender(firstActive));
+  await act(async () => window.dispatchEvent(new KeyboardEvent("keyup", { key: " ", code: "Space" })));
+  await act(async () => rerender(second));
+  expect(surface?.getAttribute("data-panning")).toBe("false");
+  expect(host.querySelector<HTMLElement>("section:not([hidden]) .canvas-world")?.style.transform).toBe("translate(32px, 24px) scale(1)");
+});
+
 test("キャンバス文書を切り替えると種別の選択は文書ごとに初期状態に戻る", () => {
   const first = TabsState.reducer(TabsState.create(), {
     type: "openTab",
