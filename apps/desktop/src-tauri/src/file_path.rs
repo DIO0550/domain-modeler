@@ -37,10 +37,8 @@ pub fn same_file_path(left: &str, right: &str) -> bool {
     let Some(right_name) = right_resolved.file_name() else {
         return false;
     };
-    matches!(
-        file_names_are_equivalent(left_parent, left_name, right_name),
-        Some(true)
-    )
+    file_names_are_equivalent(left_parent, left_name, right_name)
+        .unwrap_or(true)
 }
 
 fn resolved_path(path: &Path) -> Option<PathBuf> {
@@ -114,15 +112,29 @@ fn file_names_are_equivalent(
 }
 
 fn probe_file_names(left_probe: &Path, right_probe: &Path) -> Option<bool> {
-    let file = File::options()
+    let left_file = File::options()
         .write(true)
         .create_new(true)
         .open(left_probe)
         .ok()?;
-    let equivalent = fs::metadata(right_probe).is_ok();
-    drop(file);
+    let right_result = File::options()
+        .write(true)
+        .create_new(true)
+        .open(right_probe);
+    let equivalent = match right_result {
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            Some(true)
+        }
+        Ok(right_file) => {
+            drop(right_file);
+            let _ = fs::remove_file(right_probe);
+            Some(false)
+        }
+        Err(_) => None,
+    };
+    drop(left_file);
     let _ = fs::remove_file(left_probe);
-    Some(equivalent)
+    equivalent
 }
 
 fn probe_file_names_in_temporary_directory(
