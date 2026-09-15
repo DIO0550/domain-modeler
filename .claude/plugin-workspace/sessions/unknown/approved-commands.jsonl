@@ -1,0 +1,2 @@
+{"hookName":"permissionRequest","sessionId":"618662fa-f1d8-4b9b-beba-e15b02a86dd6","timestamp":"2026-09-15T13:23:49Z","cwd":"/home/runner/work/domain-modeler/domain-modeler","toolName":"bash","toolInput":{"command":"git log --oneline -5 && git tag -l"},"permissionSuggestions":[]}
+{"hookName":"permissionRequest","sessionId":"618662fa-f1d8-4b9b-beba-e15b02a86dd6","timestamp":"2026-09-15T13:23:52Z","cwd":"/home/runner/work/domain-modeler/domain-modeler","toolName":"bash","toolInput":{"command":"git tag v0.1.0 && git tag -l"},"permissionSuggestions":[]}
