@@ -1,7 +1,62 @@
-# tauri-devcontainer-template
+# domain-modeler
 
-Tauri + React (TypeScript) 開発をすぐに始めるための **Dev Container 付きスターターテンプレート**です。
-Ubuntu ベースのコンテナに Tauri のビルドに必要なシステムライブラリ・Node.js・Rust ツールチェーンを組み込み、さらにフロントエンド（React 19 / Vite / Storybook / Biome / oxlint / Vitest）の設定一式を同梱しています。ホスト側に依存環境を入れずに、統一された開発環境を再現できます。
+イベントストーミング用の `.dcanvas` キャンバスと、ドメインモデルを記述する `.dmodel` DSL を扱う React / Tauri v2 アプリです。キャンバスからモデルの叩き台を生成するスキャフォールド機能を持ちます。
+
+現在は各機能の実装・統合を進めています。アプリシェルのメニューから新規作成・開く・生成保存への接続、読み込んだ文書と編集画面・自動保存・監視の接続、モデル編集画面の組み込みには残作業があります。個別コンポーネントは Storybook、処理の組み合わせは Vitest で確認できます。進捗は [Epic #133](https://github.com/DIO0550/domain-modeler/issues/133) を参照してください。
+
+## 開発を始める
+
+1. このリポジトリをクローンし、VS Code で開きます。
+2. Docker と Dev Containers 拡張機能を用意し、コマンドパレットから **Dev Containers: Reopen in Container** を実行します。
+3. リポジトリルートで以下を実行します。Node.js 24 と Rust はコンテナに含まれます。pnpm は `package.json` の `packageManager`（現在 `pnpm@10.33.0`）に合わせます。
+
+```bash
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+ブラウザで [開発画面](http://localhost:14000) を開けます。別ターミナルで `pnpm storybook` を実行すると [コンポーネントカタログ](http://localhost:6006) を確認できます。
+
+ファイルダイアログ・読み書き・監視などのネイティブ機能は Tauri で確認します。Vite を単独起動している場合は停止してから、ルートで実行してください。
+
+```bash
+pnpm tauri dev
+```
+
+Tauri の設定・Rust ソースは `apps/desktop/src-tauri/` に同梱済みで、初期化コマンドは不要です。コンテナのデスクトップは [noVNC](http://localhost:16080)（パスワード `vscode`）で開けます。詳細とホスト上での開発は [TAURI_SETUP.md](TAURI_SETUP.md) を参照してください。
+
+## 検証コマンド
+
+すべてリポジトリルートから実行します。
+
+| コマンド | 用途 |
+| --- | --- |
+| `pnpm typecheck` | workspace の TypeScript 型チェック |
+| `pnpm test:run` | desktop と全 core パッケージの Vitest |
+| `pnpm test:coverage` | 全テストと coverage/ への出力 |
+| `pnpm lint` | oxlint |
+| `pnpm exec biome check` | CI と同じ Biome チェック |
+| `pnpm build` | フロントエンドを apps/desktop/dist/ にビルド |
+| `pnpm build-storybook` | Storybook を storybook-static/ にビルド |
+| `pnpm tauri build` | ネイティブアプリをビルド |
+| `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` | Rust のファイル操作・設定などのテスト |
+
+仕様横断テストだけを実行する場合:
+
+```bash
+pnpm --filter @domain-modeler/desktop exec vitest run integration
+```
+
+Vitest の設定は `apps/desktop/vite.config.ts` にあり、`packages/` のテストも収集します。結合テストではファイルI/Oをメモリ上の実装に差し替え、パーサー・履歴・タブ状態は実物を通します。OSのダイアログ・実ファイル監視・WebViewの通し動作は Tauri で別途確認してください。
+
+## 仕様と実装規約
+
+- [仕様書一覧](docs/domain-modeler/index.md)
+- [キャンバス形式](docs/domain-modeler/canvas-format.md) / [canvas-core](docs/domain-modeler/canvas-core.md) / [キャンバスUI](docs/domain-modeler/canvas-ui.md)
+- [DSL](docs/domain-modeler/model-format.md) / [model-core](docs/domain-modeler/model-core.md) / [モデル編集](docs/domain-modeler/model-editor.md)
+- [アプリシェル](docs/domain-modeler/app-shell.md) / [保存・監視・IPC](docs/domain-modeler/technical.md) / [スキャフォールド](docs/domain-modeler/scaffold.md)
+- [子Issueと進捗](https://github.com/DIO0550/domain-modeler/issues/133)
+- [実装規約](AGENTS.md) と `rules/`。UI変更時は `rules/ui-verification.md` の表示・操作確認も行います。
 
 ## 含まれるツール
 
@@ -35,14 +90,7 @@ Ubuntu ベースのコンテナに Tauri のビルドに必要なシステムラ
 - [Visual Studio Code](https://code.visualstudio.com/)
 - [Dev Containers 拡張機能](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 
-## 使い方
-
-1. このリポジトリを **Use this template** でコピー、またはクローンします。
-2. VS Code でプロジェクトを開きます。
-3. コマンドパレット (`F1`) → **Dev Containers: Reopen in Container** を選択します。
-4. コンテナのビルドが完了すると、開発環境が利用可能になります。
-5. `pnpm install` で依存をインストールします。フロントエンド（`pnpm dev` / `pnpm storybook` / `pnpm test:run`）はこの時点で動きます。
-6. Rust/Tauri 側を初期化します（`pnpm tauri init` → `pnpm tauri dev`）。詳細は [TAURI_SETUP.md](TAURI_SETUP.md) を参照してください。
+## 開発環境のポート
 
 以下のポートがホストへ自動転送されます。
 
@@ -80,43 +128,21 @@ WebView（WebKitGTK）の描画向けに `WEBKIT_DISABLE_DMABUF_RENDERER` / `WEB
 
 ## プロジェクト構成
 
-```
-.devcontainer/
-├── devcontainer.json   # Dev Container 設定
-├── docker-compose.yml  # Docker Compose 定義
-├── entrypoint.sh       # 起動時に root で特権初期化(VNC/firewall)を実行
-├── init-firewall.sh    # 外向き通信を許可リストで制限するファイアウォール
-└── node/
-    └── Dockerfile      # コンテナイメージ定義
-.storybook/             # Storybook 設定 (main.ts / preview.ts)
-.vscode/
-└── extensions.json     # 推奨拡張機能
-src/                    # React フロントエンド (create-tauri-app デフォルト構成)
-├── main.tsx            # エントリーポイント
-├── App.tsx             # ルートコンポーネント (greet デモ)
-├── App.css             # スタイル
-├── assets/             # 画像アセット (react.svg など)
-└── vite-env.d.ts       # Vite 型定義
-src-tauri/              # Tauri (Rust 側)。tauri init 標準構成を同梱
-├── Cargo.toml          # Rust 依存 / クレート設定
-├── tauri.conf.json     # Tauri 設定 (ポート / コマンド / アプリ名)
-├── build.rs            # ビルドスクリプト
-├── capabilities/       # 権限 (capability) 定義
-├── icons/              # アプリアイコン (デフォルト同梱)
-└── src/                # Rust エントリ (main.rs / lib.rs。greet コマンド)
-public/                 # 静的アセット (tauri.svg / vite.svg)
-docs/                   # 公開用 HTML / ドキュメント
-├── index.html           # Vite エントリ HTML
-├── domain-modeler.html  # 公開用 HTML
-└── domain-modeler/      # 解凍済みドキュメント
-package.json            # 依存 / スクリプト
-vite.config.ts          # Vite + Vitest 設定 (ポート 14000/14001)
-tsconfig*.json          # TypeScript 設定
-biome.json / .oxlintrc.json  # Lint / Format 設定
-TAURI_SETUP.md          # セットアップ / 開発コマンド
-```
+| パス | 責務 |
+| --- | --- |
+| `apps/desktop/src/` | React のシェル、キャンバス・モデル・生成UI、I/O adapter |
+| `apps/desktop/src-tauri/` | Rust のファイル操作、監視、ダイアログ、設定と IPC |
+| `apps/desktop/vite.config.ts` | Vite / Vitest の設定とパッケージalias |
+| `packages/canvas-core/` | キャンバス文書、接続、履歴、JSON入出力 |
+| `packages/model-core/` | DSL の字句解析・構文解析・参照解決 |
+| `packages/scaffold/` | キャンバスから `.dmodel` テキストへの変換 |
+| `docs/domain-modeler/` | 仕様書 |
+| `.storybook/` | UIカタログ設定 |
+| `.devcontainer/` | Docker / Node / Rust / GUI 開発環境 |
+| `rules/` | 設計・コーディング・テスト規約 |
+| `pnpm-workspace.yaml` / `package.json` | workspace とルート実行コマンド |
 
-`src-tauri/`（Rust 側）は `pnpm tauri init` で生成した標準構成を同梱済みです。`pnpm install` 後、そのまま `pnpm tauri dev` で起動できます。詳細は [TAURI_SETUP.md](TAURI_SETUP.md) を参照してください。
+アプリからパッケージへ依存し、core は DOM・React・Tauri に依存しません。scaffold は canvas-core と model-core を利用します。
 
 ## カスタマイズ
 
