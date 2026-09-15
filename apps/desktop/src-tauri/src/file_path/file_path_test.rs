@@ -30,7 +30,10 @@ fn 削除済みパスの大文字小文字は対象ディレクトリの規則�
         super::same_file_path(upper.to_str().unwrap(), lower.to_str().unwrap()),
         !is_case_sensitive
     );
-    assert!(workspace.entry_names().is_empty());
+    assert!(workspace
+        .entry_names()
+        .iter()
+        .all(|name| name.starts_with(".dm-probe-")));
 }
 
 #[test]
@@ -49,7 +52,10 @@ fn 削除済みパスのunicode正規化は対象ディレクトリの規則で�
         ),
         normalizes_unicode
     );
-    assert!(workspace.entry_names().is_empty());
+    assert!(workspace
+        .entry_names()
+        .iter()
+        .all(|name| name.starts_with(".dm-probe-")));
 }
 
 #[cfg(unix)]

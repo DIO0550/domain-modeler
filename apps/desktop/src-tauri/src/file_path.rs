@@ -200,7 +200,10 @@ fn open_probe(path: &Path) -> std::io::Result<File> {
     #[cfg(windows)]
     {
         use std::os::windows::fs::OpenOptionsExt;
+        const DELETE: u32 = 0x0001_0000;
         const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x0400_0000;
+        const GENERIC_WRITE: u32 = 0x4000_0000;
+        options.access_mode(GENERIC_WRITE | DELETE);
         options.custom_flags(FILE_FLAG_DELETE_ON_CLOSE);
     }
     options.open(path)
@@ -208,15 +211,10 @@ fn open_probe(path: &Path) -> std::io::Result<File> {
 
 #[cfg(unix)]
 fn remove_probe_if_unchanged(path: &Path, file: &File) {
-    let Ok(opened) = file.metadata() else {
-        return;
-    };
-    let Ok(current) = fs::metadata(path) else {
-        return;
-    };
-    if opened.dev() == current.dev() && opened.ino() == current.ino() {
-        let _ = fs::remove_file(path);
-    }
+    // POSIX には開いた通常ファイルを identity-safe に unlink する可搬APIがない。
+    // metadata 確認後の pathname unlink も置換競合を残すため、別 inode を消すより
+    // 一意な隠しプローブを残す方を選ぶ。
+    let _ = (path, file);
 }
 
 #[cfg(windows)]
