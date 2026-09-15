@@ -12,6 +12,7 @@ pub fn invoke_handler<R: tauri::Runtime>(
         greet::greet,
         file_read::read_file,
         file_write::write_file,
+        file_write::create_dmodel_file,
         file_dialog::open_file_dialog,
         file_dialog::save_file_dialog,
         file_watch::start_file_watch,

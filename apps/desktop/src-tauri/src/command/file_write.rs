@@ -13,3 +13,9 @@ use crate::file_write::{write_utf8_file, FileWriteResult};
 pub fn write_file(path: &str, contents: &str) -> FileWriteResult {
     write_utf8_file(path, contents)
 }
+
+/// 既存ファイルを上書きせず、生成したモデルを新規保存する。
+#[tauri::command]
+pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
+    crate::file_write::create_dmodel_file(path, contents)
+}

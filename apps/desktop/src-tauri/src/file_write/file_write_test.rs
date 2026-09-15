@@ -144,3 +144,35 @@ fn 書き込みに失敗しても既存ファイルの内容は残る() {
         "original\n"
     );
 }
+
+#[test]
+fn 生成モデルは新規作成され既存ファイルには追記も上書きもしない() {
+    let workspace = TempWorkspace::create();
+    let path = workspace.path("generated.dmodel");
+    let path_str = path.to_str().unwrap();
+    assert_eq!(super::create_dmodel_file(path_str, "first"), FileWriteResult::Ok);
+    assert!(matches!(super::create_dmodel_file(path_str, "second"), FileWriteResult::Err { .. }));
+    assert_eq!(fs::read_to_string(&path).unwrap(), "first");
+    assert_eq!(workspace.entry_names(), ["generated.dmodel"]);
+}
+
+#[test]
+fn 生成モデルはキャンバス拡張子に保存できない() {
+    let workspace = TempWorkspace::create();
+    let path = workspace.path("source.dcanvas");
+    assert!(matches!(super::create_dmodel_file(path.to_str().unwrap(), "model"), FileWriteResult::Err { .. }));
+    assert!(!path.exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn 生成モデルはシンボリックリンク先も変更しない() {
+    let workspace = TempWorkspace::create();
+    let original = workspace.path("original.dmodel");
+    let link = workspace.path("link.dmodel");
+    fs::write(&original, "original").unwrap();
+    std::os::unix::fs::symlink(&original, &link).unwrap();
+    assert!(matches!(super::create_dmodel_file(link.to_str().unwrap(), "new"), FileWriteResult::Err { .. }));
+    assert_eq!(fs::read_to_string(original).unwrap(), "original");
+    assert!(link.is_symlink());
+}
