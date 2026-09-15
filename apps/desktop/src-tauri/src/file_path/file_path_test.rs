@@ -68,3 +68,19 @@ fn 親参照より先にシンボリックリンクを解決して削除済み�
         actual.to_str().unwrap()
     ));
 }
+
+#[cfg(unix)]
+#[test]
+fn 削除済みファイルを指すシンボリックリンクも参照先と一致と判定する() {
+    let workspace = TempWorkspace::create();
+    let real_parent = workspace.path("real");
+    let target = real_parent.join("draft.dmodel");
+    let link = workspace.path("link.dmodel");
+    fs::create_dir(&real_parent).unwrap();
+    std::os::unix::fs::symlink(&target, &link).unwrap();
+
+    assert!(super::same_file_path(
+        link.to_str().unwrap(),
+        target.to_str().unwrap()
+    ));
+}

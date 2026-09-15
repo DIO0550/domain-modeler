@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
@@ -44,19 +45,33 @@ pub fn same_file_path(left: &str, right: &str) -> bool {
 }
 
 fn resolved_path(path: &Path) -> Option<PathBuf> {
-    let absolute = absolute_path(path)?;
-    let mut ancestor = absolute.as_path();
+    let mut ancestor = absolute_path(path)?;
     let mut missing_suffix: Vec<OsString> = Vec::new();
+    let mut followed_links: HashSet<PathBuf> = HashSet::new();
     loop {
-        if let Ok(mut resolved) = fs::canonicalize(ancestor) {
+        if let Ok(mut resolved) = fs::canonicalize(&ancestor) {
             for component in missing_suffix.iter().rev() {
                 resolved.push(component);
             }
             return Some(resolved);
         }
+        if fs::symlink_metadata(&ancestor)
+            .is_ok_and(|metadata| metadata.file_type().is_symlink())
+        {
+            if !followed_links.insert(ancestor.clone()) {
+                return None;
+            }
+            let target = fs::read_link(&ancestor).ok()?;
+            ancestor = if target.is_absolute() {
+                target
+            } else {
+                ancestor.parent()?.join(target)
+            };
+            continue;
+        }
 
         missing_suffix.push(ancestor.file_name()?.to_os_string());
-        ancestor = ancestor.parent()?;
+        ancestor = ancestor.parent()?.to_path_buf();
     }
 }
 
