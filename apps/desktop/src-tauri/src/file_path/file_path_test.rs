@@ -84,3 +84,19 @@ fn 削除済みファイルを指すシンボリックリンクも参照先と�
         target.to_str().unwrap()
     ));
 }
+
+#[cfg(unix)]
+#[test]
+fn 循環するシンボリックリンクは別パスと一致と判定しない() {
+    let workspace = TempWorkspace::create();
+    let first = workspace.path("first.dmodel");
+    let second = workspace.path("second.dmodel");
+    let target = workspace.path("target.dmodel");
+    std::os::unix::fs::symlink(&second, &first).unwrap();
+    std::os::unix::fs::symlink(&first, &second).unwrap();
+
+    assert!(!super::same_file_path(
+        first.to_str().unwrap(),
+        target.to_str().unwrap()
+    ));
+}

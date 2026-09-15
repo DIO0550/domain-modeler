@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
@@ -47,7 +46,7 @@ pub fn same_file_path(left: &str, right: &str) -> bool {
 fn resolved_path(path: &Path) -> Option<PathBuf> {
     let mut ancestor = absolute_path(path)?;
     let mut missing_suffix: Vec<OsString> = Vec::new();
-    let mut followed_links: HashSet<PathBuf> = HashSet::new();
+    let mut followed_link_count = 0;
     loop {
         if let Ok(mut resolved) = fs::canonicalize(&ancestor) {
             for component in missing_suffix.iter().rev() {
@@ -58,9 +57,10 @@ fn resolved_path(path: &Path) -> Option<PathBuf> {
         if fs::symlink_metadata(&ancestor)
             .is_ok_and(|metadata| metadata.file_type().is_symlink())
         {
-            if !followed_links.insert(ancestor.clone()) {
+            if followed_link_count == MAX_SYMLINKS_TO_FOLLOW {
                 return None;
             }
+            followed_link_count += 1;
             let target = fs::read_link(&ancestor).ok()?;
             ancestor = if target.is_absolute() {
                 target
@@ -74,6 +74,8 @@ fn resolved_path(path: &Path) -> Option<PathBuf> {
         ancestor = ancestor.parent()?.to_path_buf();
     }
 }
+
+const MAX_SYMLINKS_TO_FOLLOW: usize = 40;
 
 fn absolute_path(path: &Path) -> Option<PathBuf> {
     if path.is_absolute() {
