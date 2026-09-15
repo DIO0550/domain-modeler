@@ -4,6 +4,8 @@ import {
   type CanvasError,
 } from "@domain-modeler/canvas-core";
 import type { FileWriteError, FileWriteResult } from "@/libs/file-write";
+import type { SavePathSelection } from "@/libs/file-dialog";
+export type { SavePathSelection } from "@/libs/file-dialog";
 import type { TabDocumentType } from "./tabs";
 
 /** ファイル読み込みに失敗した理由。 */
@@ -33,16 +35,12 @@ export type OpenDocumentOperations = Readonly<{
   notifyError: (error: OpenDocumentError) => void;
 }>;
 
-/** 保存ダイアログでの保存先選択結果。 */
-export type SavePathSelection =
-  | Readonly<{ status: "selected"; path: string }>
-  | Readonly<{ status: "cancelled" }>;
-
 /** 新規作成フローの完了状態。 */
 export type NewDocumentResult =
   | Readonly<{ status: "created"; path: string }>
   | Readonly<{ status: "cancelled" }>
-  | Readonly<{ status: "writeFailed"; error: FileWriteError }>;
+  | Readonly<{ status: "writeFailed"; error: FileWriteError }>
+  | Readonly<{ status: "dialogFailed"; message: string }>;
 
 /** ファイルを開けなかった理由。 */
 export type OpenDocumentError =
@@ -66,15 +64,15 @@ export const FileActions = {
    *
    * @param documentType 作成する文書の種別。
    * @param operations 保存先選択、書き込み、タブ追加を行う外部操作。
-   * @returns 作成、キャンセル、または書き込み失敗の結果。
+   * @returns 作成、キャンセル、ダイアログ失敗、または書き込み失敗の結果。
    */
   async createNewDocument(
     documentType: TabDocumentType,
     operations: NewDocumentOperations,
   ): Promise<NewDocumentResult> {
     const selection = await operations.selectSavePath(documentType);
-    if (selection.status === "cancelled") {
-      return { status: "cancelled" };
+    if (selection.status !== "selected") {
+      return selection;
     }
 
     const writeResult = await operations.writeFile(

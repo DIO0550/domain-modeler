@@ -62,3 +62,15 @@ const writeFailureMessage = (caught: unknown): string => {
   }
   return String(caught);
 };
+
+/**
+ * UTF-8の文書を保存し、IPC例外も失敗結果として返す。
+ * @param path 保存先のパス。
+ * @param contents 保存する全文。
+ * @returns 書き込み結果。
+ */
+export const writeFile = (path: string, contents: string): Promise<FileWriteResult> =>
+  writeFileAsResult(
+    (targetPath, text) => invoke<FileWriteResult>("write_file", { path: targetPath, contents: text }),
+    { path, contents },
+  );

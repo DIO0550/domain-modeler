@@ -60,7 +60,7 @@ const renderWorkspace = (
  * @returns 該当するボタン。無ければ空のボタン。
  */
 const buttonNamed = (host: HTMLDivElement, name: string): HTMLButtonElement => {
-  const found = Array.from(host.querySelectorAll("button")).find(
+  const found = Array.from(host.querySelectorAll("section:not([hidden]) button")).find(
     (element) =>
       element.getAttribute("aria-label") === name || element.textContent === name,
   );
@@ -89,7 +89,7 @@ test("キャンバス文書が前面のとき8種の付箋ボタンとズーム�
 
   expect(
     captions.map((caption) =>
-      Array.from(host.querySelectorAll("button")).some(
+      Array.from(host.querySelectorAll("section:not([hidden]) button")).some(
         (button) => button.getAttribute("aria-label") === caption,
       )
         ? caption
@@ -111,9 +111,7 @@ test("モデル文書が前面のときはキャンバスツールバーを出�
   const { host } = renderWorkspace(tabsState);
 
   expect(host.querySelector('[aria-label="キャンバスツール"]')).toBeNull();
-  expect(host.querySelector(".document-workspace__message")?.textContent).toBe(
-    "ドメインモデル · order.dmodel",
-  );
+  expect(host.querySelector('[aria-label="ドメインモデルのテキスト"]')).toBeInstanceOf(HTMLTextAreaElement);
 });
 
 test("キャンバス文書を切り替えると種別の選択は文書ごとに初期状態に戻る", () => {

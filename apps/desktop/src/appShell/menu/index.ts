@@ -22,12 +22,13 @@ export const MenuState = {
    * タブ状態からメニューコマンドの有効状態を返す。
    *
    * @param tabsState 開いている文書とアクティブタブ。
+   * @param isCreating 新規作成操作が進行中か。
    * @returns コマンドごとの有効 / 無効。
    */
-  from(tabsState: TabsState): MenuState {
+  from(tabsState: TabsState, isCreating = false): MenuState {
     return {
-      newCanvas: "enabled",
-      newModel: "enabled",
+      newCanvas: isCreating ? "disabled" : "enabled",
+      newModel: isCreating ? "disabled" : "enabled",
       open: "enabled",
       closeTab: documentCommandAvailability(tabsState),
       undo: documentCommandAvailability(tabsState),
@@ -41,6 +42,7 @@ export const MenuState = {
  * 文書が開いているときだけ有効なコマンドの状態を返す。
  *
  * @param tabsState 開いている文書とアクティブタブ。
+   * @param isCreating 新規作成操作が進行中か。
  * @returns 文書があるときは enabled、無いときは disabled。
  */
 const documentCommandAvailability = (
@@ -56,6 +58,7 @@ const documentCommandAvailability = (
  * キャンバスからドメインモデルを生成するコマンドの状態を返す。
  *
  * @param tabsState 開いている文書とアクティブタブ。
+   * @param isCreating 新規作成操作が進行中か。
  * @returns アクティブタブがキャンバスのときだけ enabled。
  */
 const generateAvailability = (tabsState: TabsState): CommandAvailability => {
