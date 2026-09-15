@@ -1,6 +1,7 @@
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -46,11 +47,12 @@ pub enum FileWriteResult {
 pub fn write_utf8_file(path: &str, contents: &str) -> FileWriteResult {
     let target_path = crate::ipc_path::decode(path);
     let target = target_path.as_path();
-    let Some(temp_path) = temp_path_in_same_dir(target) else {
-        return write_failed(path, "path has no file name");
+    let (temp_path, temp_file) = match create_temp_file(target) {
+        Ok(temp) => temp,
+        Err(error) => return write_failed(path, &error.to_string()),
     };
 
-    if let Err(err) = write_temp_then_rename(&temp_path, target, contents) {
+    if let Err(err) = write_temp_then_rename(temp_file, &temp_path, target, contents) {
         let _ = fs::remove_file(&temp_path);
         return write_failed(path, &err.to_string());
     }
@@ -104,8 +106,10 @@ fn write_failed(path: &str, message: &str) -> FileWriteResult {
     }
 }
 
-fn temp_path_in_same_dir(target: &Path) -> Option<PathBuf> {
-    target.file_name()?;
+fn create_temp_file(target: &Path) -> io::Result<(PathBuf, File)> {
+    if target.file_name().is_none() {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "path has no file name"));
+    }
     let parent = match target.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => parent,
         _ => Path::new("."),
@@ -114,15 +118,28 @@ fn temp_path_in_same_dir(target: &Path) -> Option<PathBuf> {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
-    Some(parent.join(format!(
-        ".domain-modeler-tmp-{}-{}",
-        std::process::id(),
-        nanos
-    )))
+    loop {
+        let nonce = TEMP_FILE_NONCE.fetch_add(1, Ordering::Relaxed);
+        let path = parent.join(format!(
+            ".domain-modeler-tmp-{}-{nanos:x}-{nonce:x}",
+            std::process::id(),
+        ));
+        match File::options().write(true).create_new(true).open(&path) {
+            Ok(file) => return Ok((path, file)),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+    }
 }
 
-fn write_temp_then_rename(temp_path: &Path, target: &Path, contents: &str) -> io::Result<()> {
-    let mut file = File::create(temp_path)?;
+static TEMP_FILE_NONCE: AtomicU64 = AtomicU64::new(0);
+
+fn write_temp_then_rename(
+    mut file: File,
+    temp_path: &Path,
+    target: &Path,
+    contents: &str,
+) -> io::Result<()> {
     file.write_all(contents.as_bytes())?;
     file.sync_all()?;
     fs::rename(temp_path, target)

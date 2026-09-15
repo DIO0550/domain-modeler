@@ -83,6 +83,19 @@ fn 正常に書き込むと一時ファイルを残さない() {
 }
 
 #[test]
+fn 同じ対象の一時ファイルを連続確保しても別の排他的な名前になる() {
+    let workspace = TempWorkspace::create();
+    let target = workspace.path("note.dmodel");
+    let (first_path, first_file) = super::create_temp_file(&target).unwrap();
+    let (second_path, second_file) = super::create_temp_file(&target).unwrap();
+
+    assert_ne!(first_path, second_path);
+    drop((first_file, second_file));
+    fs::remove_file(first_path).unwrap();
+    fs::remove_file(second_path).unwrap();
+}
+
+#[test]
 fn 既存ファイルを上書きすると新しい内容になる() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("board.dcanvas");

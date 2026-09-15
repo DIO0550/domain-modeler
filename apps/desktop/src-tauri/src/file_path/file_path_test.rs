@@ -154,3 +154,31 @@ fn 規則確認用コンポーネントは非utf8の生バイトを保持する(
     assert_ne!(raw_probe, replacement_probe);
     assert!(raw_probe.as_bytes().contains(&0xff));
 }
+
+#[cfg(unix)]
+#[test]
+fn 同時刻でも規則確認用プローブ名はatomic_nonceで重複しない() {
+    use std::ffi::OsStr;
+
+    let workspace = TempWorkspace::create();
+    assert_eq!(
+        super::file_names_are_equivalent(
+            workspace.dir(),
+            OsStr::new("first.dmodel"),
+            OsStr::new("second.dmodel"),
+        ),
+        Some(false),
+    );
+    assert_eq!(
+        super::file_names_are_equivalent(
+            workspace.dir(),
+            OsStr::new("first.dmodel"),
+            OsStr::new("second.dmodel"),
+        ),
+        Some(false),
+    );
+
+    let entries = workspace.entry_names();
+    assert_eq!(entries.len(), 4);
+    assert_eq!(entries.iter().collect::<std::collections::HashSet<_>>().len(), 4);
+}

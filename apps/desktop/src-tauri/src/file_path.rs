@@ -2,6 +2,7 @@ use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(unix)]
@@ -98,7 +99,8 @@ fn file_names_are_equivalent(
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
-    let prefix = format!(".dm-probe-{}-{nanos:x}-", std::process::id());
+    let nonce = PROBE_NONCE.fetch_add(1, Ordering::Relaxed);
+    let prefix = format!(".dm-probe-{}-{nanos:x}-{nonce:x}-", std::process::id());
     let (left_name, right_name) = compact_probe_names(left_name, right_name);
     let mut left_probe_name = OsString::from(&prefix);
     left_probe_name.push(&left_name);
@@ -109,6 +111,8 @@ fn file_names_are_equivalent(
         &directory.join(right_probe_name),
     )
 }
+
+static PROBE_NONCE: AtomicU64 = AtomicU64::new(0);
 
 /// コンポーネント長の上限を超えない範囲で、最初と最後の相違箇所を残す。
 #[cfg(unix)]
