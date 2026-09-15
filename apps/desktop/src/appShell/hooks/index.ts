@@ -15,6 +15,14 @@ export type UseAppShellResult = Readonly<{
   creation: Readonly<{ status: "idle" | "creating" }> | NewDocumentResult;
 }>;
 
+export type AppShellOperations = Readonly<{
+  flushDocument: (path: string) => Promise<boolean>;
+}>;
+
+const DEFAULT_OPERATIONS: AppShellOperations = {
+  flushDocument: async () => true,
+};
+
 type AppShellState = Readonly<{
   tabsState: TabsState;
   creation: UseAppShellResult["creation"];
@@ -38,7 +46,9 @@ const appShellReducer = (state: AppShellState, action: AppShellAction): AppShell
  *
  * @returns タブ状態、メニュー状態、タブ選択、メニューコマンド実行。
  */
-export function useAppShell(): UseAppShellResult {
+export function useAppShell(
+  operations: AppShellOperations = DEFAULT_OPERATIONS,
+): UseAppShellResult {
   const [{ tabsState, creation }, dispatch] = useReducer(appShellReducer, {
     tabsState: TabsState.create(),
     creation: { status: "idle" },
@@ -72,6 +82,9 @@ export function useAppShell(): UseAppShellResult {
       return;
     }
     if (tabsState.status !== "active") {
+      return;
+    }
+    if (!(await operations.flushDocument(tabsState.activePath))) {
       return;
     }
     dispatch({ type: "closeTab", path: tabsState.activePath });

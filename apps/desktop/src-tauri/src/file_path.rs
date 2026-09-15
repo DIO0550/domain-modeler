@@ -95,29 +95,49 @@ fn file_names_are_equivalent(
     left_name: &OsStr,
     right_name: &OsStr,
 ) -> Option<bool> {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_nanos())
-        .unwrap_or(0);
-    let nonce = PROBE_NONCE.fetch_add(1, Ordering::Relaxed);
-    let prefix = format!(".dm-probe-{}-{nanos:x}-{nonce:x}-", std::process::id());
     let (left_name, right_name) = compact_probe_names(left_name, right_name);
-    let mut left_probe_name = OsString::from(&prefix);
-    left_probe_name.push(&left_name);
-    let mut right_probe_name = OsString::from(prefix);
-    right_probe_name.push(&right_name);
-    probe_file_names(
-        &directory.join(left_probe_name),
-        &directory.join(right_probe_name),
-    )
+    for _ in 0..MAX_PROBE_ALLOCATION_ATTEMPTS {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let nonce = PROBE_NONCE.fetch_add(1, Ordering::Relaxed);
+        let prefix = format!(".dm-probe-{}-{nanos:x}-{nonce:x}-", std::process::id());
+        let mut left_probe_name = OsString::from(&prefix);
+        left_probe_name.push(&left_name);
+        let mut right_probe_name = OsString::from(prefix);
+        right_probe_name.push(&right_name);
+        match probe_file_names(
+            &directory.join(left_probe_name),
+            &directory.join(right_probe_name),
+        ) {
+            ProbeResult::Determined(equivalent) => return Some(equivalent),
+            ProbeResult::RetryAllocation => {}
+            ProbeResult::Indeterminate => return None,
+        }
+    }
+    None
 }
 
 static PROBE_NONCE: AtomicU64 = AtomicU64::new(0);
+const MAX_PROBE_ALLOCATION_ATTEMPTS: usize = 16;
 
 /// コンポーネント長の上限を超えない範囲で、最初と最後の相違箇所を残す。
 #[cfg(unix)]
 fn compact_probe_names(left: &OsStr, right: &OsStr) -> (OsString, OsString) {
     use std::os::unix::ffi::{OsStrExt, OsStringExt};
+    if let (Ok(left), Ok(right)) = (
+        std::str::from_utf8(left.as_bytes()),
+        std::str::from_utf8(right.as_bytes()),
+    ) {
+        let left = left.chars().collect::<Vec<_>>();
+        let right = right.chars().collect::<Vec<_>>();
+        let (left, right) = compact_probe_units(&left, &right, '-');
+        return (
+            OsString::from(left.into_iter().collect::<String>()),
+            OsString::from(right.into_iter().collect::<String>()),
+        );
+    }
     let (left, right) = compact_probe_units(left.as_bytes(), right.as_bytes(), b'-');
     (OsString::from_vec(left), OsString::from_vec(right))
 }
@@ -181,21 +201,34 @@ fn compact_probe_units_for_name<T: Copy>(
     compact
 }
 
-fn probe_file_names(left_probe: &Path, right_probe: &Path) -> Option<bool> {
-    let left_file = open_probe(left_probe).ok()?;
-    let right_result = open_probe(right_probe);
-    let equivalent = match right_result {
+#[derive(Debug, PartialEq, Eq)]
+enum ProbeResult {
+    Determined(bool),
+    RetryAllocation,
+    Indeterminate,
+}
+
+fn probe_file_names(left_probe: &Path, right_probe: &Path) -> ProbeResult {
+    let left_file = match open_probe(left_probe) {
+        Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-            Some(true)
+            return ProbeResult::RetryAllocation;
+        }
+        Err(_) => return ProbeResult::Indeterminate,
+    };
+    let right_result = open_probe(right_probe);
+    let result = match right_result {
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            ProbeResult::Determined(true)
         }
         Ok(right_file) => {
             remove_probe_if_unchanged(right_probe, &right_file);
-            Some(false)
+            ProbeResult::Determined(false)
         }
-        Err(_) => None,
+        Err(_) => ProbeResult::Indeterminate,
     };
     remove_probe_if_unchanged(left_probe, &left_file);
-    equivalent
+    result
 }
 
 fn open_probe(path: &Path) -> std::io::Result<File> {

@@ -74,3 +74,15 @@ export const createFile = (path: string, contents: string): Promise<FileWriteRes
     (targetPath, text) => invoke<FileWriteResult>("create_file", { path: targetPath, contents: text }),
     { path, contents },
   );
+
+/**
+ * 既存文書へ内容をアトミックに書き込む。
+ * @param path 保存先。
+ * @param contents 文書の全文。
+ * @returns 書き込み成功または失敗。
+ */
+export const writeFile = (path: string, contents: string): Promise<FileWriteResult> =>
+  writeFileAsResult(
+    (targetPath, text) => invoke<FileWriteResult>("write_file", { path: targetPath, contents: text }),
+    { path, contents },
+  );

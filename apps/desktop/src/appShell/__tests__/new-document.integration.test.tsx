@@ -215,3 +215,84 @@ test("モデルの入力内容は別の文書を作成してから戻っても�
   await act(async () => modelTab?.click());
   expect(host.querySelector<HTMLTextAreaElement>('section:not([hidden]) textarea')?.value).toBe("// draft");
 });
+
+test("モデルの未保存入力を書き終えるまでタブを閉じない", async () => {
+  let finishWrite: (result: { type: "ok" }) => void = () => {};
+  const writes: Array<{ path: string; contents: string }> = [];
+  mockIPC((command, payload) => {
+    if (command === "save_file_dialog") {
+      return "/draft.dmodel";
+    }
+    if (command === "create_file") {
+      return { type: "ok" };
+    }
+    expect(command).toBe("write_file");
+    writes.push(payload as { path: string; contents: string });
+    return new Promise<{ type: "ok" }>((resolve) => {
+      finishWrite = resolve;
+    });
+  });
+  const host = renderApp();
+  await clickNamed(host, "ファイル");
+  await clickNamed(host, "新規ドメインモデル");
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "data Order = string");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  await clickNamed(host, "ファイル");
+  await clickNamed(host, "タブを閉じる");
+  await act(async () => Promise.resolve());
+
+  expect(writes).toEqual([
+    { path: "/draft.dmodel", contents: "data Order = string" },
+  ]);
+  expect(host.querySelector('[role="tab"]')).not.toBeNull();
+
+  await act(async () => {
+    finishWrite({ type: "ok" });
+  });
+  expect(host.querySelector('[role="tab"]')).toBeNull();
+});
+
+test("モデルの未保存入力を書き込めなければタブを閉じない", async () => {
+  mockIPC((command) => {
+    if (command === "save_file_dialog") {
+      return "/draft.dmodel";
+    }
+    if (command === "create_file") {
+      return { type: "ok" };
+    }
+    expect(command).toBe("write_file");
+    return {
+      type: "err",
+      error: {
+        kind: "writeFailed",
+        path: "/draft.dmodel",
+        message: "permission denied",
+      },
+    };
+  });
+  const host = renderApp();
+  await clickNamed(host, "ファイル");
+  await clickNamed(host, "新規ドメインモデル");
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "data Order = string");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  await clickNamed(host, "ファイル");
+  await clickNamed(host, "タブを閉じる");
+  await act(async () => Promise.resolve());
+
+  expect(host.querySelector('[role="tab"]')).not.toBeNull();
+  expect(host.querySelector("textarea")?.value).toBe("data Order = string");
+});

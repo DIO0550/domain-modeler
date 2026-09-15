@@ -157,6 +157,35 @@ fn 規則確認用コンポーネントは非utf8の生バイトを保持する(
 
 #[cfg(unix)]
 #[test]
+fn 規則確認用コンポーネントはutf8の文字境界を保持する() {
+    use std::ffi::OsStr;
+
+    let left = format!("{}A.dmodel", "日".repeat(40));
+    let right = format!("{}B.dmodel", "日".repeat(40));
+    let (left_probe, right_probe) =
+        super::compact_probe_names(OsStr::new(&left), OsStr::new(&right));
+
+    assert!(left_probe.to_str().is_some());
+    assert!(right_probe.to_str().is_some());
+    assert_ne!(left_probe, right_probe);
+}
+
+#[test]
+fn 既存の左プローブ名と衝突したら別prefixで再確保する結果を返す() {
+    let workspace = TempWorkspace::create();
+    let left = workspace.path("left-probe");
+    let right = workspace.path("right-probe");
+    fs::write(&left, "stale").unwrap();
+
+    assert_eq!(
+        super::probe_file_names(&left, &right),
+        super::ProbeResult::RetryAllocation,
+    );
+    assert!(!right.exists());
+}
+
+#[cfg(unix)]
+#[test]
 fn 同時刻でも規則確認用プローブ名はatomic_nonceで重複しない() {
     use std::ffi::OsStr;
 
@@ -180,5 +209,11 @@ fn 同時刻でも規則確認用プローブ名はatomic_nonceで重複しな�
 
     let entries = workspace.entry_names();
     assert_eq!(entries.len(), 4);
-    assert_eq!(entries.iter().collect::<std::collections::HashSet<_>>().len(), 4);
+    assert_eq!(
+        entries
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len(),
+        4,
+    );
 }
