@@ -18,12 +18,12 @@ test("ファイルシステムが同一と判定したパスは一致する", as
   ).resolves.toBe(true);
 });
 
-test("IPCを利用できなくても同一文字列のパスは一致する", async () => {
+test("IPCを利用できないと異なる文字列表記も安全側で一致にする", async () => {
   mockIPC(() => {
     throw new Error("IPC unavailable");
   });
 
-  await expect(sameFilePath("/docs/draft.dmodel", "/docs/draft.dmodel"))
+  await expect(sameFilePath("/alias/draft.dmodel", "/docs/draft.dmodel"))
     .resolves.toBe(true);
 });
 

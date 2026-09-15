@@ -133,3 +133,18 @@ fn 長いファイル名の規則確認用コンポーネントは上限のあ�
     assert!(right_probe.len() <= 164);
     assert_ne!(left_probe, right_probe);
 }
+
+#[cfg(unix)]
+#[test]
+fn 規則確認用コンポーネントは非utf8の生バイトを保持する() {
+    use std::ffi::{OsStr, OsString};
+    use std::os::unix::ffi::{OsStrExt, OsStringExt};
+
+    let raw = OsString::from_vec(b"draft-\xff.dmodel".to_vec());
+    let replacement = OsStr::new("draft-�.dmodel");
+    let (raw_probe, replacement_probe) =
+        super::compact_probe_names(&raw, replacement);
+
+    assert_ne!(raw_probe, replacement_probe);
+    assert!(raw_probe.as_bytes().contains(&0xff));
+}

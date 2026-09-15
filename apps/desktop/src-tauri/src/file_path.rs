@@ -111,12 +111,38 @@ fn file_names_are_equivalent(
 }
 
 /// コンポーネント長の上限を超えない範囲で、最初と最後の相違箇所を残す。
+#[cfg(unix)]
+fn compact_probe_names(left: &OsStr, right: &OsStr) -> (OsString, OsString) {
+    use std::os::unix::ffi::{OsStrExt, OsStringExt};
+    let (left, right) = compact_probe_units(left.as_bytes(), right.as_bytes(), b'-');
+    (OsString::from_vec(left), OsString::from_vec(right))
+}
+
+#[cfg(windows)]
+fn compact_probe_names(left: &OsStr, right: &OsStr) -> (OsString, OsString) {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
+    let left = left.encode_wide().collect::<Vec<_>>();
+    let right = right.encode_wide().collect::<Vec<_>>();
+    let (left, right) = compact_probe_units(&left, &right, u16::from(b'-'));
+    (OsString::from_wide(&left), OsString::from_wide(&right))
+}
+
+#[cfg(not(any(unix, windows)))]
 fn compact_probe_names(left: &OsStr, right: &OsStr) -> (OsString, OsString) {
     let left = left.to_string_lossy().chars().collect::<Vec<_>>();
     let right = right.to_string_lossy().chars().collect::<Vec<_>>();
+    let (left, right) = compact_probe_units(&left, &right, '-');
+    (left.into_iter().collect(), right.into_iter().collect())
+}
+
+fn compact_probe_units<T: Copy + Eq>(
+    left: &[T],
+    right: &[T],
+    separator: T,
+) -> (Vec<T>, Vec<T>) {
     let common_start = left
         .iter()
-        .zip(&right)
+        .zip(right)
         .take_while(|(left, right)| left == right)
         .count();
     let common_end = left
@@ -126,24 +152,29 @@ fn compact_probe_names(left: &OsStr, right: &OsStr) -> (OsString, OsString) {
         .take_while(|(left, right)| left == right)
         .count();
     (
-        compact_probe_name(&left, common_start, common_end),
-        compact_probe_name(&right, common_start, common_end),
+        compact_probe_units_for_name(left, common_start, common_end, separator),
+        compact_probe_units_for_name(right, common_start, common_end, separator),
     )
 }
 
-fn compact_probe_name(chars: &[char], common_start: usize, common_end: usize) -> OsString {
-    const CONTEXT: usize = 10;
+fn compact_probe_units_for_name<T: Copy>(
+    units: &[T],
+    common_start: usize,
+    common_end: usize,
+    separator: T,
+) -> Vec<T> {
+    const CONTEXT: usize = 20;
     let first_start = common_start.saturating_sub(CONTEXT);
-    let first_end = (common_start + CONTEXT).min(chars.len());
-    let last_difference = chars.len().saturating_sub(common_end);
+    let first_end = (common_start + CONTEXT).min(units.len());
+    let last_difference = units.len().saturating_sub(common_end);
     let last_start = last_difference.saturating_sub(CONTEXT);
-    let last_end = (last_difference + CONTEXT).min(chars.len());
-    let mut compact = chars[first_start..first_end].iter().collect::<String>();
+    let last_end = (last_difference + CONTEXT).min(units.len());
+    let mut compact = units[first_start..first_end].to_vec();
     if last_start > first_end {
-        compact.push('-');
-        compact.extend(chars[last_start..last_end].iter().copied());
+        compact.push(separator);
+        compact.extend_from_slice(&units[last_start..last_end]);
     }
-    OsString::from(compact)
+    compact
 }
 
 fn probe_file_names(left_probe: &Path, right_probe: &Path) -> Option<bool> {
