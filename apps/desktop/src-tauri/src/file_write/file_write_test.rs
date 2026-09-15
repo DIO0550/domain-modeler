@@ -1,4 +1,5 @@
 use std::fs;
+use std::io;
 
 use super::{write_utf8_file, FileWriteResult};
 use crate::temp_workspace::TempWorkspace;
@@ -17,6 +18,30 @@ fn 両文書を排他的に作成し競合先の内容を維持する() {
         assert_eq!(fs::read_to_string(&path).unwrap(), "first");
         assert_eq!(workspace.entry_names(), [name]);
     }
+}
+
+#[test]
+fn hard_linkを利用できなくても排他的に新規作成する() {
+    let workspace = TempWorkspace::create();
+    let target = workspace.path("draft.dmodel");
+    let result = super::publish_after_link(
+        Err(io::Error::new(io::ErrorKind::Unsupported, "unsupported")),
+        &target,
+        "draft",
+    );
+
+    assert!(result.is_ok());
+    assert_eq!(fs::read_to_string(target).unwrap(), "draft");
+}
+
+#[test]
+fn hard_link非対応時の作成も既存ファイルを上書きしない() {
+    let workspace = TempWorkspace::create();
+    let target = workspace.path("draft.dmodel");
+    fs::write(&target, "existing").unwrap();
+
+    assert!(super::create_new_file(&target, "replacement").is_err());
+    assert_eq!(fs::read_to_string(target).unwrap(), "existing");
 }
 
 #[cfg(unix)]

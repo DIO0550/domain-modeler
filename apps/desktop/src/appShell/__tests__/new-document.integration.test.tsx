@@ -33,12 +33,21 @@ const clickNamed = async (host: HTMLElement, name: string) => {
   await act(async () => button?.click());
 };
 
-test.each(["model", "canvas"])("開いている %s のパスを再選択しても編集状態を保持し再作成しない", async (kind) => {
-  const path = kind === "model" ? "/draft.dmodel" : "/draft.dcanvas";
+test.each(["model", "canvas"])("開いている %s のパスを別の大文字小文字で再選択しても編集状態を保持し再作成しない", async (kind) => {
+  const path = kind === "model" ? "/Draft.dmodel" : "/Draft.dcanvas";
+  const selectedPath = path.toLowerCase();
   const label = kind === "model" ? "新規ドメインモデル" : "新規キャンバス";
   const files = new Map<string, string>();
+  let selectionCount = 0;
   mockIPC((command, payload) => {
-    if (command === "save_file_dialog") { return path; }
+    if (command === "save_file_dialog") {
+      selectionCount += 1;
+      return selectionCount === 1 ? path : selectedPath;
+    }
+    if (command === "same_file_path") {
+      const { left, right } = payload as { left: string; right: string };
+      return left.toLowerCase() === right.toLowerCase();
+    }
     expect(command).toBe("create_file");
     const { contents } = payload as { contents: string };
     files.set(path, contents);
@@ -59,7 +68,7 @@ test.each(["model", "canvas"])("開いている %s のパスを再選択して�
   files.delete(path);
   await clickNamed(host, "ファイル");
   await clickNamed(host, label);
-  expect(files.has(path)).toBe(false);
+  expect(files.has(selectedPath)).toBe(false);
   expect(host.querySelectorAll('[role="tab"]')).toHaveLength(1);
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("開いている文書と同じパス");
   if (kind === "model") {

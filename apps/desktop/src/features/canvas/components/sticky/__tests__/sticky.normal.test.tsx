@@ -1,4 +1,4 @@
-import { act } from "react";
+import { Activity, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
 import {
@@ -248,6 +248,47 @@ test("編集中は下書き本文を textarea に出す", () => {
   expect(
     host.querySelector("article")?.getAttribute("data-sticky-session"),
   ).toBe("editing");
+});
+
+test("背景から復帰した編集中の付箋はタブ操作中のフォーカスを奪わない", () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root: Root = createRoot(host);
+  const sticky = stickyOf("event", "注文が確定した");
+  const chrome: StickyChrome = {
+    status: "editing",
+    draftText: "下書き",
+    onDraftChange: () => undefined,
+    onCommit: () => undefined,
+  };
+  const rerender = (mode: "visible" | "hidden"): void => {
+    act(() => {
+      root.render(
+        <>
+          <button type="button" role="tab">別の文書</button>
+          <Activity mode={mode}>
+            <Sticky sticky={sticky} chrome={chrome} />
+          </Activity>
+        </>,
+      );
+    });
+  };
+  rendered.push({
+    host,
+    unmount: () => {
+      act(() => root.unmount());
+      host.remove();
+    },
+  });
+
+  rerender("visible");
+  expect(document.activeElement).toBe(host.querySelector("textarea"));
+  rerender("hidden");
+  const tab = host.querySelector<HTMLButtonElement>('[role="tab"]');
+  act(() => tab?.focus());
+  rerender("visible");
+
+  expect(document.activeElement).toBe(tab);
 });
 
 test("選択中は四隅にリサイズハンドルを表示する", () => {

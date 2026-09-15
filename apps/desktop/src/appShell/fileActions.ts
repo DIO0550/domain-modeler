@@ -25,6 +25,7 @@ export type NewDocumentOperations = Readonly<{
     documentType: TabDocumentType,
   ) => Promise<SavePathSelection>;
   createFile: (path: string, contents: string) => Promise<FileWriteResult>;
+  sameFilePath: (left: string, right: string) => Promise<boolean>;
   openTab: (path: string, documentType: TabDocumentType) => void;
 }>;
 
@@ -76,7 +77,12 @@ export const FileActions = {
     if (selection.status !== "selected") {
       return selection;
     }
-    if (openPaths.includes(selection.path)) {
+    const pathMatches = await Promise.all(
+      openPaths.map((openPath) =>
+        operations.sameFilePath(selection.path, openPath),
+      ),
+    );
+    if (pathMatches.some((matches) => matches)) {
       return {
         status: "writeFailed",
         error: {

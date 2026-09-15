@@ -58,7 +58,7 @@ pub fn write_utf8_file(path: &str, contents: &str) -> FileWriteResult {
 }
 
 /// 新規 .dmodel を作成する。既存ファイルやシンボリックリンクは置換しない。
-/// 完全な内容を一時ファイルへ書き、hard_link の排他的な作成で公開する。
+/// 完全な内容を用意してから、対象パスを排他的に作成する。
 pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
     let target = Path::new(path);
     if !target
@@ -72,7 +72,8 @@ pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
 }
 
 /// UTF-8 文書を排他的に新規作成する。既存ファイルやリンクは置換しない。
-/// 完全な内容を一時ファイルへ書き、hard_link で競合先を上書きせず公開する。
+/// 完全な内容を一時ファイルへ書いて hard link で公開し、未対応のファイルシステムでは
+/// create_new による排他的な直接作成へフォールバックする。
 pub fn create_utf8_file(path: &str, contents: &str) -> FileWriteResult {
     let target = Path::new(path);
     let Some(temp_path) = temp_path_in_same_dir(target) else {
@@ -88,12 +89,50 @@ pub fn create_utf8_file(path: &str, contents: &str) -> FileWriteResult {
     };
     let written = file.write_all(contents.as_bytes()).and_then(|()| file.sync_all());
     drop(file);
-    let published = written.and_then(|()| fs::hard_link(&temp_path, target));
-    let _ = fs::remove_file(&temp_path);
-    if let Err(error) = published {
+    if let Err(error) = written {
+        let _ = fs::remove_file(&temp_path);
         return write_failed(path, &error.to_string());
     }
-    FileWriteResult::Ok
+
+    match publish_new_file(&temp_path, target, contents) {
+        Ok(()) => {
+            let _ = fs::remove_file(&temp_path);
+            FileWriteResult::Ok
+        }
+        Err(error) => {
+            let _ = fs::remove_file(&temp_path);
+            write_failed(path, &error.to_string())
+        }
+    }
+}
+
+fn publish_new_file(temp_path: &Path, target: &Path, contents: &str) -> io::Result<()> {
+    publish_after_link(fs::hard_link(temp_path, target), target, contents)
+}
+
+fn publish_after_link(
+    link_result: io::Result<()>,
+    target: &Path,
+    contents: &str,
+) -> io::Result<()> {
+    match link_result {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Err(error),
+        Err(_) => create_new_file(target, contents),
+    }
+}
+
+fn create_new_file(target: &Path, contents: &str) -> io::Result<()> {
+    let mut file = File::options().write(true).create_new(true).open(target)?;
+    if let Err(error) = file
+        .write_all(contents.as_bytes())
+        .and_then(|()| file.sync_all())
+    {
+        drop(file);
+        let _ = fs::remove_file(target);
+        return Err(error);
+    }
+    Ok(())
 }
 
 fn write_failed(path: &str, message: &str) -> FileWriteResult {

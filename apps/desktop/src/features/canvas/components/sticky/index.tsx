@@ -106,6 +106,7 @@ export function Sticky({
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const pointerTrackingRef = useRef<PointerTracking>({ status: "idle" });
   const previousChromeStatusRef = useRef(chrome.status);
+  const focusEffectRanRef = useRef(false);
   const appearance = StickyAppearance.of(sticky.type);
   const lineCount = StickyAppearance.bodyLineCount(sticky.size);
   const displayedText =
@@ -186,8 +187,13 @@ export function Sticky({
   };
 
   useEffect(() => {
+    const isFirstRun = !focusEffectRanRef.current;
+    focusEffectRanRef.current = true;
     const previousStatus = previousChromeStatusRef.current;
     previousChromeStatusRef.current = chrome.status;
+    if (!isFirstRun && previousStatus === chrome.status) {
+      return;
+    }
     if (chrome.status === "editing") {
       editorRef.current?.focus();
       return;

@@ -1,5 +1,6 @@
 mod app_settings;
 mod file_dialog;
+mod file_path;
 mod file_read;
 mod file_watch;
 mod file_write;
@@ -11,6 +12,7 @@ pub fn invoke_handler<R: tauri::Runtime>(
     tauri::generate_handler![
         greet::greet,
         file_read::read_file,
+        file_path::same_file_path,
         file_write::write_file,
         file_write::create_file,
         file_write::create_dmodel_file,

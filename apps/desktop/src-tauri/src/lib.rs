@@ -1,6 +1,7 @@
 mod app_settings;
 mod command;
 mod file_dialog;
+mod file_path;
 mod file_read;
 mod file_watch;
 mod file_write;

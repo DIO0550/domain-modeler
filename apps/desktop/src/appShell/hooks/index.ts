@@ -1,5 +1,6 @@
 import { useReducer } from "react";
 import { selectSavePath } from "@/libs/file-dialog";
+import { sameFilePath } from "@/libs/file-path";
 import { createFile } from "@/libs/file-write";
 import { FileActions, type NewDocumentResult } from "../fileActions";
 import { MenuState, type MenuCommandId } from "../menu";
@@ -59,6 +60,7 @@ export function useAppShell(): UseAppShellResult {
         {
           selectSavePath,
           createFile,
+          sameFilePath,
           openTab: (path, documentType) => dispatch({ type: "openTab", path, documentType }),
         },
         tabsState.status === "active" ? tabsState.tabs.map((tab) => tab.path) : [],
