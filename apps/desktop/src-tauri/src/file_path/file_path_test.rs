@@ -33,6 +33,25 @@ fn 削除済みパスの大文字小文字は対象ディレクトリの規則�
     assert!(workspace.entry_names().is_empty());
 }
 
+#[test]
+fn 削除済みパスのunicode正規化は対象ディレクトリの規則で判定する() {
+    let workspace = TempWorkspace::create();
+    let composed = workspace.path("é.dmodel");
+    let decomposed = workspace.path("e\u{301}.dmodel");
+    fs::write(&composed, "probe").unwrap();
+    let normalizes_unicode = decomposed.exists();
+    fs::remove_file(&composed).unwrap();
+
+    assert_eq!(
+        super::same_file_path(
+            composed.to_str().unwrap(),
+            decomposed.to_str().unwrap()
+        ),
+        normalizes_unicode
+    );
+    assert!(workspace.entry_names().is_empty());
+}
+
 #[cfg(unix)]
 #[test]
 fn 削除済みファイルもシンボリックリンク先の親を解決して一致と判定する() {
