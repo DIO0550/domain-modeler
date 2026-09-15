@@ -29,13 +29,14 @@ const setup = (selection: SavePathSelection) => {
   };
   const operations = {
     selectSavePath: async () => selection,
-    writeFile: async (
+    createFile: async (
       path: string,
       contents: string,
     ): Promise<FileWriteResult> => {
       files.set(path, contents);
       return { type: "ok" };
     },
+    sameFilePath: async (left: string, right: string) => left === right,
     readFile: async (path: string): Promise<FileReadResult> => {
       const value = files.get(path);
       if (value === undefined) {

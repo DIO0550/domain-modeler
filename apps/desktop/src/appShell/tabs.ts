@@ -1,3 +1,5 @@
+import { displayFilePath } from "@/libs/file-path";
+
 /** タブが表示する文書の種別。 */
 export type TabDocumentType = "canvas" | "model";
 
@@ -255,7 +257,7 @@ const POSIX_SEPARATOR = "/";
  * @returns 末尾のセグメント。セグメントが無ければ path そのもの。
  */
 const fileNameOf = (path: string): string => {
-  const segments = pathSegments(path);
+  const segments = pathSegments(displayFilePath(path));
   const last = segments[segments.length - 1];
   if (last === undefined) {
     return path;
@@ -270,7 +272,7 @@ const fileNameOf = (path: string): string => {
  * @returns ルートに近い順のディレクトリ名。
  */
 const directorySegmentsOf = (path: string): readonly string[] => {
-  const segments = pathSegments(path);
+  const segments = pathSegments(displayFilePath(path));
   if (segments.length <= 1) {
     return [];
   }
@@ -293,6 +295,7 @@ const pathSegments = (path: string): readonly string[] =>
  * @returns パスの区切り文字。
  */
 const pathSeparator = (path: string): typeof WINDOWS_SEPARATOR | typeof POSIX_SEPARATOR => {
+  path = displayFilePath(path);
   if (path.includes(WINDOWS_SEPARATOR) && !path.includes(POSIX_SEPARATOR)) {
     return WINDOWS_SEPARATOR;
   }

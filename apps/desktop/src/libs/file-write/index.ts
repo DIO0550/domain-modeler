@@ -62,3 +62,27 @@ const writeFailureMessage = (caught: unknown): string => {
   }
   return String(caught);
 };
+
+/**
+ * 文書を排他的に新規作成する。既存パスは上書きしない。
+ * @param path 新規保存先。
+ * @param contents 作成する文書の全文。
+ * @returns 作成成功または書き込み失敗。
+ */
+export const createFile = (path: string, contents: string): Promise<FileWriteResult> =>
+  writeFileAsResult(
+    (targetPath, text) => invoke<FileWriteResult>("create_file", { path: targetPath, contents: text }),
+    { path, contents },
+  );
+
+/**
+ * 既存文書へ内容をアトミックに書き込む。
+ * @param path 保存先。
+ * @param contents 文書の全文。
+ * @returns 書き込み成功または失敗。
+ */
+export const writeFile = (path: string, contents: string): Promise<FileWriteResult> =>
+  writeFileAsResult(
+    (targetPath, text) => invoke<FileWriteResult>("write_file", { path: targetPath, contents: text }),
+    { path, contents },
+  );

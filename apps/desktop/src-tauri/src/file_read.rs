@@ -52,7 +52,7 @@ pub enum FileReadResult {
 ///
 /// * `path` - 読み取るファイルのパス。
 pub fn read_utf8_file(path: &str) -> FileReadResult {
-    match fs::read(path) {
+    match fs::read(crate::ipc_path::decode(path)) {
         Err(err) if err.kind() == ErrorKind::NotFound => FileReadResult::Err {
             error: FileReadError::NotFound {
                 path: path.to_string(),

@@ -1,6 +1,7 @@
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -44,12 +45,14 @@ pub enum FileWriteResult {
 /// * `path` - 書き込むファイルのパス。
 /// * `contents` - 書き込む UTF-8 文字列。
 pub fn write_utf8_file(path: &str, contents: &str) -> FileWriteResult {
-    let target = Path::new(path);
-    let Some(temp_path) = temp_path_in_same_dir(target) else {
-        return write_failed(path, "path has no file name");
+    let target_path = crate::ipc_path::decode(path);
+    let target = target_path.as_path();
+    let (temp_path, temp_file) = match create_temp_file(target) {
+        Ok(temp) => temp,
+        Err(error) => return write_failed(path, &error.to_string()),
     };
 
-    if let Err(err) = write_temp_then_rename(&temp_path, target, contents) {
+    if let Err(err) = write_temp_then_rename(temp_file, &temp_path, target, contents) {
         let _ = fs::remove_file(&temp_path);
         return write_failed(path, &err.to_string());
     }
@@ -58,9 +61,10 @@ pub fn write_utf8_file(path: &str, contents: &str) -> FileWriteResult {
 }
 
 /// 新規 .dmodel を作成する。既存ファイルやシンボリックリンクは置換しない。
-/// 完全な内容を一時ファイルへ書き、hard_link の排他的な作成で公開する。
+/// 完全な内容を用意してから、対象パスを排他的に作成する。
 pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
-    let target = Path::new(path);
+    let target_path = crate::ipc_path::decode(path);
+    let target = target_path.as_path();
     if !target
         .extension()
         .and_then(|extension| extension.to_str())
@@ -68,25 +72,29 @@ pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
     {
         return write_failed(path, "保存先には新規 .dmodel ファイルを指定してください");
     }
-    let Some(temp_path) = temp_path_in_same_dir(target) else {
-        return write_failed(path, "path has no file name");
-    };
-    let mut file = match File::options()
-        .write(true)
-        .create_new(true)
-        .open(&temp_path)
-    {
-        Ok(file) => file,
-        Err(error) => return write_failed(path, &error.to_string()),
-    };
-    let written = file.write_all(contents.as_bytes()).and_then(|()| file.sync_all());
-    drop(file);
-    let published = written.and_then(|()| fs::hard_link(&temp_path, target));
-    let _ = fs::remove_file(&temp_path);
-    if let Err(error) = published {
-        return write_failed(path, &error.to_string());
+    create_utf8_file(path, contents)
+}
+
+/// UTF-8 文書を排他的に新規作成する。既存ファイルやリンクは置換しない。
+/// create_new で対象 inode を直接保持し、可変な一時パスを再参照しない。
+pub fn create_utf8_file(path: &str, contents: &str) -> FileWriteResult {
+    let target = crate::ipc_path::decode(path);
+    match create_new_file(&target, contents) {
+        Ok(()) => FileWriteResult::Ok,
+        Err(error) => write_failed(path, &error.to_string()),
     }
-    FileWriteResult::Ok
+}
+
+fn create_new_file(target: &Path, contents: &str) -> io::Result<()> {
+    let mut file = File::options().write(true).create_new(true).open(target)?;
+    if let Err(error) = file
+        .write_all(contents.as_bytes())
+        .and_then(|()| file.sync_all())
+    {
+        drop(file);
+        return Err(error);
+    }
+    Ok(())
 }
 
 fn write_failed(path: &str, message: &str) -> FileWriteResult {
@@ -98,8 +106,10 @@ fn write_failed(path: &str, message: &str) -> FileWriteResult {
     }
 }
 
-fn temp_path_in_same_dir(target: &Path) -> Option<PathBuf> {
-    let file_name = target.file_name()?;
+fn create_temp_file(target: &Path) -> io::Result<(PathBuf, File)> {
+    if target.file_name().is_none() {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "path has no file name"));
+    }
     let parent = match target.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => parent,
         _ => Path::new("."),
@@ -108,16 +118,28 @@ fn temp_path_in_same_dir(target: &Path) -> Option<PathBuf> {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
-    Some(parent.join(format!(
-        ".{}.tmp-{}-{}",
-        file_name.to_string_lossy(),
-        std::process::id(),
-        nanos
-    )))
+    loop {
+        let nonce = TEMP_FILE_NONCE.fetch_add(1, Ordering::Relaxed);
+        let path = parent.join(format!(
+            ".domain-modeler-tmp-{}-{nanos:x}-{nonce:x}",
+            std::process::id(),
+        ));
+        match File::options().write(true).create_new(true).open(&path) {
+            Ok(file) => return Ok((path, file)),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+    }
 }
 
-fn write_temp_then_rename(temp_path: &Path, target: &Path, contents: &str) -> io::Result<()> {
-    let mut file = File::create(temp_path)?;
+static TEMP_FILE_NONCE: AtomicU64 = AtomicU64::new(0);
+
+fn write_temp_then_rename(
+    mut file: File,
+    temp_path: &Path,
+    target: &Path,
+    contents: &str,
+) -> io::Result<()> {
     file.write_all(contents.as_bytes())?;
     file.sync_all()?;
     fs::rename(temp_path, target)

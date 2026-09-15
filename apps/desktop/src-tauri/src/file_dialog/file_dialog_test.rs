@@ -77,6 +77,29 @@ fn 保存ダイアログで別の拡張子だと文書種別の拡張子に揃�
     assert_eq!(result, Some("/tmp/note.dmodel".to_string()));
 }
 
+#[cfg(unix)]
+#[test]
+fn 保存ダイアログは非utf8の親パスを可逆形式で返す() {
+    use std::os::unix::ffi::OsStringExt;
+    let original = PathBuf::from(std::ffi::OsString::from_vec(
+        b"/tmp/non-utf8-\xff/board".to_vec(),
+    ));
+
+    let result = save_dialog_result(
+        Some(FilePath::from(original)),
+        DocumentKind::Canvas,
+    )
+    .expect("path should be selected");
+
+    assert!(result.ends_with("/board.dcanvas"));
+    assert_eq!(crate::ipc_path::decode(&result).extension().unwrap(), "dcanvas");
+    use std::os::unix::ffi::OsStrExt;
+    assert!(crate::ipc_path::decode(&result)
+        .as_os_str()
+        .as_bytes()
+        .contains(&0xff));
+}
+
 #[test]
 fn 文書種別はjsonでキャメルケースの語彙になる() {
     let canvas = serde_json::to_value(DocumentKind::Canvas).expect("kind should serialize");

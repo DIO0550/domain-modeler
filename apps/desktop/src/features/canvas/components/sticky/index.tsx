@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useEffectEvent,
   useRef,
   type CSSProperties,
   type FocusEvent,
@@ -106,6 +107,7 @@ export function Sticky({
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const pointerTrackingRef = useRef<PointerTracking>({ status: "idle" });
   const previousChromeStatusRef = useRef(chrome.status);
+  const focusEffectRanRef = useRef(false);
   const appearance = StickyAppearance.of(sticky.type);
   const lineCount = StickyAppearance.bodyLineCount(sticky.size);
   const displayedText =
@@ -184,10 +186,28 @@ export function Sticky({
       manipulation.onPointerCancel();
     }
   };
+  const cancelTrackedManipulation = useEffectEvent((): void => {
+    const tracking = pointerTrackingRef.current;
+    pointerTrackingRef.current = { status: "idle" };
+    if (tracking.status === "manipulating") {
+      manipulation?.onPointerCancel();
+    }
+  });
 
   useEffect(() => {
+    return () => {
+      cancelTrackedManipulation();
+    };
+  }, []);
+
+  useEffect(() => {
+    const isFirstRun = !focusEffectRanRef.current;
+    focusEffectRanRef.current = true;
     const previousStatus = previousChromeStatusRef.current;
     previousChromeStatusRef.current = chrome.status;
+    if (!isFirstRun && previousStatus === chrome.status) {
+      return;
+    }
     if (chrome.status === "editing") {
       editorRef.current?.focus();
       return;
@@ -235,6 +255,7 @@ export function Sticky({
       onPointerMove={moveManipulation}
       onPointerUp={commitManipulation}
       onPointerCancel={cancelManipulation}
+      onLostPointerCapture={cancelManipulation}
     >
       <div className={stickyFaceClassName(appearance.rotation)}>
         <span className="sticky__caption">{appearance.caption}</span>
@@ -282,6 +303,7 @@ export function Sticky({
               onPointerMove={moveManipulation}
               onPointerUp={commitManipulation}
               onPointerCancel={cancelManipulation}
+              onLostPointerCapture={cancelManipulation}
               onClick={(event) => {
                 event.stopPropagation();
               }}

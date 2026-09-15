@@ -7,6 +7,56 @@ use crate::temp_workspace::TempWorkspace;
 use crate::temp_workspace::RestoredPermissions;
 
 #[test]
+fn 両文書を排他的に作成し競合先の内容を維持する() {
+    for name in ["note.dmodel", "board.dcanvas"] {
+        let workspace = TempWorkspace::create();
+        let path = workspace.path(name);
+        let path_str = path.to_str().unwrap();
+        assert_eq!(super::create_utf8_file(path_str, "first"), FileWriteResult::Ok);
+        assert!(matches!(super::create_utf8_file(path_str, "second"), FileWriteResult::Err { .. }));
+        assert_eq!(fs::read_to_string(&path).unwrap(), "first");
+        assert_eq!(workspace.entry_names(), [name]);
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn 長い有効なファイル名でも新規作成できる() {
+    let workspace = TempWorkspace::create();
+    let path = workspace.path(&format!("{}.dcanvas", "a".repeat(220)));
+    let path_str = path.to_str().unwrap();
+
+    assert_eq!(
+        super::create_utf8_file(path_str, "canvas"),
+        FileWriteResult::Ok
+    );
+    assert_eq!(fs::read_to_string(path).unwrap(), "canvas");
+}
+
+#[test]
+fn 排他的作成は既存ファイルを上書きしない() {
+    let workspace = TempWorkspace::create();
+    let target = workspace.path("draft.dmodel");
+    fs::write(&target, "existing").unwrap();
+
+    assert!(super::create_new_file(&target, "replacement").is_err());
+    assert_eq!(fs::read_to_string(target).unwrap(), "existing");
+}
+
+#[cfg(unix)]
+#[test]
+fn 新規作成は壊れたシンボリックリンクも置換しない() {
+    let workspace = TempWorkspace::create();
+    let missing = workspace.path("missing.dcanvas");
+    let link = workspace.path("link.dcanvas");
+    std::os::unix::fs::symlink(&missing, &link).unwrap();
+    assert!(matches!(super::create_utf8_file(link.to_str().unwrap(), "new"), FileWriteResult::Err { .. }));
+    assert!(link.is_symlink());
+    assert!(!missing.exists());
+    assert_eq!(workspace.entry_names(), ["link.dcanvas"]);
+}
+
+#[test]
 fn 新規ファイルへ書くと内容が残る() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
@@ -30,6 +80,19 @@ fn 正常に書き込むと一時ファイルを残さない() {
     write_utf8_file(path_str, "data 注文 = string\n");
 
     assert_eq!(workspace.entry_names(), ["note.dmodel"]);
+}
+
+#[test]
+fn 同じ対象の一時ファイルを連続確保しても別の排他的な名前になる() {
+    let workspace = TempWorkspace::create();
+    let target = workspace.path("note.dmodel");
+    let (first_path, first_file) = super::create_temp_file(&target).unwrap();
+    let (second_path, second_file) = super::create_temp_file(&target).unwrap();
+
+    assert_ne!(first_path, second_path);
+    drop((first_file, second_file));
+    fs::remove_file(first_path).unwrap();
+    fs::remove_file(second_path).unwrap();
 }
 
 #[test]

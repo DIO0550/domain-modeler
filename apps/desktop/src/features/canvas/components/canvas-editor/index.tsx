@@ -1,3 +1,4 @@
+import { useEffect, useEffectEvent } from "react";
 import { CANVAS_SHORTCUTS, CanvasShortcut } from "../../domains/shortcut";
 import { EventTargetEx } from "@/utils/EventTargetEx";
 import type { Document } from "@domain-modeler/canvas-core";
@@ -15,6 +16,7 @@ import { ConnectionLayer } from "../connection-layer";
 type CanvasEditorProps = Readonly<{
   saveStatus: SaveIndicatorStatus;
   initialDocument?: Document;
+  onDocumentChange?: (document: Document) => void;
 }>;
 
 /**
@@ -26,8 +28,15 @@ type CanvasEditorProps = Readonly<{
 export function CanvasEditor({
   saveStatus,
   initialDocument,
+  onDocumentChange,
 }: CanvasEditorProps) {
   const board = useConnectionInteractions(initialDocument);
+  const notifyDocumentChange = useEffectEvent((document: Document): void => {
+    onDocumentChange?.(document);
+  });
+  useEffect(() => {
+    notifyDocumentChange(board.document);
+  }, [board.document]);
   const viewport = useViewportInteractions(
     board.document.viewport,
     board.document.stickies,

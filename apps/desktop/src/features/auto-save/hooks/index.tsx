@@ -16,7 +16,7 @@ export type AutoSaveContextValue = Readonly<{
   notifyContentsChanged: (contents: string) => void;
   beginTransaction: () => void;
   endTransaction: () => void;
-  flush: () => Promise<void>;
+  flush: () => Promise<boolean>;
 }>;
 
 const AutoSaveContext = createContext<AutoSaveContextValue | undefined>(
@@ -83,29 +83,29 @@ function AutoSaveSession({
     setAutoSave(resolved);
   };
 
-  const runSave = async (force: boolean): Promise<void> => {
-    const run = async (): Promise<void> => {
+  const runSave = async (force: boolean): Promise<boolean> => {
+    const run = async (): Promise<boolean> => {
       const current = autoSaveRef.current;
       if (force) {
         if (!AutoSave.isDirty(current)) {
-          return;
+          return true;
         }
       } else {
         const due = AutoSave.due(current, operationsRef.current.now());
         if (due.status === "notScheduled" || due.delayMs > 0) {
-          return;
+          return true;
         }
       }
 
       const saving = AutoSave.startSaving(current);
       if (saving.status !== "saving") {
-        return;
+        return true;
       }
       if (
         current.status === "saving" &&
         current.pendingContents === current.writingContents
       ) {
-        return;
+        return true;
       }
 
       replaceAutoSave(saving);
@@ -120,6 +120,7 @@ function AutoSaveSession({
           now: operationsRef.current.now(),
         }),
       );
+      return result.type === "ok";
     };
 
     const queued = writeQueueRef.current.then(run, run);
@@ -127,7 +128,7 @@ function AutoSaveSession({
       () => undefined,
       () => undefined,
     );
-    await queued;
+    return await queued;
   };
 
   useEffect(() => {
@@ -167,7 +168,12 @@ function AutoSaveSession({
         replaceAutoSave(AutoSave.endTransaction);
       },
       flush: async () => {
-        await runSave(true);
+        while (AutoSave.isDirty(autoSaveRef.current)) {
+          if (!(await runSave(true))) {
+            return false;
+          }
+        }
+        return true;
       },
     };
   }, [autoSave]);
