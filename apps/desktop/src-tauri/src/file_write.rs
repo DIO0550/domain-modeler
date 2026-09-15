@@ -57,6 +57,38 @@ pub fn write_utf8_file(path: &str, contents: &str) -> FileWriteResult {
     FileWriteResult::Ok
 }
 
+/// 新規 .dmodel を作成する。既存ファイルやシンボリックリンクは置換しない。
+/// 完全な内容を一時ファイルへ書き、hard_link の排他的な作成で公開する。
+pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
+    let target = Path::new(path);
+    if !target
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("dmodel"))
+    {
+        return write_failed(path, "保存先には新規 .dmodel ファイルを指定してください");
+    }
+    let Some(temp_path) = temp_path_in_same_dir(target) else {
+        return write_failed(path, "path has no file name");
+    };
+    let mut file = match File::options()
+        .write(true)
+        .create_new(true)
+        .open(&temp_path)
+    {
+        Ok(file) => file,
+        Err(error) => return write_failed(path, &error.to_string()),
+    };
+    let written = file.write_all(contents.as_bytes()).and_then(|()| file.sync_all());
+    drop(file);
+    let published = written.and_then(|()| fs::hard_link(&temp_path, target));
+    let _ = fs::remove_file(&temp_path);
+    if let Err(error) = published {
+        return write_failed(path, &error.to_string());
+    }
+    FileWriteResult::Ok
+}
+
 fn write_failed(path: &str, message: &str) -> FileWriteResult {
     FileWriteResult::Err {
         error: FileWriteError::WriteFailed {
