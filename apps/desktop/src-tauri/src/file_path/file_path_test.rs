@@ -170,6 +170,33 @@ fn 規則確認用コンポーネントはutf8の文字境界を保持する() {
     assert_ne!(left_probe, right_probe);
 }
 
+#[cfg(unix)]
+#[test]
+fn 規則確認用コンポーネントはunicode正規化単位の数を保持する() {
+    use std::ffi::OsStr;
+    use unicode_segmentation::UnicodeSegmentation;
+
+    let composed = format!("{}A.dmodel", "é".repeat(80));
+    let decomposed = format!("{}A.dmodel", "e\u{301}".repeat(80));
+    let (composed_probe, decomposed_probe) = super::compact_probe_names(
+        OsStr::new(&composed),
+        OsStr::new(&decomposed),
+    );
+
+    assert_eq!(
+        composed_probe
+            .to_str()
+            .unwrap()
+            .graphemes(true)
+            .count(),
+        decomposed_probe
+            .to_str()
+            .unwrap()
+            .graphemes(true)
+            .count(),
+    );
+}
+
 #[test]
 fn 既存の左プローブ名と衝突したら別prefixで再確保する結果を返す() {
     let workspace = TempWorkspace::create();

@@ -296,3 +296,42 @@ test("モデルの未保存入力を書き込めなければタブを閉じな�
   expect(host.querySelector('[role="tab"]')).not.toBeNull();
   expect(host.querySelector("textarea")?.value).toBe("data Order = string");
 });
+
+test("キャンバスの編集内容を保存してからタブを閉じる", async () => {
+  const writes: Array<{ path: string; contents: string }> = [];
+  mockIPC((command, payload) => {
+    if (command === "save_file_dialog") {
+      return "/board.dcanvas";
+    }
+    if (command === "create_file") {
+      return { type: "ok" };
+    }
+    expect(command).toBe("write_file");
+    writes.push(payload as { path: string; contents: string });
+    return { type: "ok" };
+  });
+  const host = renderApp();
+  await clickNamed(host, "ファイル");
+  await clickNamed(host, "新規キャンバス");
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+  });
+
+  await clickNamed(host, "ファイル");
+  await clickNamed(host, "タブを閉じる");
+  await act(async () => Promise.resolve());
+
+  expect(writes).toHaveLength(1);
+  const saved = Serialize.parse(writes[0]?.contents ?? "");
+  expect(saved.ok).toBe(true);
+  if (saved.ok) {
+    expect(saved.value.stickies).toHaveLength(1);
+  }
+  expect(host.querySelector('[role="tab"]')).toBeNull();
+});

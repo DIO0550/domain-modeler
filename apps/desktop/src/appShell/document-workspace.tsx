@@ -1,9 +1,15 @@
 import { Activity, useEffect, useState } from "react";
+import { Document, Serialize } from "@domain-modeler/canvas-core";
 import { ModelEditor } from "@/features/model";
-import { CanvasEditor } from "@/features/canvas";
+import {
+  CanvasEditor,
+  type SaveIndicatorStatus,
+} from "@/features/canvas";
 import {
   AutoSaveProvider,
   useAutoSave,
+  type AutoSave,
+  type AutoSaveContextValue,
   type AutoSaveOperations,
 } from "@/features/auto-save";
 import { writeFile } from "@/libs/file-write";
@@ -22,6 +28,8 @@ const DEFAULT_AUTO_SAVE_OPERATIONS: AutoSaveOperations = {
   writeFile,
   now: Date.now,
 };
+const EMPTY_CANVAS_DOCUMENT = Document.empty();
+const EMPTY_CANVAS_CONTENTS = Serialize.stringify(EMPTY_CANVAS_DOCUMENT);
 
 /**
  * 文書種別に対応する編集画面を表示し、背景タブの編集状態も保持する。
@@ -45,33 +53,84 @@ export function DocumentWorkspace({
   return (
     <main className="document-workspace">
       {tabsState.tabs.map((tab) => (
-        <section
+        <DocumentSession
           key={tab.path}
-          className="document-workspace__document"
-          hidden={tab.path !== tabsState.activePath}
-        >
-          <Activity mode={tab.path === tabsState.activePath ? "visible" : "hidden"}>
-            <DocumentEditor
-              tab={tab}
-              registerSaveSession={registerSaveSession}
-              autoSaveOperations={autoSaveOperations}
-            />
-          </Activity>
-        </section>
+          tab={tab}
+          isActive={tab.path === tabsState.activePath}
+          registerSaveSession={registerSaveSession}
+          autoSaveOperations={autoSaveOperations}
+        />
       ))}
     </main>
+  );
+}
+
+/** 自動保存を非表示制御の外側に置き、背景タブでも保存を継続する。 */
+function DocumentSession({
+  tab,
+  isActive,
+  registerSaveSession,
+  autoSaveOperations,
+}: Readonly<{
+  tab: Tab;
+  isActive: boolean;
+  registerSaveSession?: DocumentWorkspaceProps["registerSaveSession"];
+  autoSaveOperations: AutoSaveOperations;
+}>) {
+  const initialContents =
+    tab.documentType === "canvas" ? EMPTY_CANVAS_CONTENTS : "";
+  return (
+    <AutoSaveProvider
+      path={tab.path}
+      initialContents={initialContents}
+      operations={autoSaveOperations}
+    >
+      <PersistedDocument
+        tab={tab}
+        isActive={isActive}
+        registerSaveSession={registerSaveSession}
+      />
+    </AutoSaveProvider>
+  );
+}
+
+function PersistedDocument({
+  tab,
+  isActive,
+  registerSaveSession,
+}: Readonly<{
+  tab: Tab;
+  isActive: boolean;
+  registerSaveSession?: DocumentWorkspaceProps["registerSaveSession"];
+}>) {
+  const autoSave = useAutoSave();
+
+  useEffect(() => {
+    if (autoSave === undefined || registerSaveSession === undefined) {
+      return;
+    }
+    return registerSaveSession(tab.path, autoSave.flush);
+  }, [autoSave, registerSaveSession, tab.path]);
+
+  if (autoSave === undefined) {
+    return null;
+  }
+  return (
+    <section className="document-workspace__document" hidden={!isActive}>
+      <Activity mode={isActive ? "visible" : "hidden"}>
+        <DocumentEditor tab={tab} autoSave={autoSave} />
+      </Activity>
+    </section>
   );
 }
 
 /** 文書ごとの編集セッションを保持し、タブ切り替えでも内容を維持する。 */
 function DocumentEditor({
   tab,
-  registerSaveSession,
-  autoSaveOperations,
+  autoSave,
 }: Readonly<{
   tab: Tab;
-  registerSaveSession?: DocumentWorkspaceProps["registerSaveSession"];
-  autoSaveOperations: AutoSaveOperations;
+  autoSave: AutoSaveContextValue;
 }>) {
   const [text, setText] = useState("");
   const missingBanner =
@@ -87,53 +146,36 @@ function DocumentEditor({
         {missingBanner}
         <CanvasEditor
           key={tab.path}
-          saveStatus="saved"
+          initialDocument={EMPTY_CANVAS_DOCUMENT}
+          saveStatus={saveStatusOf(autoSave.autoSave)}
+          onDocumentChange={(document) => {
+            autoSave.notifyContentsChanged(Serialize.stringify(document));
+          }}
         />
       </>
     );
   }
 
   return (
-    <AutoSaveProvider
-      path={tab.path}
-      initialContents=""
-      operations={autoSaveOperations}
-    >
+    <>
       {missingBanner}
-      <ModelDocumentEditor
-        path={tab.path}
-        text={text}
-        onTextChange={setText}
-        registerSaveSession={registerSaveSession}
+      <ModelEditor
+        value={text}
+        onChange={(nextText) => {
+          setText(nextText);
+          autoSave.notifyContentsChanged(nextText);
+        }}
       />
-    </AutoSaveProvider>
+    </>
   );
 }
 
-function ModelDocumentEditor({
-  path,
-  text,
-  onTextChange,
-  registerSaveSession,
-}: Readonly<{
-  path: string;
-  text: string;
-  onTextChange: (text: string) => void;
-  registerSaveSession?: DocumentWorkspaceProps["registerSaveSession"];
-}>) {
-  const autoSave = useAutoSave();
-
-  useEffect(() => {
-    if (autoSave === undefined || registerSaveSession === undefined) {
-      return;
-    }
-    return registerSaveSession(path, autoSave.flush);
-  }, [autoSave, path, registerSaveSession]);
-
-  const handleChange = (nextText: string): void => {
-    onTextChange(nextText);
-    autoSave?.notifyContentsChanged(nextText);
-  };
-
-  return <ModelEditor value={text} onChange={handleChange} />;
-}
+const saveStatusOf = (autoSave: AutoSave): SaveIndicatorStatus => {
+  if (autoSave.status === "idle") {
+    return "saved";
+  }
+  if (autoSave.status === "failed") {
+    return "failed";
+  }
+  return "saving";
+};

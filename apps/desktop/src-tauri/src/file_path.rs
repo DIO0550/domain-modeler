@@ -130,12 +130,13 @@ fn compact_probe_names(left: &OsStr, right: &OsStr) -> (OsString, OsString) {
         std::str::from_utf8(left.as_bytes()),
         std::str::from_utf8(right.as_bytes()),
     ) {
-        let left = left.chars().collect::<Vec<_>>();
-        let right = right.chars().collect::<Vec<_>>();
-        let (left, right) = compact_probe_units(&left, &right, '-');
+        use unicode_segmentation::UnicodeSegmentation;
+        let left = left.graphemes(true).collect::<Vec<_>>();
+        let right = right.graphemes(true).collect::<Vec<_>>();
+        let (left, right) = compact_probe_units(&left, &right, "-");
         return (
-            OsString::from(left.into_iter().collect::<String>()),
-            OsString::from(right.into_iter().collect::<String>()),
+            OsString::from(left.concat()),
+            OsString::from(right.concat()),
         );
     }
     let (left, right) = compact_probe_units(left.as_bytes(), right.as_bytes(), b'-');

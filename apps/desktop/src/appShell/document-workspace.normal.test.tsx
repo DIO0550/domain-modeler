@@ -1,6 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
+import type { AutoSaveOperations } from "@/features/auto-save";
 import { DocumentWorkspace } from "./document-workspace";
 import { TabsState } from "./tabs";
 
@@ -13,6 +14,7 @@ type RenderedWorkspace = Readonly<{
 const rendered: RenderedWorkspace[] = [];
 
 afterEach(() => {
+  vi.useRealTimers();
   for (const entry of rendered.splice(0)) {
     entry.unmount();
   }
@@ -26,6 +28,7 @@ afterEach(() => {
  */
 const renderWorkspace = (
   tabsState: TabsState,
+  autoSaveOperations?: AutoSaveOperations,
 ): Pick<RenderedWorkspace, "host" | "rerender"> => {
   const host = document.createElement("div");
   document.body.append(host);
@@ -33,7 +36,12 @@ const renderWorkspace = (
 
   const rerender = (next: TabsState): void => {
     act(() => {
-      root.render(<DocumentWorkspace tabsState={next} />);
+      root.render(
+        <DocumentWorkspace
+          tabsState={next}
+          autoSaveOperations={autoSaveOperations}
+        />,
+      );
     });
   };
 
@@ -112,6 +120,46 @@ test("モデル文書が前面のときはキャンバスツールバーを出�
 
   expect(host.querySelector('[aria-label="キャンバスツール"]')).toBeNull();
   expect(host.querySelector('[aria-label="ドメインモデルのテキスト"]')).toBeInstanceOf(HTMLTextAreaElement);
+});
+
+test("モデルを変更直後に背景化しても自動保存を継続する", async () => {
+  vi.useFakeTimers();
+  const writes: Array<{ path: string; contents: string }> = [];
+  const operations: AutoSaveOperations = {
+    writeFile: async (path, contents) => {
+      writes.push({ path, contents });
+      return { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const model = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const canvas = TabsState.reducer(model, {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const { host, rerender } = renderWorkspace(model, operations);
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "data Order = string");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  rerender(canvas);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+
+  expect(writes).toEqual([
+    { path: "/documents/order.dmodel", contents: "data Order = string" },
+  ]);
 });
 
 test("背景のキャンバスは前面タブのSpaceパンを妨げず、切り替え後もビューポートを保持する", async () => {
