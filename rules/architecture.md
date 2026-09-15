@@ -42,6 +42,8 @@ features/<feature-name>/
 - 処理はドメインを意識してファイルを分ける(`file-read` / `file-write` など)。汎用の `tauri.ts` に読み書き・監視・ダイアログを寄せない
 - 失敗の直和や手順(アトミック書き込みの一時ファイル + rename など)は、その操作のモジュールに置く
 - モジュールフォルダの形は domains と同じ(`index.ts` + `__tests__/`)。フォルダ外部からの import は `index.ts` 経由のみ
+- 新規作成と上書きのように同じドメインの操作は同じモジュールへ置き、結果型・例外変換を共有する。
+- 確認・保存・タブ追加などを組み合わせるフローは、保存I/Oも他の副作用と同様に operations として受け取る。フロー内で具体的なIPC実装を固定しない。
 
 Rust 側も同じ判断にする。`#[tauri::command]` はフロントエンドとの IPC 境界なので、処理本体と混ぜず `command/` に入口だけを置く。`lib.rs` は plugin 初期化・command 登録と `run` にとどめる。ディレクトリの `mod.rs` は使わず、2018 edition のファイル形式(`command.rs` + `command/`)にする。
 

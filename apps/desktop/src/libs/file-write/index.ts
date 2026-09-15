@@ -1,3 +1,5 @@
+import { invoke } from "@tauri-apps/api/core";
+
 /** ファイル書き込みに失敗した理由。 */
 export type FileWriteError = Readonly<{
   kind: "writeFailed";
@@ -34,6 +36,19 @@ export const writeFileAsResult = async (
     };
   }
 };
+
+/**
+ * 新規 .dmodel 作成専用の IPC。既存パスの置換はバックエンドで拒否する。
+ * @param target 保存先と確認済みの生成全文。
+ * @returns 作成成功または例外を含む書き込み失敗。
+ */
+export const createDmodelFile = (
+  target: Readonly<{ path: string; contents: string }>,
+): Promise<FileWriteResult> =>
+  writeFileAsResult(
+    (path, contents) => invoke<FileWriteResult>("create_dmodel_file", { path, contents }),
+    target,
+  );
 
 /**
  * 書き込み例外から失敗メッセージを取り出す。

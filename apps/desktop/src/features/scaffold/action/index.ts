@@ -1,7 +1,6 @@
 import type { Document } from "@domain-modeler/canvas-core";
 import { Generate } from "@domain-modeler/scaffold";
-import { createDmodelFile } from "@/libs/file-create";
-import type { FileWriteError } from "@/libs/file-write";
+import type { FileWriteError, FileWriteResult } from "@/libs/file-write";
 import type { Option } from "@/utils/Option";
 
 type ScaffoldSource = Readonly<{
@@ -15,6 +14,7 @@ type ScaffoldSource = Readonly<{
 type ScaffoldOperations = Readonly<{
   confirm: (text: string) => Promise<"confirmed" | "cancelled">;
   selectSavePath: () => Promise<Option<string>>;
+  createFile: (target: Readonly<{ path: string; contents: string }>) => Promise<FileWriteResult>;
   openTab: (path: string, documentType: "model") => void;
 }>;
 
@@ -29,7 +29,7 @@ export const ScaffoldAction = {
   /**
    * 実行開始時の文書から生成した全文を確認し、保存成功後だけモデルタブを開く。
    * @param source アクティブ文書のスナップショットと生成日。
-   * @param operations 確認画面、保存ダイアログ、タブ追加の接続先。
+   * @param operations 確認画面、保存ダイアログ、新規作成専用の保存処理、タブ追加の接続先。
    * @returns 作成先、キャンセル、対象外、または保存失敗。
    */
   async run(
@@ -51,7 +51,7 @@ export const ScaffoldAction = {
     if (!selection.some) {
       return { status: "cancelled" };
     }
-    const result = await createDmodelFile({
+    const result = await operations.createFile({
       path: selection.value,
       contents: text,
     });

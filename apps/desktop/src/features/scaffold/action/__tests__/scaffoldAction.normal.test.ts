@@ -1,12 +1,10 @@
 import { Document } from "@domain-modeler/canvas-core";
 import { Generate } from "@domain-modeler/scaffold";
-import { mockIPC, clearMocks } from "@tauri-apps/api/mocks";
-import { afterEach, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { TabsState } from "@/appShell/tabs";
+import type { FileWriteResult } from "@/libs/file-write";
 import { Option } from "@/utils/Option";
 import { ScaffoldAction } from "../index";
-
-afterEach(clearMocks);
 
 function setup() {
   let tabs = TabsState.reducer(TabsState.create(), {
@@ -25,9 +23,7 @@ function setup() {
     }),
     generatedOn: "2026-09-14",
   };
-  mockIPC((command, payload) => {
-    expect(command).toBe("create_dmodel_file");
-    const target = payload as { path: string; contents: string };
+  const createFile = async (target: Readonly<{ path: string; contents: string }>): Promise<FileWriteResult> => {
     if (files.has(target.path)) {
       return {
         type: "err",
@@ -40,8 +36,9 @@ function setup() {
     }
     files.set(target.path, target.contents);
     return { type: "ok" };
-  });
+  };
   const operations = {
+    createFile,
     confirm: async (text: string): Promise<"confirmed" | "cancelled"> => {
       previews.push(text);
       return "confirmed";
@@ -108,12 +105,15 @@ test("既存モデルへの保存は失敗し内容とタブを維持する", as
   expect(state.tabs().tabs).toHaveLength(1);
 });
 
-test("IPCが失敗すると失敗を返しモデルタブを開かない", async () => {
+test("保存が失敗すると失敗を返しモデルタブを開かない", async () => {
   const state = setup();
-  mockIPC(() => {
-    throw new Error("connection failed");
+  const result = await ScaffoldAction.run(state.source, {
+    ...state.operations,
+    createFile: async (target) => ({
+      type: "err",
+      error: { kind: "writeFailed", path: target.path, message: "connection failed" },
+    }),
   });
-  const result = await ScaffoldAction.run(state.source, state.operations);
   expect(result).toMatchObject({
     status: "writeFailed",
     error: { message: "connection failed" },
