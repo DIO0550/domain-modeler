@@ -1,7 +1,7 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// 2つのパスが同じファイルを表すかを判定する。
@@ -44,7 +44,7 @@ pub fn same_file_path(left: &str, right: &str) -> bool {
 }
 
 fn resolved_path(path: &Path) -> Option<PathBuf> {
-    let absolute = normalized_absolute(path)?;
+    let absolute = absolute_path(path)?;
     let mut ancestor = absolute.as_path();
     let mut missing_suffix: Vec<OsString> = Vec::new();
     loop {
@@ -60,23 +60,11 @@ fn resolved_path(path: &Path) -> Option<PathBuf> {
     }
 }
 
-fn normalized_absolute(path: &Path) -> Option<PathBuf> {
-    let absolute = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        env::current_dir().ok()?.join(path)
-    };
-    let mut normalized = PathBuf::new();
-    for component in absolute.components() {
-        match component {
-            Component::CurDir => {}
-            Component::ParentDir => {
-                normalized.pop();
-            }
-            other => normalized.push(other.as_os_str()),
-        }
+fn absolute_path(path: &Path) -> Option<PathBuf> {
+    if path.is_absolute() {
+        return Some(path.to_path_buf());
     }
-    Some(normalized)
+    Some(env::current_dir().ok()?.join(path))
 }
 
 fn directory_is_case_sensitive(directory: &Path) -> Option<bool> {

@@ -145,7 +145,7 @@ fn write_failed(path: &str, message: &str) -> FileWriteResult {
 }
 
 fn temp_path_in_same_dir(target: &Path) -> Option<PathBuf> {
-    let file_name = target.file_name()?;
+    target.file_name()?;
     let parent = match target.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => parent,
         _ => Path::new("."),
@@ -155,8 +155,7 @@ fn temp_path_in_same_dir(target: &Path) -> Option<PathBuf> {
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
     Some(parent.join(format!(
-        ".{}.tmp-{}-{}",
-        file_name.to_string_lossy(),
+        ".domain-modeler-tmp-{}-{}",
         std::process::id(),
         nanos
     )))

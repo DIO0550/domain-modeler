@@ -153,6 +153,108 @@ test("背景のキャンバスは前面タブのSpaceパンを妨げず、切り
   expect(host.querySelector<HTMLElement>("section:not([hidden]) .canvas-world")?.style.transform).toBe("translate(32px, 24px) scale(1)");
 });
 
+test("ドラッグ中に背景へ移した付箋は開始位置へ戻り復帰後に再操作できる", () => {
+  const first = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/first.dcanvas",
+    documentType: "canvas",
+  });
+  const second = TabsState.reducer(first, {
+    type: "openTab",
+    path: "/second.dcanvas",
+    documentType: "canvas",
+  });
+  const firstActive = TabsState.reducer(second, {
+    type: "activateTab",
+    path: "/first.dcanvas",
+  });
+  const { host, rerender } = renderWorkspace(first);
+  const surface = host.querySelector<HTMLElement>(".canvas-surface");
+  act(() => {
+    surface?.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+    host.querySelector<HTMLTextAreaElement>("textarea")?.blur();
+  });
+  const article = host.querySelector<HTMLElement>("article");
+  const originalLeft = article?.style.left;
+  const originalTop = article?.style.top;
+
+  act(() => {
+    article?.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        pointerId: 1,
+        isPrimary: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+    article?.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        pointerId: 1,
+        isPrimary: true,
+        clientX: 130,
+        clientY: 130,
+      }),
+    );
+  });
+  expect(article?.style.left).not.toBe(originalLeft);
+
+  rerender(second);
+  rerender(firstActive);
+  const restored = host.querySelector<HTMLElement>(
+    "section:not([hidden]) article",
+  );
+  expect(restored?.style.left).toBe(originalLeft);
+  expect(restored?.style.top).toBe(originalTop);
+
+  act(() => {
+    restored?.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        pointerId: 2,
+        isPrimary: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+    restored?.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        pointerId: 2,
+        isPrimary: true,
+        clientX: 120,
+        clientY: 120,
+      }),
+    );
+    restored?.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        button: 0,
+        pointerId: 2,
+        isPrimary: true,
+        clientX: 120,
+        clientY: 120,
+      }),
+    );
+  });
+
+  expect(restored?.style.left).toBe(
+    `${Number.parseFloat(originalLeft ?? "0") + 20}px`,
+  );
+  expect(restored?.style.top).toBe(
+    `${Number.parseFloat(originalTop ?? "0") + 20}px`,
+  );
+});
+
 test("キャンバス文書を切り替えると種別の選択は文書ごとに初期状態に戻る", () => {
   const first = TabsState.reducer(TabsState.create(), {
     type: "openTab",

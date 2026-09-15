@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useEffectEvent,
   useRef,
   type CSSProperties,
   type FocusEvent,
@@ -185,6 +186,19 @@ export function Sticky({
       manipulation.onPointerCancel();
     }
   };
+  const cancelTrackedManipulation = useEffectEvent((): void => {
+    const tracking = pointerTrackingRef.current;
+    pointerTrackingRef.current = { status: "idle" };
+    if (tracking.status === "manipulating") {
+      manipulation?.onPointerCancel();
+    }
+  });
+
+  useEffect(() => {
+    return () => {
+      cancelTrackedManipulation();
+    };
+  }, []);
 
   useEffect(() => {
     const isFirstRun = !focusEffectRanRef.current;
@@ -241,6 +255,7 @@ export function Sticky({
       onPointerMove={moveManipulation}
       onPointerUp={commitManipulation}
       onPointerCancel={cancelManipulation}
+      onLostPointerCapture={cancelManipulation}
     >
       <div className={stickyFaceClassName(appearance.rotation)}>
         <span className="sticky__caption">{appearance.caption}</span>
@@ -288,6 +303,7 @@ export function Sticky({
               onPointerMove={moveManipulation}
               onPointerUp={commitManipulation}
               onPointerCancel={cancelManipulation}
+              onLostPointerCapture={cancelManipulation}
               onClick={(event) => {
                 event.stopPropagation();
               }}

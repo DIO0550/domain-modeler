@@ -20,6 +20,20 @@ fn 両文書を排他的に作成し競合先の内容を維持する() {
     }
 }
 
+#[cfg(unix)]
+#[test]
+fn 長い有効なファイル名でも新規作成できる() {
+    let workspace = TempWorkspace::create();
+    let path = workspace.path(&format!("{}.dcanvas", "a".repeat(220)));
+    let path_str = path.to_str().unwrap();
+
+    assert_eq!(
+        super::create_utf8_file(path_str, "canvas"),
+        FileWriteResult::Ok
+    );
+    assert_eq!(fs::read_to_string(path).unwrap(), "canvas");
+}
+
 #[test]
 fn hard_linkを利用できなくても排他的に新規作成する() {
     let workspace = TempWorkspace::create();

@@ -47,3 +47,24 @@ fn 削除済みファイルもシンボリックリンク先の親を解決し�
         real.join("draft.dmodel").to_str().unwrap()
     ));
 }
+
+#[cfg(unix)]
+#[test]
+fn 親参照より先にシンボリックリンクを解決して削除済みファイルを判定する() {
+    let workspace = TempWorkspace::create();
+    let alias_parent = workspace.path("alias-parent");
+    let real_parent = workspace.path("real-parent");
+    let linked_directory = real_parent.join("linked-directory");
+    fs::create_dir(&alias_parent).unwrap();
+    fs::create_dir_all(&linked_directory).unwrap();
+    std::os::unix::fs::symlink(&linked_directory, alias_parent.join("link"))
+        .unwrap();
+
+    let through_link = alias_parent.join("link").join("..").join("draft.dmodel");
+    let actual = real_parent.join("draft.dmodel");
+
+    assert!(super::same_file_path(
+        through_link.to_str().unwrap(),
+        actual.to_str().unwrap()
+    ));
+}
