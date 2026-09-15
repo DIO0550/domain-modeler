@@ -15,15 +15,35 @@ fn 相対表現が異なる同じファイルを一致と判定する() {
     ));
 }
 
-#[cfg(any(target_os = "windows", target_os = "macos"))]
 #[test]
-fn 削除済みパスの大文字小文字違いを一致と判定する() {
+fn 削除済みパスの大文字小文字は対象ディレクトリの規則で判定する() {
     let workspace = TempWorkspace::create();
     let upper = workspace.path("Draft.dmodel");
     let lower = workspace.path("draft.dmodel");
+    let probe_upper = workspace.path("CaseProbe");
+    let probe_lower = workspace.path("caseprobe");
+    fs::write(&probe_upper, "probe").unwrap();
+    let is_case_sensitive = !probe_lower.exists();
+    fs::remove_file(probe_upper).unwrap();
+
+    assert_eq!(
+        super::same_file_path(upper.to_str().unwrap(), lower.to_str().unwrap()),
+        !is_case_sensitive
+    );
+    assert!(workspace.entry_names().is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn 削除済みファイルもシンボリックリンク先の親を解決して一致と判定する() {
+    let workspace = TempWorkspace::create();
+    let real = workspace.path("real");
+    let alias = workspace.path("alias");
+    fs::create_dir(&real).unwrap();
+    std::os::unix::fs::symlink(&real, &alias).unwrap();
 
     assert!(super::same_file_path(
-        upper.to_str().unwrap(),
-        lower.to_str().unwrap()
+        alias.join("draft.dmodel").to_str().unwrap(),
+        real.join("draft.dmodel").to_str().unwrap()
     ));
 }
