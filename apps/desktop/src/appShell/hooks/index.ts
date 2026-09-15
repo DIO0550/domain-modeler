@@ -13,6 +13,17 @@ export type UseAppShellResult = Readonly<{
   activate: (path: string) => void;
   runCommand: (commandId: MenuCommandId) => Promise<void>;
   creation: Readonly<{ status: "idle" | "creating" }> | NewDocumentResult;
+  dispatchExternalFileAction: (
+    action: Extract<
+      TabsAction,
+      {
+        type:
+          | "markFileMissing"
+          | "clearFileMissing"
+          | "markBackgroundChanged";
+      }
+    >,
+  ) => void;
 }>;
 
 export type AppShellOperations = Readonly<{
@@ -90,5 +101,17 @@ export function useAppShell(
     dispatch({ type: "closeTab", path: tabsState.activePath });
   };
 
-  return { tabsState, menuState, activate, runCommand, creation };
+  const dispatchExternalFileAction: UseAppShellResult["dispatchExternalFileAction"] =
+    (action) => {
+      dispatch(action);
+    };
+
+  return {
+    tabsState,
+    menuState,
+    activate,
+    runCommand,
+    creation,
+    dispatchExternalFileAction,
+  };
 }

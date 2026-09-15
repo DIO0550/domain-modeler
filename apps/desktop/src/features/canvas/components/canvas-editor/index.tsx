@@ -35,8 +35,14 @@ export function CanvasEditor({
     onDocumentChange?.(document);
   });
   useEffect(() => {
+    if (
+      board.session.status === "dragging" ||
+      board.session.status === "resizing"
+    ) {
+      return;
+    }
     notifyDocumentChange(board.document);
-  }, [board.document]);
+  }, [board.document, board.session.status]);
   const viewport = useViewportInteractions(
     board.document.viewport,
     board.document.stickies,

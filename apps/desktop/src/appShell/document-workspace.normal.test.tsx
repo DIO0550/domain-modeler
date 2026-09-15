@@ -2,6 +2,10 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
 import type { AutoSaveOperations } from "@/features/auto-save";
+import type {
+  FileWatchEvent,
+  FileWatchOperations,
+} from "@/libs/file-watch";
 import { DocumentWorkspace } from "./document-workspace";
 import { TabsState } from "./tabs";
 
@@ -29,6 +33,10 @@ afterEach(() => {
 const renderWorkspace = (
   tabsState: TabsState,
   autoSaveOperations?: AutoSaveOperations,
+  fileWatchOperations?: FileWatchOperations,
+  dispatchExternalFileAction?: React.ComponentProps<
+    typeof DocumentWorkspace
+  >["dispatchExternalFileAction"],
 ): Pick<RenderedWorkspace, "host" | "rerender"> => {
   const host = document.createElement("div");
   document.body.append(host);
@@ -40,6 +48,8 @@ const renderWorkspace = (
         <DocumentWorkspace
           tabsState={next}
           autoSaveOperations={autoSaveOperations}
+          fileWatchOperations={fileWatchOperations}
+          dispatchExternalFileAction={dispatchExternalFileAction}
         />,
       );
     });
@@ -120,6 +130,70 @@ test("モデル文書が前面のときはキャンバスツールバーを出�
 
   expect(host.querySelector('[aria-label="キャンバスツール"]')).toBeNull();
   expect(host.querySelector('[aria-label="ドメインモデルのテキスト"]')).toBeInstanceOf(HTMLTextAreaElement);
+});
+
+test("モデル文書の自動保存に失敗すると理由を画面へ表示する", async () => {
+  vi.useFakeTimers();
+  const operations: AutoSaveOperations = {
+    writeFile: async (path) => ({
+      type: "err",
+      error: { kind: "writeFailed", path, message: "permission denied" },
+    }),
+    now: Date.now,
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(tabsState, operations);
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "data Order = string");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "permission denied",
+  );
+});
+
+test("作成したモデル文書の外部変更をエディタへ取り込む", async () => {
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({ type: "ok", value: "data Order = string" }),
+  };
+  const actions: string[] = [];
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    undefined,
+    watchOperations,
+    (action) => actions.push(action.type),
+  );
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dmodel" });
+    await Promise.resolve();
+  });
+
+  expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
+    "data Order = string",
+  );
+  expect(actions).toContain("clearFileMissing");
 });
 
 test("モデルを変更直後に背景化しても自動保存を継続する", async () => {
@@ -301,6 +375,81 @@ test("ドラッグ中に背景へ移した付箋は開始位置へ戻り復帰�
   expect(restored?.style.top).toBe(
     `${Number.parseFloat(originalTop ?? "0") + 20}px`,
   );
+});
+
+test("ドラッグ中の一時位置は自動保存せず確定後の位置だけを保存する", async () => {
+  vi.useFakeTimers();
+  const writes: string[] = [];
+  const operations: AutoSaveOperations = {
+    writeFile: async (_path, contents) => {
+      writes.push(contents);
+      return { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/board.dcanvas",
+    documentType: "canvas",
+  });
+  const { host } = renderWorkspace(tabsState, operations);
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+    host.querySelector<HTMLTextAreaElement>("textarea")?.blur();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  writes.splice(0);
+  const article = host.querySelector<HTMLElement>("article");
+  act(() => {
+    article?.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        pointerId: 9,
+        isPrimary: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+    article?.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        pointerId: 9,
+        isPrimary: true,
+        clientX: 160,
+        clientY: 150,
+      }),
+    );
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+  expect(writes).toEqual([]);
+
+  act(() => {
+    article?.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        button: 0,
+        pointerId: 9,
+        isPrimary: true,
+        clientX: 160,
+        clientY: 150,
+      }),
+    );
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  expect(writes).toHaveLength(1);
 });
 
 test("キャンバス文書を切り替えると種別の選択は文書ごとに初期状態に戻る", () => {

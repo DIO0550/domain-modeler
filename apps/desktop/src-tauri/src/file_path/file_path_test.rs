@@ -174,7 +174,6 @@ fn 規則確認用コンポーネントはutf8の文字境界を保持する() {
 #[test]
 fn 規則確認用コンポーネントはunicode正規化単位の数を保持する() {
     use std::ffi::OsStr;
-    use unicode_segmentation::UnicodeSegmentation;
 
     let composed = format!("{}A.dmodel", "é".repeat(80));
     let decomposed = format!("{}A.dmodel", "e\u{301}".repeat(80));
@@ -184,17 +183,29 @@ fn 規則確認用コンポーネントはunicode正規化単位の数を保持�
     );
 
     assert_eq!(
-        composed_probe
-            .to_str()
-            .unwrap()
-            .graphemes(true)
-            .count(),
-        decomposed_probe
-            .to_str()
-            .unwrap()
-            .graphemes(true)
-            .count(),
+        super::normalization_units(composed_probe.to_str().unwrap()).len(),
+        super::normalization_units(decomposed_probe.to_str().unwrap()).len(),
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn 巨大な結合文字列でもprefix込みでコンポーネント上限を超えない() {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    let left = format!("e{}A.dmodel", "\u{301}".repeat(200));
+    let right = format!("e{}B.dmodel", "\u{301}".repeat(200));
+    let prefix = ".dm-probe-123-ffffffffffffffff-ffffffffffffffff-";
+    let (left_probe, right_probe) = super::compact_probe_names_for_prefix(
+        OsStr::new(&left),
+        OsStr::new(&right),
+        prefix,
+    );
+
+    assert!(prefix.len() + left_probe.as_bytes().len() <= 255);
+    assert!(prefix.len() + right_probe.as_bytes().len() <= 255);
+    assert_ne!(left_probe, right_probe);
 }
 
 #[test]

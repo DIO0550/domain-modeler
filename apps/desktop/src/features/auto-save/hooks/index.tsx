@@ -14,6 +14,7 @@ import { AutoSave, type AutoSaveOperations } from "../domains";
 export type AutoSaveContextValue = Readonly<{
   autoSave: AutoSave;
   notifyContentsChanged: (contents: string) => void;
+  acceptExternalContents: (contents: string) => void;
   beginTransaction: () => void;
   endTransaction: () => void;
   flush: () => Promise<boolean>;
@@ -160,6 +161,9 @@ function AutoSaveSession({
             operationsRef.current.now(),
           ),
         );
+      },
+      acceptExternalContents: (contents) => {
+        replaceAutoSave(AutoSave.create(path, contents));
       },
       beginTransaction: () => {
         replaceAutoSave(AutoSave.beginTransaction);

@@ -95,7 +95,6 @@ fn file_names_are_equivalent(
     left_name: &OsStr,
     right_name: &OsStr,
 ) -> Option<bool> {
-    let (left_name, right_name) = compact_probe_names(left_name, right_name);
     for _ in 0..MAX_PROBE_ALLOCATION_ATTEMPTS {
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -103,6 +102,11 @@ fn file_names_are_equivalent(
             .unwrap_or(0);
         let nonce = PROBE_NONCE.fetch_add(1, Ordering::Relaxed);
         let prefix = format!(".dm-probe-{}-{nanos:x}-{nonce:x}-", std::process::id());
+        let (left_name, right_name) = compact_probe_names_for_prefix(
+            left_name,
+            right_name,
+            &prefix,
+        );
         let mut left_probe_name = OsString::from(&prefix);
         left_probe_name.push(&left_name);
         let mut right_probe_name = OsString::from(prefix);
@@ -125,39 +129,154 @@ const MAX_PROBE_ALLOCATION_ATTEMPTS: usize = 16;
 /// コンポーネント長の上限を超えない範囲で、最初と最後の相違箇所を残す。
 #[cfg(unix)]
 fn compact_probe_names(left: &OsStr, right: &OsStr) -> (OsString, OsString) {
+    compact_probe_names_with_budget(left, right, 164)
+}
+
+#[cfg(unix)]
+fn compact_probe_names_for_prefix(
+    left: &OsStr,
+    right: &OsStr,
+    prefix: &str,
+) -> (OsString, OsString) {
+    compact_probe_names_with_budget(left, right, 255usize.saturating_sub(prefix.len()))
+}
+
+#[cfg(unix)]
+fn compact_probe_names_with_budget(
+    left: &OsStr,
+    right: &OsStr,
+    budget: usize,
+) -> (OsString, OsString) {
     use std::os::unix::ffi::{OsStrExt, OsStringExt};
     if let (Ok(left), Ok(right)) = (
         std::str::from_utf8(left.as_bytes()),
         std::str::from_utf8(right.as_bytes()),
     ) {
-        use unicode_segmentation::UnicodeSegmentation;
-        let left = left.graphemes(true).collect::<Vec<_>>();
-        let right = right.graphemes(true).collect::<Vec<_>>();
+        let left = normalization_units(left);
+        let right = normalization_units(right);
         let (left, right) = compact_probe_units(&left, &right, "-");
         return (
-            OsString::from(left.concat()),
-            OsString::from(right.concat()),
+            OsString::from(fit_utf8_probe(&left.concat(), budget)),
+            OsString::from(fit_utf8_probe(&right.concat(), budget)),
         );
     }
     let (left, right) = compact_probe_units(left.as_bytes(), right.as_bytes(), b'-');
-    (OsString::from_vec(left), OsString::from_vec(right))
+    (
+        OsString::from_vec(fit_probe_units(&left, budget, b'-')),
+        OsString::from_vec(fit_probe_units(&right, budget, b'-')),
+    )
 }
 
 #[cfg(windows)]
 fn compact_probe_names(left: &OsStr, right: &OsStr) -> (OsString, OsString) {
+    compact_probe_names_with_budget(left, right, 164)
+}
+
+#[cfg(windows)]
+fn compact_probe_names_for_prefix(
+    left: &OsStr,
+    right: &OsStr,
+    prefix: &str,
+) -> (OsString, OsString) {
+    compact_probe_names_with_budget(
+        left,
+        right,
+        255usize.saturating_sub(prefix.encode_utf16().count()),
+    )
+}
+
+#[cfg(windows)]
+fn compact_probe_names_with_budget(
+    left: &OsStr,
+    right: &OsStr,
+    budget: usize,
+) -> (OsString, OsString) {
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     let left = left.encode_wide().collect::<Vec<_>>();
     let right = right.encode_wide().collect::<Vec<_>>();
     let (left, right) = compact_probe_units(&left, &right, u16::from(b'-'));
+    let left = fit_probe_units(&left, budget, u16::from(b'-'));
+    let right = fit_probe_units(&right, budget, u16::from(b'-'));
     (OsString::from_wide(&left), OsString::from_wide(&right))
 }
 
 #[cfg(not(any(unix, windows)))]
 fn compact_probe_names(left: &OsStr, right: &OsStr) -> (OsString, OsString) {
+    compact_probe_names_for_prefix(left, right, "")
+}
+
+#[cfg(not(any(unix, windows)))]
+fn compact_probe_names_for_prefix(
+    left: &OsStr,
+    right: &OsStr,
+    prefix: &str,
+) -> (OsString, OsString) {
     let left = left.to_string_lossy().chars().collect::<Vec<_>>();
     let right = right.to_string_lossy().chars().collect::<Vec<_>>();
     let (left, right) = compact_probe_units(&left, &right, '-');
-    (left.into_iter().collect(), right.into_iter().collect())
+    let budget = 255usize.saturating_sub(prefix.chars().count());
+    (
+        fit_probe_units(&left, budget, '-').into_iter().collect(),
+        fit_probe_units(&right, budget, '-').into_iter().collect(),
+    )
+}
+
+fn normalization_units(value: &str) -> Vec<&str> {
+    let mut starts = value
+        .char_indices()
+        .filter_map(|(index, character)| (!is_combining_mark(character)).then_some(index))
+        .collect::<Vec<_>>();
+    if starts.first() != Some(&0) {
+        starts.insert(0, 0);
+    }
+    starts
+        .iter()
+        .enumerate()
+        .map(|(index, start)| {
+            let end = starts.get(index + 1).copied().unwrap_or(value.len());
+            &value[*start..end]
+        })
+        .collect()
+}
+
+fn is_combining_mark(character: char) -> bool {
+    matches!(
+        character as u32,
+        0x0300..=0x036f
+            | 0x1ab0..=0x1aff
+            | 0x1dc0..=0x1dff
+            | 0x20d0..=0x20ff
+            | 0xfe20..=0xfe2f
+            | 0xfe00..=0xfe0f
+            | 0xe0100..=0xe01ef
+    )
+}
+
+#[cfg(unix)]
+fn fit_utf8_probe(value: &str, budget: usize) -> String {
+    if value.len() <= budget {
+        return value.to_owned();
+    }
+    let characters = value.chars().collect::<Vec<_>>();
+    fit_probe_units(&characters, budget / 4, '-').into_iter().collect()
+}
+
+fn fit_probe_units<T: Copy>(units: &[T], budget: usize, separator: T) -> Vec<T> {
+    if units.len() <= budget {
+        return units.to_vec();
+    }
+    if budget == 0 {
+        return Vec::new();
+    }
+    if budget == 1 {
+        return vec![separator];
+    }
+    let first_count = (budget - 1) / 2;
+    let last_count = budget - first_count - 1;
+    let mut fitted = units[..first_count].to_vec();
+    fitted.push(separator);
+    fitted.extend_from_slice(&units[units.len() - last_count..]);
+    fitted
 }
 
 fn compact_probe_units<T: Copy + Eq>(
