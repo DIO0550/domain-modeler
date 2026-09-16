@@ -1,6 +1,7 @@
+import { useEffect, useEffectEvent } from "react";
 import { CANVAS_SHORTCUTS, CanvasShortcut } from "../../domains/shortcut";
 import { EventTargetEx } from "@/utils/EventTargetEx";
-import type { Document } from "@domain-modeler/canvas-core";
+import type { Document, History } from "@domain-modeler/canvas-core";
 import type { SaveIndicatorStatus } from "../../domains/save-indicator";
 import { ConnectionSession } from "../../domains/connection-session";
 import { StickySession } from "../../domains/sticky-interaction";
@@ -15,19 +16,55 @@ import { ConnectionLayer } from "../connection-layer";
 type CanvasEditorProps = Readonly<{
   saveStatus: SaveIndicatorStatus;
   initialDocument?: Document;
+  initialHistory?: History;
+  onDocumentChange?: (document: Document) => void;
+  onHistoryChange?: (history: History) => void;
+  onDraftHistoryChange?: (history: History | undefined) => void;
 }>;
 
 /**
  * 付箋の作成・選択・本文編集ができるキャンバス画面。
  *
- * @param props 保存状態、初期文書。
+ * @param props 保存状態、初期文書または履歴、変更通知。
  * @returns 操作可能なキャンバス。
  */
 export function CanvasEditor({
   saveStatus,
   initialDocument,
+  initialHistory,
+  onDocumentChange,
+  onHistoryChange,
+  onDraftHistoryChange,
 }: CanvasEditorProps) {
-  const board = useConnectionInteractions(initialDocument);
+  const notifyDocumentChange = useEffectEvent((document: Document): void => {
+    onDocumentChange?.(document);
+  });
+  const notifyHistoryChange = useEffectEvent((history: History): void => {
+    onHistoryChange?.(history);
+  });
+  const board = useConnectionInteractions(
+    initialDocument,
+    initialHistory,
+    { onDraftHistoryChange, onHistoryChange },
+  );
+  const notifyDraftHistoryChange = useEffectEvent(
+    (history: History | undefined): void => {
+      onDraftHistoryChange?.(history);
+    },
+  );
+  useEffect(() => {
+    if (
+      board.session.status === "dragging" ||
+      board.session.status === "resizing"
+    ) {
+      return;
+    }
+    notifyDocumentChange(board.document);
+    notifyHistoryChange(board.history);
+  }, [board.document, board.history, board.session.status]);
+  useEffect(() => {
+    notifyDraftHistoryChange(board.draftHistory);
+  }, [board.draftHistory]);
   const viewport = useViewportInteractions(
     board.document.viewport,
     board.document.stickies,

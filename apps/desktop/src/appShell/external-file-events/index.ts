@@ -1,5 +1,6 @@
 import {
   ExternalChanges,
+  History as CanvasHistory,
   type CanvasError,
   type History,
 } from "@domain-modeler/canvas-core";
@@ -84,6 +85,11 @@ export type ExternalFileDeletionResult = Readonly<{
   document: ExternalFileDocument;
 }>;
 
+/** 保存済み内容へ戻した結果。 */
+export type ExternalFileContentsResult =
+  | Readonly<{ ok: true; document: ExternalFileDocument }>
+  | Readonly<{ ok: false; error: CanvasError }>;
+
 /** ファイル監視イベントを開いている文書へ反映する関数群。 */
 export const ExternalFileEvents = {
   /**
@@ -153,11 +159,32 @@ export const ExternalFileEvents = {
     });
     return { status: "missing", document: deletion.document };
   },
-} as const;
 
-type ApplyContentsResult =
-  | Readonly<{ ok: true; document: ExternalFileDocument }>
-  | Readonly<{ ok: false; error: CanvasError }>;
+  /**
+   * 外部削除を維持するとき、未保存編集を破棄して直近の保存内容へ戻す。
+   * キャンバスでは破棄した編集を undo で復元できないよう履歴も作り直す。
+   *
+   * @param document 現在の文書。
+   * @param contents 直近に保存できた内容。
+   * @returns 保存済み内容へ戻した文書、またはキャンバス検証エラー。
+   */
+  restoreSavedContents(
+    document: ExternalFileDocument,
+    contents: string,
+  ): ExternalFileContentsResult {
+    const applied = applyContents(document, contents);
+    if (!applied.ok || applied.document.documentType === "model") {
+      return applied;
+    }
+    return {
+      ok: true,
+      document: {
+        documentType: "canvas",
+        history: CanvasHistory.create(applied.document.history.current),
+      },
+    };
+  },
+} as const;
 
 /**
  * 読み込んだ内容を文書種別に応じて置き換える。
@@ -169,7 +196,7 @@ type ApplyContentsResult =
 const applyContents = (
   document: ExternalFileDocument,
   contents: string,
-): ApplyContentsResult => {
+): ExternalFileContentsResult => {
   if (document.documentType === "model") {
     return {
       ok: true,

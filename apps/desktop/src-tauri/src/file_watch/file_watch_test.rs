@@ -51,6 +51,20 @@ fn 削除イベントはjsonでtypeがdeletedになる() {
 }
 
 #[test]
+fn 監視開始後の失敗イベントはjsonで理由を返す() {
+    let event = FileWatchEvent::WatchFailed {
+        path: "/tmp/board.dcanvas".to_string(),
+        message: "watch backend overflow".to_string(),
+    };
+
+    let json = serde_json::to_value(&event).expect("event should serialize");
+
+    assert_eq!(json["type"], "watchFailed");
+    assert_eq!(json["path"], "/tmp/board.dcanvas");
+    assert_eq!(json["message"], "watch backend overflow");
+}
+
+#[test]
 fn ファイル内容が変わると変更イベントが返る() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
@@ -214,6 +228,30 @@ fn 同じパスの監視開始は追加のイベントを生まない() {
             path: path_str.to_string(),
         }
     );
+    assert_no_event(&events);
+}
+
+#[test]
+fn 同じパスの一方の登録解除では残る監視を停止しない() {
+    let workspace = TempWorkspace::create();
+    let path = workspace.path("note.dmodel");
+    fs::write(&path, "v1\n").expect("fixture should be written");
+    let path_str = path.to_str().expect("path is utf-8");
+    let registry = FileWatchRegistry::new();
+    let events = start_collecting(&registry, path_str);
+    assert_eq!(registry.start(path_str, |_| {}), FileWatchResult::Ok);
+
+    assert_eq!(registry.stop(path_str), FileWatchResult::Ok);
+    fs::write(&path, "v2\n").expect("file should be updated");
+    assert_eq!(
+        recv_event(&events),
+        FileWatchEvent::Changed {
+            path: path_str.to_string(),
+        }
+    );
+
+    assert_eq!(registry.stop(path_str), FileWatchResult::Ok);
+    fs::write(&path, "v3\n").expect("file should be updated after final stop");
     assert_no_event(&events);
 }
 

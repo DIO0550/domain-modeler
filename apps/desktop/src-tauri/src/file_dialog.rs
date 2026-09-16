@@ -71,22 +71,21 @@ pub fn open_dialog_result(picked: Option<FilePath>) -> Option<String> {
 /// * `picked` - ダイアログの選択結果。
 /// * `kind` - 保存する文書の種別。
 pub fn save_dialog_result(picked: Option<FilePath>, kind: DocumentKind) -> Option<String> {
-    picked.map(|path| with_document_extension(file_path_to_string(path), kind))
+    picked.map(|path| {
+        let path = file_path_to_path_buf(path).with_extension(kind.extension());
+        crate::ipc_path::encode(&path)
+    })
 }
 
 fn file_path_to_string(path: FilePath) -> String {
+    crate::ipc_path::encode(&file_path_to_path_buf(path))
+}
+
+fn file_path_to_path_buf(path: FilePath) -> PathBuf {
     let path = path.simplified();
     path.clone()
         .into_path()
-        .map(|path| path.to_string_lossy().into_owned())
-        .unwrap_or_else(|_| path.to_string())
-}
-
-fn with_document_extension(path: String, kind: DocumentKind) -> String {
-    PathBuf::from(path)
-        .with_extension(kind.extension())
-        .to_string_lossy()
-        .into_owned()
+        .unwrap_or_else(|_| PathBuf::from(path.to_string()))
 }
 
 #[cfg(test)]

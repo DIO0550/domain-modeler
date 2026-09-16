@@ -1,4 +1,5 @@
 import type { KeyboardEvent } from "react";
+import { displayFilePath } from "@/libs/file-path";
 import { ArrayEx } from "../../utils/ArrayEx";
 import {
   type Tab,
@@ -101,7 +102,7 @@ function TabBarItem({ view, onActivate }: TabBarItemProps) {
       className={className}
       aria-selected={isActive}
       aria-label={tabAccessibleName(tab, caption)}
-      title={tab.path}
+      title={displayFilePath(tab.path)}
       tabIndex={0}
       onClick={() => {
         onActivate(tab.path);

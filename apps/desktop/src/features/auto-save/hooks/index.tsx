@@ -14,9 +14,14 @@ import { AutoSave, type AutoSaveOperations } from "../domains";
 export type AutoSaveContextValue = Readonly<{
   autoSave: AutoSave;
   notifyContentsChanged: (contents: string) => void;
+  acceptExternalContents: (contents: string) => void;
+  pause: () => void;
+  resume: () => void;
+  waitForPendingWrites: () => Promise<AutoSave>;
   beginTransaction: () => void;
   endTransaction: () => void;
-  flush: () => Promise<void>;
+  flush: () => Promise<boolean>;
+  overwrite: (contents: string) => Promise<boolean>;
 }>;
 
 const AutoSaveContext = createContext<AutoSaveContextValue | undefined>(
@@ -57,6 +62,8 @@ function AutoSaveSession({
   const [autoSave, setAutoSave] = useState(() =>
     AutoSave.create(path, initialContents),
   );
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
   const autoSaveRef = useRef(autoSave);
   const operationsRef = useRef(operations);
   const writeQueueRef = useRef(Promise.resolve());
@@ -83,29 +90,32 @@ function AutoSaveSession({
     setAutoSave(resolved);
   };
 
-  const runSave = async (force: boolean): Promise<void> => {
-    const run = async (): Promise<void> => {
+  const runSave = async (force: boolean): Promise<boolean> => {
+    const run = async (): Promise<boolean> => {
+      if (pausedRef.current) {
+        return false;
+      }
       const current = autoSaveRef.current;
       if (force) {
         if (!AutoSave.isDirty(current)) {
-          return;
+          return true;
         }
       } else {
         const due = AutoSave.due(current, operationsRef.current.now());
         if (due.status === "notScheduled" || due.delayMs > 0) {
-          return;
+          return true;
         }
       }
 
       const saving = AutoSave.startSaving(current);
       if (saving.status !== "saving") {
-        return;
+        return true;
       }
       if (
         current.status === "saving" &&
         current.pendingContents === current.writingContents
       ) {
-        return;
+        return true;
       }
 
       replaceAutoSave(saving);
@@ -120,6 +130,7 @@ function AutoSaveSession({
           now: operationsRef.current.now(),
         }),
       );
+      return result.type === "ok";
     };
 
     const queued = writeQueueRef.current.then(run, run);
@@ -127,10 +138,13 @@ function AutoSaveSession({
       () => undefined,
       () => undefined,
     );
-    await queued;
+    return await queued;
   };
 
   useEffect(() => {
+    if (paused) {
+      return;
+    }
     const due = AutoSave.due(autoSave, operationsRef.current.now());
     if (due.status === "notScheduled") {
       return;
@@ -146,7 +160,7 @@ function AutoSaveSession({
     return () => {
       clearTimeout(timer);
     };
-  }, [autoSave]);
+  }, [autoSave, paused]);
 
   const value = useMemo((): AutoSaveContextValue => {
     return {
@@ -160,6 +174,23 @@ function AutoSaveSession({
           ),
         );
       },
+      acceptExternalContents: (contents) => {
+        pausedRef.current = false;
+        setPaused(false);
+        replaceAutoSave(AutoSave.create(path, contents));
+      },
+      pause: () => {
+        pausedRef.current = true;
+        setPaused(true);
+      },
+      resume: () => {
+        pausedRef.current = false;
+        setPaused(false);
+      },
+      waitForPendingWrites: async () => {
+        await writeQueueRef.current;
+        return autoSaveRef.current;
+      },
       beginTransaction: () => {
         replaceAutoSave(AutoSave.beginTransaction);
       },
@@ -167,7 +198,49 @@ function AutoSaveSession({
         replaceAutoSave(AutoSave.endTransaction);
       },
       flush: async () => {
-        await runSave(true);
+        while (AutoSave.isDirty(autoSaveRef.current)) {
+          if (!(await runSave(true))) {
+            return false;
+          }
+        }
+        return true;
+      },
+      overwrite: async (contents) => {
+        const run = async (): Promise<boolean> => {
+          const result = await writeFileAsResult(
+            operationsRef.current.writeFile,
+            { path, contents },
+          );
+          if (result.type !== "ok") {
+            return false;
+          }
+          pausedRef.current = false;
+          setPaused(false);
+          const latest = autoSaveRef.current;
+          const latestContents =
+            latest.status === "idle"
+              ? latest.lastSavedContents
+              : latest.pendingContents;
+          let reconciled = AutoSave.create(path, contents);
+          for (let depth = 0; depth < latest.transactionDepth; depth += 1) {
+            reconciled = AutoSave.beginTransaction(reconciled);
+          }
+          if (latestContents !== contents) {
+            reconciled = AutoSave.notifyContentsChanged(
+              reconciled,
+              latestContents,
+              operationsRef.current.now(),
+            );
+          }
+          replaceAutoSave(reconciled);
+          return true;
+        };
+        const queued = writeQueueRef.current.then(run, run);
+        writeQueueRef.current = queued.then(
+          () => undefined,
+          () => undefined,
+        );
+        return await queued;
       },
     };
   }, [autoSave]);

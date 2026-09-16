@@ -200,6 +200,7 @@ export function useViewportInteractions(
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", handleBlur);
+      handleBlur();
     };
   }, [cancelPanning]);
 

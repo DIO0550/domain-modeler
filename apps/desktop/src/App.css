@@ -856,3 +856,10 @@ body,
 .sticky[data-connection-endpoint="source"] {
   filter: drop-shadow(0 0 5px var(--sticky-selected-ring));
 }
+
+.document-workspace__document:not([hidden]) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}

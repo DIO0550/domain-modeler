@@ -2,6 +2,7 @@ import {
   type CanvasError,
   type ConnectionId,
   Document,
+  type History,
   type Option,
   Option as OptionValue,
   type Point,
@@ -31,6 +32,20 @@ export const ConnectionInteraction = {
   create(document?: Document): ConnectionInteraction {
     return {
       board: StickyInteractionValue.create(document),
+      session: { status: "idle" },
+      error: OptionValue.none(),
+    };
+  },
+
+  /**
+   * 既存のキャンバス履歴から接続操作を生成する。
+   *
+   * @param history 引き継ぐundo/redo履歴。
+   * @returns 履歴を維持した接続操作状態。
+   */
+  fromHistory(history: History): ConnectionInteraction {
+    return {
+      board: StickyInteractionValue.fromHistory(history),
       session: { status: "idle" },
       error: OptionValue.none(),
     };
@@ -244,6 +259,33 @@ export const ConnectionInteraction = {
       ...selected,
       board: executeDocumentChange(interaction.board, document),
     };
+  },
+
+  /**
+   * 付箋本文または接続ラベルの編集中下書きを文書履歴へ確定する。
+   *
+   * @param interaction 確定前の操作状態。
+   * @returns 全ての編集中下書きを確定した操作状態。
+   */
+  commitDrafts(interaction: ConnectionInteraction): ConnectionInteraction {
+    const connectionCommitted = ConnectionInteraction.commitEdit(interaction);
+    const board = StickyInteractionValue.commitEdit(connectionCommitted.board);
+    return board === connectionCommitted.board
+      ? connectionCommitted
+      : { ...connectionCommitted, board };
+  },
+
+  /**
+   * 未確定の編集内容を確定した場合の履歴を返す。
+   *
+   * @param interaction 判定する操作状態。
+   * @returns 変更のある下書きがあれば確定後の履歴。なければ不在。
+   */
+  draftHistory(interaction: ConnectionInteraction): Option<History> {
+    const committed = ConnectionInteraction.commitDrafts(interaction);
+    return committed.board.history === interaction.board.history
+      ? OptionValue.none()
+      : OptionValue.some(committed.board.history);
   },
 
   /**

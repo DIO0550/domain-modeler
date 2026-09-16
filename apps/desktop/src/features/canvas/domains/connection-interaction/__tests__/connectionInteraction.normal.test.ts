@@ -169,6 +169,25 @@ test("ラベル編集は確定まで文書を変えず確定時に1操作とし�
   expect(undone.board.workingDocument.connections[0]?.label).toBe("操作");
 });
 
+test("編集中の接続ラベルを終了保存用の履歴として取得する", () => {
+  const selected = ConnectionInteraction.select(
+    ConnectionInteraction.create(connectedDocument),
+    connectionId,
+  );
+  const editing = ConnectionInteraction.edit(selected, connectionId);
+  const drafted = ConnectionInteraction.changeDraft(editing, "終了時に保存");
+
+  const draftHistory = ConnectionInteraction.draftHistory(drafted);
+
+  expect(draftHistory.some).toBe(true);
+  expect(
+    draftHistory.some
+      ? draftHistory.value.current.connections[0]?.label
+      : undefined,
+  ).toBe("終了時に保存");
+  expect(drafted.board.workingDocument.connections[0]?.label).toBe("操作");
+});
+
 test("選択中の接続をDelete操作で削除してundoできる", () => {
   const selected = ConnectionInteraction.select(
     ConnectionInteraction.create(connectedDocument),

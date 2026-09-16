@@ -1,6 +1,8 @@
 use tauri::{Emitter, State};
 
-use crate::file_watch::{FileWatchEvent, FileWatchRegistry, FileWatchResult, FILE_WATCH_EVENT};
+use crate::file_watch::{
+    FileWatchError, FileWatchEvent, FileWatchRegistry, FileWatchResult, FILE_WATCH_EVENT,
+};
 
 /// 対象パスのファイル監視を開始する。
 ///
@@ -13,17 +15,20 @@ use crate::file_watch::{FileWatchEvent, FileWatchRegistry, FileWatchResult, FILE
 /// * `registry` - パスごとの監視セッション。
 /// * `path` - 監視するファイルのパス。
 #[tauri::command]
-pub fn start_file_watch<R: tauri::Runtime>(
+pub async fn start_file_watch<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     registry: State<FileWatchRegistry>,
-    path: &str,
+    path: String,
 ) -> FileWatchResult {
-    registry.start(path, {
-        let app = app.clone();
-        move |event: FileWatchEvent| {
+    let failure_path = path.clone();
+    let registry = registry.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        registry.start(&path, move |event: FileWatchEvent| {
             let _ = app.emit(FILE_WATCH_EVENT, &event);
-        }
+        })
     })
+    .await
+    .unwrap_or_else(|error| watch_join_failed(failure_path, error.to_string()))
 }
 
 /// 対象パスのファイル監視を停止する。
@@ -35,6 +40,19 @@ pub fn start_file_watch<R: tauri::Runtime>(
 /// * `registry` - パスごとの監視セッション。
 /// * `path` - 監視を止めるファイルのパス。
 #[tauri::command]
-pub fn stop_file_watch(registry: State<FileWatchRegistry>, path: &str) -> FileWatchResult {
-    registry.stop(path)
+pub async fn stop_file_watch(
+    registry: State<'_, FileWatchRegistry>,
+    path: String,
+) -> FileWatchResult {
+    let failure_path = path.clone();
+    let registry = registry.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || registry.stop(&path))
+        .await
+        .unwrap_or_else(|error| watch_join_failed(failure_path, error.to_string()))
+}
+
+fn watch_join_failed(path: String, message: String) -> FileWatchResult {
+    FileWatchResult::Err {
+        error: FileWatchError::WatchFailed { path, message },
+    }
 }

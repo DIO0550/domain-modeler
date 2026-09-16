@@ -12,7 +12,8 @@ import {
 
 type OperationCall =
   | Readonly<{ type: "selectSavePath"; documentType: "canvas" | "model" }>
-  | Readonly<{ type: "writeFile"; path: string; contents: string }>
+  | Readonly<{ type: "sameFilePath"; left: string; right: string }>
+  | Readonly<{ type: "createFile"; path: string; contents: string }>
   | Readonly<{ type: "readFile"; path: string }>
   | Readonly<{ type: "openTab"; path: string; documentType: "canvas" | "model" }>
   | Readonly<{ type: "notifyError"; error: OpenDocumentError }>;
@@ -34,9 +35,13 @@ const operationsRecording = (
     calls.push({ type: "selectSavePath", documentType });
     return selection;
   },
-  writeFile: async (path, contents) => {
-    calls.push({ type: "writeFile", path, contents });
+  createFile: async (path, contents) => {
+    calls.push({ type: "createFile", path, contents });
     return writeResult;
+  },
+  sameFilePath: async (left, right) => {
+    calls.push({ type: "sameFilePath", left, right });
+    return left === right;
   },
   openTab: (path, documentType) => {
     calls.push({ type: "openTab", path, documentType });
@@ -84,7 +89,7 @@ test("キャンバスの保存先を選ぶと空の初期内容を書いてか�
   expect(calls).toEqual([
     { type: "selectSavePath", documentType: "canvas" },
     {
-      type: "writeFile",
+      type: "createFile",
       path: "/documents/context.dcanvas",
       contents: Serialize.stringify(Document.empty()),
     },
@@ -114,7 +119,7 @@ test("モデルの保存先を選ぶと空文字を書いてからタブを開�
   expect(calls).toEqual([
     { type: "selectSavePath", documentType: "model" },
     {
-      type: "writeFile",
+      type: "createFile",
       path: "/documents/order.dmodel",
       contents: "",
     },
@@ -162,7 +167,36 @@ test("初期内容を書き込めないとタブを開かない", async () => {
 
   expect(result).toEqual({ status: "writeFailed", error });
   expect(calls).toHaveLength(2);
-  expect(calls[1]?.type).toBe("writeFile");
+  expect(calls[1]?.type).toBe("createFile");
+});
+
+test("ファイルシステム上で同一の編集中パスには新規作成しない", async () => {
+  const calls: OperationCall[] = [];
+  const operations = operationsRecording(calls, {
+    status: "selected",
+    path: "/documents/draft.dmodel",
+  });
+  const result = await FileActions.createNewDocument(
+    "model",
+    {
+      ...operations,
+      sameFilePath: async (left, right) => {
+        calls.push({ type: "sameFilePath", left, right });
+        return left.toLowerCase() === right.toLowerCase();
+      },
+    },
+    ["/documents/Draft.dmodel"],
+  );
+
+  expect(result.status).toBe("writeFailed");
+  expect(calls).toEqual([
+    { type: "selectSavePath", documentType: "model" },
+    {
+      type: "sameFilePath",
+      left: "/documents/draft.dmodel",
+      right: "/documents/Draft.dmodel",
+    },
+  ]);
 });
 
 test("正しいキャンバスを読み込むと検証後にタブを開く", async () => {

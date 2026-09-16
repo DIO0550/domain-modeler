@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -31,6 +32,13 @@ pub enum FileWatchEvent {
     Deleted {
         /// 監視開始時に渡されたパス。
         path: String,
+    },
+    /// OS の監視バックエンドが開始後に失敗した。
+    WatchFailed {
+        /// 監視開始時に渡されたパス。
+        path: String,
+        /// 監視バックエンドが返した失敗理由。
+        message: String,
     },
 }
 
@@ -95,14 +103,17 @@ impl FileWatchResult {
 }
 
 /// 開いている文書パスごとのファイル監視。
+#[derive(Clone)]
 pub struct FileWatchRegistry {
-    sessions: Mutex<HashMap<String, WatchSession>>,
+    sessions: Arc<Mutex<HashMap<String, WatchSession>>>,
 }
 
 struct WatchSession {
+    registrations: usize,
     watcher: Option<RecommendedWatcher>,
     stop_tx: Option<mpsc::Sender<WatchMsg>>,
     thread: Option<JoinHandle<()>>,
+    failed: Arc<AtomicBool>,
 }
 
 enum WatchMsg {
@@ -127,7 +138,7 @@ impl FileWatchRegistry {
     /// 空の監視レジストリを作る。
     pub fn new() -> Self {
         Self {
-            sessions: Mutex::new(HashMap::new()),
+            sessions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -135,7 +146,7 @@ impl FileWatchRegistry {
     ///
     /// 親ディレクトリを監視し、対象ファイルのイベントだけを拾う。
     /// ファイルが無くても親があれば開始でき、再出現は変更イベントになる。
-    /// 同じパスを再度開始しても追加の監視は作らない。
+    /// 同じパスを再度開始した場合は監視を共有し、登録数だけを増やす。
     ///
     /// # Arguments
     ///
@@ -146,9 +157,20 @@ impl FileWatchRegistry {
         path: &str,
         on_event: impl Fn(FileWatchEvent) + Send + 'static,
     ) -> FileWatchResult {
-        if self.sessions().contains_key(path) {
+        let mut sessions = self.sessions();
+        let failed = sessions
+            .get(path)
+            .is_some_and(|session| session.failed.load(Ordering::Acquire));
+        let failed_session = failed.then(|| sessions.remove(path)).flatten();
+        drop(sessions);
+        drop(failed_session);
+
+        let mut sessions = self.sessions();
+        if let Some(session) = sessions.get_mut(path) {
+            session.registrations += 1;
             return FileWatchResult::Ok;
         }
+        drop(sessions);
 
         let target = match WatchTarget::resolve(path) {
             Ok(target) => target,
@@ -160,7 +182,8 @@ impl FileWatchRegistry {
         };
 
         let mut sessions = self.sessions();
-        if sessions.contains_key(path) {
+        if let Some(existing) = sessions.get_mut(path) {
+            existing.registrations += 1;
             drop(sessions);
             drop(session);
             return FileWatchResult::Ok;
@@ -177,7 +200,15 @@ impl FileWatchRegistry {
     ///
     /// * `path` - 監視を止めるファイルのパス。
     pub fn stop(&self, path: &str) -> FileWatchResult {
-        let session = self.sessions().remove(path);
+        let mut sessions = self.sessions();
+        let should_remove = sessions
+            .get_mut(path)
+            .is_some_and(|session| {
+                session.registrations = session.registrations.saturating_sub(1);
+                session.registrations == 0
+            });
+        let session = should_remove.then(|| sessions.remove(path)).flatten();
+        drop(sessions);
         drop(session);
         FileWatchResult::Ok
     }
@@ -195,6 +226,8 @@ impl WatchSession {
         on_event: impl Fn(FileWatchEvent) + Send + 'static,
     ) -> Result<Self, String> {
         let (tx, rx) = mpsc::channel();
+        let failed = Arc::new(AtomicBool::new(false));
+        let thread_failed = Arc::clone(&failed);
         let watcher_tx = tx.clone();
         let mut watcher = RecommendedWatcher::new(
             move |result| {
@@ -210,13 +243,15 @@ impl WatchSession {
 
         let thread = thread::Builder::new()
             .name("domain-modeler-file-watch".into())
-            .spawn(move || target.debounce(rx, on_event))
+            .spawn(move || target.debounce(rx, on_event, thread_failed))
             .map_err(|err| err.to_string())?;
 
         Ok(Self {
+            registrations: 1,
             watcher: Some(watcher),
             stop_tx: Some(tx),
             thread: Some(thread),
+            failed,
         })
     }
 }
@@ -235,7 +270,8 @@ impl Drop for WatchSession {
 
 impl WatchTarget {
     fn resolve(path: &str) -> Result<Self, String> {
-        let path_ref = Path::new(path);
+        let decoded_path = crate::ipc_path::decode(path);
+        let path_ref = decoded_path.as_path();
         let file_name = path_ref
             .file_name()
             .ok_or_else(|| "path has no file name".to_string())?;
@@ -281,7 +317,12 @@ impl WatchTarget {
         FileWatchEvent::from_exists(&self.original_path, self.file.exists())
     }
 
-    fn debounce(self, rx: mpsc::Receiver<WatchMsg>, on_event: impl Fn(FileWatchEvent)) {
+    fn debounce(
+        self,
+        rx: mpsc::Receiver<WatchMsg>,
+        on_event: impl Fn(FileWatchEvent),
+        failed: Arc<AtomicBool>,
+    ) {
         let mut deadline: Option<Instant> = None;
         loop {
             let now = Instant::now();
@@ -312,7 +353,15 @@ impl WatchTarget {
                 WatchMsg::Fs(Ok(event)) if self.is_affected_by(&event) => {
                     deadline = Some(Instant::now() + DEBOUNCE);
                 }
-                WatchMsg::Fs(_) => {}
+                WatchMsg::Fs(Ok(_)) => {}
+                WatchMsg::Fs(Err(error)) => {
+                    failed.store(true, Ordering::Release);
+                    on_event(FileWatchEvent::WatchFailed {
+                        path: self.original_path.clone(),
+                        message: error.to_string(),
+                    });
+                    break;
+                }
             }
         }
     }

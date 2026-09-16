@@ -167,3 +167,31 @@ test("削除イベントは文書を維持したままタブを欠損状態に�
     },
   ]);
 });
+
+test("外部削除を維持すると保存済みキャンバスへ戻して編集履歴を破棄する", () => {
+  const current = History.create(Document.empty("未保存"));
+  const savedContents = JSON.stringify({
+    version: "1.0",
+    title: "保存済み",
+    viewport: { x: 0, y: 0, zoom: 1 },
+    stickies: [],
+    connections: [],
+  });
+
+  const result = ExternalFileEvents.restoreSavedContents(
+    { documentType: "canvas", history: current },
+    savedContents,
+  );
+
+  expect(result).toMatchObject({
+    ok: true,
+    document: {
+      documentType: "canvas",
+      history: {
+        current: { title: "保存済み" },
+        undoStack: [],
+        redoStack: [],
+      },
+    },
+  });
+});
