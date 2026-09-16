@@ -216,7 +216,23 @@ function AutoSaveSession({
           }
           pausedRef.current = false;
           setPaused(false);
-          replaceAutoSave(AutoSave.create(path, contents));
+          const latest = autoSaveRef.current;
+          const latestContents =
+            latest.status === "idle"
+              ? latest.lastSavedContents
+              : latest.pendingContents;
+          let reconciled = AutoSave.create(path, contents);
+          for (let depth = 0; depth < latest.transactionDepth; depth += 1) {
+            reconciled = AutoSave.beginTransaction(reconciled);
+          }
+          if (latestContents !== contents) {
+            reconciled = AutoSave.notifyContentsChanged(
+              reconciled,
+              latestContents,
+              operationsRef.current.now(),
+            );
+          }
+          replaceAutoSave(reconciled);
           return true;
         };
         const queued = writeQueueRef.current.then(run, run);

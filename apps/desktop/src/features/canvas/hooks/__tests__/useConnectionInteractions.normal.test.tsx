@@ -50,6 +50,7 @@ const initialDocument = {
 /** 接続操作フックを描画し、最新の戻り値を参照できるようにする。 */
 const renderHook = (
   onDraftHistoryChange?: (history: History | undefined) => void,
+  onHistoryChange?: (history: History) => void,
 ): {
   current: UseConnectionInteractionsResult | undefined;
 } => {
@@ -64,7 +65,7 @@ const renderHook = (
     latest.current = useConnectionInteractions(
       initialDocument,
       undefined,
-      onDraftHistoryChange,
+      { onDraftHistoryChange, onHistoryChange },
     );
     return null;
   };
@@ -95,6 +96,18 @@ test("付箋の入力イベント中に最新下書きを同期通知する", ()
   act(() => {
     latest.current?.changeDraft("終了直前の入力");
     expect(published?.current.stickies[0]?.text).toBe("終了直前の入力");
+  });
+});
+
+test("確定操作中に最新履歴を同期通知する", () => {
+  let published: History | undefined;
+  const latest = renderHook(undefined, (history) => {
+    published = history;
+  });
+
+  act(() => {
+    latest.current?.clickAt({ x: 500, y: 500 });
+    expect(published?.current.stickies).toHaveLength(3);
   });
 });
 

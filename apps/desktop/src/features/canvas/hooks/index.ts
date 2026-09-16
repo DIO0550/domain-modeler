@@ -150,12 +150,16 @@ export type UseConnectionInteractionsResult = UseStickyInteractionsResult &
  *
  * @param initialDocument 初期文書。省略時は空の文書。
  * @param initialHistory 引き継ぐ履歴。指定時は初期文書より優先。
+ * @param notifications 編集中の下書きと確定履歴の同期通知。
  * @returns 表示する文書、操作状態、イベントハンドラ。
  */
 export function useConnectionInteractions(
   initialDocument?: Document,
   initialHistory?: History,
-  onDraftHistoryChange?: (history: History | undefined) => void,
+  notifications: Readonly<{
+    onDraftHistoryChange?: (history: History | undefined) => void;
+    onHistoryChange?: (history: History) => void;
+  }> = {},
 ): UseConnectionInteractionsResult {
   const [interaction, setInteraction] = useState(() =>
     initialHistory === undefined
@@ -168,12 +172,18 @@ export function useConnectionInteractions(
     advance: (current: typeof interaction) => typeof interaction,
     publishDraft = false,
   ): void => {
-    const next = advance(interactionRef.current);
+    const current = interactionRef.current;
+    const next = advance(current);
     interactionRef.current = next;
     setInteraction(next);
+    if (next.board.history !== current.board.history) {
+      notifications.onHistoryChange?.(next.board.history);
+    }
     if (publishDraft) {
       const pending = ConnectionInteraction.draftHistory(next);
-      onDraftHistoryChange?.(pending.some ? pending.value : undefined);
+      notifications.onDraftHistoryChange?.(
+        pending.some ? pending.value : undefined,
+      );
     }
   };
   const board = interaction.board;

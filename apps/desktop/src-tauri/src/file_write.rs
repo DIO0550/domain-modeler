@@ -47,7 +47,7 @@ pub enum FileWriteResult {
 pub fn write_utf8_file(path: &str, contents: &str) -> FileWriteResult {
     let target_path = crate::ipc_path::decode(path);
     let target = target_path.as_path();
-    let (temp_path, temp_file) = match create_temp_file(target) {
+    let (temp_path, temp_file) = match create_overwrite_temp_file(target) {
         Ok(temp) => temp,
         Err(error) => return write_failed(path, &error.to_string()),
     };
@@ -419,6 +419,17 @@ fn write_failed(path: &str, message: &str) -> FileWriteResult {
 }
 
 fn create_temp_file(target: &Path) -> io::Result<(PathBuf, File)> {
+    create_temp_file_with_options(target, false)
+}
+
+fn create_overwrite_temp_file(target: &Path) -> io::Result<(PathBuf, File)> {
+    create_temp_file_with_options(target, true)
+}
+
+fn create_temp_file_with_options(
+    target: &Path,
+    allow_delete_sharing: bool,
+) -> io::Result<(PathBuf, File)> {
     if target.file_name().is_none() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
@@ -448,9 +459,15 @@ fn create_temp_file(target: &Path) -> io::Result<(PathBuf, File)> {
             const DELETE: u32 = 0x0001_0000;
             const FILE_SHARE_READ: u32 = 0x0000_0001;
             const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+            const FILE_SHARE_DELETE: u32 = 0x0000_0004;
             const GENERIC_WRITE: u32 = 0x4000_0000;
             options.access_mode(GENERIC_WRITE | DELETE);
-            options.share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE);
+            let delete_sharing = if allow_delete_sharing {
+                FILE_SHARE_DELETE
+            } else {
+                0
+            };
+            options.share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | delete_sharing);
         }
         match options.open(&path) {
             Ok(file) => return Ok((path, file)),

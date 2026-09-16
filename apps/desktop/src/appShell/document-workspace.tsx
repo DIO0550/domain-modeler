@@ -354,7 +354,11 @@ function PersistedDocument({
           return;
         }
         autoSave.acceptExternalContents(result.fileHash);
-        applyExternalDocument(result.document, setText, dispatchCanvas);
+        applyExternalDocument(result.document, {
+          setText,
+          canvasRef,
+          dispatchCanvas,
+        });
         setExternalConflict(undefined);
         return;
       }
@@ -422,7 +426,11 @@ function PersistedDocument({
     }
     if (externalConflict.kind === "changed") {
       autoSave.acceptExternalContents(externalConflict.fileContents);
-      applyExternalDocument(externalConflict.document, setText, dispatchCanvas);
+      applyExternalDocument(externalConflict.document, {
+        setText,
+        canvasRef,
+        dispatchCanvas,
+      });
       setExternalConflict(undefined);
       return;
     }
@@ -441,29 +449,42 @@ function PersistedDocument({
       return;
     }
     autoSave.acceptExternalContents(externalConflict.savedContents);
-    applyExternalDocument(restored.document, setText, dispatchCanvas);
+    applyExternalDocument(restored.document, {
+      setText,
+      canvasRef,
+      dispatchCanvas,
+    });
     setExternalConflict(undefined);
   };
   const keepEditingContents = async (): Promise<void> => {
     if (externalConflict === undefined) {
       return;
     }
-    const localHistory = canvas.draftHistory ?? canvas.history;
+    const requestedDraft = canvasRef.current.draftHistory;
+    const localHistory = requestedDraft ?? canvasRef.current.history;
     const currentContents =
       tab.documentType === "canvas"
         ? Serialize.stringify(localHistory.current)
         : text;
-    if (canvas.draftHistory !== undefined) {
-      canvasRef.current = {
-        history: localHistory,
-        draftHistory: undefined,
-        revision: canvas.revision + 1,
-      };
-      dispatchCanvas({ type: "draftCommitted", history: localHistory });
-    }
     if (!(await autoSave.overwrite(currentContents))) {
       setWatchError("編集内容でファイルを上書きできませんでした");
       return;
+    }
+    if (tab.documentType === "canvas") {
+      const latestDraft = canvasRef.current.draftHistory;
+      if (requestedDraft !== undefined && latestDraft === requestedDraft) {
+        canvasRef.current = {
+          history: localHistory,
+          draftHistory: undefined,
+          revision: canvasRef.current.revision + 1,
+        };
+        dispatchCanvas({ type: "draftCommitted", history: localHistory });
+        autoSave.acceptExternalContents(currentContents);
+      } else if (latestDraft !== undefined) {
+        autoSave.notifyContentsChanged(
+          Serialize.stringify(latestDraft.current),
+        );
+      }
     }
     setWatchError(undefined);
     setExternalConflict(undefined);
@@ -562,6 +583,9 @@ function DocumentEditor({
           initialHistory={canvas.history}
           saveStatus={saveStatusOf(autoSave.autoSave)}
           onHistoryChange={(history) => {
+            if (canvasRef.current.revision !== canvas.revision) {
+              return;
+            }
             canvasRef.current = {
               ...canvasRef.current,
               history,
@@ -571,6 +595,9 @@ function DocumentEditor({
             autoSave.notifyContentsChanged(Serialize.stringify(history.current));
           }}
           onDraftHistoryChange={(history) => {
+            if (canvasRef.current.revision !== canvas.revision) {
+              return;
+            }
             canvasRef.current = {
               ...canvasRef.current,
               draftHistory: history,
@@ -611,14 +638,25 @@ const saveStatusOf = (autoSave: AutoSave): SaveIndicatorStatus => {
 
 const applyExternalDocument = (
   document: ExternalFileDocument,
-  setText: (text: string) => void,
-  dispatchCanvas: React.Dispatch<CanvasSessionAction>,
+  target: Readonly<{
+    setText: (text: string) => void;
+    canvasRef: React.RefObject<CanvasSessionState>;
+    dispatchCanvas: React.Dispatch<CanvasSessionAction>;
+  }>,
 ): void => {
   if (document.documentType === "model") {
-    setText(document.contents);
+    target.setText(document.contents);
     return;
   }
-  dispatchCanvas({ type: "externalApplied", history: document.history });
+  target.canvasRef.current = {
+    history: document.history,
+    draftHistory: undefined,
+    revision: target.canvasRef.current.revision + 1,
+  };
+  target.dispatchCanvas({
+    type: "externalApplied",
+    history: document.history,
+  });
 };
 
 const externalFileErrorMessage = (error: ExternalFileEventError): string => {

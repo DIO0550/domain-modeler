@@ -45,7 +45,7 @@ export function CanvasEditor({
   const board = useConnectionInteractions(
     initialDocument,
     initialHistory,
-    onDraftHistoryChange,
+    { onDraftHistoryChange, onHistoryChange },
   );
   const notifyDraftHistoryChange = useEffectEvent(
     (history: History | undefined): void => {

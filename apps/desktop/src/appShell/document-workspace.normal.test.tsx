@@ -939,6 +939,65 @@ test("連続した外部変更は読み込みと適用を文書ごとに直列�
   });
 });
 
+test("連続した外部キャンバス変更をundoすると直前の外部状態へ戻る", async () => {
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const older = Result.unwrap(
+    Document.addSticky(
+      Document.empty(),
+      "actor",
+      "older",
+      { x: 40, y: 40 },
+      { width: 120, height: 80 },
+    ),
+  );
+  const newer = Result.unwrap(
+    Document.addSticky(
+      older,
+      "command",
+      "newer",
+      { x: 240, y: 40 },
+      { width: 140, height: 90 },
+    ),
+  );
+  let readCount = 0;
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({
+      type: "ok",
+      value: Serialize.stringify(readCount++ === 0 ? older : newer),
+    }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    undefined,
+    watchOperations,
+    () => {},
+  );
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dcanvas" });
+    notify({ type: "changed", path: "/documents/order.dcanvas" });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  await vi.waitFor(() => {
+    expect(host.querySelectorAll("article")).toHaveLength(2);
+  });
+  act(() => buttonNamed(host, "元に戻す").click());
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+  expect(host.textContent).toContain("older");
+  expect(host.textContent).not.toContain("newer");
+});
+
 test("キャンバスの編集中下書きと外部変更が競合したら下書きを保持する", async () => {
   vi.useFakeTimers();
   let notify: (event: FileWatchEvent) => void = () => {};
@@ -1012,6 +1071,100 @@ test("キャンバスの編集中下書きと外部変更が競合したら下�
       "競合",
     );
   });
+});
+
+test("キャンバス下書きの競合上書きに失敗しても再試行できる", async () => {
+  vi.useFakeTimers();
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const writes: string[] = [];
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (path, contents) => {
+      writes.push(contents);
+      return writes.length === 2
+        ? {
+            type: "err",
+            error: { kind: "writeFailed", path, message: "disk full" },
+          }
+        : { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({
+      type: "ok",
+      value: Serialize.stringify(Document.empty()),
+    }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+  );
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 }),
+    );
+  });
+  act(() => {
+    host.querySelector<HTMLTextAreaElement>("textarea")?.blur();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("dblclick", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+  });
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "retry this draft");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dcanvas" });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  await vi.waitFor(() => {
+    expect(host.textContent).toContain("競合");
+  });
+
+  await act(async () => {
+    buttonNamed(host, "編集中の内容を保存").click();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(host.textContent).toContain("上書きできませんでした");
+  expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
+    "retry this draft",
+  );
+
+  await act(async () => {
+    buttonNamed(host, "編集中の内容を保存").click();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(writes).toHaveLength(3);
+  expect(writes[2]).toContain("retry this draft");
+  expect(host.querySelector('[role="alert"]')).toBeNull();
 });
 
 test("終了flushはキャンバスの編集中下書きを確定して保存する", async () => {

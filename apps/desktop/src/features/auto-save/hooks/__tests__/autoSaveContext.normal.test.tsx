@@ -434,6 +434,56 @@ test("保存中のflushは進行中の書き込みの完了後に最新内容を
   expect(probe.latest.current?.autoSave.status).toBe("idle");
 });
 
+test("明示上書き中に加えた編集は上書き完了後も未保存変更として残す", async () => {
+  let finishOverwrite: () => void = () => {};
+  const writes: WriteCall[] = [];
+  const operations: AutoSaveOperations = {
+    writeFile: async (path, contents) => {
+      writes.push({ path, contents });
+      if (writes.length > 1) {
+        return { type: "ok" };
+      }
+      return await new Promise((resolve) => {
+        finishOverwrite = () => resolve({ type: "ok" });
+      });
+    },
+    now: () => Date.now(),
+  };
+  const probe = renderAutoSave(operations);
+  probes.push(probe);
+
+  const overwrite = probe.latest.current?.overwrite('{"version":1}');
+  await act(async () => {
+    await Promise.resolve();
+  });
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":2}');
+  });
+  await act(async () => {
+    finishOverwrite();
+    expect(await overwrite).toBe(true);
+  });
+
+  expect(probe.latest.current?.autoSave).toMatchObject({
+    status: "pending",
+    lastSavedContents: '{"version":1}',
+    pendingContents: '{"version":2}',
+  });
+  await act(async () => {
+    expect(await probe.latest.current?.flush()).toBe(true);
+  });
+  expect(writes).toEqual([
+    {
+      path: "/documents/context.dcanvas",
+      contents: '{"version":1}',
+    },
+    {
+      path: "/documents/context.dcanvas",
+      contents: '{"version":2}',
+    },
+  ]);
+});
+
 test("文書パスを切り替えると未保存の旧文書は新しいパスへ書き込まない", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];
