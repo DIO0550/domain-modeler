@@ -76,25 +76,158 @@ pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
 }
 
 /// UTF-8 文書を排他的に新規作成する。既存ファイルやリンクは置換しない。
-/// create_new で対象 inode を直接保持し、可変な一時パスを再参照しない。
+/// 完成した一時ファイルだけを、上書きしないOS操作で公開する。
 pub fn create_utf8_file(path: &str, contents: &str) -> FileWriteResult {
     let target = crate::ipc_path::decode(path);
-    match create_new_file(&target, contents) {
-        Ok(()) => FileWriteResult::Ok,
-        Err(error) => write_failed(path, &error.to_string()),
+    let (temp_path, mut temp_file) = match create_temp_file(&target) {
+        Ok(temp) => temp,
+        Err(error) => return write_failed(path, &error.to_string()),
+    };
+    let prepared = temp_file
+        .write_all(contents.as_bytes())
+        .and_then(|()| temp_file.sync_all());
+    if let Err(error) = prepared {
+        drop(temp_file);
+        let _ = fs::remove_file(&temp_path);
+        return write_failed(path, &error.to_string());
+    }
+    // 公開が終わるまで inode のハンドルを保持し、一時パスだけを根拠にしない。
+    // no-replace rename は hard link 非対応のボリュームでも既存先を置換しない。
+    match publish_new_file(&temp_path, &target) {
+        Ok(PublishMethod::Linked) => {
+            drop(temp_file);
+            let _ = fs::remove_file(&temp_path);
+            FileWriteResult::Ok
+        }
+        Ok(PublishMethod::Renamed) => {
+            drop(temp_file);
+            FileWriteResult::Ok
+        }
+        Err(error) => {
+            drop(temp_file);
+            let _ = fs::remove_file(&temp_path);
+            write_failed(path, &error.to_string())
+        }
     }
 }
 
-fn create_new_file(target: &Path, contents: &str) -> io::Result<()> {
-    let mut file = File::options().write(true).create_new(true).open(target)?;
-    if let Err(error) = file
-        .write_all(contents.as_bytes())
-        .and_then(|()| file.sync_all())
-    {
-        drop(file);
-        return Err(error);
+enum PublishMethod {
+    Linked,
+    Renamed,
+}
+
+fn publish_new_file(temp_path: &Path, target: &Path) -> io::Result<PublishMethod> {
+    publish_after_link(fs::hard_link(temp_path, target), temp_path, target)
+}
+
+fn publish_after_link(
+    link_result: io::Result<()>,
+    temp_path: &Path,
+    target: &Path,
+) -> io::Result<PublishMethod> {
+    match link_result {
+        Ok(()) => Ok(PublishMethod::Linked),
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Err(error),
+        Err(_) => rename_no_replace(temp_path, target).map(|()| PublishMethod::Renamed),
     }
-    Ok(())
+}
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn rename_no_replace(source: &Path, target: &Path) -> io::Result<()> {
+    use std::ffi::CString;
+    use std::os::raw::{c_char, c_int};
+    use std::os::unix::ffi::OsStrExt;
+
+    const AT_FDCWD: c_int = -100;
+    const RENAME_NOREPLACE: u32 = 1;
+    extern "C" {
+        fn renameat2(
+            olddirfd: c_int,
+            oldpath: *const c_char,
+            newdirfd: c_int,
+            newpath: *const c_char,
+            flags: u32,
+        ) -> c_int;
+    }
+    let source = CString::new(source.as_os_str().as_bytes())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "source path contains NUL"))?;
+    let target = CString::new(target.as_os_str().as_bytes())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "target path contains NUL"))?;
+    let result = unsafe {
+        renameat2(
+            AT_FDCWD,
+            source.as_ptr(),
+            AT_FDCWD,
+            target.as_ptr(),
+            RENAME_NOREPLACE,
+        )
+    };
+    (result == 0)
+        .then_some(())
+        .ok_or_else(io::Error::last_os_error)
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn rename_no_replace(source: &Path, target: &Path) -> io::Result<()> {
+    use std::ffi::CString;
+    use std::os::raw::{c_char, c_int};
+    use std::os::unix::ffi::OsStrExt;
+
+    const RENAME_EXCL: u32 = 0x0000_0004;
+    extern "C" {
+        fn renamex_np(old: *const c_char, new: *const c_char, flags: u32) -> c_int;
+    }
+    let source = CString::new(source.as_os_str().as_bytes())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "source path contains NUL"))?;
+    let target = CString::new(target.as_os_str().as_bytes())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "target path contains NUL"))?;
+    let result = unsafe { renamex_np(source.as_ptr(), target.as_ptr(), RENAME_EXCL) };
+    (result == 0)
+        .then_some(())
+        .ok_or_else(io::Error::last_os_error)
+}
+
+#[cfg(windows)]
+fn rename_no_replace(source: &Path, target: &Path) -> io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+
+    #[link(name = "Kernel32")]
+    extern "system" {
+        fn MoveFileExW(
+            existing_file_name: *const u16,
+            new_file_name: *const u16,
+            flags: u32,
+        ) -> i32;
+    }
+    let source = source
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect::<Vec<_>>();
+    let target = target
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect::<Vec<_>>();
+    // MOVEFILE_REPLACE_EXISTING を指定しないことで、既存の保存先を保護する。
+    let result = unsafe { MoveFileExW(source.as_ptr(), target.as_ptr(), 0) };
+    (result != 0)
+        .then_some(())
+        .ok_or_else(io::Error::last_os_error)
+}
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "macos",
+    target_os = "ios",
+    windows,
+)))]
+fn rename_no_replace(_source: &Path, _target: &Path) -> io::Result<()> {
+    Err(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "atomic no-replace rename is unsupported",
+    ))
 }
 
 fn write_failed(path: &str, message: &str) -> FileWriteResult {

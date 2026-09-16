@@ -42,6 +42,9 @@ const renderWorkspace = (
   dispatchExternalFileAction?: React.ComponentProps<
     typeof DocumentWorkspace
   >["dispatchExternalFileAction"],
+  registerSaveSession?: React.ComponentProps<
+    typeof DocumentWorkspace
+  >["registerSaveSession"],
 ): Pick<RenderedWorkspace, "host" | "rerender"> => {
   const host = document.createElement("div");
   document.body.append(host);
@@ -55,6 +58,7 @@ const renderWorkspace = (
           autoSaveOperations={autoSaveOperations}
           fileWatchOperations={fileWatchOperations}
           dispatchExternalFileAction={dispatchExternalFileAction}
+          registerSaveSession={registerSaveSession}
         />,
       );
     });
@@ -262,6 +266,262 @@ test("未保存のモデル編集と外部変更が競合したら自動保存�
   expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
     "external",
   );
+});
+
+test("保存中に外部変更を検出したら保存完了後にファイルを再評価する", async () => {
+  vi.useFakeTimers();
+  let notify: (event: FileWatchEvent) => void = () => {};
+  let finishWrite: () => void = () => {};
+  let diskContents = "external";
+  let readCount = 0;
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (_path, contents) =>
+      await new Promise((resolve) => {
+        finishWrite = () => {
+          diskContents = contents;
+          resolve({ type: "ok" });
+        };
+      }),
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => {
+      readCount += 1;
+      return { type: "ok", value: diskContents };
+    },
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+  );
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "local draft");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dmodel" });
+    await Promise.resolve();
+  });
+
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  expect(readCount).toBe(0);
+
+  await act(async () => {
+    finishWrite();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  expect(readCount).toBe(1);
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
+    "local draft",
+  );
+});
+
+test("連続した外部変更は読み込みと適用を文書ごとに直列化する", async () => {
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const reads: Array<(contents: string) => void> = [];
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () =>
+      await new Promise((resolve) => {
+        reads.push((contents) => resolve({ type: "ok", value: contents }));
+      }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    undefined,
+    watchOperations,
+    () => {},
+  );
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dmodel" });
+    notify({ type: "changed", path: "/documents/order.dmodel" });
+    await Promise.resolve();
+  });
+  expect(reads).toHaveLength(1);
+
+  await act(async () => {
+    reads[0]?.("older");
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(reads).toHaveLength(2);
+  await act(async () => {
+    reads[1]?.("newer");
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  await vi.waitFor(() => {
+    expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
+      "newer",
+    );
+  });
+});
+
+test("キャンバスの編集中下書きと外部変更が競合したら下書きを保持する", async () => {
+  vi.useFakeTimers();
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async () => ({ type: "ok" }),
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({
+      type: "ok",
+      value: Serialize.stringify(Document.empty()),
+    }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+  );
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 }),
+    );
+  });
+  act(() => {
+    host.querySelector<HTMLTextAreaElement>("textarea")?.blur();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("dblclick", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+  });
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "local canvas draft");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await Promise.resolve();
+  });
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dcanvas" });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  await vi.waitFor(() => {
+    expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
+      "local canvas draft",
+    );
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      "競合",
+    );
+  });
+});
+
+test("終了flushはキャンバスの編集中下書きを確定して保存する", async () => {
+  vi.useFakeTimers();
+  const writes: string[] = [];
+  let flush: () => Promise<boolean> = async () => false;
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (_path, contents) => {
+      writes.push(contents);
+      return { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    undefined,
+    undefined,
+    (_path, nextFlush) => {
+      flush = nextFlush;
+      return () => {};
+    },
+  );
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 }),
+    );
+  });
+  act(() => {
+    host.querySelector<HTMLTextAreaElement>("textarea")?.blur();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("dblclick", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+  });
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "saved on close");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  await act(async () => {
+    expect(await flush()).toBe(true);
+  });
+
+  expect(writes[writes.length - 1]).toContain("saved on close");
 });
 
 test("外部キャンバス変更を取り込んだ後もundoで変更前へ戻せる", async () => {

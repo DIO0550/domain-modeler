@@ -262,6 +262,33 @@ export const ConnectionInteraction = {
   },
 
   /**
+   * 付箋本文または接続ラベルの編集中下書きを文書履歴へ確定する。
+   *
+   * @param interaction 確定前の操作状態。
+   * @returns 全ての編集中下書きを確定した操作状態。
+   */
+  commitDrafts(interaction: ConnectionInteraction): ConnectionInteraction {
+    const connectionCommitted = ConnectionInteraction.commitEdit(interaction);
+    const board = StickyInteractionValue.commitEdit(connectionCommitted.board);
+    return board === connectionCommitted.board
+      ? connectionCommitted
+      : { ...connectionCommitted, board };
+  },
+
+  /**
+   * 未確定の編集内容を確定した場合の履歴を返す。
+   *
+   * @param interaction 判定する操作状態。
+   * @returns 変更のある下書きがあれば確定後の履歴。なければ不在。
+   */
+  draftHistory(interaction: ConnectionInteraction): Option<History> {
+    const committed = ConnectionInteraction.commitDrafts(interaction);
+    return committed.board.history === interaction.board.history
+      ? OptionValue.none()
+      : OptionValue.some(committed.board.history);
+  },
+
+  /**
    * Enter を接続または付箋の編集開始として解釈する。
    *
    * @param interaction キー操作前の状態。

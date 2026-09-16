@@ -19,6 +19,7 @@ type CanvasEditorProps = Readonly<{
   initialHistory?: History;
   onDocumentChange?: (document: Document) => void;
   onHistoryChange?: (history: History) => void;
+  onDraftHistoryChange?: (history: History | undefined) => void;
 }>;
 
 /**
@@ -33,6 +34,7 @@ export function CanvasEditor({
   initialHistory,
   onDocumentChange,
   onHistoryChange,
+  onDraftHistoryChange,
 }: CanvasEditorProps) {
   const board = useConnectionInteractions(initialDocument, initialHistory);
   const notifyDocumentChange = useEffectEvent((document: Document): void => {
@@ -41,6 +43,11 @@ export function CanvasEditor({
   const notifyHistoryChange = useEffectEvent((history: History): void => {
     onHistoryChange?.(history);
   });
+  const notifyDraftHistoryChange = useEffectEvent(
+    (history: History | undefined): void => {
+      onDraftHistoryChange?.(history);
+    },
+  );
   useEffect(() => {
     if (
       board.session.status === "dragging" ||
@@ -51,6 +58,9 @@ export function CanvasEditor({
     notifyDocumentChange(board.document);
     notifyHistoryChange(board.history);
   }, [board.document, board.history, board.session.status]);
+  useEffect(() => {
+    notifyDraftHistoryChange(board.draftHistory);
+  }, [board.draftHistory]);
   const viewport = useViewportInteractions(
     board.document.viewport,
     board.document.stickies,

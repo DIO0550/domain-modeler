@@ -39,8 +39,45 @@ fn 排他的作成は既存ファイルを上書きしない() {
     let target = workspace.path("draft.dmodel");
     fs::write(&target, "existing").unwrap();
 
-    assert!(super::create_new_file(&target, "replacement").is_err());
+    assert!(matches!(
+        super::create_utf8_file(target.to_str().unwrap(), "replacement"),
+        FileWriteResult::Err { .. }
+    ));
     assert_eq!(fs::read_to_string(target).unwrap(), "existing");
+}
+
+#[test]
+fn 完成した一時ファイルだけを新規パスへ公開する() {
+    use std::io::Write;
+
+    let workspace = TempWorkspace::create();
+    let target = workspace.path("draft.dmodel");
+    let (temp_path, mut temp_file) = super::create_temp_file(&target).unwrap();
+    temp_file.write_all(b"complete").unwrap();
+    temp_file.sync_all().unwrap();
+
+    assert!(!target.exists());
+    super::publish_new_file(&temp_path, &target).unwrap();
+    drop(temp_file);
+    assert_eq!(fs::read_to_string(target).unwrap(), "complete");
+}
+
+#[test]
+fn hard_link非対応時も上書きなしrenameで完成済みファイルを公開する() {
+    use std::io::Write;
+
+    let workspace = TempWorkspace::create();
+    let target = workspace.path("board.dcanvas");
+    let (temp_path, mut temp_file) = super::create_temp_file(&target).unwrap();
+    temp_file.write_all(b"complete").unwrap();
+    temp_file.sync_all().unwrap();
+    let unsupported = std::io::Error::new(std::io::ErrorKind::Unsupported, "no links");
+
+    super::publish_after_link(Err(unsupported), &temp_path, &target).unwrap();
+    drop(temp_file);
+
+    assert_eq!(fs::read_to_string(target).unwrap(), "complete");
+    assert!(!temp_path.exists());
 }
 
 #[cfg(unix)]

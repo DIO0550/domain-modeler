@@ -1,4 +1,10 @@
-import { Activity, useEffect, useEffectEvent, useState } from "react";
+import {
+  Activity,
+  useEffect,
+  useEffectEvent,
+  useReducer,
+  useState,
+} from "react";
 import {
   Document,
   History,
@@ -58,6 +64,35 @@ type ExternalFileConflict = Readonly<{
   document: ExternalFileDocument;
   fileContents: string;
 }>;
+
+type CanvasSessionState = Readonly<{
+  history: CanvasHistory;
+  draftHistory: CanvasHistory | undefined;
+  revision: number;
+}>;
+
+type CanvasSessionAction =
+  | Readonly<{ type: "historyChanged"; history: CanvasHistory }>
+  | Readonly<{ type: "draftChanged"; history: CanvasHistory | undefined }>
+  | Readonly<{ type: "externalApplied"; history: CanvasHistory }>
+  | Readonly<{ type: "draftCommitted"; history: CanvasHistory }>;
+
+const canvasSessionReducer = (
+  state: CanvasSessionState,
+  action: CanvasSessionAction,
+): CanvasSessionState => {
+  if (action.type === "historyChanged") {
+    return { ...state, history: action.history, draftHistory: undefined };
+  }
+  if (action.type === "draftChanged") {
+    return { ...state, draftHistory: action.history };
+  }
+  return {
+    history: action.history,
+    draftHistory: undefined,
+    revision: state.revision + 1,
+  };
+};
 
 /**
  * 文書種別に対応する編集画面を表示し、背景タブの編集状態も保持する。
@@ -147,20 +182,37 @@ function PersistedDocument({
 }>) {
   const autoSave = useAutoSave();
   const [text, setText] = useState("");
-  const [canvas, setCanvas] = useState<Readonly<{
-    history: CanvasHistory;
-    revision: number;
-  }>>({ history: History.create(EMPTY_CANVAS_DOCUMENT), revision: 0 });
+  const [canvas, dispatchCanvas] = useReducer(canvasSessionReducer, {
+    history: History.create(EMPTY_CANVAS_DOCUMENT),
+    draftHistory: undefined,
+    revision: 0,
+  });
   const [watchError, setWatchError] = useState<string>();
   const [externalConflict, setExternalConflict] =
     useState<ExternalFileConflict>();
+
+  const flushDocument = async (): Promise<boolean> => {
+    if (autoSave === undefined) {
+      return true;
+    }
+    if (canvas.draftHistory !== undefined) {
+      dispatchCanvas({
+        type: "draftCommitted",
+        history: canvas.draftHistory,
+      });
+      autoSave.notifyContentsChanged(
+        Serialize.stringify(canvas.draftHistory.current),
+      );
+    }
+    return await autoSave.flush();
+  };
 
   useEffect(() => {
     if (autoSave === undefined || registerSaveSession === undefined) {
       return;
     }
-    return registerSaveSession(tab.path, autoSave.flush);
-  }, [autoSave, registerSaveSession, tab.path]);
+    return registerSaveSession(tab.path, flushDocument);
+  }, [autoSave, canvas.draftHistory, registerSaveSession, tab.path]);
 
   const handleFileWatchEvent = useEffectEvent(
     async (event: FileWatchEvent): Promise<void> => {
@@ -187,35 +239,47 @@ function PersistedDocument({
         ExternalFileEvents.handleDeleted({ path: tab.path, document }, operations);
         return;
       }
-      const result = await ExternalFileEvents.handleChanged(
-        {
-          path: tab.path,
-          activation: isActive ? "active" : "background",
-          lastSavedHash: autoSave.autoSave.lastSavedContents,
-          document,
-        },
-        operations,
-      );
-      if (result.status !== "applied") {
+      let saveSnapshot = await autoSave.waitForPendingWrites();
+      while (true) {
+        const result = await ExternalFileEvents.handleChanged(
+          {
+            path: tab.path,
+            activation: isActive ? "active" : "background",
+            lastSavedHash: saveSnapshot.lastSavedContents,
+            document,
+          },
+          operations,
+        );
+        if (result.status !== "applied") {
+          return;
+        }
+        setWatchError(undefined);
+        if (
+          saveSnapshot.status === "saving" &&
+          result.fileHash === saveSnapshot.writingContents
+        ) {
+          return;
+        }
+        const settledSnapshot = await autoSave.waitForPendingWrites();
+        if (settledSnapshot !== saveSnapshot) {
+          saveSnapshot = settledSnapshot;
+          continue;
+        }
+        if (
+          AutoSave.isDirty(settledSnapshot) ||
+          canvas.draftHistory !== undefined
+        ) {
+          autoSave.pause();
+          setExternalConflict({
+            document: result.document,
+            fileContents: result.fileHash,
+          });
+          return;
+        }
+        autoSave.acceptExternalContents(result.fileHash);
+        applyExternalDocument(result.document, setText, dispatchCanvas);
         return;
       }
-      setWatchError(undefined);
-      if (
-        autoSave.autoSave.status === "saving" &&
-        result.fileHash === autoSave.autoSave.writingContents
-      ) {
-        return;
-      }
-      if (AutoSave.isDirty(autoSave.autoSave)) {
-        autoSave.pause();
-        setExternalConflict({
-          document: result.document,
-          fileContents: result.fileHash,
-        });
-        return;
-      }
-      autoSave.acceptExternalContents(result.fileHash);
-      applyExternalDocument(result.document, setText, setCanvas);
     },
   );
 
@@ -225,13 +289,21 @@ function PersistedDocument({
     }
     let stopped = false;
     let stop: (() => Promise<void>) | undefined;
+    let eventQueue = Promise.resolve();
     void fileWatchOperations
       .watch(tab.path, (event) => {
-        void handleFileWatchEvent(event);
+        const handleQueuedEvent = async (): Promise<void> => {
+          if (!stopped) {
+            await handleFileWatchEvent(event);
+          }
+        };
+        eventQueue = eventQueue.then(handleQueuedEvent, handleQueuedEvent);
       })
       .then((result) => {
         if (result.type === "err") {
-          setWatchError(result.error.message);
+          if (!stopped) {
+            setWatchError(result.error.message);
+          }
           return;
         }
         if (stopped) {
@@ -254,17 +326,21 @@ function PersistedDocument({
       return;
     }
     autoSave.acceptExternalContents(externalConflict.fileContents);
-    applyExternalDocument(externalConflict.document, setText, setCanvas);
+    applyExternalDocument(externalConflict.document, setText, dispatchCanvas);
     setExternalConflict(undefined);
   };
   const keepEditingContents = (): void => {
     if (externalConflict === undefined) {
       return;
     }
+    const localHistory = canvas.draftHistory ?? canvas.history;
     const currentContents =
       tab.documentType === "canvas"
-        ? Serialize.stringify(canvas.history.current)
+        ? Serialize.stringify(localHistory.current)
         : text;
+    if (canvas.draftHistory !== undefined) {
+      dispatchCanvas({ type: "draftCommitted", history: localHistory });
+    }
     autoSave.acceptExternalContents(externalConflict.fileContents);
     autoSave.notifyContentsChanged(currentContents);
     setExternalConflict(undefined);
@@ -278,7 +354,7 @@ function PersistedDocument({
           text={text}
           setText={setText}
           canvas={canvas}
-          setCanvas={setCanvas}
+          dispatchCanvas={dispatchCanvas}
           watchError={watchError}
           externalConflict={externalConflict}
           onUseExternalContents={useExternalContents}
@@ -296,7 +372,7 @@ function DocumentEditor({
   text,
   setText,
   canvas,
-  setCanvas,
+  dispatchCanvas,
   watchError,
   externalConflict,
   onUseExternalContents,
@@ -306,10 +382,8 @@ function DocumentEditor({
   autoSave: AutoSaveContextValue;
   text: string;
   setText: (text: string) => void;
-  canvas: Readonly<{ history: CanvasHistory; revision: number }>;
-  setCanvas: (
-    update: Readonly<{ history: CanvasHistory; revision: number }>,
-  ) => void;
+  canvas: CanvasSessionState;
+  dispatchCanvas: React.Dispatch<CanvasSessionAction>;
   watchError: string | undefined;
   externalConflict: ExternalFileConflict | undefined;
   onUseExternalContents: () => void;
@@ -358,11 +432,11 @@ function DocumentEditor({
           initialHistory={canvas.history}
           saveStatus={saveStatusOf(autoSave.autoSave)}
           onHistoryChange={(history) => {
-            setCanvas({
-              history,
-              revision: canvas.revision,
-            });
+            dispatchCanvas({ type: "historyChanged", history });
             autoSave.notifyContentsChanged(Serialize.stringify(history.current));
+          }}
+          onDraftHistoryChange={(history) => {
+            dispatchCanvas({ type: "draftChanged", history });
           }}
         />
       </>
@@ -399,20 +473,13 @@ const saveStatusOf = (autoSave: AutoSave): SaveIndicatorStatus => {
 const applyExternalDocument = (
   document: ExternalFileDocument,
   setText: (text: string) => void,
-  setCanvas: React.Dispatch<
-    React.SetStateAction<
-      Readonly<{ history: CanvasHistory; revision: number }>
-    >
-  >,
+  dispatchCanvas: React.Dispatch<CanvasSessionAction>,
 ): void => {
   if (document.documentType === "model") {
     setText(document.contents);
     return;
   }
-  setCanvas((current) => ({
-    history: document.history,
-    revision: current.revision + 1,
-  }));
+  dispatchCanvas({ type: "externalApplied", history: document.history });
 };
 
 const externalFileErrorMessage = (error: ExternalFileEventError): string => {

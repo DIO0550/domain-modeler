@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type {
   CanvasError,
   Connection,
@@ -128,6 +128,7 @@ export function useStickyInteractions(
 /** 付箋操作に接続の作成・選択・編集・削除を加えたキャンバス操作。 */
 export type UseConnectionInteractionsResult = UseStickyInteractionsResult &
   Readonly<{
+    draftHistory: History | undefined;
     connections: readonly Connection[];
     connectionSession: ConnectionSession;
     connectionError: Option<CanvasError>;
@@ -161,6 +162,10 @@ export function useConnectionInteractions(
       : ConnectionInteraction.fromHistory(initialHistory),
   );
   const board = interaction.board;
+  const draftHistory = useMemo(() => {
+    const pending = ConnectionInteraction.draftHistory(interaction);
+    return pending.some ? pending.value : undefined;
+  }, [interaction]);
   const updateBoard = (
     advance: (current: typeof board) => typeof board,
   ): void => {
@@ -179,6 +184,7 @@ export function useConnectionInteractions(
     session: board.session,
     stickies: board.workingDocument.stickies,
     connections: board.workingDocument.connections,
+    draftHistory,
     connectionSession: interaction.session,
     connectionError: interaction.error,
     hasUndo: StickyInteraction.hasUndo(board),
