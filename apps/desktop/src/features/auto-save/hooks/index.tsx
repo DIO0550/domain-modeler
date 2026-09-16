@@ -16,6 +16,7 @@ export type AutoSaveContextValue = Readonly<{
   notifyContentsChanged: (contents: string) => void;
   acceptExternalContents: (contents: string) => void;
   pause: () => void;
+  resume: () => void;
   waitForPendingWrites: () => Promise<AutoSave>;
   beginTransaction: () => void;
   endTransaction: () => void;
@@ -180,6 +181,10 @@ function AutoSaveSession({
       pause: () => {
         pausedRef.current = true;
         setPaused(true);
+      },
+      resume: () => {
+        pausedRef.current = false;
+        setPaused(false);
       },
       waitForPendingWrites: async () => {
         await writeQueueRef.current;

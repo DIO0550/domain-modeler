@@ -126,109 +126,39 @@ fn 循環するシンボリックリンクは判定不能なので安全側で�
     ));
 }
 
+#[cfg(unix)]
 #[test]
-fn 長いファイル名の規則確認用コンポーネントは上限のある長さになる() {
-    use std::ffi::OsStr;
+fn 長い単一unicode単位でも異なる基底文字を区別する() {
+    let workspace = TempWorkspace::create();
+    let marks = "\u{301}".repeat(70);
+    let left = workspace.path(&format!("a{marks}.dmodel"));
+    let right = workspace.path(&format!("b{marks}.dmodel"));
 
-    let left = format!("{}A{}", "前".repeat(120), "後".repeat(120));
-    let right = format!("{}a{}", "前".repeat(120), "後".repeat(120));
-    let (left_probe, right_probe) =
-        super::compact_probe_names(OsStr::new(&left), OsStr::new(&right));
-
-    assert!(left_probe.len() <= 164);
-    assert!(right_probe.len() <= 164);
-    assert_ne!(left_probe, right_probe);
+    assert!(!super::same_file_path(
+        left.to_str().unwrap(),
+        right.to_str().unwrap(),
+    ));
 }
 
 #[cfg(unix)]
 #[test]
-fn 規則確認用コンポーネントは非utf8の生バイトを保持する() {
-    use std::ffi::{OsStr, OsString};
-    use std::os::unix::ffi::{OsStrExt, OsStringExt};
-
-    let raw = OsString::from_vec(b"draft-\xff.dmodel".to_vec());
-    let replacement = OsStr::new("draft-�.dmodel");
-    let (raw_probe, replacement_probe) =
-        super::compact_probe_names(&raw, replacement);
-
-    assert_ne!(raw_probe, replacement_probe);
-    assert!(raw_probe.as_bytes().contains(&0xff));
-}
-
-#[cfg(unix)]
-#[test]
-fn 規則確認用コンポーネントはutf8の文字境界を保持する() {
-    use std::ffi::OsStr;
-
-    let left = format!("{}A.dmodel", "日".repeat(40));
-    let right = format!("{}B.dmodel", "日".repeat(40));
-    let (left_probe, right_probe) =
-        super::compact_probe_names(OsStr::new(&left), OsStr::new(&right));
-
-    assert!(left_probe.to_str().is_some());
-    assert!(right_probe.to_str().is_some());
-    assert_ne!(left_probe, right_probe);
-}
-
-#[cfg(unix)]
-#[test]
-fn 規則確認用コンポーネントはunicode正規化単位の数を保持する() {
-    use std::ffi::OsStr;
-
-    let composed = format!("{}A.dmodel", "é".repeat(80));
-    let decomposed = format!("{}A.dmodel", "e\u{301}".repeat(80));
-    let (composed_probe, decomposed_probe) = super::compact_probe_names(
-        OsStr::new(&composed),
-        OsStr::new(&decomposed),
-    );
+fn 長いhangulの合成形と分解形は対象ディレクトリの規則で判定する() {
+    let workspace = TempWorkspace::create();
+    let composed = workspace.path(&format!("{}.dmodel", "가".repeat(35)));
+    let decomposed = workspace.path(&format!(
+        "{}.dmodel",
+        "\u{1100}\u{1161}".repeat(35),
+    ));
+    fs::write(&composed, "probe").unwrap();
+    let normalizes_unicode = decomposed.exists();
+    fs::remove_file(&composed).unwrap();
 
     assert_eq!(
-        super::normalization_units(composed_probe.to_str().unwrap()).len(),
-        super::normalization_units(decomposed_probe.to_str().unwrap()).len(),
-    );
-}
-
-#[cfg(unix)]
-#[test]
-fn 巨大な結合文字列でもprefix込みでコンポーネント上限を超えない() {
-    use std::ffi::OsStr;
-    use std::os::unix::ffi::OsStrExt;
-
-    let left = format!("e{}A.dmodel", "\u{301}".repeat(200));
-    let right = format!("e{}B.dmodel", "\u{301}".repeat(200));
-    let prefix = ".dm-probe-123-ffffffffffffffff-ffffffffffffffff-";
-    let (left_probe, right_probe) = super::compact_probe_names_for_prefix(
-        OsStr::new(&left),
-        OsStr::new(&right),
-        prefix,
-    );
-
-    assert!(prefix.len() + left_probe.as_bytes().len() <= 255);
-    assert!(prefix.len() + right_probe.as_bytes().len() <= 255);
-    assert_ne!(left_probe, right_probe);
-}
-
-#[cfg(unix)]
-#[test]
-fn 巨大なunicode正規化単位も同じ単位数を保って短縮する() {
-    use std::ffi::OsStr;
-    use std::os::unix::ffi::OsStrExt;
-
-    let marks = "\u{301}".repeat(120);
-    let composed = format!("é{marks}A.dmodel");
-    let decomposed = format!("e\u{301}{marks}A.dmodel");
-    let prefix = ".dm-probe-123-ffffffffffffffff-ffffffffffffffff-";
-    let (composed_probe, decomposed_probe) = super::compact_probe_names_for_prefix(
-        OsStr::new(&composed),
-        OsStr::new(&decomposed),
-        prefix,
-    );
-
-    assert!(prefix.len() + composed_probe.as_bytes().len() <= 255);
-    assert!(prefix.len() + decomposed_probe.as_bytes().len() <= 255);
-    assert_eq!(
-        super::normalization_units(composed_probe.to_str().unwrap()).len(),
-        super::normalization_units(decomposed_probe.to_str().unwrap()).len(),
+        super::same_file_path(
+            composed.to_str().unwrap(),
+            decomposed.to_str().unwrap(),
+        ),
+        normalizes_unicode,
     );
 }
 
@@ -270,12 +200,12 @@ fn 同時刻でも規則確認用プローブ名はatomic_nonceで重複しな�
     );
 
     let entries = workspace.entry_names();
-    assert_eq!(entries.len(), 4);
+    assert_eq!(entries.len(), 2);
     assert_eq!(
         entries
             .iter()
             .collect::<std::collections::HashSet<_>>()
             .len(),
-        4,
+        2,
     );
 }

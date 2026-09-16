@@ -179,6 +179,35 @@ test("Context に保持した連続変更は最大2秒で最新内容を保存�
   ]);
 });
 
+test("一時停止中の未保存変更は再開後に保持したまま書き込む", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  const probe = renderAutoSave(operationsRecording(writes));
+  probes.push(probe);
+
+  act(() => {
+    probe.latest.current?.notifyContentsChanged('{"version":1}');
+    probe.latest.current?.pause();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS * 2);
+  });
+
+  expect(writes).toEqual([]);
+  expect(probe.latest.current?.autoSave.status).toBe("pending");
+
+  act(() => {
+    probe.latest.current?.resume();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+
+  expect(writes).toEqual([
+    { path: "/documents/context.dcanvas", contents: '{"version":1}' },
+  ]);
+});
+
 test("トランザクション中は Context のタイマーが満了しても書き込まない", async () => {
   vi.useFakeTimers();
   const writes: WriteCall[] = [];

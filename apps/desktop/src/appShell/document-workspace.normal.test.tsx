@@ -205,6 +205,59 @@ test("作成したモデル文書の外部変更をエディタへ取り込む",
   expect(actions).toContain("clearFileMissing");
 });
 
+test("外部変更の再読込に成功すると以前の監視エラーを消す", async () => {
+  let notify: (event: FileWatchEvent) => void = () => {};
+  let readCount = 0;
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => {
+      readCount += 1;
+      return readCount === 1
+        ? {
+            type: "err",
+            error: {
+              kind: "readFailed",
+              path: "/documents/order.dmodel",
+              message: "permission denied",
+            },
+          }
+        : { type: "ok", value: "" };
+    },
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    undefined,
+    watchOperations,
+    () => {},
+  );
+
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dmodel" });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "permission denied",
+  );
+
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dmodel" });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  await vi.waitFor(() => {
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+});
+
 test("未保存のモデル編集と外部変更が競合したら自動保存を止めて選択を待つ", async () => {
   vi.useFakeTimers();
   let notify: (event: FileWatchEvent) => void = () => {};
@@ -266,6 +319,124 @@ test("未保存のモデル編集と外部変更が競合したら自動保存�
   expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
     "external",
   );
+});
+
+test("未保存編集のあるファイルが外部削除されたら保存を止めて削除を維持できる", async () => {
+  vi.useFakeTimers();
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const writes: string[] = [];
+  const actions: string[] = [];
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (_path, contents) => {
+      writes.push(contents);
+      return { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({
+      type: "err",
+      error: { kind: "notFound", path: "/documents/order.dmodel" },
+    }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    (action) => actions.push(action.type),
+  );
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "local draft");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    notify({ type: "deleted", path: "/documents/order.dmodel" });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+
+  expect(writes).toEqual([]);
+  expect(actions).toContain("markFileMissing");
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "削除され",
+  );
+
+  act(() => buttonNamed(host, "削除を維持").click());
+  expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+  expect(writes).toEqual([]);
+});
+
+test("外部削除と競合した未保存編集を選ぶとファイルを再作成する", async () => {
+  vi.useFakeTimers();
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const writes: string[] = [];
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (_path, contents) => {
+      writes.push(contents);
+      return { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({
+      type: "err",
+      error: { kind: "notFound", path: "/documents/order.dmodel" },
+    }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+  );
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "local draft");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    notify({ type: "deleted", path: "/documents/order.dmodel" });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  act(() => buttonNamed(host, "編集内容で再作成").click());
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+
+  expect(writes).toEqual(["local draft"]);
 });
 
 test("保存中に外部変更を検出したら保存完了後にファイルを再評価する", async () => {
