@@ -164,12 +164,11 @@ fn rename_open_file_no_replace(
 ) -> io::Result<()> {
     use std::ffi::c_void;
     use std::os::windows::ffi::OsStrExt;
-    use std::os::windows::fs::OpenOptionsExt;
     use std::os::windows::io::AsRawHandle;
 
     #[repr(C)]
     struct FileRenameInfo {
-        flags: u32,
+        replace_if_exists: u8,
         root_directory: *mut c_void,
         file_name_length: u32,
         file_name: [u16; 1],
@@ -185,8 +184,7 @@ fn rename_open_file_no_replace(
         ) -> i32;
     }
 
-    const FILE_RENAME_INFO_EX: u32 = 22;
-    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+    const FILE_RENAME_INFO: u32 = 3;
     let file_name = target.file_name().ok_or_else(|| {
         io::Error::new(io::ErrorKind::InvalidInput, "target has no file name")
     })?;
@@ -194,20 +192,18 @@ fn rename_open_file_no_replace(
         .parent()
         .filter(|path| !path.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    // 親のハンドルを基準に名前を解決し、DOS/NT絶対パス表記の差を避ける。
-    let directory = File::options()
-        .access_mode(0)
-        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
-        .open(parent)?;
-    let name = file_name.encode_wide().collect::<Vec<_>>();
+    // FileRenameInfoはWin32パスを解釈する。存在する親だけを正規化し、
+    // 新規の保存先も絶対パスとして渡す（FileRenameInfoExのNTパス解釈を避ける）。
+    let destination = fs::canonicalize(parent)?.join(file_name);
+    let name = destination.as_os_str().encode_wide().collect::<Vec<_>>();
     let header = std::mem::offset_of!(FileRenameInfo, file_name);
     let buffer_size = header + (name.len() + 1) * std::mem::size_of::<u16>();
     let word_count = buffer_size.div_ceil(std::mem::size_of::<usize>());
     let mut buffer = vec![0usize; word_count];
     let information = buffer.as_mut_ptr().cast::<FileRenameInfo>();
     unsafe {
-        (*information).flags = 0;
-        (*information).root_directory = directory.as_raw_handle();
+        (*information).replace_if_exists = 0;
+        (*information).root_directory = std::ptr::null_mut();
         (*information).file_name_length = (name.len() * 2) as u32;
         std::ptr::copy_nonoverlapping(
             name.as_ptr(),
@@ -218,7 +214,7 @@ fn rename_open_file_no_replace(
     let result = unsafe {
         SetFileInformationByHandle(
             file.as_raw_handle().cast(),
-            FILE_RENAME_INFO_EX,
+            FILE_RENAME_INFO,
             information.cast(),
             buffer_size as u32,
         )
