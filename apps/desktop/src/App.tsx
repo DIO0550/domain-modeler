@@ -43,10 +43,7 @@ function App() {
     void appWindow
       .onCloseRequested(async (event) => {
         event.preventDefault();
-        const results = await Promise.all(
-          [...saveSessions.current.values()].map(async (flush) => await flush()),
-        );
-        if (results.every(Boolean)) {
+        if (await flushStableSaveSessions(saveSessions.current)) {
           await appWindow.destroy();
         }
       })
@@ -83,6 +80,32 @@ function App() {
       />
     </div>
   );
+}
+
+/**
+ * 保存中の再編集も含め、全セッションが同じ世代で保存済みになるまでflushする。
+ *
+ * @param sessions パスごとの最新flush操作。
+ * @returns 全セッションが同時に保存済みならtrue。保存失敗ならfalse。
+ */
+export async function flushStableSaveSessions(
+  sessions: ReadonlyMap<string, () => Promise<boolean>>,
+): Promise<boolean> {
+  while (true) {
+    const snapshot = [...sessions.entries()];
+    const results = await Promise.all(
+      snapshot.map(async ([, flush]) => await flush()),
+    );
+    if (!results.every(Boolean)) {
+      return false;
+    }
+    const isStable =
+      snapshot.length === sessions.size &&
+      snapshot.every(([path, flush]) => sessions.get(path) === flush);
+    if (isStable) {
+      return true;
+    }
+  }
 }
 
 export default App;

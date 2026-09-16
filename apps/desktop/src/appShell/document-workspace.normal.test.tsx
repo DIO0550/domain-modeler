@@ -1,6 +1,11 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
+import {
+  Document,
+  Result,
+  Serialize,
+} from "@domain-modeler/canvas-core";
 import type { AutoSaveOperations } from "@/features/auto-save";
 import type {
   FileWatchEvent,
@@ -194,6 +199,114 @@ test("作成したモデル文書の外部変更をエディタへ取り込む",
     "data Order = string",
   );
   expect(actions).toContain("clearFileMissing");
+});
+
+test("未保存のモデル編集と外部変更が競合したら自動保存を止めて選択を待つ", async () => {
+  vi.useFakeTimers();
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const writes: string[] = [];
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (_path, contents) => {
+      writes.push(contents);
+      return { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({ type: "ok", value: "external" }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+  );
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "local draft");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dmodel" });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+
+  expect(writes).toEqual([]);
+  expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
+    "local draft",
+  );
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "競合",
+  );
+
+  const useExternal = Array.from(host.querySelectorAll("button")).find(
+    (button) => button.textContent === "外部変更を読み込む",
+  );
+  act(() => useExternal?.click());
+  expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
+    "external",
+  );
+});
+
+test("外部キャンバス変更を取り込んだ後もundoで変更前へ戻せる", async () => {
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const externalDocument = Result.unwrap(
+    Document.addSticky(
+      Document.empty(),
+      "command",
+      "external",
+      { x: 80, y: 90 },
+      { width: 140, height: 100 },
+    ),
+  );
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({
+      type: "ok",
+      value: Serialize.stringify(externalDocument),
+    }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    undefined,
+    watchOperations,
+    () => {},
+  );
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dcanvas" });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+  const undo = buttonNamed(host, "元に戻す");
+  expect(undo.getAttribute("aria-disabled")).toBe("false");
+  act(() => undo.click());
+  expect(host.querySelectorAll("article")).toHaveLength(0);
 });
 
 test("モデルを変更直後に背景化しても自動保存を継続する", async () => {

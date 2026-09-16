@@ -155,10 +155,8 @@ fn compact_probe_names_with_budget(
         let left = normalization_units(left);
         let right = normalization_units(right);
         let (left, right) = compact_probe_units(&left, &right, "-");
-        return (
-            OsString::from(fit_utf8_probe(&left.concat(), budget)),
-            OsString::from(fit_utf8_probe(&right.concat(), budget)),
-        );
+        let (left, right) = fit_utf8_probe_units(&left, &right, budget);
+        return (OsString::from(left), OsString::from(right));
     }
     let (left, right) = compact_probe_units(left.as_bytes(), right.as_bytes(), b'-');
     (
@@ -253,12 +251,94 @@ fn is_combining_mark(character: char) -> bool {
 }
 
 #[cfg(unix)]
-fn fit_utf8_probe(value: &str, budget: usize) -> String {
-    if value.len() <= budget {
-        return value.to_owned();
+fn fit_utf8_probe_units(
+    left: &[&str],
+    right: &[&str],
+    budget: usize,
+) -> (String, String) {
+    let left_value = left.concat();
+    let right_value = right.concat();
+    if left_value.len() <= budget && right_value.len() <= budget {
+        return (left_value, right_value);
     }
-    let characters = value.chars().collect::<Vec<_>>();
-    fit_probe_units(&characters, budget / 4, '-').into_iter().collect()
+    if budget == 0 {
+        return (String::new(), String::new());
+    }
+
+    let unit_budget = budget.saturating_sub(1);
+    let unit_count = left.len().max(right.len());
+    let units = (0..unit_count)
+        .map(|index| {
+            let left_unit = left.get(index).copied().unwrap_or("");
+            let right_unit = right.get(index).copied().unwrap_or("");
+            if left_unit.len().max(right_unit.len()) <= unit_budget {
+                return (left_unit.to_owned(), right_unit.to_owned());
+            }
+            (
+                (!left_unit.is_empty()).then_some("~").unwrap_or("").to_owned(),
+                (!right_unit.is_empty()).then_some("~").unwrap_or("").to_owned(),
+            )
+        })
+        .collect::<Vec<_>>();
+    let costs = units
+        .iter()
+        .map(|(left, right)| left.len().max(right.len()))
+        .collect::<Vec<_>>();
+    if costs.iter().sum::<usize>() <= budget {
+        let all = (0..units.len()).collect::<Vec<_>>();
+        return concat_probe_unit_pairs(&units, &all, &[], false);
+    }
+
+    let first_budget = budget.saturating_sub(1) / 2;
+    let mut first = Vec::new();
+    let mut first_cost = 0;
+    for (index, cost) in costs.iter().copied().enumerate() {
+        if first_cost + cost > first_budget {
+            break;
+        }
+        first.push(index);
+        first_cost += cost;
+    }
+    let mut last = Vec::new();
+    let mut total_cost = first_cost.saturating_add(1);
+    for (index, cost) in costs.iter().copied().enumerate().rev() {
+        if first.contains(&index) || total_cost + cost > budget {
+            continue;
+        }
+        last.push(index);
+        total_cost += cost;
+    }
+    last.reverse();
+    concat_probe_unit_pairs(
+        &units,
+        &first,
+        &last,
+        first.len() + last.len() < units.len(),
+    )
+}
+
+#[cfg(unix)]
+fn concat_probe_unit_pairs(
+    units: &[(String, String)],
+    first: &[usize],
+    last: &[usize],
+    separated: bool,
+) -> (String, String) {
+    let mut left = String::new();
+    let mut right = String::new();
+    for index in first {
+        left.push_str(&units[*index].0);
+        right.push_str(&units[*index].1);
+    }
+    if separated {
+        left.push('-');
+        right.push('-');
+    }
+    for index in last {
+        left.push_str(&units[*index].0);
+        right.push_str(&units[*index].1);
+    }
+    (left, right)
 }
 
 fn fit_probe_units<T: Copy>(units: &[T], budget: usize, separator: T) -> Vec<T> {

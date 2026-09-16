@@ -4,6 +4,7 @@ import type {
   Connection,
   ConnectionId,
   Document,
+  History,
   Option,
   Point,
   Sticky,
@@ -22,6 +23,7 @@ import {
 /** 付箋の作成・選択・編集操作。 */
 export type UseStickyInteractionsResult = Readonly<{
   document: Document;
+  history: History;
   selectedType: StickyType;
   session: StickySession;
   stickies: readonly Sticky[];
@@ -59,6 +61,7 @@ export function useStickyInteractions(
 
   return {
     document: interaction.workingDocument,
+    history: interaction.history,
     selectedType: interaction.selectedType,
     session: interaction.session,
     stickies: interaction.workingDocument.stickies,
@@ -145,13 +148,17 @@ export type UseConnectionInteractionsResult = UseStickyInteractionsResult &
  * 付箋と接続が同じ文書・undo履歴を共有するキャンバス操作を扱う。
  *
  * @param initialDocument 初期文書。省略時は空の文書。
+ * @param initialHistory 引き継ぐ履歴。指定時は初期文書より優先。
  * @returns 表示する文書、操作状態、イベントハンドラ。
  */
 export function useConnectionInteractions(
   initialDocument?: Document,
+  initialHistory?: History,
 ): UseConnectionInteractionsResult {
   const [interaction, setInteraction] = useState(() =>
-    ConnectionInteraction.create(initialDocument),
+    initialHistory === undefined
+      ? ConnectionInteraction.create(initialDocument)
+      : ConnectionInteraction.fromHistory(initialHistory),
   );
   const board = interaction.board;
   const updateBoard = (
@@ -167,6 +174,7 @@ export function useConnectionInteractions(
 
   return {
     document: board.workingDocument,
+    history: board.history,
     selectedType: board.selectedType,
     session: board.session,
     stickies: board.workingDocument.stickies,

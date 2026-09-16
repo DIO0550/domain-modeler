@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent } from "react";
 import { CANVAS_SHORTCUTS, CanvasShortcut } from "../../domains/shortcut";
 import { EventTargetEx } from "@/utils/EventTargetEx";
-import type { Document } from "@domain-modeler/canvas-core";
+import type { Document, History } from "@domain-modeler/canvas-core";
 import type { SaveIndicatorStatus } from "../../domains/save-indicator";
 import { ConnectionSession } from "../../domains/connection-session";
 import { StickySession } from "../../domains/sticky-interaction";
@@ -16,23 +16,30 @@ import { ConnectionLayer } from "../connection-layer";
 type CanvasEditorProps = Readonly<{
   saveStatus: SaveIndicatorStatus;
   initialDocument?: Document;
+  initialHistory?: History;
   onDocumentChange?: (document: Document) => void;
+  onHistoryChange?: (history: History) => void;
 }>;
 
 /**
  * 付箋の作成・選択・本文編集ができるキャンバス画面。
  *
- * @param props 保存状態、初期文書。
+ * @param props 保存状態、初期文書または履歴、変更通知。
  * @returns 操作可能なキャンバス。
  */
 export function CanvasEditor({
   saveStatus,
   initialDocument,
+  initialHistory,
   onDocumentChange,
+  onHistoryChange,
 }: CanvasEditorProps) {
-  const board = useConnectionInteractions(initialDocument);
+  const board = useConnectionInteractions(initialDocument, initialHistory);
   const notifyDocumentChange = useEffectEvent((document: Document): void => {
     onDocumentChange?.(document);
+  });
+  const notifyHistoryChange = useEffectEvent((history: History): void => {
+    onHistoryChange?.(history);
   });
   useEffect(() => {
     if (
@@ -42,7 +49,8 @@ export function CanvasEditor({
       return;
     }
     notifyDocumentChange(board.document);
-  }, [board.document, board.session.status]);
+    notifyHistoryChange(board.history);
+  }, [board.document, board.history, board.session.status]);
   const viewport = useViewportInteractions(
     board.document.viewport,
     board.document.stickies,

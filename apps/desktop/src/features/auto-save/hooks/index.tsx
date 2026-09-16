@@ -15,6 +15,7 @@ export type AutoSaveContextValue = Readonly<{
   autoSave: AutoSave;
   notifyContentsChanged: (contents: string) => void;
   acceptExternalContents: (contents: string) => void;
+  pause: () => void;
   beginTransaction: () => void;
   endTransaction: () => void;
   flush: () => Promise<boolean>;
@@ -58,6 +59,8 @@ function AutoSaveSession({
   const [autoSave, setAutoSave] = useState(() =>
     AutoSave.create(path, initialContents),
   );
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
   const autoSaveRef = useRef(autoSave);
   const operationsRef = useRef(operations);
   const writeQueueRef = useRef(Promise.resolve());
@@ -86,6 +89,9 @@ function AutoSaveSession({
 
   const runSave = async (force: boolean): Promise<boolean> => {
     const run = async (): Promise<boolean> => {
+      if (pausedRef.current) {
+        return false;
+      }
       const current = autoSaveRef.current;
       if (force) {
         if (!AutoSave.isDirty(current)) {
@@ -133,6 +139,9 @@ function AutoSaveSession({
   };
 
   useEffect(() => {
+    if (paused) {
+      return;
+    }
     const due = AutoSave.due(autoSave, operationsRef.current.now());
     if (due.status === "notScheduled") {
       return;
@@ -148,7 +157,7 @@ function AutoSaveSession({
     return () => {
       clearTimeout(timer);
     };
-  }, [autoSave]);
+  }, [autoSave, paused]);
 
   const value = useMemo((): AutoSaveContextValue => {
     return {
@@ -163,7 +172,13 @@ function AutoSaveSession({
         );
       },
       acceptExternalContents: (contents) => {
+        pausedRef.current = false;
+        setPaused(false);
         replaceAutoSave(AutoSave.create(path, contents));
+      },
+      pause: () => {
+        pausedRef.current = true;
+        setPaused(true);
       },
       beginTransaction: () => {
         replaceAutoSave(AutoSave.beginTransaction);

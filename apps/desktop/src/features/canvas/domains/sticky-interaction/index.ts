@@ -127,10 +127,20 @@ export const StickyInteraction = {
    * @returns 履歴が空の操作状態。
    */
   create(document: Document = Document.empty()): StickyInteraction {
+    return StickyInteraction.fromHistory(History.create(document));
+  },
+
+  /**
+   * 既存履歴から、選択も編集もない操作状態を生成する。
+   *
+   * @param history 引き継ぐundo/redo履歴。
+   * @returns 履歴を維持した操作状態。
+   */
+  fromHistory(history: History): StickyInteraction {
     return {
       clipboard: Option.none(),
-      history: History.create(document),
-      workingDocument: document,
+      history,
+      workingDocument: history.current,
       selectedType: STICKY_TYPES.event,
       session: { status: "idle" },
     };

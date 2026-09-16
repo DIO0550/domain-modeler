@@ -12,8 +12,8 @@ import {
 } from "@/features/canvas";
 import {
   AutoSaveProvider,
+  AutoSave,
   useAutoSave,
-  type AutoSave,
   type AutoSaveContextValue,
   type AutoSaveOperations,
 } from "@/features/auto-save";
@@ -53,6 +53,11 @@ const DEFAULT_AUTO_SAVE_OPERATIONS: AutoSaveOperations = {
 };
 const EMPTY_CANVAS_DOCUMENT = Document.empty();
 const EMPTY_CANVAS_CONTENTS = Serialize.stringify(EMPTY_CANVAS_DOCUMENT);
+
+type ExternalFileConflict = Readonly<{
+  document: ExternalFileDocument;
+  fileContents: string;
+}>;
 
 /**
  * 文書種別に対応する編集画面を表示し、背景タブの編集状態も保持する。
@@ -147,6 +152,8 @@ function PersistedDocument({
     revision: number;
   }>>({ history: History.create(EMPTY_CANVAS_DOCUMENT), revision: 0 });
   const [watchError, setWatchError] = useState<string>();
+  const [externalConflict, setExternalConflict] =
+    useState<ExternalFileConflict>();
 
   useEffect(() => {
     if (autoSave === undefined || registerSaveSession === undefined) {
@@ -193,16 +200,22 @@ function PersistedDocument({
         return;
       }
       setWatchError(undefined);
-      autoSave.acceptExternalContents(result.fileHash);
-      if (result.document.documentType === "model") {
-        setText(result.document.contents);
+      if (
+        autoSave.autoSave.status === "saving" &&
+        result.fileHash === autoSave.autoSave.writingContents
+      ) {
         return;
       }
-      const history = result.document.history;
-      setCanvas((current) => ({
-        history,
-        revision: current.revision + 1,
-      }));
+      if (AutoSave.isDirty(autoSave.autoSave)) {
+        autoSave.pause();
+        setExternalConflict({
+          document: result.document,
+          fileContents: result.fileHash,
+        });
+        return;
+      }
+      autoSave.acceptExternalContents(result.fileHash);
+      applyExternalDocument(result.document, setText, setCanvas);
     },
   );
 
@@ -236,6 +249,26 @@ function PersistedDocument({
   if (autoSave === undefined) {
     return null;
   }
+  const useExternalContents = (): void => {
+    if (externalConflict === undefined) {
+      return;
+    }
+    autoSave.acceptExternalContents(externalConflict.fileContents);
+    applyExternalDocument(externalConflict.document, setText, setCanvas);
+    setExternalConflict(undefined);
+  };
+  const keepEditingContents = (): void => {
+    if (externalConflict === undefined) {
+      return;
+    }
+    const currentContents =
+      tab.documentType === "canvas"
+        ? Serialize.stringify(canvas.history.current)
+        : text;
+    autoSave.acceptExternalContents(externalConflict.fileContents);
+    autoSave.notifyContentsChanged(currentContents);
+    setExternalConflict(undefined);
+  };
   return (
     <section className="document-workspace__document" hidden={!isActive}>
       <Activity mode={isActive ? "visible" : "hidden"}>
@@ -247,6 +280,9 @@ function PersistedDocument({
           canvas={canvas}
           setCanvas={setCanvas}
           watchError={watchError}
+          externalConflict={externalConflict}
+          onUseExternalContents={useExternalContents}
+          onKeepEditingContents={keepEditingContents}
         />
       </Activity>
     </section>
@@ -262,6 +298,9 @@ function DocumentEditor({
   canvas,
   setCanvas,
   watchError,
+  externalConflict,
+  onUseExternalContents,
+  onKeepEditingContents,
 }: Readonly<{
   tab: Tab;
   autoSave: AutoSaveContextValue;
@@ -272,6 +311,9 @@ function DocumentEditor({
     update: Readonly<{ history: CanvasHistory; revision: number }>,
   ) => void;
   watchError: string | undefined;
+  externalConflict: ExternalFileConflict | undefined;
+  onUseExternalContents: () => void;
+  onKeepEditingContents: () => void;
 }>) {
   const missingBanner =
     tab.fileState.status === "missing" ? (
@@ -291,6 +333,18 @@ function DocumentEditor({
         外部のファイル変更を読み込めませんでした: {watchError}
       </p>
     );
+  const conflictBanner =
+    externalConflict === undefined ? null : (
+      <div className="document-workspace__banner" role="alert">
+        外部の変更と未保存の編集が競合しています。
+        <button type="button" onClick={onKeepEditingContents}>
+          編集中の内容を保存
+        </button>
+        <button type="button" onClick={onUseExternalContents}>
+          外部変更を読み込む
+        </button>
+      </div>
+    );
 
   if (tab.documentType === "canvas") {
     return (
@@ -298,16 +352,17 @@ function DocumentEditor({
         {missingBanner}
         {saveFailureBanner}
         {watchFailureBanner}
+        {conflictBanner}
         <CanvasEditor
           key={`${tab.path}:${canvas.revision}`}
-          initialDocument={canvas.history.current}
+          initialHistory={canvas.history}
           saveStatus={saveStatusOf(autoSave.autoSave)}
-          onDocumentChange={(document) => {
+          onHistoryChange={(history) => {
             setCanvas({
-              history: History.create(document),
+              history,
               revision: canvas.revision,
             });
-            autoSave.notifyContentsChanged(Serialize.stringify(document));
+            autoSave.notifyContentsChanged(Serialize.stringify(history.current));
           }}
         />
       </>
@@ -319,6 +374,7 @@ function DocumentEditor({
       {missingBanner}
       {saveFailureBanner}
       {watchFailureBanner}
+      {conflictBanner}
       <ModelEditor
         value={text}
         onChange={(nextText) => {
@@ -338,6 +394,25 @@ const saveStatusOf = (autoSave: AutoSave): SaveIndicatorStatus => {
     return "failed";
   }
   return "saving";
+};
+
+const applyExternalDocument = (
+  document: ExternalFileDocument,
+  setText: (text: string) => void,
+  setCanvas: React.Dispatch<
+    React.SetStateAction<
+      Readonly<{ history: CanvasHistory; revision: number }>
+    >
+  >,
+): void => {
+  if (document.documentType === "model") {
+    setText(document.contents);
+    return;
+  }
+  setCanvas((current) => ({
+    history: document.history,
+    revision: current.revision + 1,
+  }));
 };
 
 const externalFileErrorMessage = (error: ExternalFileEventError): string => {

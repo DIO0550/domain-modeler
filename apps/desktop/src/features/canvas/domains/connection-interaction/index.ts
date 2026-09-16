@@ -2,6 +2,7 @@ import {
   type CanvasError,
   type ConnectionId,
   Document,
+  type History,
   type Option,
   Option as OptionValue,
   type Point,
@@ -31,6 +32,20 @@ export const ConnectionInteraction = {
   create(document?: Document): ConnectionInteraction {
     return {
       board: StickyInteractionValue.create(document),
+      session: { status: "idle" },
+      error: OptionValue.none(),
+    };
+  },
+
+  /**
+   * 既存のキャンバス履歴から接続操作を生成する。
+   *
+   * @param history 引き継ぐundo/redo履歴。
+   * @returns 履歴を維持した接続操作状態。
+   */
+  fromHistory(history: History): ConnectionInteraction {
+    return {
+      board: StickyInteractionValue.fromHistory(history),
       session: { status: "idle" },
       error: OptionValue.none(),
     };

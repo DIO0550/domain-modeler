@@ -208,6 +208,30 @@ fn 巨大な結合文字列でもprefix込みでコンポーネント上限を�
     assert_ne!(left_probe, right_probe);
 }
 
+#[cfg(unix)]
+#[test]
+fn 巨大なunicode正規化単位も同じ単位数を保って短縮する() {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    let marks = "\u{301}".repeat(120);
+    let composed = format!("é{marks}A.dmodel");
+    let decomposed = format!("e\u{301}{marks}A.dmodel");
+    let prefix = ".dm-probe-123-ffffffffffffffff-ffffffffffffffff-";
+    let (composed_probe, decomposed_probe) = super::compact_probe_names_for_prefix(
+        OsStr::new(&composed),
+        OsStr::new(&decomposed),
+        prefix,
+    );
+
+    assert!(prefix.len() + composed_probe.as_bytes().len() <= 255);
+    assert!(prefix.len() + decomposed_probe.as_bytes().len() <= 255);
+    assert_eq!(
+        super::normalization_units(composed_probe.to_str().unwrap()).len(),
+        super::normalization_units(decomposed_probe.to_str().unwrap()).len(),
+    );
+}
+
 #[test]
 fn 既存の左プローブ名と衝突したら別prefixで再確保する結果を返す() {
     let workspace = TempWorkspace::create();
