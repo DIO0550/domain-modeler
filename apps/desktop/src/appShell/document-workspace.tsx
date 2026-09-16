@@ -360,6 +360,20 @@ function PersistedDocument({
       }
     },
   );
+  const handleWatchSetupFailure = useEffectEvent(
+    async (message: string): Promise<void> => {
+      if (autoSave === undefined) {
+        return;
+      }
+      autoSave.pause();
+      const snapshot = await autoSave.waitForPendingWrites();
+      setWatchError(message);
+      setExternalConflict({
+        kind: "unreadable",
+        savedContents: snapshot.lastSavedContents,
+      });
+    },
+  );
 
   useEffect(() => {
     if (fileWatchOperations === undefined) {
@@ -380,7 +394,7 @@ function PersistedDocument({
       .then((result) => {
         if (result.type === "err") {
           if (!stopped) {
-            setWatchError(result.error.message);
+            void handleWatchSetupFailure(result.error.message);
           }
           return;
         }
@@ -430,7 +444,7 @@ function PersistedDocument({
     applyExternalDocument(restored.document, setText, dispatchCanvas);
     setExternalConflict(undefined);
   };
-  const keepEditingContents = (): void => {
+  const keepEditingContents = async (): Promise<void> => {
     if (externalConflict === undefined) {
       return;
     }
@@ -439,15 +453,18 @@ function PersistedDocument({
       tab.documentType === "canvas"
         ? Serialize.stringify(localHistory.current)
         : text;
-    const savedContents =
-      externalConflict.kind === "changed"
-        ? externalConflict.fileContents
-        : externalConflict.savedContents;
     if (canvas.draftHistory !== undefined) {
+      canvasRef.current = {
+        history: localHistory,
+        draftHistory: undefined,
+        revision: canvas.revision + 1,
+      };
       dispatchCanvas({ type: "draftCommitted", history: localHistory });
     }
-    autoSave.acceptExternalContents(savedContents);
-    autoSave.notifyContentsChanged(currentContents);
+    if (!(await autoSave.overwrite(currentContents))) {
+      setWatchError("編集内容でファイルを上書きできませんでした");
+      return;
+    }
     setWatchError(undefined);
     setExternalConflict(undefined);
   };

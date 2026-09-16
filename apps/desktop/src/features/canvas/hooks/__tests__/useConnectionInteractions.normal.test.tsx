@@ -3,6 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vitest";
 import {
   Document,
+  type History,
   Sticky,
   StickyId,
   STICKY_TYPES,
@@ -47,7 +48,9 @@ const initialDocument = {
 };
 
 /** 接続操作フックを描画し、最新の戻り値を参照できるようにする。 */
-const renderHook = (): {
+const renderHook = (
+  onDraftHistoryChange?: (history: History | undefined) => void,
+): {
   current: UseConnectionInteractionsResult | undefined;
 } => {
   const latest: {
@@ -58,7 +61,11 @@ const renderHook = (): {
   const root: Root = createRoot(host);
 
   const Probe = () => {
-    latest.current = useConnectionInteractions(initialDocument);
+    latest.current = useConnectionInteractions(
+      initialDocument,
+      undefined,
+      onDraftHistoryChange,
+    );
     return null;
   };
 
@@ -75,6 +82,21 @@ const renderHook = (): {
   });
   return latest;
 };
+
+test("付箋の入力イベント中に最新下書きを同期通知する", () => {
+  let published: History | undefined;
+  const latest = renderHook((history) => {
+    published = history;
+  });
+
+  act(() => {
+    latest.current?.doubleClickAt({ x: 40, y: 40 });
+  });
+  act(() => {
+    latest.current?.changeDraft("終了直前の入力");
+    expect(published?.current.stickies[0]?.text).toBe("終了直前の入力");
+  });
+});
 
 test("接続モードでキャンバス上の始点と終点をクリックすると接続を作成する", () => {
   const latest = renderHook();

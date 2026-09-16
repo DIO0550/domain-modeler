@@ -40,10 +40,41 @@ const watch = async (
   onEvent: (event: FileWatchEvent) => void,
 ): Promise<FileWatchSessionResult> => {
   try {
+    let active = true;
+    let restart = Promise.resolve();
     const unlisten = await listen<FileWatchEvent>("file-watch", (event) => {
-      if (event.payload.path === path) {
-        onEvent(event.payload);
+      if (event.payload.path !== path || !active) {
+        return;
       }
+      onEvent(event.payload);
+      if (event.payload.type !== "watchFailed") {
+        return;
+      }
+      restart = restart.then(async () => {
+        if (!active) {
+          return;
+        }
+        await invoke<FileWatchResult>("stop_file_watch", { path });
+        if (!active) {
+          return;
+        }
+        const restarted = await invoke<FileWatchResult>("start_file_watch", {
+          path,
+        });
+        if (!active) {
+          return;
+        }
+        if (restarted.type === "err") {
+          onEvent({
+            type: "watchFailed",
+            path,
+            message: restarted.error.message,
+          });
+          return;
+        }
+        // 再開直後に現在の内容を読み直し、停止中の変更を取りこぼさない。
+        onEvent({ type: "changed", path });
+      });
     });
     const result = await invoke<FileWatchResult>("start_file_watch", { path });
     if (result.type === "err") {
@@ -53,7 +84,9 @@ const watch = async (
     return {
       type: "ok",
       stop: async () => {
+        active = false;
         unlisten();
+        await restart;
         await invoke<FileWatchResult>("stop_file_watch", { path });
       },
     };

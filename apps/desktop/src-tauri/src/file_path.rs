@@ -134,7 +134,11 @@ fn unicode_file_names_are_equivalent(
 ) -> Option<bool> {
     let mut left_start = 0;
     let mut right_start = 0;
+    let mut remaining_comparisons = MAX_NORMALIZATION_PROBE_COMPARISONS;
     while left_start < left.len() || right_start < right.len() {
+        if left_start == left.len() || right_start == right.len() {
+            return Some(false);
+        }
         let left_ends = probe_chunk_ends(left, left_start);
         let right_ends = probe_chunk_ends(right, right_start);
         let mut matched = None;
@@ -144,13 +148,21 @@ fn unicode_file_names_are_equivalent(
             .map(|end| (*end, OsString::from(&right[right_start..*end])))
             .collect::<Vec<_>>();
         for left_end in left_ends.iter().rev() {
+            if remaining_comparisons == 0 {
+                return None;
+            }
+            let candidate_count = right_candidates.len().min(remaining_comparisons);
+            remaining_comparisons -= candidate_count;
             if let Some(right_end) = find_equivalent_name_in_directory(
                 directory,
                 OsStr::new(&left[left_start..*left_end]),
-                &right_candidates,
+                &right_candidates[..candidate_count],
             )? {
                 matched = Some((*left_end, right_end));
                 break;
+            }
+            if candidate_count < right_candidates.len() {
+                return None;
             }
         }
         let Some((left_end, right_end)) = matched else {
@@ -322,6 +334,7 @@ fn utf16_probe_chunks(value: &str) -> Vec<Vec<u16>> {
 static PROBE_NONCE: AtomicU64 = AtomicU64::new(0);
 const MAX_PROBE_ALLOCATION_ATTEMPTS: usize = 16;
 const MAX_PROBE_CHUNK_UNITS: usize = 160;
+const MAX_NORMALIZATION_PROBE_COMPARISONS: usize = 256;
 
 #[derive(Debug, PartialEq, Eq)]
 enum ProbeResult {
@@ -444,7 +457,28 @@ fn same_directory(left: &Path, right: &Path) -> Option<bool> {
     )
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+fn same_directory(left: &Path, right: &Path) -> Option<bool> {
+    use std::os::windows::fs::OpenOptionsExt;
+
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+    const FILE_SHARE_READ: u32 = 0x0000_0001;
+    const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+    const FILE_SHARE_DELETE: u32 = 0x0000_0004;
+    let open = |path: &Path| {
+        File::options()
+            .read(true)
+            .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
+            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+            .open(path)
+    };
+    let (Ok(left), Ok(right)) = (open(left), open(right)) else {
+        return None;
+    };
+    Some(same_open_file(&left, &right))
+}
+
+#[cfg(not(any(unix, windows)))]
 fn same_directory(left: &Path, right: &Path) -> Option<bool> {
     Some(left == right)
 }

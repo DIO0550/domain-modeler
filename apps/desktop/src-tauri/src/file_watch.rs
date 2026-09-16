@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::{self, JoinHandle};
@@ -112,6 +113,7 @@ struct WatchSession {
     watcher: Option<RecommendedWatcher>,
     stop_tx: Option<mpsc::Sender<WatchMsg>>,
     thread: Option<JoinHandle<()>>,
+    failed: Arc<AtomicBool>,
 }
 
 enum WatchMsg {
@@ -155,6 +157,14 @@ impl FileWatchRegistry {
         path: &str,
         on_event: impl Fn(FileWatchEvent) + Send + 'static,
     ) -> FileWatchResult {
+        let mut sessions = self.sessions();
+        let failed = sessions
+            .get(path)
+            .is_some_and(|session| session.failed.load(Ordering::Acquire));
+        let failed_session = failed.then(|| sessions.remove(path)).flatten();
+        drop(sessions);
+        drop(failed_session);
+
         let mut sessions = self.sessions();
         if let Some(session) = sessions.get_mut(path) {
             session.registrations += 1;
@@ -216,6 +226,8 @@ impl WatchSession {
         on_event: impl Fn(FileWatchEvent) + Send + 'static,
     ) -> Result<Self, String> {
         let (tx, rx) = mpsc::channel();
+        let failed = Arc::new(AtomicBool::new(false));
+        let thread_failed = Arc::clone(&failed);
         let watcher_tx = tx.clone();
         let mut watcher = RecommendedWatcher::new(
             move |result| {
@@ -231,7 +243,7 @@ impl WatchSession {
 
         let thread = thread::Builder::new()
             .name("domain-modeler-file-watch".into())
-            .spawn(move || target.debounce(rx, on_event))
+            .spawn(move || target.debounce(rx, on_event, thread_failed))
             .map_err(|err| err.to_string())?;
 
         Ok(Self {
@@ -239,6 +251,7 @@ impl WatchSession {
             watcher: Some(watcher),
             stop_tx: Some(tx),
             thread: Some(thread),
+            failed,
         })
     }
 }
@@ -304,7 +317,12 @@ impl WatchTarget {
         FileWatchEvent::from_exists(&self.original_path, self.file.exists())
     }
 
-    fn debounce(self, rx: mpsc::Receiver<WatchMsg>, on_event: impl Fn(FileWatchEvent)) {
+    fn debounce(
+        self,
+        rx: mpsc::Receiver<WatchMsg>,
+        on_event: impl Fn(FileWatchEvent),
+        failed: Arc<AtomicBool>,
+    ) {
         let mut deadline: Option<Instant> = None;
         loop {
             let now = Instant::now();
@@ -337,6 +355,7 @@ impl WatchTarget {
                 }
                 WatchMsg::Fs(Ok(_)) => {}
                 WatchMsg::Fs(Err(error)) => {
+                    failed.store(true, Ordering::Release);
                     on_event(FileWatchEvent::WatchFailed {
                         path: self.original_path.clone(),
                         message: error.to_string(),

@@ -767,6 +767,59 @@ test("監視バックエンドの実行時失敗を表示して自動保存を�
   expect(host.textContent).toContain("自動保存を停止");
 });
 
+test("ファイル監視を開始できない場合も自動保存を停止する", async () => {
+  vi.useFakeTimers();
+  const writes: string[] = [];
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (_path, contents) => {
+      writes.push(contents);
+      return { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async () => ({
+      type: "err",
+      error: {
+        kind: "watchFailed",
+        path: "/documents/order.dmodel",
+        message: "watch setup denied",
+      },
+    }),
+    readFile: async () => ({ type: "ok", value: "" }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+  );
+
+  await act(async () => {
+    await Promise.resolve();
+  });
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "edit without watcher");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+
+  expect(writes).toEqual([]);
+  expect(host.textContent).toContain("watch setup denied");
+  expect(host.textContent).toContain("自動保存を停止");
+});
+
 test("保存中に外部変更を検出したら保存完了後にファイルを再評価する", async () => {
   vi.useFakeTimers();
   let notify: (event: FileWatchEvent) => void = () => {};

@@ -93,7 +93,7 @@ pub fn create_utf8_file(path: &str, contents: &str) -> FileWriteResult {
     }
     // 公開が終わるまで inode のハンドルを保持し、一時パスだけを根拠にしない。
     // no-replace rename は hard link 非対応のボリュームでも既存先を置換しない。
-    match publish_new_file(&temp_path, &target) {
+    match publish_new_file(&temp_file, &temp_path, &target) {
         Ok(PublishMethod::Linked) => {
             drop(temp_file);
             let _ = fs::remove_file(&temp_path);
@@ -116,8 +116,187 @@ enum PublishMethod {
     Renamed,
 }
 
-fn publish_new_file(temp_path: &Path, target: &Path) -> io::Result<PublishMethod> {
-    publish_after_link(fs::hard_link(temp_path, target), temp_path, target)
+fn publish_new_file(
+    temp_file: &File,
+    temp_path: &Path,
+    target: &Path,
+) -> io::Result<PublishMethod> {
+    if !open_file_matches_path(temp_file, temp_path) {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "temporary file path no longer names the prepared file",
+        ));
+    }
+    let method = publish_open_file(
+        temp_file,
+        link_open_file(temp_file, temp_path, target),
+        temp_path,
+        target,
+    )?;
+    if !open_file_matches_path(temp_file, target) {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "published file is not the prepared temporary file",
+        ));
+    }
+    Ok(method)
+}
+
+fn publish_open_file(
+    temp_file: &File,
+    link_result: io::Result<()>,
+    temp_path: &Path,
+    target: &Path,
+) -> io::Result<PublishMethod> {
+    match link_result {
+        Ok(()) => Ok(PublishMethod::Linked),
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Err(error),
+        Err(_) => rename_open_file_no_replace(temp_file, temp_path, target)
+            .map(|()| PublishMethod::Renamed),
+    }
+}
+
+#[cfg(windows)]
+fn rename_open_file_no_replace(
+    file: &File,
+    _source: &Path,
+    target: &Path,
+) -> io::Result<()> {
+    use std::ffi::c_void;
+    use std::os::windows::ffi::OsStrExt;
+    use std::os::windows::io::AsRawHandle;
+
+    #[repr(C)]
+    struct FileRenameInfo {
+        flags: u32,
+        root_directory: *mut c_void,
+        file_name_length: u32,
+        file_name: [u16; 1],
+    }
+
+    #[link(name = "Kernel32")]
+    extern "system" {
+        fn SetFileInformationByHandle(
+            file: *mut c_void,
+            information_class: u32,
+            information: *mut c_void,
+            buffer_size: u32,
+        ) -> i32;
+    }
+
+    const FILE_RENAME_INFO_EX: u32 = 22;
+    let name = target.as_os_str().encode_wide().collect::<Vec<_>>();
+    let header = std::mem::offset_of!(FileRenameInfo, file_name);
+    let buffer_size = header + name.len() * std::mem::size_of::<u16>();
+    let word_count = buffer_size.div_ceil(std::mem::size_of::<usize>());
+    let mut buffer = vec![0usize; word_count];
+    let information = buffer.as_mut_ptr().cast::<FileRenameInfo>();
+    unsafe {
+        (*information).flags = 0;
+        (*information).root_directory = std::ptr::null_mut();
+        (*information).file_name_length = (name.len() * 2) as u32;
+        std::ptr::copy_nonoverlapping(
+            name.as_ptr(),
+            (*information).file_name.as_mut_ptr(),
+            name.len(),
+        );
+    }
+    let result = unsafe {
+        SetFileInformationByHandle(
+            file.as_raw_handle().cast(),
+            FILE_RENAME_INFO_EX,
+            information.cast(),
+            buffer_size as u32,
+        )
+    };
+    (result != 0)
+        .then_some(())
+        .ok_or_else(io::Error::last_os_error)
+}
+
+#[cfg(not(windows))]
+fn rename_open_file_no_replace(
+    _file: &File,
+    source: &Path,
+    target: &Path,
+) -> io::Result<()> {
+    rename_no_replace(source, target)
+}
+
+#[cfg(unix)]
+fn link_open_file(file: &File, _temp_path: &Path, target: &Path) -> io::Result<()> {
+    use std::ffi::CString;
+    use std::os::fd::AsRawFd;
+    use std::os::raw::{c_char, c_int};
+    use std::os::unix::ffi::OsStrExt;
+
+    const AT_FDCWD: c_int = -100;
+    const AT_SYMLINK_FOLLOW: c_int = 0x400;
+    extern "C" {
+        fn linkat(
+            olddirfd: c_int,
+            oldpath: *const c_char,
+            newdirfd: c_int,
+            newpath: *const c_char,
+            flags: c_int,
+        ) -> c_int;
+    }
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    let source = format!("/proc/self/fd/{}", file.as_raw_fd());
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    let source = format!("/dev/fd/{}", file.as_raw_fd());
+    let source = CString::new(source)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "source path contains NUL"))?;
+    let target = CString::new(target.as_os_str().as_bytes())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "target path contains NUL"))?;
+    let result = unsafe {
+        linkat(
+            AT_FDCWD,
+            source.as_ptr(),
+            AT_FDCWD,
+            target.as_ptr(),
+            AT_SYMLINK_FOLLOW,
+        )
+    };
+    (result == 0)
+        .then_some(())
+        .ok_or_else(io::Error::last_os_error)
+}
+
+#[cfg(not(unix))]
+fn link_open_file(
+    _file: &File,
+    temp_path: &Path,
+    target: &Path,
+) -> io::Result<()> {
+    // Windowsではcreate_temp_fileの共有モードで一時パスの削除・renameを禁止する。
+    fs::hard_link(temp_path, target)
+}
+
+#[cfg(unix)]
+fn open_file_matches_path(file: &File, path: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+
+    let (Ok(opened), Ok(named)) = (file.metadata(), fs::metadata(path)) else {
+        return false;
+    };
+    opened.dev() == named.dev() && opened.ino() == named.ino()
+}
+
+#[cfg(windows)]
+fn open_file_matches_path(file: &File, path: &Path) -> bool {
+    use std::os::windows::fs::MetadataExt;
+
+    let (Ok(opened), Ok(named)) = (file.metadata(), fs::metadata(path)) else {
+        return false;
+    };
+    opened.volume_serial_number() == named.volume_serial_number()
+        && opened.file_index() == named.file_index()
+}
+
+#[cfg(not(any(unix, windows)))]
+fn open_file_matches_path(_file: &File, _path: &Path) -> bool {
+    false
 }
 
 fn publish_after_link(
@@ -241,7 +420,10 @@ fn write_failed(path: &str, message: &str) -> FileWriteResult {
 
 fn create_temp_file(target: &Path) -> io::Result<(PathBuf, File)> {
     if target.file_name().is_none() {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "path has no file name"));
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "path has no file name",
+        ));
     }
     let parent = match target.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => parent,
@@ -257,7 +439,20 @@ fn create_temp_file(target: &Path) -> io::Result<(PathBuf, File)> {
             ".domain-modeler-tmp-{}-{nanos:x}-{nonce:x}",
             std::process::id(),
         ));
-        match File::options().write(true).create_new(true).open(&path) {
+        let mut options = File::options();
+        options.write(true).create_new(true);
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::OpenOptionsExt;
+            // 開いている間の削除・renameを共有せず、一時パスの差し替えを防ぐ。
+            const DELETE: u32 = 0x0001_0000;
+            const FILE_SHARE_READ: u32 = 0x0000_0001;
+            const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+            const GENERIC_WRITE: u32 = 0x4000_0000;
+            options.access_mode(GENERIC_WRITE | DELETE);
+            options.share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE);
+        }
+        match options.open(&path) {
             Ok(file) => return Ok((path, file)),
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
             Err(error) => return Err(error),

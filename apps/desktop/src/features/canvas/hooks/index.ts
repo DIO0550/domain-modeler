@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type {
   CanvasError,
   Connection,
@@ -155,12 +155,27 @@ export type UseConnectionInteractionsResult = UseStickyInteractionsResult &
 export function useConnectionInteractions(
   initialDocument?: Document,
   initialHistory?: History,
+  onDraftHistoryChange?: (history: History | undefined) => void,
 ): UseConnectionInteractionsResult {
   const [interaction, setInteraction] = useState(() =>
     initialHistory === undefined
       ? ConnectionInteraction.create(initialDocument)
       : ConnectionInteraction.fromHistory(initialHistory),
   );
+  const interactionRef = useRef(interaction);
+  interactionRef.current = interaction;
+  const replaceInteraction = (
+    advance: (current: typeof interaction) => typeof interaction,
+    publishDraft = false,
+  ): void => {
+    const next = advance(interactionRef.current);
+    interactionRef.current = next;
+    setInteraction(next);
+    if (publishDraft) {
+      const pending = ConnectionInteraction.draftHistory(next);
+      onDraftHistoryChange?.(pending.some ? pending.value : undefined);
+    }
+  };
   const board = interaction.board;
   const draftHistory = useMemo(() => {
     const pending = ConnectionInteraction.draftHistory(interaction);
@@ -169,7 +184,7 @@ export function useConnectionInteractions(
   const updateBoard = (
     advance: (current: typeof board) => typeof board,
   ): void => {
-    setInteraction((current) => {
+    replaceInteraction((current) => {
       const nextBoard = advance(current.board);
       return nextBoard === current.board
         ? current
@@ -196,12 +211,12 @@ export function useConnectionInteractions(
       updateBoard((current) => StickyInteraction.select(current, stickyId));
     },
     clickAt: (point) => {
-      setInteraction((current) =>
+      replaceInteraction((current) =>
         ConnectionInteraction.clickAt(current, point),
       );
     },
     doubleClickAt: (point) => {
-      setInteraction((current) => {
+      replaceInteraction((current) => {
         if (ConnectionSession.isCreating(current.session)) {
           return current;
         }
@@ -212,8 +227,13 @@ export function useConnectionInteractions(
       });
     },
     changeDraft: (draftText) => {
-      updateBoard((current) =>
-        StickyInteraction.changeDraft(current, draftText),
+      replaceInteraction(
+        (current) =>
+          ConnectionInteraction.withBoard(
+            current,
+            StickyInteraction.changeDraft(current.board, draftText),
+          ),
+        true,
       );
     },
     commitEdit: () => {
@@ -239,42 +259,43 @@ export function useConnectionInteractions(
       updateBoard(StickyInteraction.cancelManipulation);
     },
     pressEnter: () => {
-      setInteraction(ConnectionInteraction.pressEnter);
+      replaceInteraction(ConnectionInteraction.pressEnter);
     },
     pressEscape: () => {
-      setInteraction(ConnectionInteraction.pressEscape);
+      replaceInteraction(ConnectionInteraction.pressEscape);
     },
     undo: () => {
-      setInteraction(ConnectionInteraction.undo);
+      replaceInteraction(ConnectionInteraction.undo);
     },
     redo: () => {
-      setInteraction(ConnectionInteraction.redo);
+      replaceInteraction(ConnectionInteraction.redo);
     },
     toggleConnectionMode: () => {
-      setInteraction(ConnectionInteraction.toggleMode);
+      replaceInteraction(ConnectionInteraction.toggleMode);
     },
     selectConnectionEndpoint: (stickyId) => {
-      setInteraction((current) =>
+      replaceInteraction((current) =>
         ConnectionInteraction.selectEndpoint(current, stickyId),
       );
     },
     selectConnection: (connectionId) => {
-      setInteraction((current) =>
+      replaceInteraction((current) =>
         ConnectionInteraction.select(current, connectionId),
       );
     },
     editConnection: (connectionId) => {
-      setInteraction((current) =>
+      replaceInteraction((current) =>
         ConnectionInteraction.edit(current, connectionId),
       );
     },
     changeConnectionDraft: (draftLabel) => {
-      setInteraction((current) =>
-        ConnectionInteraction.changeDraft(current, draftLabel),
+      replaceInteraction(
+        (current) => ConnectionInteraction.changeDraft(current, draftLabel),
+        true,
       );
     },
     commitConnectionEdit: () => {
-      setInteraction(ConnectionInteraction.commitEdit);
+      replaceInteraction(ConnectionInteraction.commitEdit);
     },
     copy: () => {
       updateBoard(StickyInteraction.copy);
@@ -286,10 +307,10 @@ export function useConnectionInteractions(
       updateBoard(StickyInteraction.bringToFront);
     },
     pressDelete: () => {
-      setInteraction(ConnectionInteraction.pressDelete);
+      replaceInteraction(ConnectionInteraction.pressDelete);
     },
     changeViewport: (change) => {
-      setInteraction((current) => ({
+      replaceInteraction((current) => ({
         ...current,
         board: StickyInteraction.changeViewport(
           current.board,

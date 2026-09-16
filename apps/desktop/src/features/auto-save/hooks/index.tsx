@@ -21,6 +21,7 @@ export type AutoSaveContextValue = Readonly<{
   beginTransaction: () => void;
   endTransaction: () => void;
   flush: () => Promise<boolean>;
+  overwrite: (contents: string) => Promise<boolean>;
 }>;
 
 const AutoSaveContext = createContext<AutoSaveContextValue | undefined>(
@@ -203,6 +204,27 @@ function AutoSaveSession({
           }
         }
         return true;
+      },
+      overwrite: async (contents) => {
+        const run = async (): Promise<boolean> => {
+          const result = await writeFileAsResult(
+            operationsRef.current.writeFile,
+            { path, contents },
+          );
+          if (result.type !== "ok") {
+            return false;
+          }
+          pausedRef.current = false;
+          setPaused(false);
+          replaceAutoSave(AutoSave.create(path, contents));
+          return true;
+        };
+        const queued = writeQueueRef.current.then(run, run);
+        writeQueueRef.current = queued.then(
+          () => undefined,
+          () => undefined,
+        );
+        return await queued;
       },
     };
   }, [autoSave]);
