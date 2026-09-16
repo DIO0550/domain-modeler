@@ -57,7 +57,7 @@ fn 完成した一時ファイルだけを新規パスへ公開する() {
     temp_file.sync_all().unwrap();
 
     assert!(!target.exists());
-    super::publish_new_file(&temp_path, &target).unwrap();
+    super::publish_new_file(&temp_file, &temp_path, &target).unwrap();
     drop(temp_file);
     assert_eq!(fs::read_to_string(target).unwrap(), "complete");
 }
@@ -67,17 +67,34 @@ fn hard_link非対応時も上書きなしrenameで完成済みファイルを�
     use std::io::Write;
 
     let workspace = TempWorkspace::create();
-    let target = workspace.path("board.dcanvas");
+    let target = workspace.path("設計 図.dcanvas");
     let (temp_path, mut temp_file) = super::create_temp_file(&target).unwrap();
     temp_file.write_all(b"complete").unwrap();
     temp_file.sync_all().unwrap();
     let unsupported = std::io::Error::new(std::io::ErrorKind::Unsupported, "no links");
 
-    super::publish_after_link(Err(unsupported), &temp_path, &target).unwrap();
+    super::publish_open_file(&temp_file, Err(unsupported), &temp_path, &target).unwrap();
     drop(temp_file);
 
     assert_eq!(fs::read_to_string(target).unwrap(), "complete");
     assert!(!temp_path.exists());
+}
+
+#[test]
+fn renameへのフォールバックでも既存ファイルは上書きしない() {
+    use std::io::Write;
+
+    let workspace = TempWorkspace::create();
+    let target = workspace.path("existing.dcanvas");
+    fs::write(&target, "original").unwrap();
+    let (temp_path, mut temp_file) = super::create_temp_file(&target).unwrap();
+    temp_file.write_all(b"replacement").unwrap();
+    temp_file.sync_all().unwrap();
+    let unsupported = std::io::Error::new(std::io::ErrorKind::Unsupported, "no links");
+
+    assert!(super::publish_open_file(&temp_file, Err(unsupported), &temp_path, &target).is_err());
+    assert_eq!(fs::read_to_string(target).unwrap(), "original");
+    assert_eq!(fs::read_to_string(temp_path).unwrap(), "replacement");
 }
 
 #[cfg(unix)]

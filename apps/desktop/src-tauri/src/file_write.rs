@@ -168,7 +168,7 @@ fn rename_open_file_no_replace(
 
     #[repr(C)]
     struct FileRenameInfo {
-        flags: u32,
+        replace_if_exists: u8,
         root_directory: *mut c_void,
         file_name_length: u32,
         file_name: [u16; 1],
@@ -184,15 +184,25 @@ fn rename_open_file_no_replace(
         ) -> i32;
     }
 
-    const FILE_RENAME_INFO_EX: u32 = 22;
-    let name = target.as_os_str().encode_wide().collect::<Vec<_>>();
+    const FILE_RENAME_INFO: u32 = 3;
+    let file_name = target.file_name().ok_or_else(|| {
+        io::Error::new(io::ErrorKind::InvalidInput, "target has no file name")
+    })?;
+    let parent = target
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    // FileRenameInfoはWin32パスを解釈する。存在する親だけを正規化し、
+    // 新規の保存先も絶対パスとして渡す（FileRenameInfoExのNTパス解釈を避ける）。
+    let destination = fs::canonicalize(parent)?.join(file_name);
+    let name = destination.as_os_str().encode_wide().collect::<Vec<_>>();
     let header = std::mem::offset_of!(FileRenameInfo, file_name);
-    let buffer_size = header + name.len() * std::mem::size_of::<u16>();
+    let buffer_size = header + (name.len() + 1) * std::mem::size_of::<u16>();
     let word_count = buffer_size.div_ceil(std::mem::size_of::<usize>());
     let mut buffer = vec![0usize; word_count];
     let information = buffer.as_mut_ptr().cast::<FileRenameInfo>();
     unsafe {
-        (*information).flags = 0;
+        (*information).replace_if_exists = 0;
         (*information).root_directory = std::ptr::null_mut();
         (*information).file_name_length = (name.len() * 2) as u32;
         std::ptr::copy_nonoverlapping(
@@ -204,7 +214,7 @@ fn rename_open_file_no_replace(
     let result = unsafe {
         SetFileInformationByHandle(
             file.as_raw_handle().cast(),
-            FILE_RENAME_INFO_EX,
+            FILE_RENAME_INFO,
             information.cast(),
             buffer_size as u32,
         )
@@ -285,30 +295,18 @@ fn open_file_matches_path(file: &File, path: &Path) -> bool {
 
 #[cfg(windows)]
 fn open_file_matches_path(file: &File, path: &Path) -> bool {
-    use std::os::windows::fs::MetadataExt;
+    use std::os::windows::fs::OpenOptionsExt;
 
-    let (Ok(opened), Ok(named)) = (file.metadata(), fs::metadata(path)) else {
+    // 内容の読み取り権限を要求せず、識別情報だけを取得する。
+    let Ok(named) = File::options().access_mode(0).open(path) else {
         return false;
     };
-    opened.volume_serial_number() == named.volume_serial_number()
-        && opened.file_index() == named.file_index()
+    crate::file_identity::same_open_file(file, &named).unwrap_or(false)
 }
 
 #[cfg(not(any(unix, windows)))]
 fn open_file_matches_path(_file: &File, _path: &Path) -> bool {
     false
-}
-
-fn publish_after_link(
-    link_result: io::Result<()>,
-    temp_path: &Path,
-    target: &Path,
-) -> io::Result<PublishMethod> {
-    match link_result {
-        Ok(()) => Ok(PublishMethod::Linked),
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Err(error),
-        Err(_) => rename_no_replace(temp_path, target).map(|()| PublishMethod::Renamed),
-    }
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -428,7 +426,7 @@ fn create_overwrite_temp_file(target: &Path) -> io::Result<(PathBuf, File)> {
 
 fn create_temp_file_with_options(
     target: &Path,
-    allow_delete_sharing: bool,
+    _allow_delete_sharing: bool,
 ) -> io::Result<(PathBuf, File)> {
     if target.file_name().is_none() {
         return Err(io::Error::new(
@@ -462,7 +460,7 @@ fn create_temp_file_with_options(
             const FILE_SHARE_DELETE: u32 = 0x0000_0004;
             const GENERIC_WRITE: u32 = 0x4000_0000;
             options.access_mode(GENERIC_WRITE | DELETE);
-            let delete_sharing = if allow_delete_sharing {
+            let delete_sharing = if _allow_delete_sharing {
                 FILE_SHARE_DELETE
             } else {
                 0

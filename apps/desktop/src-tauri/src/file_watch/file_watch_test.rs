@@ -1,7 +1,7 @@
 use std::fs;
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use super::{FileWatchEvent, FileWatchRegistry, FileWatchResult, DEBOUNCE};
 use crate::temp_workspace::TempWorkspace;
@@ -84,27 +84,43 @@ fn ファイル内容が変わると変更イベントが返る() {
 }
 
 #[test]
-fn 連続した変更はデバウンスされて1件の変更イベントになる() {
+fn 同じ受信バッチの変更はデバウンスされて1件の変更イベントになる() {
+    use std::sync::atomic::AtomicBool;
+    use std::sync::Arc;
+    use notify::event::{DataChange, ModifyKind};
+    use notify::{Event, EventKind};
+
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
-    fs::write(&path, "v1\n").expect("fixture should be written");
-    let path_str = path.to_str().expect("path is utf-8");
-    let registry = FileWatchRegistry::new();
-    let events = start_collecting(&registry, path_str);
-
-    fs::write(&path, "v2\n").expect("first write should succeed");
-    thread::sleep(Duration::from_millis(40));
-    fs::write(&path, "v3\n").expect("second write should succeed");
-    thread::sleep(Duration::from_millis(40));
-    fs::write(&path, "v4\n").expect("third write should succeed");
+    fs::write(&path, "latest\n").unwrap();
+    let path_str = path.to_str().unwrap();
+    let target = super::WatchTarget::resolve(path_str).unwrap();
+    let (input_tx, input_rx) = mpsc::channel();
+    let (output_tx, events) = mpsc::channel();
+    // OS通知の到着間隔は制御できないため、境界から届くイベントだけを代替する。
+    // 消費開始前にキューへ積み、CIのスケジューリングで入力間隔が広がらないようにする。
+    for _ in 0..3 {
+        let event = Event::new(EventKind::Modify(ModifyKind::Data(DataChange::Content)))
+            .add_path(target.file.clone());
+        input_tx.send(super::WatchMsg::Fs(Ok(event))).unwrap();
+    }
+    let worker = thread::spawn(move || {
+        target.debounce(
+            input_rx,
+            |event| { let _ = output_tx.send(event); },
+            Arc::new(AtomicBool::new(false)),
+        );
+    });
+    let event = recv_event(&events);
+    let extra = events.recv_timeout(DEBOUNCE + Duration::from_millis(200));
+    input_tx.send(super::WatchMsg::Stop).unwrap();
+    worker.join().unwrap();
 
     assert_eq!(
-        recv_event(&events),
-        FileWatchEvent::Changed {
-            path: path_str.to_string(),
-        }
+        event,
+        FileWatchEvent::Changed { path: path_str.to_string() },
     );
-    assert_no_event(&events);
+    assert!(extra.is_err(), "unexpected extra watch event: {extra:?}");
 }
 
 #[test]
@@ -299,7 +315,19 @@ fn start_collecting(registry: &FileWatchRegistry, path: &str) -> Receiver<FileWa
         let _ = tx.send(event);
     });
     assert_eq!(result, FileWatchResult::Ok);
-    thread::sleep(Duration::from_millis(120));
+    // FSEventsなどはfixture作成の通知を監視開始後に届ける場合がある。
+    // 固定sleepでは次の操作の通知と混ざるため、初期通知の静穏を確認する。
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        match rx.recv_timeout(Duration::from_secs(1)) {
+            Ok(FileWatchEvent::WatchFailed { message, .. }) => {
+                panic!("watch startup failed: {message}");
+            }
+            Ok(_) => assert!(Instant::now() < deadline, "watch startup did not settle"),
+            Err(mpsc::RecvTimeoutError::Timeout) => break,
+            Err(mpsc::RecvTimeoutError::Disconnected) => panic!("watch disconnected at startup"),
+        }
+    }
     rx
 }
 

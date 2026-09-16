@@ -102,3 +102,9 @@ test("要素を追加すると要素数が1増える", () => {
 - 判断軸: そのヘルパーは**テストであることに依存しているか**。`expect` を含む表明はテスト固有だが、「`Ok` から値を取り出す」「オブジェクトを組み立てる」は汎用操作なので実装側に置く
 - 同じヘルパーを2つ以上のテストファイルに書いたら、その時点で共通化する(実装側へ移せるならそちらを優先)
 - テスト固有のセットアップ(ファクトリ・`setup()`)は各テストから呼ぶ形で共有してよい(`beforeEach` での変数共有は前セクションのとおり禁止)
+
+## Rust の CI 検証
+
+- PR と main 更新時に `.github/workflows/rust.yml` で macOS / Windows の両方を検証する。
+- フロントエンドのビルド後、`apps/desktop/src-tauri` で `cargo test --locked --release --all-targets` を実行する。Tauri command マクロと OS 固有コードのコンパイルも検証に含める。
+- TypeScript の Vitest 成功だけで Rust 側の検証完了としない。stable Rust でコンパイルできるAPIを使う。

@@ -1,6 +1,8 @@
 mod app_settings;
 mod command;
 mod file_dialog;
+#[cfg(windows)]
+mod file_identity;
 mod file_path;
 mod file_read;
 mod file_watch;

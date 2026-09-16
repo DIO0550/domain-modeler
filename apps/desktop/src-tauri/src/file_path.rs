@@ -132,6 +132,13 @@ fn unicode_file_names_are_equivalent(
     left: &str,
     right: &str,
 ) -> Option<bool> {
+    // 全文がプローブ名に収まるなら、境界探索なしで直接比較する。
+    // 不一致の長い結合文字列で探索予算を使い切り、判定不能になるのを防ぐ。
+    let left_units: usize = left.chars().map(probe_character_units).sum();
+    let right_units: usize = right.chars().map(probe_character_units).sum();
+    if left_units <= MAX_PROBE_CHUNK_UNITS && right_units <= MAX_PROBE_CHUNK_UNITS {
+        return probe_file_names_in_directory(directory, OsStr::new(left), OsStr::new(right));
+    }
     let mut left_start = 0;
     let mut right_start = 0;
     let mut remaining_comparisons = MAX_NORMALIZATION_PROBE_COMPARISONS;
@@ -392,13 +399,7 @@ fn same_open_file(left: &File, right: &File) -> bool {
 
 #[cfg(windows)]
 fn same_open_file(left: &File, right: &File) -> bool {
-    use std::os::windows::fs::MetadataExt;
-
-    let (Ok(left), Ok(right)) = (left.metadata(), right.metadata()) else {
-        return false;
-    };
-    left.volume_serial_number() == right.volume_serial_number()
-        && left.file_index() == right.file_index()
+    crate::file_identity::same_open_file(left, right).unwrap_or(false)
 }
 
 #[cfg(not(any(unix, windows)))]
@@ -475,7 +476,7 @@ fn same_directory(left: &Path, right: &Path) -> Option<bool> {
     let (Ok(left), Ok(right)) = (open(left), open(right)) else {
         return None;
     };
-    Some(same_open_file(&left, &right))
+    crate::file_identity::same_open_file(&left, &right).ok()
 }
 
 #[cfg(not(any(unix, windows)))]

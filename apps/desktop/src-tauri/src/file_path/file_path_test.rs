@@ -128,16 +128,42 @@ fn 循環するシンボリックリンクは判定不能なので安全側で�
 
 #[cfg(unix)]
 #[test]
-fn 長い単一unicode単位でも異なる基底文字を区別する() {
+fn 長い結合文字列はファイルシステムが扱える場合だけ異なる基底文字を区別する() {
     let workspace = TempWorkspace::create();
     let marks = "\u{301}".repeat(70);
     let left = workspace.path(&format!("a{marks}.dmodel"));
     let right = workspace.path(&format!("b{marks}.dmodel"));
 
-    assert!(!super::same_file_path(
-        left.to_str().unwrap(),
-        right.to_str().unwrap(),
-    ));
+    // 結合文字の連続数に制約があるファイルシステムでは、バイト長以内でも
+    // この名前は利用できない。実際の作成・参照可否でテストの前提を確認する。
+    let left_result = fs::write(&left, "left");
+    let right_result = fs::write(&right, "right");
+    let supported = left_result.is_ok() && right_result.is_ok();
+    if left_result.is_ok() {
+        fs::remove_file(&left).unwrap();
+    }
+    if right_result.is_ok() {
+        fs::remove_file(&right).unwrap();
+    }
+    assert_eq!(
+        super::same_file_path(left.to_str().unwrap(), right.to_str().unwrap()),
+        !supported,
+        "filesystem name support: left={left_result:?}, right={right_result:?}",
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn 利用可能な結合文字列では異なる基底文字を区別する() {
+    let workspace = TempWorkspace::create();
+    let marks = "\u{301}".repeat(16);
+    let left = workspace.path(&format!("a{marks}.dmodel"));
+    let right = workspace.path(&format!("b{marks}.dmodel"));
+    fs::write(&left, "left").unwrap();
+    fs::write(&right, "right").unwrap();
+    fs::remove_file(&left).unwrap();
+    fs::remove_file(&right).unwrap();
+    assert!(!super::same_file_path(left.to_str().unwrap(), right.to_str().unwrap()));
 }
 
 #[cfg(unix)]

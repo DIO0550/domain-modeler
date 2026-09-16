@@ -1,0 +1,56 @@
+name: rust
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: rust-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Rust tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # releaseモードのgenerate_context!が埋め込む実際のフロントエンドを用意する。
+      - name: Build frontend
+        run: pnpm build
+
+      # commandマクロ・OS固有コードもコンパイルし、ファイルI/Oの実物でテストする。
+      - name: Rust unit tests (release profile)
+        working-directory: apps/desktop/src-tauri
+        run: cargo test --locked --release --all-targets
