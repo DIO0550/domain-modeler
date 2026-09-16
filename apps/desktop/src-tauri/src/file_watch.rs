@@ -32,6 +32,13 @@ pub enum FileWatchEvent {
         /// 監視開始時に渡されたパス。
         path: String,
     },
+    /// OS の監視バックエンドが開始後に失敗した。
+    WatchFailed {
+        /// 監視開始時に渡されたパス。
+        path: String,
+        /// 監視バックエンドが返した失敗理由。
+        message: String,
+    },
 }
 
 impl FileWatchEvent {
@@ -328,7 +335,14 @@ impl WatchTarget {
                 WatchMsg::Fs(Ok(event)) if self.is_affected_by(&event) => {
                     deadline = Some(Instant::now() + DEBOUNCE);
                 }
-                WatchMsg::Fs(_) => {}
+                WatchMsg::Fs(Ok(_)) => {}
+                WatchMsg::Fs(Err(error)) => {
+                    on_event(FileWatchEvent::WatchFailed {
+                        path: self.original_path.clone(),
+                        message: error.to_string(),
+                    });
+                    break;
+                }
             }
         }
     }

@@ -9,10 +9,9 @@ type FileReadResult =
   | Readonly<{ type: "ok"; value: string }>
   | Readonly<{ type: "err"; error: FileReadError }>;
 
-export type FileWatchEvent = Readonly<{
-  type: "changed" | "deleted";
-  path: string;
-}>;
+export type FileWatchEvent =
+  | Readonly<{ type: "changed" | "deleted"; path: string }>
+  | Readonly<{ type: "watchFailed"; path: string; message: string }>;
 
 type FileWatchError = Readonly<{
   kind: "watchFailed";

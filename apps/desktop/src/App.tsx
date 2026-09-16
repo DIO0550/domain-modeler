@@ -19,7 +19,7 @@ function App() {
     dispatchExternalFileAction,
   } = useAppShell({
     flushDocument: async (path) =>
-      await (saveSessions.current.get(path)?.() ?? Promise.resolve(true)),
+      await flushStableSaveSession(saveSessions.current, path),
   });
   const registerSaveSession = useCallback(
     (path: string, flush: () => Promise<boolean>): (() => void) => {
@@ -103,6 +103,31 @@ export async function flushStableSaveSessions(
       snapshot.length === sessions.size &&
       snapshot.every(([path, flush]) => sessions.get(path) === flush);
     if (isStable) {
+      return true;
+    }
+  }
+}
+
+/**
+ * タブを閉じる間に登録された新しい保存世代も完了するまでflushする。
+ *
+ * @param sessions パスごとの最新flush操作。
+ * @param path 閉じる文書のパス。
+ * @returns 最新世代まで保存できた場合はtrue。
+ */
+export async function flushStableSaveSession(
+  sessions: ReadonlyMap<string, () => Promise<boolean>>,
+  path: string,
+): Promise<boolean> {
+  while (true) {
+    const flush = sessions.get(path);
+    if (flush === undefined) {
+      return true;
+    }
+    if (!(await flush())) {
+      return false;
+    }
+    if (sessions.get(path) === flush) {
       return true;
     }
   }

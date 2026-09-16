@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { flushStableSaveSessions } from "./App";
+import { flushStableSaveSession, flushStableSaveSessions } from "./App";
 
 test("終了保存中に再編集された文書も次の世代までflushする", async () => {
   let finishSlowSave: (saved: boolean) => void = () => {};
@@ -38,4 +38,28 @@ test("いずれかの保存に失敗したら終了を許可しない", async ()
   ]);
 
   await expect(flushStableSaveSessions(sessions)).resolves.toBe(false);
+});
+
+test("タブ終了保存中に新しい保存世代が登録されたら再flushする", async () => {
+  let finishSlowSave: (saved: boolean) => void = () => {};
+  let latestFlushCount = 0;
+  const sessions = new Map<string, () => Promise<boolean>>();
+  sessions.set(
+    "/edited.dcanvas",
+    async () =>
+      await new Promise<boolean>((resolve) => {
+        finishSlowSave = resolve;
+      }),
+  );
+
+  const closing = flushStableSaveSession(sessions, "/edited.dcanvas");
+  await Promise.resolve();
+  sessions.set("/edited.dcanvas", async () => {
+    latestFlushCount += 1;
+    return true;
+  });
+  finishSlowSave(true);
+
+  await expect(closing).resolves.toBe(true);
+  expect(latestFlushCount).toBe(1);
 });

@@ -51,6 +51,20 @@ fn 削除イベントはjsonでtypeがdeletedになる() {
 }
 
 #[test]
+fn 監視開始後の失敗イベントはjsonで理由を返す() {
+    let event = FileWatchEvent::WatchFailed {
+        path: "/tmp/board.dcanvas".to_string(),
+        message: "watch backend overflow".to_string(),
+    };
+
+    let json = serde_json::to_value(&event).expect("event should serialize");
+
+    assert_eq!(json["type"], "watchFailed");
+    assert_eq!(json["path"], "/tmp/board.dcanvas");
+    assert_eq!(json["message"], "watch backend overflow");
+}
+
+#[test]
 fn ファイル内容が変わると変更イベントが返る() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");

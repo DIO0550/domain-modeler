@@ -652,6 +652,121 @@ test("外部削除後の状態を確認できない間は保存を止め明示�
   expect(writes).toEqual(["local draft"]);
 });
 
+test("未編集時の外部変更を読めなくても明示的な解決まで以後の保存を止める", async () => {
+  vi.useFakeTimers();
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const writes: string[] = [];
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (_path, contents) => {
+      writes.push(contents);
+      return { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({
+      type: "err",
+      error: { kind: "invalidUtf8", path: "/documents/order.dmodel" },
+    }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+  );
+
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dmodel" });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "edit after unreadable change");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+
+  expect(writes).toEqual([]);
+  expect(host.textContent).toContain("自動保存を停止");
+
+  act(() => buttonNamed(host, "編集内容で上書き").click());
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  expect(writes).toEqual(["edit after unreadable change"]);
+});
+
+test("監視バックエンドの実行時失敗を表示して自動保存を停止する", async () => {
+  vi.useFakeTimers();
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const writes: string[] = [];
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (_path, contents) => {
+      writes.push(contents);
+      return { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({ type: "ok", value: "" }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+  );
+
+  await act(async () => {
+    notify({
+      type: "watchFailed",
+      path: "/documents/order.dmodel",
+      message: "watch backend overflow",
+    });
+    await Promise.resolve();
+  });
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "edit after watcher failure");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+
+  expect(writes).toEqual([]);
+  expect(host.textContent).toContain("watch backend overflow");
+  expect(host.textContent).toContain("自動保存を停止");
+});
+
 test("保存中に外部変更を検出したら保存完了後にファイルを再評価する", async () => {
   vi.useFakeTimers();
   let notify: (event: FileWatchEvent) => void = () => {};
@@ -906,6 +1021,78 @@ test("終了flushはキャンバスの編集中下書きを確定して保存す
   });
 
   expect(writes[writes.length - 1]).toContain("saved on close");
+});
+
+test("終了flushの書込中に始まったキャンバス下書きも再flushする", async () => {
+  let finishFirstWrite: () => void = () => {};
+  const writes: string[] = [];
+  let flush: () => Promise<boolean> = async () => false;
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (_path, contents) => {
+      writes.push(contents);
+      if (writes.length > 1) {
+        return { type: "ok" };
+      }
+      return await new Promise((resolve) => {
+        finishFirstWrite = () => resolve({ type: "ok" });
+      });
+    },
+    now: Date.now,
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    undefined,
+    undefined,
+    (_path, nextFlush) => {
+      flush = nextFlush;
+      return () => {};
+    },
+  );
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 }),
+    );
+  });
+  act(() => {
+    host.querySelector<HTMLTextAreaElement>("textarea")?.blur();
+  });
+
+  let closing: Promise<boolean> = Promise.resolve(false);
+  await act(async () => {
+    closing = flush();
+    await Promise.resolve();
+  });
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("dblclick", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+  });
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "draft typed while closing");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  await act(async () => {
+    finishFirstWrite();
+    expect(await closing).toBe(true);
+  });
+
+  expect(writes).toHaveLength(2);
+  expect(writes[1]).toContain("draft typed while closing");
 });
 
 test("外部キャンバス変更を取り込んだ後もundoで変更前へ戻せる", async () => {
