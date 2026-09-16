@@ -1,7 +1,7 @@
 use std::fs;
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use super::{FileWatchEvent, FileWatchRegistry, FileWatchResult, DEBOUNCE};
 use crate::temp_workspace::TempWorkspace;
@@ -315,7 +315,19 @@ fn start_collecting(registry: &FileWatchRegistry, path: &str) -> Receiver<FileWa
         let _ = tx.send(event);
     });
     assert_eq!(result, FileWatchResult::Ok);
-    thread::sleep(Duration::from_millis(120));
+    // FSEventsなどはfixture作成の通知を監視開始後に届ける場合がある。
+    // 固定sleepでは次の操作の通知と混ざるため、初期通知の静穏を確認する。
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        match rx.recv_timeout(Duration::from_secs(1)) {
+            Ok(FileWatchEvent::WatchFailed { message, .. }) => {
+                panic!("watch startup failed: {message}");
+            }
+            Ok(_) => assert!(Instant::now() < deadline, "watch startup did not settle"),
+            Err(mpsc::RecvTimeoutError::Timeout) => break,
+            Err(mpsc::RecvTimeoutError::Disconnected) => panic!("watch disconnected at startup"),
+        }
+    }
     rx
 }
 
