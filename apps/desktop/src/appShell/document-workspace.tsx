@@ -3,6 +3,7 @@ import {
   useEffect,
   useEffectEvent,
   useReducer,
+  useRef,
   useState,
 } from "react";
 import {
@@ -69,6 +70,10 @@ type ExternalFileConflict =
   | Readonly<{
       kind: "deleted";
       document: ExternalFileDocument;
+      savedContents: string;
+    }>
+  | Readonly<{
+      kind: "unreadable";
       savedContents: string;
     }>;
 
@@ -197,6 +202,10 @@ function PersistedDocument({
   const [watchError, setWatchError] = useState<string>();
   const [externalConflict, setExternalConflict] =
     useState<ExternalFileConflict>();
+  const textRef = useRef(text);
+  const canvasRef = useRef(canvas);
+  textRef.current = text;
+  canvasRef.current = canvas;
 
   const flushDocument = async (): Promise<boolean> => {
     if (autoSave === undefined) {
@@ -222,7 +231,7 @@ function PersistedDocument({
   }, [autoSave, canvas.draftHistory, registerSaveSession, tab.path]);
 
   const handleFileWatchEvent = useEffectEvent(
-    async (event: FileWatchEvent): Promise<void> => {
+    async (_event: FileWatchEvent): Promise<void> => {
       if (
         autoSave === undefined ||
         dispatchExternalFileAction === undefined ||
@@ -230,10 +239,13 @@ function PersistedDocument({
       ) {
         return;
       }
-      const document: ExternalFileDocument =
+      const currentDocument = (): ExternalFileDocument =>
         tab.documentType === "canvas"
-          ? { documentType: "canvas", history: canvas.history }
-          : { documentType: "model", contents: text };
+          ? { documentType: "canvas", history: canvasRef.current.history }
+          : { documentType: "model", contents: textRef.current };
+      const hasUnsavedContents = (snapshot: AutoSave): boolean =>
+        AutoSave.isDirty(snapshot) ||
+        canvasRef.current.draftHistory !== undefined;
       const operations = {
         readFile: fileWatchOperations.readFile,
         hashContents: (contents: string): string => contents,
@@ -242,43 +254,10 @@ function PersistedDocument({
           setWatchError(externalFileErrorMessage(error));
         },
       };
-      let saveSnapshot: AutoSave;
-      if (event.type === "deleted") {
-        autoSave.pause();
-        saveSnapshot = await autoSave.waitForPendingWrites();
-        const readResult = await fileWatchOperations.readFile(tab.path);
-        if (readResult.type === "err") {
-          if (readResult.error.kind !== "notFound") {
-            operations.notifyError({
-              kind: "readFailed",
-              error: readResult.error,
-            });
-            autoSave.resume();
-            return;
-          }
-          ExternalFileEvents.handleDeleted(
-            { path: tab.path, document },
-            operations,
-          );
-          setWatchError(undefined);
-          if (
-            AutoSave.isDirty(saveSnapshot) ||
-            canvas.draftHistory !== undefined
-          ) {
-            setExternalConflict({
-              kind: "deleted",
-              document,
-              savedContents: saveSnapshot.lastSavedContents,
-            });
-            return;
-          }
-          autoSave.resume();
-          return;
-        }
-      } else {
-        saveSnapshot = await autoSave.waitForPendingWrites();
-      }
+      autoSave.pause();
+      let saveSnapshot = await autoSave.waitForPendingWrites();
       while (true) {
+        const document = currentDocument();
         const result = await ExternalFileEvents.handleChanged(
           {
             path: tab.path,
@@ -289,47 +268,54 @@ function PersistedDocument({
           operations,
         );
         if (result.status === "rejected") {
+          const settledSnapshot = await autoSave.waitForPendingWrites();
           if (
-            event.type === "deleted" &&
             result.error.kind === "readFailed" &&
             result.error.error.kind === "notFound"
           ) {
+            const latestDocument = currentDocument();
             ExternalFileEvents.handleDeleted(
-              { path: tab.path, document },
+              { path: tab.path, document: latestDocument },
               operations,
             );
             setWatchError(undefined);
-            if (
-              AutoSave.isDirty(saveSnapshot) ||
-              canvas.draftHistory !== undefined
-            ) {
+            if (hasUnsavedContents(settledSnapshot)) {
               setExternalConflict({
                 kind: "deleted",
-                document,
-                savedContents: saveSnapshot.lastSavedContents,
+                document: latestDocument,
+                savedContents: settledSnapshot.lastSavedContents,
               });
               return;
             }
-          }
-          if (event.type === "deleted") {
             autoSave.resume();
+            return;
           }
+          if (hasUnsavedContents(settledSnapshot)) {
+            setExternalConflict({
+              kind: "unreadable",
+              savedContents: settledSnapshot.lastSavedContents,
+            });
+            return;
+          }
+          autoSave.resume();
           return;
         }
         setWatchError(undefined);
         if (result.status === "ignored") {
-          if (event.type === "deleted") {
-            autoSave.resume();
-          }
+          setExternalConflict((current) =>
+            current?.kind === "unreadable" ? undefined : current,
+          );
+          autoSave.resume();
           return;
         }
         if (
           saveSnapshot.status === "saving" &&
           result.fileHash === saveSnapshot.writingContents
         ) {
-          if (event.type === "deleted") {
-            autoSave.resume();
-          }
+          setExternalConflict((current) =>
+            current?.kind === "unreadable" ? undefined : current,
+          );
+          autoSave.resume();
           return;
         }
         const settledSnapshot = await autoSave.waitForPendingWrites();
@@ -338,10 +324,8 @@ function PersistedDocument({
           continue;
         }
         if (
-          AutoSave.isDirty(settledSnapshot) ||
-          canvas.draftHistory !== undefined
+          hasUnsavedContents(settledSnapshot)
         ) {
-          autoSave.pause();
           setExternalConflict({
             kind: "changed",
             document: result.document,
@@ -351,6 +335,7 @@ function PersistedDocument({
         }
         autoSave.acceptExternalContents(result.fileHash);
         applyExternalDocument(result.document, setText, dispatchCanvas);
+        setExternalConflict(undefined);
         return;
       }
     },
@@ -398,6 +383,9 @@ function PersistedDocument({
     if (externalConflict === undefined) {
       return;
     }
+    if (externalConflict.kind === "unreadable") {
+      return;
+    }
     if (externalConflict.kind === "changed") {
       autoSave.acceptExternalContents(externalConflict.fileContents);
       applyExternalDocument(externalConflict.document, setText, dispatchCanvas);
@@ -440,6 +428,7 @@ function PersistedDocument({
     }
     autoSave.acceptExternalContents(savedContents);
     autoSave.notifyContentsChanged(currentContents);
+    setWatchError(undefined);
     setExternalConflict(undefined);
   };
   return (
@@ -451,6 +440,7 @@ function PersistedDocument({
           text={text}
           setText={setText}
           canvas={canvas}
+          canvasRef={canvasRef}
           dispatchCanvas={dispatchCanvas}
           watchError={watchError}
           externalConflict={externalConflict}
@@ -469,6 +459,7 @@ function DocumentEditor({
   text,
   setText,
   canvas,
+  canvasRef,
   dispatchCanvas,
   watchError,
   externalConflict,
@@ -480,6 +471,7 @@ function DocumentEditor({
   text: string;
   setText: (text: string) => void;
   canvas: CanvasSessionState;
+  canvasRef: React.MutableRefObject<CanvasSessionState>;
   dispatchCanvas: React.Dispatch<CanvasSessionAction>;
   watchError: string | undefined;
   externalConflict: ExternalFileConflict | undefined;
@@ -507,19 +499,17 @@ function DocumentEditor({
   const conflictBanner =
     externalConflict === undefined ? null : (
       <div className="document-workspace__banner" role="alert">
-        {externalConflict.kind === "deleted"
-          ? "外部でファイルが削除され、未保存の編集と競合しています。"
-          : "外部の変更と未保存の編集が競合しています。"}
+        {externalConflictMessage(externalConflict)}
         <button type="button" onClick={onKeepEditingContents}>
-          {externalConflict.kind === "deleted"
-            ? "編集内容で再作成"
-            : "編集中の内容を保存"}
+          {externalConflictKeepLabel(externalConflict)}
         </button>
-        <button type="button" onClick={onUseExternalContents}>
-          {externalConflict.kind === "deleted"
-            ? "削除を維持"
-            : "外部変更を読み込む"}
-        </button>
+        {externalConflict.kind !== "unreadable" && (
+          <button type="button" onClick={onUseExternalContents}>
+            {externalConflict.kind === "deleted"
+              ? "削除を維持"
+              : "外部変更を読み込む"}
+          </button>
+        )}
       </div>
     );
 
@@ -535,10 +525,19 @@ function DocumentEditor({
           initialHistory={canvas.history}
           saveStatus={saveStatusOf(autoSave.autoSave)}
           onHistoryChange={(history) => {
+            canvasRef.current = {
+              ...canvasRef.current,
+              history,
+              draftHistory: undefined,
+            };
             dispatchCanvas({ type: "historyChanged", history });
             autoSave.notifyContentsChanged(Serialize.stringify(history.current));
           }}
           onDraftHistoryChange={(history) => {
+            canvasRef.current = {
+              ...canvasRef.current,
+              draftHistory: history,
+            };
             dispatchCanvas({ type: "draftChanged", history });
           }}
         />
@@ -592,4 +591,26 @@ const externalFileErrorMessage = (error: ExternalFileEventError): string => {
       : error.error.kind;
   }
   return error.error.message;
+};
+
+const externalConflictMessage = (conflict: ExternalFileConflict): string => {
+  if (conflict.kind === "deleted") {
+    return "外部でファイルが削除され、未保存の編集と競合しています。";
+  }
+  if (conflict.kind === "unreadable") {
+    return "外部のファイル状態を確認できないため、自動保存を停止しています。";
+  }
+  return "外部の変更と未保存の編集が競合しています。";
+};
+
+const externalConflictKeepLabel = (
+  conflict: ExternalFileConflict,
+): string => {
+  if (conflict.kind === "deleted") {
+    return "編集内容で再作成";
+  }
+  if (conflict.kind === "unreadable") {
+    return "編集内容で上書き";
+  }
+  return "編集中の内容を保存";
 };

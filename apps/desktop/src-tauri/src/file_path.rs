@@ -95,24 +95,42 @@ fn file_names_are_equivalent(
     left_name: &OsStr,
     right_name: &OsStr,
 ) -> Option<bool> {
-    for _ in 0..MAX_PROBE_ALLOCATION_ATTEMPTS {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|duration| duration.as_nanos())
-            .unwrap_or(0);
-        let nonce = PROBE_NONCE.fetch_add(1, Ordering::Relaxed);
-        let probe_directory = directory.join(format!(
-            ".dm-probe-{}-{nanos:x}-{nonce:x}",
-            std::process::id(),
-        ));
-        match fs::create_dir(&probe_directory) {
-            Ok(()) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(_) => return None,
+    let normalizes_unicode = probe_file_names_in_directory(
+        directory,
+        OsStr::new("é"),
+        OsStr::new("e\u{301}"),
+    )?;
+    let left_chunks = probe_name_chunks(left_name, normalizes_unicode);
+    let right_chunks = probe_name_chunks(right_name, normalizes_unicode);
+    let chunk_count = left_chunks.len().max(right_chunks.len());
+    for index in 0..chunk_count {
+        let left = left_chunks
+            .get(index)
+            .map_or(OsStr::new(""), OsString::as_os_str);
+        let right = right_chunks
+            .get(index)
+            .map_or(OsStr::new(""), OsString::as_os_str);
+        if !probe_file_names_in_directory(directory, left, right)? {
+            return Some(false);
         }
+    }
+    Some(true)
+}
+
+fn probe_file_names_in_directory(
+    directory: &Path,
+    left_name: &OsStr,
+    right_name: &OsStr,
+) -> Option<bool> {
+    for _ in 0..MAX_PROBE_ALLOCATION_ATTEMPTS {
+        let prefix = next_probe_prefix();
+        let mut left_probe = OsString::from(&prefix);
+        left_probe.push(left_name);
+        let mut right_probe = OsString::from(prefix);
+        right_probe.push(right_name);
         match probe_file_names(
-            &probe_directory.join(left_name),
-            &probe_directory.join(right_name),
+            &directory.join(left_probe),
+            &directory.join(right_probe),
         ) {
             ProbeResult::Determined(equivalent) => return Some(equivalent),
             ProbeResult::RetryAllocation => {}
@@ -122,8 +140,107 @@ fn file_names_are_equivalent(
     None
 }
 
+fn next_probe_prefix() -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let nonce = PROBE_NONCE.fetch_add(1, Ordering::Relaxed);
+    format!(".dm-probe-{}-{nanos:x}-{nonce:x}-", std::process::id())
+}
+
+#[cfg(unix)]
+fn probe_name_chunks(name: &OsStr, normalize: bool) -> Vec<OsString> {
+    use std::os::unix::ffi::{OsStrExt, OsStringExt};
+
+    if let Ok(value) = std::str::from_utf8(name.as_bytes()) {
+        let normalized = normalize_unicode(value, normalize);
+        return utf8_probe_chunks(&normalized)
+            .into_iter()
+            .map(OsString::from)
+            .collect();
+    }
+    name.as_bytes()
+        .chunks(MAX_PROBE_CHUNK_UNITS)
+        .map(|chunk| OsString::from_vec(chunk.to_vec()))
+        .collect()
+}
+
+#[cfg(windows)]
+fn probe_name_chunks(name: &OsStr, normalize: bool) -> Vec<OsString> {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
+
+    let units = name.encode_wide().collect::<Vec<_>>();
+    if let Ok(value) = String::from_utf16(&units) {
+        let normalized = normalize_unicode(&value, normalize);
+        return utf16_probe_chunks(&normalized)
+            .into_iter()
+            .map(|chunk| OsString::from_wide(&chunk))
+            .collect();
+    }
+    units
+        .chunks(MAX_PROBE_CHUNK_UNITS)
+        .map(OsString::from_wide)
+        .collect()
+}
+
+#[cfg(not(any(unix, windows)))]
+fn probe_name_chunks(name: &OsStr, normalize: bool) -> Vec<OsString> {
+    let value = name.to_string_lossy();
+    let normalized = normalize_unicode(&value, normalize);
+    utf8_probe_chunks(&normalized)
+        .into_iter()
+        .map(OsString::from)
+        .collect()
+}
+
+fn normalize_unicode(value: &str, normalize: bool) -> String {
+    if !normalize {
+        return value.to_owned();
+    }
+    icu_normalizer::ComposingNormalizerBorrowed::new_nfc()
+        .normalize(value)
+        .into_owned()
+}
+
+fn utf8_probe_chunks(value: &str) -> Vec<String> {
+    let mut chunks = Vec::new();
+    let mut current = String::new();
+    for character in value.chars() {
+        if current.len() + character.len_utf8() > MAX_PROBE_CHUNK_UNITS {
+            chunks.push(current);
+            current = String::new();
+        }
+        current.push(character);
+    }
+    if !current.is_empty() {
+        chunks.push(current);
+    }
+    chunks
+}
+
+#[cfg(windows)]
+fn utf16_probe_chunks(value: &str) -> Vec<Vec<u16>> {
+    let mut chunks = Vec::new();
+    let mut current = Vec::new();
+    for character in value.chars() {
+        let mut encoded = [0; 2];
+        let units = character.encode_utf16(&mut encoded);
+        if current.len() + units.len() > MAX_PROBE_CHUNK_UNITS {
+            chunks.push(current);
+            current = Vec::new();
+        }
+        current.extend_from_slice(units);
+    }
+    if !current.is_empty() {
+        chunks.push(current);
+    }
+    chunks
+}
+
 static PROBE_NONCE: AtomicU64 = AtomicU64::new(0);
 const MAX_PROBE_ALLOCATION_ATTEMPTS: usize = 16;
+const MAX_PROBE_CHUNK_UNITS: usize = 160;
 
 #[derive(Debug, PartialEq, Eq)]
 enum ProbeResult {

@@ -200,12 +200,16 @@ fn 同時刻でも規則確認用プローブ名はatomic_nonceで重複しな�
     );
 
     let entries = workspace.entry_names();
-    assert_eq!(entries.len(), 2);
     assert_eq!(
         entries
             .iter()
             .collect::<std::collections::HashSet<_>>()
             .len(),
-        2,
+        entries.len(),
     );
+    assert!(entries.len() >= 2);
+    assert!(entries.iter().all(|name| name.starts_with(".dm-probe-")));
+    assert!(entries
+        .iter()
+        .all(|name| workspace.path(name).is_file()));
 }

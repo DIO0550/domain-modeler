@@ -321,6 +321,160 @@ test("未保存のモデル編集と外部変更が競合したら自動保存�
   );
 });
 
+test("外部変更の読込中は保留中のモデル編集を上書き保存しない", async () => {
+  vi.useFakeTimers();
+  let notify: (event: FileWatchEvent) => void = () => {};
+  let finishRead: (contents: string) => void = () => {};
+  const writes: string[] = [];
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (_path, contents) => {
+      writes.push(contents);
+      return { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () =>
+      await new Promise((resolve) => {
+        finishRead = (contents) => resolve({ type: "ok", value: contents });
+      }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+  );
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "local draft");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dmodel" });
+    await Promise.resolve();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+
+  expect(writes).toEqual([]);
+
+  await act(async () => {
+    finishRead("external");
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(writes).toEqual([]);
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "競合",
+  );
+});
+
+test("外部変更の読込中に始めたキャンバス下書きを競合判定へ含める", async () => {
+  let notify: (event: FileWatchEvent) => void = () => {};
+  let finishRead: ((contents: string) => void) | undefined;
+  let readCount = 0;
+  const externalContents = Serialize.stringify(Document.empty("external"));
+  let flush: () => Promise<boolean> = async () => false;
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async () => ({ type: "ok" }),
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => {
+      readCount += 1;
+      if (readCount > 1) {
+        return { type: "ok", value: externalContents };
+      }
+      return await new Promise((resolve) => {
+        finishRead = (contents) => resolve({ type: "ok", value: contents });
+      });
+    },
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+    (_path, nextFlush) => {
+      flush = nextFlush;
+      return () => {};
+    },
+  );
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 }),
+    );
+  });
+  act(() => {
+    host.querySelector<HTMLTextAreaElement>("textarea")?.blur();
+  });
+  await act(async () => {
+    expect(await flush()).toBe(true);
+  });
+
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dcanvas" });
+    await Promise.resolve();
+  });
+  await vi.waitFor(() => {
+    expect(finishRead).toBeTypeOf("function");
+  });
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("dblclick", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+  });
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "draft after read started");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  await act(async () => {
+    finishRead?.(externalContents);
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  await vi.waitFor(() => {
+    expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
+      "draft after read started",
+    );
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      "競合",
+    );
+  });
+});
+
 test("未保存編集のあるファイルが外部削除されたら保存を止めて削除を維持できる", async () => {
   vi.useFakeTimers();
   let notify: (event: FileWatchEvent) => void = () => {};
@@ -436,6 +590,65 @@ test("外部削除と競合した未保存編集を選ぶとファイルを再�
     await vi.advanceTimersByTimeAsync(500);
   });
 
+  expect(writes).toEqual(["local draft"]);
+});
+
+test("外部削除後の状態を確認できない間は保存を止め明示的な上書きを待つ", async () => {
+  vi.useFakeTimers();
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const writes: string[] = [];
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async (_path, contents) => {
+      writes.push(contents);
+      return { type: "ok" };
+    },
+    now: Date.now,
+  };
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({
+      type: "err",
+      error: { kind: "invalidUtf8", path: "/documents/order.dmodel" },
+    }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dmodel",
+    documentType: "model",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+  );
+  const input = host.querySelector("textarea");
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "local draft");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    notify({ type: "deleted", path: "/documents/order.dmodel" });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_000);
+  });
+
+  expect(writes).toEqual([]);
+  expect(host.textContent).toContain("自動保存を停止");
+
+  act(() => buttonNamed(host, "編集内容で上書き").click());
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
   expect(writes).toEqual(["local draft"]);
 });
 
