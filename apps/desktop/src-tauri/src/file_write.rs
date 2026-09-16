@@ -164,6 +164,7 @@ fn rename_open_file_no_replace(
 ) -> io::Result<()> {
     use std::ffi::c_void;
     use std::os::windows::ffi::OsStrExt;
+    use std::os::windows::fs::OpenOptionsExt;
     use std::os::windows::io::AsRawHandle;
 
     #[repr(C)]
@@ -185,15 +186,28 @@ fn rename_open_file_no_replace(
     }
 
     const FILE_RENAME_INFO_EX: u32 = 22;
-    let name = target.as_os_str().encode_wide().collect::<Vec<_>>();
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+    let file_name = target.file_name().ok_or_else(|| {
+        io::Error::new(io::ErrorKind::InvalidInput, "target has no file name")
+    })?;
+    let parent = target
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    // 親のハンドルを基準に名前を解決し、DOS/NT絶対パス表記の差を避ける。
+    let directory = File::options()
+        .access_mode(0)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(parent)?;
+    let name = file_name.encode_wide().collect::<Vec<_>>();
     let header = std::mem::offset_of!(FileRenameInfo, file_name);
-    let buffer_size = header + name.len() * std::mem::size_of::<u16>();
+    let buffer_size = header + (name.len() + 1) * std::mem::size_of::<u16>();
     let word_count = buffer_size.div_ceil(std::mem::size_of::<usize>());
     let mut buffer = vec![0usize; word_count];
     let information = buffer.as_mut_ptr().cast::<FileRenameInfo>();
     unsafe {
         (*information).flags = 0;
-        (*information).root_directory = std::ptr::null_mut();
+        (*information).root_directory = directory.as_raw_handle();
         (*information).file_name_length = (name.len() * 2) as u32;
         std::ptr::copy_nonoverlapping(
             name.as_ptr(),

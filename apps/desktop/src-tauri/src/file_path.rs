@@ -132,6 +132,13 @@ fn unicode_file_names_are_equivalent(
     left: &str,
     right: &str,
 ) -> Option<bool> {
+    // 全文がプローブ名に収まるなら、境界探索なしで直接比較する。
+    // 不一致の長い結合文字列で探索予算を使い切り、判定不能になるのを防ぐ。
+    let left_units: usize = left.chars().map(probe_character_units).sum();
+    let right_units: usize = right.chars().map(probe_character_units).sum();
+    if left_units <= MAX_PROBE_CHUNK_UNITS && right_units <= MAX_PROBE_CHUNK_UNITS {
+        return probe_file_names_in_directory(directory, OsStr::new(left), OsStr::new(right));
+    }
     let mut left_start = 0;
     let mut right_start = 0;
     let mut remaining_comparisons = MAX_NORMALIZATION_PROBE_COMPARISONS;
