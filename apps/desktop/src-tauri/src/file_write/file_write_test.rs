@@ -57,7 +57,7 @@ fn 完成した一時ファイルだけを新規パスへ公開する() {
     temp_file.sync_all().unwrap();
 
     assert!(!target.exists());
-    super::publish_new_file(&temp_path, &target).unwrap();
+    super::publish_new_file(&temp_file, &temp_path, &target).unwrap();
     drop(temp_file);
     assert_eq!(fs::read_to_string(target).unwrap(), "complete");
 }
@@ -73,7 +73,7 @@ fn hard_link非対応時も上書きなしrenameで完成済みファイルを�
     temp_file.sync_all().unwrap();
     let unsupported = std::io::Error::new(std::io::ErrorKind::Unsupported, "no links");
 
-    super::publish_after_link(Err(unsupported), &temp_path, &target).unwrap();
+    super::publish_open_file(&temp_file, Err(unsupported), &temp_path, &target).unwrap();
     drop(temp_file);
 
     assert_eq!(fs::read_to_string(target).unwrap(), "complete");

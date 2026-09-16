@@ -392,13 +392,7 @@ fn same_open_file(left: &File, right: &File) -> bool {
 
 #[cfg(windows)]
 fn same_open_file(left: &File, right: &File) -> bool {
-    use std::os::windows::fs::MetadataExt;
-
-    let (Ok(left), Ok(right)) = (left.metadata(), right.metadata()) else {
-        return false;
-    };
-    left.volume_serial_number() == right.volume_serial_number()
-        && left.file_index() == right.file_index()
+    crate::file_identity::same_open_file(left, right).unwrap_or(false)
 }
 
 #[cfg(not(any(unix, windows)))]
@@ -475,7 +469,7 @@ fn same_directory(left: &Path, right: &Path) -> Option<bool> {
     let (Ok(left), Ok(right)) = (open(left), open(right)) else {
         return None;
     };
-    Some(same_open_file(&left, &right))
+    crate::file_identity::same_open_file(&left, &right).ok()
 }
 
 #[cfg(not(any(unix, windows)))]

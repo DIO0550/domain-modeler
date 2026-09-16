@@ -1,4 +1,4 @@
-use tauri::{Emitter, State};
+use tauri::{Emitter, Manager};
 
 use crate::file_watch::{
     FileWatchError, FileWatchEvent, FileWatchRegistry, FileWatchResult, FILE_WATCH_EVENT,
@@ -11,17 +11,15 @@ use crate::file_watch::{
 ///
 /// # Arguments
 ///
-/// * `app` - イベント送出に使うアプリハンドル。
-/// * `registry` - パスごとの監視セッション。
+/// * `app` - 監視セッションの取得とイベント送出に使うアプリハンドル。
 /// * `path` - 監視するファイルのパス。
 #[tauri::command]
 pub async fn start_file_watch<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-    registry: State<FileWatchRegistry>,
     path: String,
 ) -> FileWatchResult {
     let failure_path = path.clone();
-    let registry = registry.inner().clone();
+    let registry = app.state::<FileWatchRegistry>().inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         registry.start(&path, move |event: FileWatchEvent| {
             let _ = app.emit(FILE_WATCH_EVENT, &event);
@@ -37,15 +35,15 @@ pub async fn start_file_watch<R: tauri::Runtime>(
 ///
 /// # Arguments
 ///
-/// * `registry` - パスごとの監視セッション。
+/// * `app` - 監視セッションを取得するアプリハンドル。
 /// * `path` - 監視を止めるファイルのパス。
 #[tauri::command]
-pub async fn stop_file_watch(
-    registry: State<'_, FileWatchRegistry>,
+pub async fn stop_file_watch<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     path: String,
 ) -> FileWatchResult {
     let failure_path = path.clone();
-    let registry = registry.inner().clone();
+    let registry = app.state::<FileWatchRegistry>().inner().clone();
     tauri::async_runtime::spawn_blocking(move || registry.stop(&path))
         .await
         .unwrap_or_else(|error| watch_join_failed(failure_path, error.to_string()))
