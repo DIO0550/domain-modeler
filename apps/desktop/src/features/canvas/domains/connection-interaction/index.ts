@@ -1,4 +1,6 @@
 import {
+  type Anchor,
+  Sticky,
   type CanvasError,
   type ConnectionId,
   Document,
@@ -23,6 +25,101 @@ export type ConnectionInteraction = Readonly<{
 
 /** 接続の作成、選択、ラベル編集、削除を進める関数群。 */
 export const ConnectionInteraction = {
+  /** 選択した付箋の指定辺から接続を開始する。 */
+  beginConnectionDrag(
+    interaction: ConnectionInteraction,
+    endpoint: Readonly<{ stickyId: StickyId; anchor: Anchor }>,
+  ): ConnectionInteraction {
+    const source = Document.stickyById(
+      interaction.board.workingDocument,
+      endpoint.stickyId,
+    );
+    if (
+      !source.some ||
+      interaction.board.session.status !== "selected" ||
+      interaction.board.session.stickyId !== endpoint.stickyId
+    ) {
+      return interaction;
+    }
+    const origin = Sticky.anchorPoint(source.value, endpoint.anchor);
+    return {
+      ...interaction,
+      session: {
+        status: "dragging",
+        sourceId: endpoint.stickyId,
+        anchor: endpoint.anchor,
+        origin,
+        point: origin,
+      },
+      error: OptionValue.none(),
+    };
+  },
+
+  /** 接続プレビューの終点を更新する。 */
+  moveConnectionDrag(
+    interaction: ConnectionInteraction,
+    point: Point,
+  ): ConnectionInteraction {
+    if (interaction.session.status !== "dragging") {
+      return interaction;
+    }
+    return { ...interaction, session: { ...interaction.session, point } };
+  },
+
+  /** ドロップ先がある場合だけ始点アンカー付きの接続を履歴へ確定する。 */
+  finishConnectionDrag(
+    interaction: ConnectionInteraction,
+    point: Point,
+  ): ConnectionInteraction {
+    if (interaction.session.status !== "dragging") {
+      return interaction;
+    }
+    const idle: ConnectionInteraction = {
+      ...interaction,
+      session: { status: "idle" },
+    };
+    const target = Document.stickyAt(interaction.board.workingDocument, point);
+    if (!target.some || target.value.id === interaction.session.sourceId) {
+      return idle;
+    }
+    const added = Document.addConnection(
+      interaction.board.workingDocument,
+      interaction.session.sourceId,
+      target.value.id,
+    );
+    if (!added.ok) {
+      return { ...idle, error: OptionValue.some(added.error) };
+    }
+    const connection =
+      added.value.connections[added.value.connections.length - 1];
+    if (connection === undefined) {
+      return idle;
+    }
+    const document = Document.updateConnectionAnchors(
+      added.value,
+      connection.id,
+      interaction.session.anchor,
+    );
+    return {
+      ...idle,
+      board: StickyInteractionValue.withDocument(interaction.board, document),
+    };
+  },
+
+  /** 接続ドラッグだけを取り消し、付箋の選択を維持する。 */
+  cancelConnectionDrag(
+    interaction: ConnectionInteraction,
+  ): ConnectionInteraction {
+    if (interaction.session.status !== "dragging") {
+      return interaction;
+    }
+    return {
+      ...interaction,
+      session: { status: "idle" },
+      error: OptionValue.none(),
+    };
+  },
+
   /**
    * 文書から接続操作を生成する。
    *
@@ -369,14 +466,18 @@ export const ConnectionInteraction = {
 
   /** 直前の文書操作を取り消す。 */
   undo(interaction: ConnectionInteraction): ConnectionInteraction {
-    const committed = ConnectionInteraction.commitEdit(interaction);
+    const committed = ConnectionInteraction.cancelConnectionDrag(
+      ConnectionInteraction.commitEdit(interaction),
+    );
     const board = StickyInteractionValue.undo(committed.board);
     return withExistingConnectionSession({ ...committed, board });
   },
 
   /** 取り消した文書操作をやり直す。 */
   redo(interaction: ConnectionInteraction): ConnectionInteraction {
-    const committed = ConnectionInteraction.commitEdit(interaction);
+    const committed = ConnectionInteraction.cancelConnectionDrag(
+      ConnectionInteraction.commitEdit(interaction),
+    );
     const board = StickyInteractionValue.redo(committed.board);
     return withExistingConnectionSession({ ...committed, board });
   },

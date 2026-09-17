@@ -2,6 +2,7 @@ import {
   useEffect,
   useEffectEvent,
   useRef,
+  type ReactNode,
   type CSSProperties,
   type FocusEvent,
   type KeyboardEvent,
@@ -59,6 +60,7 @@ export const StickyChrome = {
 } as const;
 
 type StickyProps = Readonly<{
+  children?: ReactNode;
   sticky: StickyModel;
   chrome?: StickyChrome;
   connectionEndpoint?: "source";
@@ -96,6 +98,7 @@ type StickyStyle = CSSProperties & {
  * @returns 付箋。
  */
 export function Sticky({
+  children,
   sticky,
   chrome = { status: "plain" },
   connectionEndpoint,
@@ -313,6 +316,7 @@ export function Sticky({
             />
           ))
         : null}
+      {children}
     </article>
   );
 }

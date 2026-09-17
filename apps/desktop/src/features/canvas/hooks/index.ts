@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import type {
   CanvasError,
+  Anchor,
   Connection,
   ConnectionId,
   Document,
@@ -132,6 +133,12 @@ export type UseConnectionInteractionsResult = UseStickyInteractionsResult &
     connections: readonly Connection[];
     connectionSession: ConnectionSession;
     connectionError: Option<CanvasError>;
+    beginConnectionDrag: (
+      endpoint: Readonly<{ stickyId: StickyId; anchor: Anchor }>,
+    ) => void;
+    moveConnectionDrag: (point: Point) => void;
+    finishConnectionDrag: (point: Point) => void;
+    cancelConnectionDrag: () => void;
     toggleConnectionMode: () => void;
     selectConnectionEndpoint: (stickyId: StickyId) => void;
     selectConnection: (connectionId: ConnectionId) => void;
@@ -280,6 +287,20 @@ export function useConnectionInteractions(
     redo: () => {
       replaceInteraction(ConnectionInteraction.redo);
     },
+    beginConnectionDrag: (endpoint) =>
+      replaceInteraction((current) =>
+        ConnectionInteraction.beginConnectionDrag(current, endpoint),
+      ),
+    moveConnectionDrag: (point) =>
+      replaceInteraction((current) =>
+        ConnectionInteraction.moveConnectionDrag(current, point),
+      ),
+    finishConnectionDrag: (point) =>
+      replaceInteraction((current) =>
+        ConnectionInteraction.finishConnectionDrag(current, point),
+      ),
+    cancelConnectionDrag: () =>
+      replaceInteraction(ConnectionInteraction.cancelConnectionDrag),
     toggleConnectionMode: () => {
       replaceInteraction(ConnectionInteraction.toggleMode);
     },

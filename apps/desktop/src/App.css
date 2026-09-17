@@ -863,3 +863,22 @@ body,
   flex-direction: column;
   min-height: 0;
 }
+
+.sticky__connection-handle {
+  position: absolute;
+  z-index: 2;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 3px solid var(--sticky-selected-ring);
+  border-radius: 50%;
+  background: var(--canvas-surface-bg);
+  cursor: crosshair;
+  touch-action: none;
+  transform: translate(-50%, -50%);
+}
+.sticky__connection-handle[data-connection-anchor="top"] { top: 0; left: 50%; }
+.sticky__connection-handle[data-connection-anchor="right"] { top: 50%; left: 100%; }
+.sticky__connection-handle[data-connection-anchor="bottom"] { top: 100%; left: 50%; }
+.sticky__connection-handle[data-connection-anchor="left"] { top: 50%; left: 0; }
+.sticky__connection-handle:focus-visible { outline: 2px solid var(--sticky-selected-ring); outline-offset: 3px; }

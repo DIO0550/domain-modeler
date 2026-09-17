@@ -11,6 +11,7 @@ import {
 } from "../../hooks";
 import { Sticky, StickyChrome } from "../sticky";
 import { CanvasView, HistoryButton } from "../canvas-view";
+import { ConnectionHandles } from "../connection-handles";
 import { ConnectionLayer } from "../connection-layer";
 
 type CanvasEditorProps = Readonly<{
@@ -42,11 +43,10 @@ export function CanvasEditor({
   const notifyHistoryChange = useEffectEvent((history: History): void => {
     onHistoryChange?.(history);
   });
-  const board = useConnectionInteractions(
-    initialDocument,
-    initialHistory,
-    { onDraftHistoryChange, onHistoryChange },
-  );
+  const board = useConnectionInteractions(initialDocument, initialHistory, {
+    onDraftHistoryChange,
+    onHistoryChange,
+  });
   const notifyDraftHistoryChange = useEffectEvent(
     (history: History | undefined): void => {
       onDraftHistoryChange?.(history);
@@ -213,7 +213,23 @@ export function CanvasEditor({
                   onPointerCancel: board.cancelManipulation,
                 }
           }
-        />
+        >
+          {StickySession.chromeOf(board.session, sticky.id).status ===
+          "selected" ? (
+            <ConnectionHandles
+              onStart={(anchor) =>
+                board.beginConnectionDrag({ stickyId: sticky.id, anchor })
+              }
+              onMove={(point) =>
+                board.moveConnectionDrag(viewport.toWorldClientPoint(point))
+              }
+              onFinish={(point) =>
+                board.finishConnectionDrag(viewport.toWorldClientPoint(point))
+              }
+              onCancel={board.cancelConnectionDrag}
+            />
+          ) : null}
+        </Sticky>
       ))}
     </CanvasView>
   );
