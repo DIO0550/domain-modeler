@@ -656,3 +656,35 @@ test("フォーカス中の接続はSpaceで選択してDeleteで削除できる
   expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(0);
   expect(host.querySelectorAll("article")).toHaveLength(2);
 });
+
+test("通常の空白クリックやダブルクリックでは配置せず、種別選択後だけ1個配置する", () => {
+  const host = renderEditor();
+  clickSurface(host, { x: 80, y: 90 });
+  doubleClickSurface(host, { x: 80, y: 90 });
+  expect(host.querySelectorAll("article")).toHaveLength(0);
+  act(() => buttonNamed(host, "Command").click());
+  expect(host.textContent).toContain("空白をクリックして1個配置");
+  clickSurface(host, { x: 80, y: 90 });
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+  expect(buttonNamed(host, "選択").getAttribute("aria-pressed")).toBe("true");
+  clickSurface(host, { x: 500, y: 400 });
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+});
+
+test("配置ツールは選択ボタンで取り消せる", () => {
+  const host = renderEditor();
+  act(() => buttonNamed(host, "Command").click());
+  act(() => buttonNamed(host, "選択").click());
+  clickSurface(host, { x: 80, y: 90 });
+  expect(host.querySelectorAll("article")).toHaveLength(0);
+});
+
+
+test("種別ボタンにフォーカスがあるままEscで配置を取り消せる", () => {
+  const host = renderEditor();
+  const button = buttonNamed(host, "Command");
+  act(() => button.click());
+  act(() => button.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  clickSurface(host, { x: 80, y: 90 });
+  expect(host.querySelectorAll("article")).toHaveLength(0);
+});

@@ -33,7 +33,7 @@ const setup = () =>
   );
 
 for (const anchor of Object.values(ANCHORS)) {
-  test(`${anchor}辺からドラッグするとその辺を始点にして接続が確定する`, () => {
+  test(`${anchor}辺からドラッグしても相手に最も近い辺で接続が確定する`, () => {
     const initial = setup();
     const started = ConnectionInteraction.beginConnectionDrag(initial, {
       stickyId: source.id,
@@ -57,7 +57,7 @@ for (const anchor of Object.values(ANCHORS)) {
     expect(finished.board.workingDocument.connections[0]).toMatchObject({
       from: source.id,
       to: target.id,
-      fromAnchor: anchor,
+      fromAnchor: "right",
     });
     expect(finished.board.workingDocument.stickies).toEqual(
       initial.board.workingDocument.stickies,
@@ -136,11 +136,11 @@ test("保存して読み直しても接続の始点の辺を維持する", () =>
   if (!parsed.ok) {
     throw new Error(parsed.error.message);
   }
-  expect(parsed.value.connections[0]?.fromAnchor).toBe("bottom");
+  expect(parsed.value.connections[0]?.fromAnchor).toBe("right");
 });
 
 for (const anchor of Object.values(ANCHORS)) {
-  test(`接続先の${anchor}辺中央へ吸着して端点を保存する`, () => {
+  test(`接続先の${anchor}辺付近で離しても始点に最も近い左辺へ接続する`, () => {
     const point = Sticky.anchorPoint(target, anchor);
     const started = ConnectionInteraction.beginConnectionDrag(setup(), {
       stickyId: source.id,
@@ -148,12 +148,19 @@ for (const anchor of Object.values(ANCHORS)) {
     });
     const moved = ConnectionInteraction.moveConnectionDrag(started, point);
     expect(moved.session).toMatchObject({
-      target: { some: true, value: { stickyId: target.id, anchor, point } },
+      target: {
+        some: true,
+        value: {
+          stickyId: target.id,
+          anchor: "left",
+          point: Sticky.anchorPoint(target, "left"),
+        },
+      },
     });
     const finished = ConnectionInteraction.finishConnectionDrag(moved, point);
     expect(finished.board.workingDocument.connections[0]).toMatchObject({
       to: target.id,
-      toAnchor: anchor,
+      toAnchor: "left",
     });
     const parsed = Serialize.parse(
       Serialize.stringify(finished.board.workingDocument),
@@ -161,7 +168,7 @@ for (const anchor of Object.values(ANCHORS)) {
     if (!parsed.ok) {
       throw new Error(parsed.error.message);
     }
-    expect(parsed.value.connections[0]?.toAnchor).toBe(anchor);
+    expect(parsed.value.connections[0]?.toAnchor).toBe("left");
   });
 }
 
@@ -202,3 +209,33 @@ test("拡大後の近接範囲も画面上24pxを超えない", () => {
       .session,
   ).toMatchObject({ target: { some: true } });
 });
+
+for (const direction of [
+  { position: { x: 240, y: 20 }, from: "right", to: "left" },
+  { position: { x: -240, y: 20 }, from: "left", to: "right" },
+  { position: { x: 20, y: -240 }, from: "top", to: "bottom" },
+  { position: { x: 20, y: 240 }, from: "bottom", to: "top" },
+] as const) {
+  test(`相手の位置に応じて${direction.from}から${direction.to}へ自動接続する`, () => {
+    const movedTarget = { ...target, position: direction.position };
+    const initial = ConnectionInteraction.clickAt(
+      ConnectionInteraction.create({
+        ...Document.empty(),
+        stickies: [source, movedTarget],
+      }),
+      { x: 40, y: 40 },
+    );
+    const started = ConnectionInteraction.beginConnectionDrag(initial, {
+      stickyId: source.id,
+      anchor: "right",
+    });
+    const result = ConnectionInteraction.finishConnectionDrag(
+      started,
+      Sticky.center(movedTarget),
+    );
+    expect(result.board.workingDocument.connections[0]).toMatchObject({
+      fromAnchor: direction.from,
+      toAnchor: direction.to,
+    });
+  });
+}

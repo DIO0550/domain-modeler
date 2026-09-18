@@ -48,6 +48,7 @@ export const HistoryButton = {
 } as const;
 
 type CanvasViewProps = Readonly<{
+  placementTool?: Readonly<{ active: boolean; onSelect: () => void }>;
   gestureEvents?: Pick<
     HTMLAttributes<HTMLDivElement>,
     "onPointerDownCapture" | "onClickCapture" | "onDoubleClickCapture"
@@ -78,6 +79,7 @@ type CanvasViewProps = Readonly<{
  * @returns キャンバス画面。
  */
 export function CanvasView({
+  placementTool,
   gestureEvents,
   viewport,
   viewportInteraction,
@@ -139,11 +141,28 @@ export function CanvasView({
   return (
     <div className="canvas-view" onKeyDown={handleKeyDown} {...gestureEvents}>
       <CanvasToolbar>
+        {placementTool !== undefined ? (
+          <button
+            type="button"
+            className={paletteButtonClassName(!placementTool.active)}
+            aria-pressed={!placementTool.active}
+            onClick={placementTool.onSelect}
+          >
+            選択
+          </button>
+        ) : null}
         <Palette
           appearances={appearances}
-          selectedType={selectedType}
+          selectedType={
+            placementTool !== undefined && !placementTool.active
+              ? undefined
+              : selectedType
+          }
           onSelectType={selectType}
         />
+        {placementTool?.active ? (
+          <span role="status">空白をクリックして1個配置 · Escで取消</span>
+        ) : null}
         <HistoryControls undo={undo} redo={redo} />
         {connectionTool !== undefined && (
           <ConnectionControls tool={connectionTool} />
@@ -215,7 +234,7 @@ function CanvasToolbar({ children }: CanvasToolbarProps) {
 
 type PaletteProps = Readonly<{
   appearances: readonly StickyAppearance[];
-  selectedType: StickyType;
+  selectedType: StickyType | undefined;
   onSelectType: (type: StickyType) => void;
 }>;
 

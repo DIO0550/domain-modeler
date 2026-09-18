@@ -7,8 +7,11 @@ import {
   type StickyId,
 } from "@domain-modeler/canvas-core";
 
-/** 接続先の四辺中央のうち、ポインターに最も近い固定端点。 */
+/** 接続先の四辺中央のうち、始点との距離が最も短い固定端点。 */
 export type ConnectionTarget = Readonly<{
+  fromAnchor: Anchor;
+  fromPoint: Point;
+  fromOutwardNormal: Point;
   stickyId: StickyId;
   anchor: Anchor;
   point: Point;
@@ -40,25 +43,35 @@ export const ConnectionTarget = {
       );
       return Math.hypot(dx, dy) <= margin;
     });
-    if (sticky === undefined) {
+    const source = stickies.find((candidate) => candidate.id === sourceId);
+    if (sticky === undefined || source === undefined) {
       return Option.none();
     }
-    const anchors = Object.values(ANCHORS).map((anchor) => ({
-      anchor,
-      point: Sticky.anchorPoint(sticky, anchor),
-    }));
-    const nearest = anchors.reduce((best, candidate) =>
+    const anchors = Object.values(ANCHORS);
+    const pairs = anchors.flatMap((fromAnchor) =>
+      anchors.map((anchor) => ({
+        fromAnchor,
+        fromPoint: Sticky.anchorPoint(source, fromAnchor),
+        anchor,
+        point: Sticky.anchorPoint(sticky, anchor),
+      })),
+    );
+    const nearest = pairs.reduce((best, candidate) =>
       Math.hypot(
-        candidate.point.x - pointer.point.x,
-        candidate.point.y - pointer.point.y,
+        candidate.point.x - candidate.fromPoint.x,
+        candidate.point.y - candidate.fromPoint.y,
       ) <
-      Math.hypot(best.point.x - pointer.point.x, best.point.y - pointer.point.y)
+      Math.hypot(
+        best.point.x - best.fromPoint.x,
+        best.point.y - best.fromPoint.y,
+      )
         ? candidate
         : best,
     );
     return Option.some({
       stickyId: sticky.id,
       ...nearest,
+      fromOutwardNormal: Sticky.outwardNormal(source, nearest.fromPoint),
       outwardNormal: Sticky.outwardNormal(sticky, nearest.point),
     });
   },

@@ -133,6 +133,7 @@ export type UseConnectionInteractionsResult = UseStickyInteractionsResult &
     connections: readonly Connection[];
     connectionSession: ConnectionSession;
     connectionError: Option<CanvasError>;
+    selectAt: (point: Point) => void;
     beginConnectionDrag: (
       endpoint: Readonly<{ stickyId: StickyId; anchor: Anchor }>,
     ) => void;
@@ -287,6 +288,10 @@ export function useConnectionInteractions(
     redo: () => {
       replaceInteraction(ConnectionInteraction.redo);
     },
+    selectAt: (point) =>
+      replaceInteraction((current) =>
+        ConnectionInteraction.selectAt(current, point),
+      ),
     beginConnectionDrag: (endpoint) =>
       replaceInteraction((current) =>
         ConnectionInteraction.beginConnectionDrag(current, endpoint),

@@ -1,4 +1,10 @@
-import { useEffect, useEffectEvent, useRef, type MouseEvent } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { CANVAS_SHORTCUTS, CanvasShortcut } from "../../domains/shortcut";
 import { EventTargetEx } from "@/utils/EventTargetEx";
 import type { Document, History } from "@domain-modeler/canvas-core";
@@ -37,6 +43,7 @@ export function CanvasEditor({
   onHistoryChange,
   onDraftHistoryChange,
 }: CanvasEditorProps) {
+  const [placementActive, setPlacementActive] = useState(false);
   // 接続ジェスチャー由来のclick/dblclickを、次の新しい押下まで抑止する。
   const suppressConnectionClick = useRef(false);
   const stopConnectionClick = (event: MouseEvent<HTMLDivElement>): void => {
@@ -90,6 +97,13 @@ export function CanvasEditor({
 
   return (
     <CanvasView
+      placementTool={{
+        active: placementActive,
+        onSelect: () => {
+          setPlacementActive(false);
+          board.pressEscape();
+        },
+      }}
       gestureEvents={{
         onPointerDownCapture: () => {
           suppressConnectionClick.current = false;
@@ -98,6 +112,13 @@ export function CanvasEditor({
         onDoubleClickCapture: stopConnectionClick,
       }}
       onKeyDown={(event) => {
+        if (placementActive && event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          setPlacementActive(false);
+          board.pressEscape();
+          return;
+        }
         if (
           event.defaultPrevented ||
           EventTargetEx.isTextEntry(event.target) ||
@@ -140,9 +161,18 @@ export function CanvasEditor({
           : HistoryButton.disabled()
       }
       selectedType={board.selectedType}
-      onSelectType={board.selectType}
+      onSelectType={(type) => {
+        board.pressEscape();
+        board.selectType(type);
+        setPlacementActive(true);
+      }}
       onSurfaceClick={(point) => {
-        board.clickAt(viewport.toWorldPoint(point));
+        if (placementActive) {
+          board.clickAt(viewport.toWorldPoint(point));
+          setPlacementActive(false);
+          return;
+        }
+        board.selectAt(viewport.toWorldPoint(point));
       }}
       onSurfaceDoubleClick={(point) => {
         board.doubleClickAt(viewport.toWorldPoint(point));
@@ -153,6 +183,7 @@ export function CanvasEditor({
           return;
         }
         if (key === "Escape") {
+          setPlacementActive(false);
           board.pressEscape();
           return;
         }
@@ -163,7 +194,10 @@ export function CanvasEditor({
         errorMessage: board.connectionError.some
           ? board.connectionError.value.message
           : undefined,
-        onToggle: board.toggleConnectionMode,
+        onToggle: () => {
+          setPlacementActive(false);
+          board.toggleConnectionMode();
+        },
       }}
     >
       <ConnectionLayer
@@ -241,6 +275,7 @@ export function CanvasEditor({
             "selected" ? (
               <ConnectionHandles
                 onStart={(anchor) => {
+                  setPlacementActive(false);
                   suppressConnectionClick.current = true;
                   board.beginConnectionDrag({ stickyId: sticky.id, anchor });
                 }}

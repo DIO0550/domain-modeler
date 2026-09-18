@@ -143,8 +143,9 @@ test("空白部の左ドラッグで pan し、付箋を作成しない", () => 
   expect(host.querySelectorAll("article")).toHaveLength(0);
 });
 
-test("空白部の左クリックでは付箋を作成する", () => {
+test("配置ツールを選んで空白部を左クリックすると付箋を作成する", () => {
   const host = renderEditor();
+  act(() => buttonNamed(host, "Domain Event").click());
   const world = canvasWorldOf(host);
 
   panSurface(world, 0, [{ x: 100, y: 80 }]);
@@ -214,6 +215,7 @@ test("中ボタンドラッグで pan する", () => {
 
 test("中ボタンで pan した直後の左クリックで付箋を作成できる", () => {
   const host = renderEditor();
+  act(() => buttonNamed(host, "Domain Event").click());
   panSurface(canvasSurfaceOf(host), 1, [
     { x: 80, y: 90 },
     { x: 60, y: 130 },
@@ -295,6 +297,7 @@ test("pointer capture を失うと pan を中止する", () => {
 
 test("window が blur すると pan とクリック抑止を解除する", () => {
   const host = renderEditor();
+  act(() => buttonNamed(host, "Domain Event").click());
   const surface = canvasSurfaceOf(host);
 
   act(() => {
@@ -338,6 +341,7 @@ test("修飾キーなしのホイールで pan する", () => {
 
 test("Ctrl ホイールの前後でカーソル下のワールド座標を維持する", () => {
   const host = renderEditor();
+  act(() => buttonNamed(host, "Domain Event").click());
   const surface = canvasSurfaceOf(host);
 
   wheelSurface(

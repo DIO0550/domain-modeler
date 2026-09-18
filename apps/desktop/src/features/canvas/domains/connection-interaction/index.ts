@@ -26,6 +26,20 @@ export type ConnectionInteraction = Readonly<{
 
 /** 接続の作成、選択、ラベル編集、削除を進める関数群。 */
 export const ConnectionInteraction = {
+  /** 配置を行わず、クリック位置の付箋を選択する。空白では選択解除する。 */
+  selectAt(
+    interaction: ConnectionInteraction,
+    point: Point,
+  ): ConnectionInteraction {
+    if (ConnectionSession.isCreating(interaction.session)) {
+      return ConnectionInteraction.clickAt(interaction, point);
+    }
+    const hit = Document.stickyAt(interaction.board.workingDocument, point);
+    const board = hit.some
+      ? StickyInteractionValue.select(interaction.board, hit.value.id)
+      : StickyInteractionValue.deselect(interaction.board);
+    return ConnectionInteraction.withBoard(interaction, board);
+  },
   /** 選択した付箋の指定辺から接続を開始する。 */
   beginConnectionDrag(
     interaction: ConnectionInteraction,
@@ -112,7 +126,7 @@ export const ConnectionInteraction = {
     const document = Document.updateConnectionAnchors(
       added.value,
       connection.id,
-      interaction.session.anchor,
+      target.value.fromAnchor,
       target.value.anchor,
     );
     return {

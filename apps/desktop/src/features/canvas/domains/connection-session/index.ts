@@ -59,9 +59,13 @@ export const ConnectionSession = {
       left: { x: -1, y: 0 },
     };
     return ConnectionSegment.toRoute({
-      from: session.origin,
+      from: session.target.some
+        ? session.target.value.fromPoint
+        : session.origin,
       to: session.target.some ? session.target.value.point : session.point,
-      fromOutwardNormal: normals[session.anchor],
+      fromOutwardNormal: session.target.some
+        ? session.target.value.fromOutwardNormal
+        : normals[session.anchor],
       toOutwardNormal: session.target.some
         ? session.target.value.outwardNormal
         : { x: 0, y: 0 },

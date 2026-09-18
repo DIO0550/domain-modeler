@@ -120,7 +120,7 @@ test("接続先に近づくと候補の枠と固定接続点を表示し、離�
 });
 
 for (const cancelled of [false, true]) {
-  test(`接続ドラッグ${cancelled ? "取消" : "終了"}後のclickとdblclickで付箋を配置せず、次の通常クリックで配置できる`, () => {
+  test(`接続ドラッグ${cancelled ? "取消" : "終了"}後のclickとdblclickで付箋を配置せず、次の通常クリックでも配置しない`, () => {
     const host = renderEditor(documentWithTwoStickies);
     clickSurface(host, { x: 50, y: 50 });
     const handle = host.querySelector('[data-connection-anchor="right"]');
@@ -144,7 +144,14 @@ for (const cancelled of [false, true]) {
       throw new Error("キャンバスがない");
     }
     act(() => {
-      surface.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1, clientX: 600, clientY: 400 }));
+      surface.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          detail: 1,
+          clientX: 600,
+          clientY: 400,
+        }),
+      );
       surface.dispatchEvent(
         new MouseEvent("dblclick", {
           detail: 2,
@@ -161,6 +168,6 @@ for (const cancelled of [false, true]) {
     pointer(surface, "pointerdown", { x: 600, y: 400 });
     pointer(surface, "pointerup", { x: 600, y: 400 });
     clickSurface(host, { x: 600, y: 400 });
-    expect(host.querySelectorAll("article")).toHaveLength(3);
+    expect(host.querySelectorAll("article")).toHaveLength(2);
   });
 }
