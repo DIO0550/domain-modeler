@@ -1,3 +1,4 @@
+import { ConnectionTarget } from "../connection-target";
 import {
   type Anchor,
   Sticky,
@@ -50,6 +51,7 @@ export const ConnectionInteraction = {
         anchor: endpoint.anchor,
         origin,
         point: origin,
+        target: OptionValue.none(),
       },
       error: OptionValue.none(),
     };
@@ -63,7 +65,15 @@ export const ConnectionInteraction = {
     if (interaction.session.status !== "dragging") {
       return interaction;
     }
-    return { ...interaction, session: { ...interaction.session, point } };
+    const target = ConnectionTarget.find(
+      interaction.board.workingDocument.stickies,
+      interaction.session.sourceId,
+      { point, zoom: interaction.board.workingDocument.viewport.zoom },
+    );
+    return {
+      ...interaction,
+      session: { ...interaction.session, point, target },
+    };
   },
 
   /** ドロップ先がある場合だけ始点アンカー付きの接続を履歴へ確定する。 */
@@ -78,14 +88,18 @@ export const ConnectionInteraction = {
       ...interaction,
       session: { status: "idle" },
     };
-    const target = Document.stickyAt(interaction.board.workingDocument, point);
-    if (!target.some || target.value.id === interaction.session.sourceId) {
+    const target = ConnectionTarget.find(
+      interaction.board.workingDocument.stickies,
+      interaction.session.sourceId,
+      { point, zoom: interaction.board.workingDocument.viewport.zoom },
+    );
+    if (!target.some) {
       return idle;
     }
     const added = Document.addConnection(
       interaction.board.workingDocument,
       interaction.session.sourceId,
-      target.value.id,
+      target.value.stickyId,
     );
     if (!added.ok) {
       return { ...idle, error: OptionValue.some(added.error) };
@@ -99,6 +113,7 @@ export const ConnectionInteraction = {
       added.value,
       connection.id,
       interaction.session.anchor,
+      target.value.anchor,
     );
     return {
       ...idle,

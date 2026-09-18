@@ -42,7 +42,7 @@ for (const anchor of Object.values(ANCHORS)) {
     pointer(handle, "pointermove");
     expect(
       host.querySelector("[data-connection-preview]")?.getAttribute("d"),
-    ).toMatch(/270 50$/);
+    ).toMatch(/240 70$/);
     pointer(handle, "pointerup");
     expect(host.querySelector("[data-connection-preview]")).toBeNull();
     expect(host.querySelectorAll(".connection-layer__hit-area")).toHaveLength(
@@ -87,7 +87,80 @@ test("パン・ズーム後もポインター位置の要素へ接続できる",
   pointer(handle, "pointermove", target);
   expect(
     host.querySelector("[data-connection-preview]")?.getAttribute("d"),
-  ).toMatch(/270 50$/);
+  ).toMatch(/240 70$/);
   pointer(handle, "pointerup", target);
   expect(host.querySelectorAll(".connection-layer__hit-area")).toHaveLength(1);
 });
+
+test("接続先に近づくと候補の枠と固定接続点を表示し、離れると解除する", () => {
+  const host = renderEditor(documentWithTwoStickies);
+  clickSurface(host, { x: 50, y: 50 });
+  const handle = host.querySelector('[data-connection-anchor="right"]');
+  if (!(handle instanceof HTMLButtonElement)) {
+    throw new Error("接続ハンドルがない");
+  }
+  handle.setPointerCapture = () => {};
+  pointer(handle, "pointerdown");
+  pointer(handle, "pointermove", { x: 225, y: 70 });
+  expect(
+    host
+      .querySelector('[data-connection-endpoint="target"]')
+      ?.getAttribute("data-sticky-id"),
+  ).toBe(documentWithTwoStickies.stickies[1].id);
+  expect(
+    host
+      .querySelector(".sticky__connection-target")
+      ?.getAttribute("data-connection-anchor"),
+  ).toBe("left");
+  expect(
+    host.querySelector("[data-connection-preview]")?.getAttribute("d"),
+  ).toMatch(/240 70$/);
+  pointer(handle, "pointermove", { x: 600, y: 400 });
+  expect(host.querySelector('[data-connection-endpoint="target"]')).toBeNull();
+});
+
+for (const cancelled of [false, true]) {
+  test(`接続ドラッグ${cancelled ? "取消" : "終了"}後のclickとdblclickで付箋を配置せず、次の通常クリックで配置できる`, () => {
+    const host = renderEditor(documentWithTwoStickies);
+    clickSurface(host, { x: 50, y: 50 });
+    const handle = host.querySelector('[data-connection-anchor="right"]');
+    if (!(handle instanceof HTMLButtonElement)) {
+      throw new Error("接続ハンドルがない");
+    }
+    handle.setPointerCapture = () => {};
+    handle.releasePointerCapture = () => {};
+    pointer(handle, "pointerdown");
+    pointer(handle, "pointermove", { x: 600, y: 400 });
+    if (cancelled) {
+      act(() => {
+        handle.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        );
+      });
+    }
+    pointer(handle, "pointerup", { x: 600, y: 400 });
+    const surface = host.querySelector(".canvas-surface");
+    if (!(surface instanceof HTMLElement)) {
+      throw new Error("キャンバスがない");
+    }
+    act(() => {
+      surface.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1, clientX: 600, clientY: 400 }));
+      surface.dispatchEvent(
+        new MouseEvent("dblclick", {
+          detail: 2,
+          bubbles: true,
+          clientX: 600,
+          clientY: 400,
+        }),
+      );
+    });
+    expect(host.querySelectorAll("article")).toHaveLength(2);
+    expect(host.querySelectorAll(".connection-layer__hit-area")).toHaveLength(
+      0,
+    );
+    pointer(surface, "pointerdown", { x: 600, y: 400 });
+    pointer(surface, "pointerup", { x: 600, y: 400 });
+    clickSurface(host, { x: 600, y: 400 });
+    expect(host.querySelectorAll("article")).toHaveLength(3);
+  });
+}

@@ -882,3 +882,12 @@ body,
 .sticky__connection-handle[data-connection-anchor="bottom"] { top: 100%; left: 50%; }
 .sticky__connection-handle[data-connection-anchor="left"] { top: 50%; left: 0; }
 .sticky__connection-handle:focus-visible { outline: 2px solid var(--sticky-selected-ring); outline-offset: 3px; }
+
+.sticky[data-connection-endpoint="target"] {
+  outline: 2px solid var(--sticky-selected-ring);
+  outline-offset: 3px;
+}
+.sticky__connection-target {
+  background: var(--sticky-selected-ring);
+  pointer-events: none;
+}

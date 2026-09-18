@@ -1,5 +1,10 @@
-import { ConnectionSegment } from "@domain-modeler/canvas-core";
+import type { ConnectionTarget } from "../connection-target";
+import {
+  ConnectionSegment,
+  Option as OptionValue,
+} from "@domain-modeler/canvas-core";
 import type {
+  Option,
   Anchor,
   Point,
   ConnectionId,
@@ -15,6 +20,7 @@ export type ConnectionSession =
       anchor: Anchor;
       origin: Point;
       point: Point;
+      target: Option<ConnectionTarget>;
     }>
   | Readonly<{ status: "selectingSource" }>
   | Readonly<{ status: "selectingTarget"; sourceId: StickyId }>
@@ -28,6 +34,20 @@ export type ConnectionSession =
 
 /** 接続セッションの状態を問い合わせる関数群。 */
 export const ConnectionSession = {
+  /** 接続先の候補として強調する端点を返す。 */
+  targetOf(
+    session: ConnectionSession,
+    stickyId: StickyId,
+  ): Option<ConnectionTarget> {
+    if (
+      session.status === "dragging" &&
+      session.target.some &&
+      session.target.value.stickyId === stickyId
+    ) {
+      return session.target;
+    }
+    return OptionValue.none();
+  },
   /** 操作した辺の外側へ出てからポインターへ向かうプレビュー経路。 */
   previewPath(
     session: Extract<ConnectionSession, { status: "dragging" }>,
@@ -40,9 +60,11 @@ export const ConnectionSession = {
     };
     return ConnectionSegment.toRoute({
       from: session.origin,
-      to: session.point,
+      to: session.target.some ? session.target.value.point : session.point,
       fromOutwardNormal: normals[session.anchor],
-      toOutwardNormal: { x: 0, y: 0 },
+      toOutwardNormal: session.target.some
+        ? session.target.value.outwardNormal
+        : { x: 0, y: 0 },
     }).path;
   },
   /**

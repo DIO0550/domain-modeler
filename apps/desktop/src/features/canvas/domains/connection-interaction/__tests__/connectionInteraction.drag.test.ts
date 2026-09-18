@@ -138,3 +138,67 @@ test("保存して読み直しても接続の始点の辺を維持する", () =>
   }
   expect(parsed.value.connections[0]?.fromAnchor).toBe("bottom");
 });
+
+for (const anchor of Object.values(ANCHORS)) {
+  test(`接続先の${anchor}辺中央へ吸着して端点を保存する`, () => {
+    const point = Sticky.anchorPoint(target, anchor);
+    const started = ConnectionInteraction.beginConnectionDrag(setup(), {
+      stickyId: source.id,
+      anchor: "right",
+    });
+    const moved = ConnectionInteraction.moveConnectionDrag(started, point);
+    expect(moved.session).toMatchObject({
+      target: { some: true, value: { stickyId: target.id, anchor, point } },
+    });
+    const finished = ConnectionInteraction.finishConnectionDrag(moved, point);
+    expect(finished.board.workingDocument.connections[0]).toMatchObject({
+      to: target.id,
+      toAnchor: anchor,
+    });
+    const parsed = Serialize.parse(
+      Serialize.stringify(finished.board.workingDocument),
+    );
+    if (!parsed.ok) {
+      throw new Error(parsed.error.message);
+    }
+    expect(parsed.value.connections[0]?.toAnchor).toBe(anchor);
+  });
+}
+
+test("付箋の少し外で離しても近い辺中央へ接続する", () => {
+  const started = ConnectionInteraction.beginConnectionDrag(setup(), {
+    stickyId: source.id,
+    anchor: "right",
+  });
+  const finished = ConnectionInteraction.finishConnectionDrag(started, {
+    x: 225,
+    y: 70,
+  });
+  expect(finished.board.workingDocument.connections[0]).toMatchObject({
+    to: target.id,
+    toAnchor: "left",
+  });
+});
+
+test("拡大後の近接範囲も画面上24pxを超えない", () => {
+  const initial = ConnectionInteraction.clickAt(
+    ConnectionInteraction.create({
+      ...Document.empty(),
+      viewport: { x: 0, y: 0, zoom: 2 },
+      stickies: [source, target],
+    }),
+    { x: 40, y: 40 },
+  );
+  const started = ConnectionInteraction.beginConnectionDrag(initial, {
+    stickyId: source.id,
+    anchor: "right",
+  });
+  expect(
+    ConnectionInteraction.moveConnectionDrag(started, { x: 227, y: 70 })
+      .session,
+  ).toMatchObject({ target: { some: false } });
+  expect(
+    ConnectionInteraction.moveConnectionDrag(started, { x: 228, y: 70 })
+      .session,
+  ).toMatchObject({ target: { some: true } });
+});

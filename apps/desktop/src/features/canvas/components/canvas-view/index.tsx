@@ -1,6 +1,7 @@
 import {
   useRef,
   useState,
+  type HTMLAttributes,
   type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
@@ -47,6 +48,10 @@ export const HistoryButton = {
 } as const;
 
 type CanvasViewProps = Readonly<{
+  gestureEvents?: Pick<
+    HTMLAttributes<HTMLDivElement>,
+    "onPointerDownCapture" | "onClickCapture" | "onDoubleClickCapture"
+  >;
   viewport: ViewportModel;
   viewportInteraction?: ViewportSurfaceInteraction;
   saveStatus: SaveIndicatorStatus;
@@ -73,6 +78,7 @@ type CanvasViewProps = Readonly<{
  * @returns キャンバス画面。
  */
 export function CanvasView({
+  gestureEvents,
   viewport,
   viewportInteraction,
   saveStatus,
@@ -131,7 +137,7 @@ export function CanvasView({
   };
 
   return (
-    <div className="canvas-view" onKeyDown={handleKeyDown}>
+    <div className="canvas-view" onKeyDown={handleKeyDown} {...gestureEvents}>
       <CanvasToolbar>
         <Palette
           appearances={appearances}

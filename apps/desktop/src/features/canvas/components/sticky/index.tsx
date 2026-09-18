@@ -63,7 +63,7 @@ type StickyProps = Readonly<{
   children?: ReactNode;
   sticky: StickyModel;
   chrome?: StickyChrome;
-  connectionEndpoint?: "source";
+  connectionEndpoint?: "source" | "target";
   onActivate?: () => void;
   onKeyActivate?: () => void;
   manipulation?: StickyManipulation;
