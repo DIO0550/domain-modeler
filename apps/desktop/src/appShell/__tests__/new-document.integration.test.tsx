@@ -188,7 +188,7 @@ test("保存先を選択中は両方の新規作成操作を無効にする", as
 });
 
 
-test("モデルの入力内容は別の文書を作成してから戻っても保持される", async () => {
+test("モデルの構造化プレビューは編集と文書切り替え後も入力内容に追従する", async () => {
   mockIPC((command, payload) => {
     if (command === "save_file_dialog") {
       const kind = (payload as { kind: string }).kind;
@@ -203,9 +203,16 @@ test("モデルの入力内容は別の文書を作成してから戻っても�
   const input = host.querySelector("textarea");
   expect(input).toBeInstanceOf(HTMLTextAreaElement);
   await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(input, "// draft");
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(input, "data 注文 = string");
     input?.dispatchEvent(new Event("input", { bubbles: true }));
   });
+  expect(host.querySelector('[aria-label="構造化プレビュー"] [data-decl-name="注文"]')?.textContent).toContain("string");
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(input, "data 数量 = int constrained 1..100");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(host.querySelector('[data-decl-name="注文"]')).toBeNull();
+  expect(host.querySelector('[data-decl-name="数量"]')?.textContent).toContain("1..100");
   await clickNamed(host, "ファイル");
   await clickNamed(host, "新規キャンバス");
   const modelTab = Array.from(host.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(
@@ -213,7 +220,8 @@ test("モデルの入力内容は別の文書を作成してから戻っても�
   );
   expect(modelTab).toBeDefined();
   await act(async () => modelTab?.click());
-  expect(host.querySelector<HTMLTextAreaElement>('section:not([hidden]) textarea')?.value).toBe("// draft");
+  expect(host.querySelector<HTMLTextAreaElement>('section:not([hidden]) textarea')?.value).toBe("data 数量 = int constrained 1..100");
+  expect(host.querySelector('[data-decl-name="数量"]')?.textContent).toContain("VALUE");
 });
 
 test("モデルの未保存入力を書き終えるまでタブを閉じない", async () => {
