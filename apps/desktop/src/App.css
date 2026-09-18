@@ -905,3 +905,151 @@ body,
 .sticky__connection-target {
   pointer-events: none;
 }
+
+/* 部品選択・作業面・選択詳細を横に分離する。 */
+.canvas-workspace {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+.canvas-sidebar,
+.canvas-inspector {
+  flex: 0 0 180px;
+  min-width: 0;
+  padding: 16px 10px;
+  overflow-y: auto;
+  background: var(--canvas-toolbar-bg);
+  color: var(--shell-text);
+}
+.canvas-sidebar {
+  border-right: 1px solid var(--canvas-toolbar-border);
+}
+.canvas-inspector {
+  border-left: 1px solid var(--canvas-toolbar-border);
+}
+.canvas-sidebar h2,
+.canvas-inspector h2 {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+.canvas-inspector h3 {
+  margin: 16px 0 8px;
+  font-size: 13px;
+}
+.canvas-sidebar p,
+.canvas-inspector p {
+  font-size: 12px;
+  color: var(--shell-muted);
+  overflow-wrap: anywhere;
+}
+.canvas-sidebar .canvas-palette {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.canvas-sidebar .canvas-palette__button {
+  min-height: 36px;
+  padding: 8px;
+  cursor: grab;
+}
+.canvas-sidebar .canvas-palette__swatch {
+  width: 18px;
+  height: 18px;
+}
+.canvas-inspector .canvas-inspector__text {
+  white-space: pre-wrap;
+  color: var(--shell-text);
+}
+.canvas-inspector dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  font-size: 12px;
+}
+.canvas-inspector dt {
+  color: var(--shell-muted);
+}
+.canvas-inspector dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.canvas-surface {
+  min-width: 0;
+}
+.canvas-surface[data-placing="true"] {
+  cursor: crosshair;
+}
+.canvas-surface[data-panning="true"] {
+  cursor: grabbing;
+}
+.canvas-placement-status {
+  padding: 6px 12px;
+  background: var(--canvas-toolbar-bg);
+  font-size: 12px;
+  color: var(--shell-text);
+}
+.canvas-placement-preview {
+  position: absolute;
+  z-index: 100;
+  pointer-events: none;
+  transform-origin: top left;
+  border: 2px dashed var(--sticky-selected-ring);
+  border-radius: 3px;
+  padding: 8px;
+  opacity: 0.65;
+  color: var(--sticky-ink);
+  font-size: 12px;
+}
+.canvas-placement-preview[data-sticky-type="event"] {
+  background: var(--sticky-event);
+}
+.canvas-placement-preview[data-sticky-type="command"] {
+  background: var(--sticky-command);
+}
+.canvas-placement-preview[data-sticky-type="actor"] {
+  background: var(--sticky-actor);
+}
+.canvas-placement-preview[data-sticky-type="aggregate"] {
+  background: var(--sticky-aggregate);
+}
+.canvas-placement-preview[data-sticky-type="policy"] {
+  background: var(--sticky-policy);
+}
+.canvas-placement-preview[data-sticky-type="readModel"] {
+  background: var(--sticky-read-model);
+}
+.canvas-placement-preview[data-sticky-type="externalSystem"] {
+  background: var(--sticky-external-system);
+}
+.canvas-placement-preview[data-sticky-type="hotspot"] {
+  background: var(--sticky-hotspot);
+}
+@media (max-width: 900px) {
+  .canvas-sidebar {
+    flex-basis: 155px;
+    padding: 12px 6px;
+  }
+  .canvas-inspector {
+    flex-basis: 155px;
+    padding: 12px 8px;
+  }
+}
+@media (max-width: 600px) {
+  .canvas-workspace {
+    flex-wrap: wrap;
+  }
+  .canvas-inspector {
+    flex-basis: 100%;
+    max-height: 140px;
+    border-left: 0;
+    border-top: 1px solid var(--canvas-toolbar-border);
+  }
+  .canvas-sidebar {
+    flex-basis: 125px;
+  }
+  .canvas-sidebar .canvas-palette__button {
+    white-space: normal;
+    text-align: left;
+  }
+}

@@ -17,6 +17,7 @@ import {
 } from "../../hooks";
 import { Sticky, StickyChrome } from "../sticky";
 import { CanvasView, HistoryButton } from "../canvas-view";
+import { StickyInspector } from "../sticky-inspector";
 import { ConnectionHandles } from "../connection-handles";
 import { ConnectionLayer } from "../connection-layer";
 
@@ -97,6 +98,21 @@ export function CanvasEditor({
 
   return (
     <CanvasView
+      inspector={
+        <StickyInspector
+          sticky={board.stickies.find(
+            (sticky) =>
+              StickySession.chromeOf(board.session, sticky.id).status !==
+              "plain",
+          )}
+          onEdit={board.pressEnter}
+        />
+      }
+      onPaletteDrop={({ type, point }) => {
+        board.selectType(type);
+        board.clickAt(viewport.toWorldPoint(point));
+        setPlacementActive(false);
+      }}
       placementTool={{
         active: placementActive,
         onSelect: () => {
@@ -105,8 +121,14 @@ export function CanvasEditor({
         },
       }}
       gestureEvents={{
-        onPointerDownCapture: () => {
+        onPointerDownCapture: (event) => {
           suppressConnectionClick.current = false;
+          if (
+            event.target instanceof Element &&
+            event.target.closest(".sticky, .connection-layer")
+          ) {
+            setPlacementActive(false);
+          }
         },
         onClickCapture: stopConnectionClick,
         onDoubleClickCapture: stopConnectionClick,
@@ -175,6 +197,7 @@ export function CanvasEditor({
         board.selectAt(viewport.toWorldPoint(point));
       }}
       onSurfaceDoubleClick={(point) => {
+        setPlacementActive(false);
         board.doubleClickAt(viewport.toWorldPoint(point));
       }}
       onSurfaceKeyDown={(key) => {
@@ -237,6 +260,7 @@ export function CanvasEditor({
               connectionModeActive
                 ? undefined
                 : () => {
+                    setPlacementActive(false);
                     board.select(sticky.id);
                   }
             }
@@ -252,12 +276,14 @@ export function CanvasEditor({
                 ? undefined
                 : {
                     onDragStart: (point) => {
+                      setPlacementActive(false);
                       board.beginDrag(
                         sticky.id,
                         viewport.toWorldClientPoint(point),
                       );
                     },
                     onResizeStart: (corner, point) => {
+                      setPlacementActive(false);
                       board.beginResize(
                         corner,
                         viewport.toWorldClientPoint(point),
