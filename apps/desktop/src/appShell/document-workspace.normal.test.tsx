@@ -423,6 +423,7 @@ test("外部変更の読込中に始めたキャンバス下書きを競合判�
       return () => {};
     },
   );
+  act(() => buttonNamed(host, "Domain Event").click());
   act(() => {
     host.querySelector(".canvas-surface")?.dispatchEvent(
       new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 }),
@@ -992,7 +993,7 @@ test("連続した外部キャンバス変更をundoすると直前の外部状�
   await vi.waitFor(() => {
     expect(host.querySelectorAll("article")).toHaveLength(2);
   });
-  act(() => buttonNamed(host, "元に戻す").click());
+  undoCanvas(host);
   expect(host.querySelectorAll("article")).toHaveLength(1);
   expect(host.textContent).toContain("older");
   expect(host.textContent).not.toContain("newer");
@@ -1026,6 +1027,7 @@ test("キャンバスの編集中下書きと外部変更が競合したら下�
     watchOperations,
     () => {},
   );
+  act(() => buttonNamed(host, "Domain Event").click());
   act(() => {
     host.querySelector(".canvas-surface")?.dispatchEvent(
       new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 }),
@@ -1110,6 +1112,7 @@ test("キャンバス下書きの競合上書きに失敗しても再試行で�
     watchOperations,
     () => {},
   );
+  act(() => buttonNamed(host, "Domain Event").click());
   act(() => {
     host.querySelector(".canvas-surface")?.dispatchEvent(
       new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 }),
@@ -1193,6 +1196,7 @@ test("終了flushはキャンバスの編集中下書きを確定して保存す
       return () => {};
     },
   );
+  act(() => buttonNamed(host, "Domain Event").click());
   act(() => {
     host.querySelector(".canvas-surface")?.dispatchEvent(
       new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 }),
@@ -1260,6 +1264,7 @@ test("終了flushの書込中に始まったキャンバス下書きも再flush�
       return () => {};
     },
   );
+  act(() => buttonNamed(host, "Domain Event").click());
   act(() => {
     host.querySelector(".canvas-surface")?.dispatchEvent(
       new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 }),
@@ -1340,9 +1345,7 @@ test("外部キャンバス変更を取り込んだ後もundoで変更前へ戻�
   });
 
   expect(host.querySelectorAll("article")).toHaveLength(1);
-  const undo = buttonNamed(host, "元に戻す");
-  expect(undo.getAttribute("aria-disabled")).toBe("false");
-  act(() => undo.click());
+  undoCanvas(host);
   expect(host.querySelectorAll("article")).toHaveLength(0);
 });
 
@@ -1442,6 +1445,7 @@ test("ドラッグ中に背景へ移した付箋は開始位置へ戻り復帰�
   });
   const { host, rerender } = renderWorkspace(first);
   const surface = host.querySelector<HTMLElement>(".canvas-surface");
+  act(() => buttonNamed(host, "Domain Event").click());
   act(() => {
     surface?.dispatchEvent(
       new MouseEvent("click", {
@@ -1543,6 +1547,7 @@ test("ドラッグ中の一時位置は自動保存せず確定後の位置だ�
     documentType: "canvas",
   });
   const { host } = renderWorkspace(tabsState, operations);
+  act(() => buttonNamed(host, "Domain Event").click());
   act(() => {
     host.querySelector(".canvas-surface")?.dispatchEvent(
       new MouseEvent("click", {
@@ -1626,10 +1631,17 @@ test("キャンバス文書を切り替えると種別の選択は文書ごと�
 
   rerender(bothOpen);
 
-  expect(buttonNamed(host, "Domain Event").getAttribute("aria-pressed")).toBe(
+  expect(buttonNamed(host, "選択").getAttribute("aria-pressed")).toBe(
     "true",
   );
   expect(buttonNamed(host, "Command").getAttribute("aria-pressed")).toBe(
     "false",
   );
 });
+
+/** アクティブキャンバスへundoショートカットを送る。 */
+const undoCanvas = (host: HTMLDivElement): void => {
+  const surface = host.querySelector(".canvas-surface");
+  if (!surface) { throw new Error("キャンバスがありません"); }
+  act(() => surface.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+};

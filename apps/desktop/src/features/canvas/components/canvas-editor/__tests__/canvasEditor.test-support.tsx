@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach } from "vitest";
+import { afterEach, expect } from "vitest";
 import {
   ConnectionId,
   Document,
@@ -87,10 +87,7 @@ export const renderEditor = (
 
   act(() => {
     root.render(
-      <CanvasEditor
-        saveStatus="saved"
-        initialDocument={initialDocument}
-      />,
+      <CanvasEditor saveStatus="saved" initialDocument={initialDocument} />,
     );
   });
 
@@ -190,8 +187,30 @@ export const articleOf = (host: HTMLDivElement): HTMLElement => {
 
 /** 描画された本文エディタを返す。 */
 export const editorOf = (host: HTMLDivElement): HTMLTextAreaElement => {
-  const found = host.querySelector("textarea");
+  const found = host.querySelector(".sticky__editor");
   return found instanceof HTMLTextAreaElement
     ? found
     : document.createElement("textarea");
+};
+
+/** 履歴ショートカットをキャンバスへ送る。 */
+export const undo = (host: HTMLDivElement): void => {
+  act(() => {
+    host
+      .querySelector(".canvas-surface")
+      ?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "z",
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+  });
+};
+
+/** undo対象が無いときに表示文書が変わらないことを検証する。 */
+export const expectUndoUnchanged = (host: HTMLDivElement): void => {
+  const before = host.querySelector(".canvas-world")?.innerHTML;
+  undo(host);
+  expect(host.querySelector(".canvas-world")?.innerHTML).toBe(before);
 };

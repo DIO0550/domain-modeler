@@ -57,6 +57,7 @@ test.each(["model", "canvas"])("開いている %s のパスを別の大文字�
   await clickNamed(host, "ファイル");
   await clickNamed(host, label);
   const textarea = host.querySelector("textarea");
+  if (textarea === null) { await clickNamed(host, "Domain Event"); }
   await act(async () => {
     if (textarea !== null) {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(textarea, "// draft");
@@ -117,7 +118,7 @@ test.each([
   await clickNamed(host, label);
   expect(files.get(path)).toBe(contents);
   expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain("new.");
-  const editorLabel = kind === "model" ? "ドメインモデルのテキスト" : "キャンバスツール";
+  const editorLabel = kind === "model" ? "ドメインモデルのテキスト" : "部品パレット";
   expect(host.querySelector(`[aria-label="${editorLabel}"]`)).not.toBeNull();
   expect(host.querySelector('[role="alert"]')).toBeNull();
 });
@@ -313,6 +314,7 @@ test("キャンバスの編集内容を保存してからタブを閉じる", as
   const host = renderApp();
   await clickNamed(host, "ファイル");
   await clickNamed(host, "新規キャンバス");
+  await clickNamed(host, "Domain Event");
   act(() => {
     host.querySelector(".canvas-surface")?.dispatchEvent(
       new MouseEvent("click", {

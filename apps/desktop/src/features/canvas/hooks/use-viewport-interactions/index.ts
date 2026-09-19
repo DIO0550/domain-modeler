@@ -1,3 +1,4 @@
+import { PointerDrag } from "../../domains/pointer-drag";
 import {
   useCallback,
   useEffect,
@@ -21,7 +22,7 @@ type ChangeViewport = (change: ViewportChange) => void;
 type PanningPointer =
   | Readonly<{ status: "idle" }>
   | Readonly<{
-      status: "panning";
+      status: "pending" | "panning";
       pointerId: number;
       button: 0 | 1;
       point: Point;
@@ -118,7 +119,7 @@ export function useViewportInteractions(
   }, []);
   const finishPanning = useCallback((pointerId: number) => {
     if (
-      panningPointer.current.status !== "panning" ||
+      panningPointer.current.status === "idle" ||
       panningPointer.current.pointerId !== pointerId
     ) {
       return;
@@ -130,7 +131,7 @@ export function useViewportInteractions(
     const current = panningPointer.current;
     if (
       pointerId !== undefined &&
-      (current.status !== "panning" || current.pointerId !== pointerId)
+      (current.status === "idle" || current.pointerId !== pointerId)
     ) {
       return;
     }
@@ -238,24 +239,31 @@ export function useViewportInteractions(
         }
         event.stopPropagation();
         event.currentTarget.setPointerCapture(event.pointerId);
+        const immediate = startsWithMiddleButton || startsWithSpace;
         panningPointer.current = {
-          status: "panning",
+          status: immediate ? "panning" : "pending",
           pointerId: event.pointerId,
           button: startsWithMiddleButton ? 1 : 0,
           point: { x: event.clientX, y: event.clientY },
         };
         suppressClick.current = startsWithSpace;
-        setIsPanning(true);
+        setIsPanning(immediate);
       },
       onPointerMove: (event) => {
         const current = panningPointer.current;
         if (
-          current.status !== "panning" ||
+          current.status === "idle" ||
           current.pointerId !== event.pointerId
         ) {
           return;
         }
         const point = { x: event.clientX, y: event.clientY };
+        if (current.status === "pending") {
+          if (!PointerDrag.hasStarted({ origin: current.point, point })) {
+            return;
+          }
+          setIsPanning(true);
+        }
         // 中ボタンの終了は click を発火しないため、左ドラッグだけを抑止する。
         if (
           current.button === 0 &&
@@ -267,7 +275,7 @@ export function useViewportInteractions(
           x: point.x - current.point.x,
           y: point.y - current.point.y,
         });
-        panningPointer.current = { ...current, point };
+        panningPointer.current = { ...current, status: "panning", point };
       },
       onPointerUp: (event) => {
         finishPanning(event.pointerId);

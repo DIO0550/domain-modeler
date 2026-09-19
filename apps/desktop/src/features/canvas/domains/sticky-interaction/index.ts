@@ -284,9 +284,14 @@ export const StickyInteraction = {
    *
    * @param interaction クリック前の操作状態。
    * @param point ワールド座標のクリック位置。
+   * @param placementAnchor 配置する付箋に対するクリック位置。
    * @returns 選択または作成後の操作状態。
    */
-  clickAt(interaction: StickyInteraction, point: Point): StickyInteraction {
+  clickAt(
+    interaction: StickyInteraction,
+    point: Point,
+    placementAnchor: "topLeft" | "center" = "topLeft",
+  ): StickyInteraction {
     const committed = commitSession(interaction);
     const hit = Document.stickyAt(committed.workingDocument, point);
     if (hit.some) {
@@ -295,7 +300,11 @@ export const StickyInteraction = {
         session: { status: "selected", stickyId: hit.value.id },
       };
     }
-    return createEditingSticky(committed, point);
+    const position =
+      placementAnchor === "center"
+        ? StickyAppearance.positionAtCenter(committed.selectedType, point)
+        : point;
+    return createEditingSticky(committed, position);
   },
 
   /**

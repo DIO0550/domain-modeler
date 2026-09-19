@@ -1,6 +1,8 @@
 import {
   useRef,
+  useId,
   useState,
+  type HTMLAttributes,
   type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
@@ -8,6 +10,7 @@ import {
 } from "react";
 import {
   STICKY_TYPES,
+  Option,
   type Point,
   type StickyType,
   type Viewport as ViewportModel,
@@ -47,6 +50,16 @@ export const HistoryButton = {
 } as const;
 
 type CanvasViewProps = Readonly<{
+  showToolbar?: boolean;
+  placementTool?: Readonly<{ active: boolean; onSelect: () => void }>;
+  inspector?: ReactNode;
+  onPaletteDrop?: (
+    placement: Readonly<{ type: StickyType; point: Point }>,
+  ) => void;
+  gestureEvents?: Pick<
+    HTMLAttributes<HTMLDivElement>,
+    "onPointerDownCapture" | "onClickCapture" | "onDoubleClickCapture"
+  >;
   viewport: ViewportModel;
   viewportInteraction?: ViewportSurfaceInteraction;
   saveStatus: SaveIndicatorStatus;
@@ -73,6 +86,11 @@ type CanvasViewProps = Readonly<{
  * @returns キャンバス画面。
  */
 export function CanvasView({
+  showToolbar = true,
+  placementTool,
+  inspector,
+  onPaletteDrop,
+  gestureEvents,
   viewport,
   viewportInteraction,
   saveStatus,
@@ -87,6 +105,8 @@ export function CanvasView({
   onKeyDown,
   connectionTool,
 }: CanvasViewProps) {
+  const paletteHelpId = useId();
+  const [dragType, setDragType] = useState<Option<StickyType>>(Option.none());
   const [uncontrolledType, setUncontrolledType] = useState<StickyType>(
     STICKY_TYPES.event,
   );
@@ -131,27 +151,100 @@ export function CanvasView({
   };
 
   return (
-    <div className="canvas-view" onKeyDown={handleKeyDown}>
-      <CanvasToolbar>
-        <Palette
-          appearances={appearances}
-          selectedType={selectedType}
-          onSelectType={selectType}
-        />
-        <HistoryControls undo={undo} redo={redo} />
-        {connectionTool !== undefined && (
-          <ConnectionControls tool={connectionTool} />
-        )}
-      </CanvasToolbar>
-      <CanvasSurface
-        viewport={viewport}
-        viewportInteraction={viewportInteraction}
-        onClick={onSurfaceClick}
-        onDoubleClick={onSurfaceDoubleClick}
-        onKeyDown={onSurfaceKeyDown}
-      >
-        {children}
-      </CanvasSurface>
+    <div className="canvas-view" onKeyDown={handleKeyDown} {...gestureEvents}>
+      {showToolbar && (
+        <CanvasToolbar>
+          {placementTool !== undefined ? (
+            <button
+              type="button"
+              className={paletteButtonClassName(!placementTool.active)}
+              aria-pressed={!placementTool.active}
+              onClick={placementTool.onSelect}
+            >
+              選択
+            </button>
+          ) : null}
+          <HistoryControls undo={undo} redo={redo} />
+          {connectionTool !== undefined && (
+            <ConnectionControls tool={connectionTool} />
+          )}
+        </CanvasToolbar>
+      )}
+      <div className="canvas-workspace">
+        <aside className="canvas-sidebar" aria-label="部品パレット">
+          {placementTool !== undefined && !showToolbar && (
+            <button
+              type="button"
+              className="canvas-sidebar__select"
+              aria-pressed={!placementTool.active}
+              onClick={placementTool.onSelect}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden="true"
+              >
+                <path d="m5 3 14 10-7 1-3 7Z" />
+              </svg>
+              選択
+            </button>
+          )}
+          <h2>部品</h2>
+          <p id={paletteHelpId}>選んで空白をクリック、またはドラッグして配置</p>
+          <Palette
+            helpId={paletteHelpId}
+            appearances={appearances}
+            selectedType={
+              dragType.some
+                ? dragType.value
+                : placementTool !== undefined && !placementTool.active
+                  ? undefined
+                  : selectedType
+            }
+            onSelectType={selectType}
+            dragEvents={{
+              onStart: (type) => {
+                placementTool?.onSelect();
+                setDragType(Option.some(type));
+              },
+              onEnd: () => setDragType(Option.none()),
+            }}
+          />
+        </aside>
+        <CanvasSurface
+          viewport={viewport}
+          viewportInteraction={viewportInteraction}
+          onClick={onSurfaceClick}
+          onDoubleClick={onSurfaceDoubleClick}
+          onKeyDown={onSurfaceKeyDown}
+          placement={
+            dragType.some
+              ? {
+                  status: "dragging",
+                  type: dragType.value,
+                  onDrop: (point) => {
+                    onPaletteDrop?.({ type: dragType.value, point });
+                    setDragType(Option.none());
+                  },
+                }
+              : placementTool?.active
+                ? { status: "placing", type: selectedType }
+                : { status: "inactive" }
+          }
+        >
+          {children}
+        </CanvasSurface>
+        {inspector}
+      </div>
+      {placementTool?.active ? (
+        <div className="canvas-placement-status" role="status">
+          空白をクリックして1個配置 · Escで取消
+        </div>
+      ) : null}
       <CanvasStatusBar saveIndicator={saveIndicator} zoomLabel={zoomLabel} />
     </div>
   );
@@ -194,9 +287,9 @@ type CanvasToolbarProps = Readonly<{
 }>;
 
 /**
- * 種別パレットと undo / redo を並べる上部ツールバー。
+ * 選択・履歴・接続の共通操作を並べる上部ツールバー。
  *
- * @param props パレットと履歴の子要素。
+ * @param props 共通操作の子要素。
  * @returns ツールバー。
  */
 function CanvasToolbar({ children }: CanvasToolbarProps) {
@@ -208,9 +301,14 @@ function CanvasToolbar({ children }: CanvasToolbarProps) {
 }
 
 type PaletteProps = Readonly<{
+  helpId: string;
   appearances: readonly StickyAppearance[];
-  selectedType: StickyType;
+  selectedType: StickyType | undefined;
   onSelectType: (type: StickyType) => void;
+  dragEvents: Readonly<{
+    onStart: (type: StickyType) => void;
+    onEnd: () => void;
+  }>;
 }>;
 
 /**
@@ -219,15 +317,23 @@ type PaletteProps = Readonly<{
  * @param props 種別表示、選択中の種別、選択ハンドラ。
  * @returns 種別ボタン群。
  */
-function Palette({ appearances, selectedType, onSelectType }: PaletteProps) {
+function Palette({
+  helpId,
+  appearances,
+  selectedType,
+  onSelectType,
+  dragEvents,
+}: PaletteProps) {
   return (
     <div className="canvas-palette" role="group" aria-label="付箋種別">
       {appearances.map((appearance) => (
         <PaletteButton
           key={appearance.type}
+          helpId={helpId}
           appearance={appearance}
           selected={appearance.type === selectedType}
           onSelect={onSelectType}
+          dragEvents={dragEvents}
         />
       ))}
     </div>
@@ -255,9 +361,11 @@ function HistoryControls({ undo, redo }: HistoryControlsProps) {
 }
 
 type PaletteButtonProps = Readonly<{
+  helpId: string;
   appearance: StickyAppearance;
   selected: boolean;
   onSelect: (type: StickyType) => void;
+  dragEvents: PaletteProps["dragEvents"];
 }>;
 
 /**
@@ -266,14 +374,39 @@ type PaletteButtonProps = Readonly<{
  * @param props 種別表示、選択中か、選択ハンドラ。
  * @returns 種別ボタン。
  */
-function PaletteButton({ appearance, selected, onSelect }: PaletteButtonProps) {
+function PaletteButton({
+  helpId,
+  appearance,
+  selected,
+  onSelect,
+  dragEvents,
+}: PaletteButtonProps) {
+  const suppressClick = useRef(false);
   return (
     <button
       type="button"
       className={paletteButtonClassName(selected)}
       aria-pressed={selected}
       aria-label={appearance.caption}
-      onClick={() => {
+      aria-describedby={helpId}
+      draggable
+      onPointerDown={() => {
+        suppressClick.current = false;
+      }}
+      onDragStart={(event) => {
+        suppressClick.current = true;
+        event.dataTransfer.setData(
+          "application/x-domain-modeler-sticky",
+          appearance.type,
+        );
+        event.dataTransfer.effectAllowed = "copy";
+        dragEvents.onStart(appearance.type);
+      }}
+      onDragEnd={dragEvents.onEnd}
+      onClick={(event) => {
+        if (suppressClick.current && event.detail !== 0) {
+          return;
+        }
         onSelect(appearance.type);
       }}
     >
@@ -320,6 +453,14 @@ function HistoryControlButton({ label, button }: HistoryControlButtonProps) {
 type CanvasSurfaceProps = Readonly<{
   viewport: ViewportModel;
   viewportInteraction?: ViewportSurfaceInteraction;
+  placement:
+    | Readonly<{ status: "inactive" }>
+    | Readonly<{ status: "placing"; type: StickyType }>
+    | Readonly<{
+        status: "dragging";
+        type: StickyType;
+        onDrop: (point: Point) => void;
+      }>;
   children?: ReactNode;
   onClick?: (point: Point) => void;
   onDoubleClick?: (point: Point) => void;
@@ -340,6 +481,7 @@ type CanvasSurfaceStyle = CSSProperties &
  * @returns キャンバス面。
  */
 function CanvasSurface({
+  placement,
   viewport,
   viewportInteraction,
   children,
@@ -347,7 +489,16 @@ function CanvasSurface({
   onDoubleClick,
   onKeyDown,
 }: CanvasSurfaceProps) {
+  const [pointer, setPointer] = useState<Option<Point>>(Option.none());
   const surfaceRef = useCanvasSurface(viewportInteraction);
+  const appearance =
+    placement.status === "inactive"
+      ? undefined
+      : StickyAppearance.of(placement.type);
+  const isBackground = (
+    target: EventTarget | null,
+    surface: HTMLDivElement,
+  ): boolean => target === surface || target === surface.firstElementChild;
   const pendingClick = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -376,6 +527,7 @@ function CanvasSurface({
           : 0
       }
       data-panning={viewportInteraction?.isPanning}
+      data-placing={placement.status !== "inactive"}
       style={style}
       onPointerDownCapture={(event) => {
         viewportInteraction?.onPointerDown(
@@ -384,7 +536,52 @@ function CanvasSurface({
             event.target === event.currentTarget.firstElementChild,
         );
       }}
-      onPointerMove={viewportInteraction?.onPointerMove}
+      onPointerMove={(event) => {
+        viewportInteraction?.onPointerMove(event);
+        if (placement.status === "inactive") {
+          return;
+        }
+        setPointer(
+          isBackground(event.target, event.currentTarget) && event.buttons === 0
+            ? Option.some(surfacePointFromMouse(event))
+            : Option.none(),
+        );
+      }}
+      onPointerLeave={() => setPointer(Option.none())}
+      onDragOver={(event) => {
+        if (placement.status !== "dragging") {
+          return;
+        }
+        event.preventDefault();
+        const background = isBackground(event.target, event.currentTarget);
+        event.dataTransfer.dropEffect = background ? "copy" : "none";
+        setPointer(
+          background
+            ? Option.some(surfacePointFromMouse(event))
+            : Option.none(),
+        );
+      }}
+      onDragLeave={(event) => {
+        if (
+          event.relatedTarget instanceof Node &&
+          event.currentTarget.contains(event.relatedTarget)
+        ) {
+          return;
+        }
+        setPointer(Option.none());
+      }}
+      onDrop={(event) => {
+        if (placement.status !== "dragging") {
+          return;
+        }
+        event.preventDefault();
+        cancelPendingClick();
+        setPointer(Option.none());
+        if (!isBackground(event.target, event.currentTarget)) {
+          return;
+        }
+        placement.onDrop(surfacePointFromMouse(event));
+      }}
       onPointerUp={viewportInteraction?.onPointerUp}
       onPointerCancel={viewportInteraction?.onPointerCancel}
       onLostPointerCapture={viewportInteraction?.onLostPointerCapture}
@@ -422,6 +619,24 @@ function CanvasSurface({
       }}
     >
       <CanvasWorld viewport={viewport}>{children}</CanvasWorld>
+      {appearance !== undefined &&
+      pointer.some &&
+      !viewportInteraction?.isPanning ? (
+        <div
+          className="canvas-placement-preview"
+          data-sticky-type={appearance.type}
+          aria-hidden="true"
+          style={{
+            left: pointer.value.x,
+            top: pointer.value.y,
+            width: appearance.defaultSize.width,
+            height: appearance.defaultSize.height,
+            transform: `scale(${viewport.zoom}) translate(-50%, -50%)`,
+          }}
+        >
+          {appearance.caption}
+        </div>
+      ) : null}
     </div>
   );
 }
