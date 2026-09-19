@@ -1,5 +1,5 @@
 {
-  "reportVersion": "dcb564d91c06f80eeb2851a94c84045ea2f6f08a",
+  "reportVersion": "77cf9d5b960c0d474ce0289e95ada05573e69178",
   "maxDiffRatio": 0.002,
   "changed": 14,
   "new": 0,
@@ -222,7 +222,7 @@
       "name": "Edge Cases",
       "status": "changed",
       "reason": "pixel-diff",
-      "diffPixels": 148372,
+      "diffPixels": 148370,
       "diffRatio": 0.161,
       "hasExpected": true,
       "hasActual": true,
