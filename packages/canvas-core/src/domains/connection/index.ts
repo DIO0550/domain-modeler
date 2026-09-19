@@ -1,5 +1,5 @@
 import type { Brand } from "../brand";
-import type { Anchor, StickyId } from "../sticky";
+import { ANCHORS, Sticky, type Anchor, type StickyId } from "../sticky";
 
 export type { Anchor } from "../sticky";
 
@@ -40,6 +40,34 @@ const normalizeNoteFragment = (text: string): string =>
 
 /** `Connection` を生成する関数群。 */
 export const Connection = {
+  /**
+   * 両付箋の四辺中央から、距離が最短になるアンカーの組を選ぶ。
+   * @param endpoints 接続元と接続先の付箋。
+   * @returns 最短の始点・終点アンカー。同距離では四辺の列挙順を優先する。
+   */
+  nearestAnchors: (
+    endpoints: Readonly<{ from: Sticky; to: Sticky }>,
+  ): Readonly<{
+    fromAnchor: Anchor;
+    toAnchor: Anchor;
+  }> => {
+    const anchors = Object.values(ANCHORS);
+    const pairs = anchors.flatMap((fromAnchor) =>
+      anchors.map((toAnchor) => {
+        const from = Sticky.anchorPoint(endpoints.from, fromAnchor);
+        const to = Sticky.anchorPoint(endpoints.to, toAnchor);
+        return {
+          fromAnchor,
+          toAnchor,
+          distance: Math.hypot(to.x - from.x, to.y - from.y),
+        };
+      }),
+    );
+    const nearest = pairs.reduce((best, candidate) =>
+      candidate.distance < best.distance ? candidate : best,
+    );
+    return { fromAnchor: nearest.fromAnchor, toAnchor: nearest.toAnchor };
+  },
   /**
    * 指定された始点、終点、表示情報から接続を生成する。
    * @param id 接続ID。

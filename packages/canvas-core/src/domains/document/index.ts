@@ -4,7 +4,7 @@ import { Size, Sticky, StickyId, type StickyType } from "../sticky";
 import { StickyIndex } from "../sticky-index";
 import {
   type Anchor,
-  type Connection,
+  Connection,
   ConnectionId,
 } from "../connection";
 import { CanvasError } from "../error";
@@ -186,12 +186,42 @@ export const Document = {
    * @param position 移動後の位置。
    * @returns 付箋を移動した文書。
    */
-  moveSticky: (doc: Document, stickyId: StickyId, position: Point): Document => ({
-    ...doc,
-    stickies: doc.stickies.map((sticky) =>
-      sticky.id === stickyId ? { ...sticky, position } : sticky,
+  moveSticky: (doc: Document, stickyId: StickyId, position: Point): Document =>
+    Document.reconnectSticky(
+      {
+        ...doc,
+        stickies: doc.stickies.map((sticky) =>
+          sticky.id === stickyId ? { ...sticky, position } : sticky,
+        ),
+      },
+      stickyId,
     ),
-  }),
+  /**
+   * 指定付箋の接続を、現在の位置とサイズに対して最短の辺中央へ付け直す。
+   * @param doc 位置・サイズを更新済みの文書。
+   * @param stickyId 更新した付箋のID。
+   * @returns 関連する接続のアンカーを更新した文書。
+   */
+  reconnectSticky: (doc: Document, stickyId: StickyId): Document => {
+    const index = StickyIndex.create(doc.stickies);
+    return {
+      ...doc,
+      connections: doc.connections.map((connection) => {
+        if (connection.from !== stickyId && connection.to !== stickyId) {
+          return connection;
+        }
+        const from = StickyIndex.get(index, connection.from);
+        const to = StickyIndex.get(index, connection.to);
+        if (!from.some || !to.some) {
+          return connection;
+        }
+        return {
+          ...connection,
+          ...Connection.nearestAnchors({ from: from.value, to: to.value }),
+        };
+      }),
+    };
+  },
   /**
    * 付箋のサイズを変更する。
    * @param doc 変更対象の文書。
@@ -206,16 +236,24 @@ export const Document = {
   ): Result<Document> => {
     if (!Size.isValid(size)) {
       return Result.err(
-        CanvasError.create("INVALID_STICKY_SIZE", "Sticky size must be positive"),
+        CanvasError.create(
+          "INVALID_STICKY_SIZE",
+          "Sticky size must be positive",
+        ),
       );
     }
 
-    return Result.ok({
-      ...doc,
-      stickies: doc.stickies.map((sticky) =>
-        sticky.id === stickyId ? { ...sticky, size } : sticky,
+    return Result.ok(
+      Document.reconnectSticky(
+        {
+          ...doc,
+          stickies: doc.stickies.map((sticky) =>
+            sticky.id === stickyId ? { ...sticky, size } : sticky,
+          ),
+        },
+        stickyId,
       ),
-    });
+    );
   },
   /**
    * 付箋の種別を変更する。

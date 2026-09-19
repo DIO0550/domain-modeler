@@ -1,5 +1,5 @@
 import {
-  ANCHORS,
+  Connection,
   Sticky,
   Option,
   type Anchor,
@@ -47,27 +47,16 @@ export const ConnectionTarget = {
     if (sticky === undefined || source === undefined) {
       return Option.none();
     }
-    const anchors = Object.values(ANCHORS);
-    const pairs = anchors.flatMap((fromAnchor) =>
-      anchors.map((anchor) => ({
-        fromAnchor,
-        fromPoint: Sticky.anchorPoint(source, fromAnchor),
-        anchor,
-        point: Sticky.anchorPoint(sticky, anchor),
-      })),
-    );
-    const nearest = pairs.reduce((best, candidate) =>
-      Math.hypot(
-        candidate.point.x - candidate.fromPoint.x,
-        candidate.point.y - candidate.fromPoint.y,
-      ) <
-      Math.hypot(
-        best.point.x - best.fromPoint.x,
-        best.point.y - best.fromPoint.y,
-      )
-        ? candidate
-        : best,
-    );
+    const { fromAnchor, toAnchor } = Connection.nearestAnchors({
+      from: source,
+      to: sticky,
+    });
+    const nearest = {
+      fromAnchor,
+      fromPoint: Sticky.anchorPoint(source, fromAnchor),
+      anchor: toAnchor,
+      point: Sticky.anchorPoint(sticky, toAnchor),
+    };
     return Option.some({
       stickyId: sticky.id,
       ...nearest,
