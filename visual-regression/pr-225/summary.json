@@ -1,5 +1,5 @@
 {
-  "reportVersion": "77cf9d5b960c0d474ce0289e95ada05573e69178",
+  "reportVersion": "3c46386d5ee99c60e349ca8bc5b0cdb6b98b979b",
   "maxDiffRatio": 0.002,
   "changed": 14,
   "new": 0,
@@ -183,8 +183,8 @@
       "name": "All Props",
       "status": "changed",
       "reason": "pixel-diff",
-      "diffPixels": 49674,
-      "diffRatio": 0.053899999999999997,
+      "diffPixels": 49147,
+      "diffRatio": 0.0533,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
@@ -222,7 +222,7 @@
       "name": "Edge Cases",
       "status": "changed",
       "reason": "pixel-diff",
-      "diffPixels": 148370,
+      "diffPixels": 148369,
       "diffRatio": 0.161,
       "hasExpected": true,
       "hasActual": true,
@@ -235,8 +235,8 @@
       "name": "Editing",
       "status": "changed",
       "reason": "pixel-diff",
-      "diffPixels": 49830,
-      "diffRatio": 0.0541,
+      "diffPixels": 49286,
+      "diffRatio": 0.0535,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
@@ -429,12 +429,12 @@
       "title": "features/canvas/components/Sticky",
       "name": "Editing",
       "status": "passed",
-      "reason": "match",
-      "diffPixels": 0,
-      "diffRatio": 0,
+      "reason": "within-threshold",
+      "diffPixels": 1588,
+      "diffRatio": 0.0017000000000000001,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": false
+      "hasDiff": true
     },
     {
       "story": "features-canvas-components-sticky--empty",
@@ -481,12 +481,12 @@
       "title": "features/canvas/components/Sticky",
       "name": "Selected",
       "status": "passed",
-      "reason": "match",
-      "diffPixels": 0,
-      "diffRatio": 0,
+      "reason": "within-threshold",
+      "diffPixels": 1588,
+      "diffRatio": 0.0017000000000000001,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": false
+      "hasDiff": true
     },
     {
       "story": "features-model-components-preview-data-card-previewdatacard--all-props",
