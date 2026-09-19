@@ -110,7 +110,7 @@ export function CanvasEditor({
       }
       onPaletteDrop={({ type, point }) => {
         board.selectType(type);
-        board.clickAt(viewport.toWorldPoint(point));
+        board.placeAt(viewport.toWorldPoint(point));
         setPlacementActive(false);
       }}
       placementTool={{
@@ -190,7 +190,7 @@ export function CanvasEditor({
       }}
       onSurfaceClick={(point) => {
         if (placementActive) {
-          board.clickAt(viewport.toWorldPoint(point));
+          board.placeAt(viewport.toWorldPoint(point));
           setPlacementActive(false);
           return;
         }

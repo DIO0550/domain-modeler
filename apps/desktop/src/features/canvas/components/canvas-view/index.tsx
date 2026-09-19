@@ -606,7 +606,7 @@ function CanvasSurface({
             top: pointer.value.y,
             width: appearance.defaultSize.width,
             height: appearance.defaultSize.height,
-            transform: `scale(${viewport.zoom})`,
+            transform: `scale(${viewport.zoom}) translate(-50%, -50%)`,
           }}
         >
           {appearance.caption}

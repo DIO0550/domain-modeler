@@ -352,8 +352,14 @@ test("Ctrl ホイールの前後でカーソル下のワールド座標を維持
   clickSurface(host, { x: 240, y: 180 });
 
   const sticky = articleOf(host);
-  expect(Number.parseFloat(sticky.style.left)).toBeCloseTo(240);
-  expect(Number.parseFloat(sticky.style.top)).toBeCloseTo(180);
+  expect(
+    Number.parseFloat(sticky.style.left) +
+      Number.parseFloat(sticky.style.width) / 2,
+  ).toBeCloseTo(240);
+  expect(
+    Number.parseFloat(sticky.style.top) +
+      Number.parseFloat(sticky.style.height) / 2,
+  ).toBeCloseTo(180);
   expect(canvasWorldOf(host).style.transform).not.toBe(
     "translate(0px, 0px) scale(1)",
   );

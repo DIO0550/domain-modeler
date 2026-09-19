@@ -57,6 +57,8 @@ test("部品を選んでカーソルを動かすと配置位置にプレビュ�
   expect(preview.style.top).toBe("150px");
   expect(host.querySelectorAll("article")).toHaveLength(0);
   clickSurface(host, { x: 200, y: 150 });
+  expect(elementOf(host, "article").style.left).toBe("120px");
+  expect(elementOf(host, "article").style.top).toBe("100px");
   expect(host.querySelector(".canvas-placement-preview")).toBeNull();
   clickSurface(host, { x: 500, y: 400 });
   expect(host.querySelectorAll("article")).toHaveLength(1);
@@ -72,14 +74,14 @@ test("パレットからのドロップはパン・ズームを反映した座�
   drag(palette, "dragstart");
   drag(surface, "dragover");
   expect(elementOf(host, ".canvas-placement-preview").style.transform).toBe(
-    "scale(2)",
+    "scale(2) translate(-50%, -50%)",
   );
   drag(surface, "drop");
   drag(palette, "dragend");
   const sticky = elementOf(host, "article");
   expect(sticky.dataset.stickyType).toBe("command");
-  expect(sticky.style.left).toBe("180px");
-  expect(sticky.style.top).toBe("140px");
+  expect(sticky.style.left).toBe("100px");
+  expect(sticky.style.top).toBe("90px");
   clickSurface(host, { x: 700, y: 500 });
   expect(host.querySelectorAll("article")).toHaveLength(1);
   expect(buttonNamed(host, "選択").getAttribute("aria-pressed")).toBe("true");
@@ -171,4 +173,13 @@ test("付箋を選ぶと右パネルに本文を表示し、編集ボタンか�
   });
   expect(elementOf(host, "article").dataset.stickySession).toBe("editing");
   expect(host.querySelector("textarea")).not.toBeNull();
+});
+
+test("付箋の左上が既存付箋に重なってもカーソルの中心が空白なら配置できる", () => {
+  const host = renderEditor(existingStickyDocument);
+  act(() => {
+    buttonNamed(host, "Command").click();
+  });
+  clickSurface(host, { x: 200, y: 140 });
+  expect(host.querySelectorAll("article")).toHaveLength(2);
 });
