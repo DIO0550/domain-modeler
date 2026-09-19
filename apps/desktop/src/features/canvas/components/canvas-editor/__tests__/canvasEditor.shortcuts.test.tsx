@@ -59,7 +59,7 @@ test.each([
     "true",
   );
   press(articleOf(host), { key: "v", [modifier]: true });
-  const pasted = host.querySelector("article:last-child");
+  const pasted = host.querySelector('article[data-sticky-session="selected"]');
   expect(host.querySelectorAll("article")).toHaveLength(3);
   expect(pasted?.getAttribute("data-sticky-id")).not.toBe("stk_existing000");
   expect(pasted?.textContent).toContain("注文が確定した");
@@ -85,7 +85,10 @@ test("コピー元を削除してもスナップショットを連続して貼�
   press(toolbar, { key: "v", ctrlKey: true });
   press(toolbar, { key: "v", ctrlKey: true });
   const stickies = [...host.querySelectorAll("article")];
-  expect(stickies.map((sticky) => sticky.style.left)).toEqual(["34px", "58px"]);
+  expect(stickies.map((sticky) => sticky.style.left).sort()).toEqual([
+    "34px",
+    "58px",
+  ]);
   expect(new Set(stickies.map((sticky) => sticky.dataset.stickyId)).size).toBe(
     2,
   );
@@ -98,15 +101,15 @@ test("最前面移動は1操作で undo でき、既に最前面なら履歴を�
   press(toolbar, { key: "]", metaKey: true, shiftKey: true });
   press(toolbar, { key: "}", metaKey: true, shiftKey: true });
   expect(
-    [...host.querySelectorAll("article")].map(
-      (sticky) => sticky.dataset.stickyId,
-    ),
+    [...host.querySelectorAll<HTMLElement>("article")]
+      .sort((a, b) => Number(a.style.zIndex) - Number(b.style.zIndex))
+      .map((sticky) => sticky.dataset.stickyId),
   ).toEqual(["stk_front0000000", "stk_existing000"]);
   press(toolbar, { key: "z", metaKey: true });
   expect(
-    [...host.querySelectorAll("article")].map(
-      (sticky) => sticky.dataset.stickyId,
-    ),
+    [...host.querySelectorAll<HTMLElement>("article")]
+      .sort((a, b) => Number(a.style.zIndex) - Number(b.style.zIndex))
+      .map((sticky) => sticky.dataset.stickyId),
   ).toEqual(["stk_existing000", "stk_front0000000"]);
 });
 
@@ -141,7 +144,9 @@ test.each(["input", "select"])("%s 内のキー入力を妨げない", (kind) =>
   const control = document.createElement(kind);
   host.querySelector(".canvas-surface")?.append(control);
   expect(press(control, { key: "Delete" }).defaultPrevented).toBe(false);
-  expect(press(control, { key: "=", ctrlKey: true }).defaultPrevented).toBe(false);
+  expect(press(control, { key: "=", ctrlKey: true }).defaultPrevented).toBe(
+    false,
+  );
   expect(host.querySelectorAll("article")).toHaveLength(1);
   expect(host.querySelector('[aria-label="ズーム 100%"]')).not.toBeNull();
 });
@@ -155,7 +160,9 @@ test("contenteditable の子要素で編集標準キーを妨げない", () => {
   control.append(child);
   host.querySelector(".canvas-surface")?.append(control);
   expect(press(child, { key: "Delete" }).defaultPrevented).toBe(false);
-  expect(press(child, { key: "=", ctrlKey: true }).defaultPrevented).toBe(false);
+  expect(press(child, { key: "=", ctrlKey: true }).defaultPrevented).toBe(
+    false,
+  );
   expect(host.querySelectorAll("article")).toHaveLength(1);
   expect(host.querySelector('[aria-label="ズーム 100%"]')).not.toBeNull();
 });
@@ -195,7 +202,10 @@ test("別キャンバスと画面外にはショートカットを適用しな�
   expect(second.querySelector('[aria-label="ズーム 100%"]')).not.toBeNull();
 });
 
-test.each(["Delete", "Backspace"])("フォーカス中の付箋を %s で削除してもキーだけで undo/redo できる", async (key) => {
+test.each([
+  "Delete",
+  "Backspace",
+])("フォーカス中の付箋を %s で削除してもキーだけで undo/redo できる", async (key) => {
   const host = renderEditor(existingStickyDocument);
   clickSurface(host, { x: 20, y: 30 });
   articleOf(host).focus();
@@ -206,7 +216,11 @@ test.each(["Delete", "Backspace"])("フォーカス中の付箋を %s で削除�
   expect(document.activeElement).toBe(host.querySelector(".canvas-surface"));
   press(document.activeElement ?? document.body, { key: "z", ctrlKey: true });
   expect(host.querySelectorAll("article")).toHaveLength(1);
-  press(document.activeElement ?? document.body, { key: "z", ctrlKey: true, shiftKey: true });
+  press(document.activeElement ?? document.body, {
+    key: "z",
+    ctrlKey: true,
+    shiftKey: true,
+  });
   expect(host.querySelectorAll("article")).toHaveLength(0);
 });
 
@@ -231,7 +245,9 @@ test("貼り付けた付箋にフォーカスして undo してもキーだけ�
   articleOf(host).focus();
   press(document.activeElement ?? document.body, { key: "c", ctrlKey: true });
   press(document.activeElement ?? document.body, { key: "v", ctrlKey: true });
-  const pasted = host.querySelector<HTMLElement>("article:last-child");
+  const pasted = host.querySelector<HTMLElement>(
+    'article[data-sticky-session="selected"]',
+  );
   expect(pasted).not.toBeNull();
   pasted?.focus();
   expect(document.activeElement).toBe(pasted);
@@ -239,7 +255,11 @@ test("貼り付けた付箋にフォーカスして undo してもキーだけ�
   await Promise.resolve();
   expect(host.querySelectorAll("article")).toHaveLength(1);
   expect(document.activeElement).toBe(host.querySelector(".canvas-surface"));
-  press(document.activeElement ?? document.body, { key: "z", ctrlKey: true, shiftKey: true });
+  press(document.activeElement ?? document.body, {
+    key: "z",
+    ctrlKey: true,
+    shiftKey: true,
+  });
   expect(host.querySelectorAll("article")).toHaveLength(2);
 });
 
@@ -259,7 +279,11 @@ test("削除後に別キャンバスへ移ったフォーカスを奪わない",
 test("ズームで要素が残る場合は付箋のフォーカスを維持する", async () => {
   const host = renderEditor(existingStickyDocument);
   articleOf(host).focus();
-  press(document.activeElement ?? document.body, { key: "^", code: "Equal", ctrlKey: true });
+  press(document.activeElement ?? document.body, {
+    key: "^",
+    code: "Equal",
+    ctrlKey: true,
+  });
   await Promise.resolve();
   expect(document.activeElement).toBe(articleOf(host));
   expect(host.querySelector('[aria-label="ズーム 120%"]')).not.toBeNull();

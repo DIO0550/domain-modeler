@@ -96,6 +96,12 @@ export function CanvasEditor({
       ? board.connectionSession.status
       : "inactive";
 
+  // ドラッグ中のDOM再挿入でpointer captureを失わないよう、DOM順はIDで固定する。
+  // 文書の並びが表す前後関係はz-indexだけで反映する。
+  const renderedStickies = board.stickies
+    .map((sticky, stackIndex) => ({ sticky, stackIndex }))
+    .sort((a, b) => a.sticky.id.localeCompare(b.sticky.id));
+
   return (
     <CanvasView
       inspector={
@@ -233,97 +239,102 @@ export function CanvasEditor({
           onCommitEdit: board.commitConnectionEdit,
         }}
       />
-      {board.stickies.map((sticky) => {
-        const target = ConnectionSession.targetOf(
-          board.connectionSession,
-          sticky.id,
-        );
-        return (
-          <Sticky
-            key={sticky.id}
-            sticky={sticky}
-            chrome={StickyChrome.of(
-              StickySession.chromeOf(board.session, sticky.id),
-              {
-                onDraftChange: board.changeDraft,
-                onCommit: board.commitEdit,
-              },
-            )}
-            connectionEndpoint={
-              ConnectionSession.isSource(board.connectionSession, sticky.id)
-                ? "source"
-                : target.some
-                  ? "target"
+      <div className="canvas-stickies">
+        {renderedStickies.map(({ sticky, stackIndex }) => {
+          const target = ConnectionSession.targetOf(
+            board.connectionSession,
+            sticky.id,
+          );
+          return (
+            <Sticky
+              key={sticky.id}
+              sticky={sticky}
+              stackIndex={stackIndex}
+              chrome={StickyChrome.of(
+                StickySession.chromeOf(board.session, sticky.id),
+                {
+                  onDraftChange: board.changeDraft,
+                  onCommit: board.commitEdit,
+                },
+              )}
+              connectionEndpoint={
+                ConnectionSession.isSource(board.connectionSession, sticky.id)
+                  ? "source"
+                  : target.some
+                    ? "target"
+                    : undefined
+              }
+              onActivate={
+                connectionModeActive
+                  ? undefined
+                  : () => {
+                      setPlacementActive(false);
+                      board.select(sticky.id);
+                    }
+              }
+              onKeyActivate={
+                connectionModeActive
+                  ? () => {
+                      board.selectConnectionEndpoint(sticky.id);
+                    }
                   : undefined
-            }
-            onActivate={
-              connectionModeActive
-                ? undefined
-                : () => {
+              }
+              manipulation={
+                connectionModeActive
+                  ? undefined
+                  : {
+                      onDragStart: (point) => {
+                        setPlacementActive(false);
+                        board.beginDrag(
+                          sticky.id,
+                          viewport.toWorldClientPoint(point),
+                        );
+                      },
+                      onResizeStart: (corner, point) => {
+                        setPlacementActive(false);
+                        board.beginResize(
+                          corner,
+                          viewport.toWorldClientPoint(point),
+                        );
+                      },
+                      onPointerMove: (point) => {
+                        board.movePointer(viewport.toWorldClientPoint(point));
+                      },
+                      onPointerCommit: board.commitManipulation,
+                      onPointerCancel: board.cancelManipulation,
+                    }
+              }
+            >
+              {StickySession.chromeOf(board.session, sticky.id).status ===
+              "selected" ? (
+                <ConnectionHandles
+                  onStart={(anchor) => {
                     setPlacementActive(false);
-                    board.select(sticky.id);
+                    suppressConnectionClick.current = true;
+                    board.beginConnectionDrag({ stickyId: sticky.id, anchor });
+                  }}
+                  onMove={(point) =>
+                    board.moveConnectionDrag(viewport.toWorldClientPoint(point))
                   }
-            }
-            onKeyActivate={
-              connectionModeActive
-                ? () => {
-                    board.selectConnectionEndpoint(sticky.id);
+                  onFinish={(point) =>
+                    board.finishConnectionDrag(
+                      viewport.toWorldClientPoint(point),
+                    )
                   }
-                : undefined
-            }
-            manipulation={
-              connectionModeActive
-                ? undefined
-                : {
-                    onDragStart: (point) => {
-                      setPlacementActive(false);
-                      board.beginDrag(
-                        sticky.id,
-                        viewport.toWorldClientPoint(point),
-                      );
-                    },
-                    onResizeStart: (corner, point) => {
-                      setPlacementActive(false);
-                      board.beginResize(
-                        corner,
-                        viewport.toWorldClientPoint(point),
-                      );
-                    },
-                    onPointerMove: (point) => {
-                      board.movePointer(viewport.toWorldClientPoint(point));
-                    },
-                    onPointerCommit: board.commitManipulation,
-                    onPointerCancel: board.cancelManipulation,
-                  }
-            }
-          >
-            {StickySession.chromeOf(board.session, sticky.id).status ===
-            "selected" ? (
-              <ConnectionHandles
-                onStart={(anchor) => {
-                  setPlacementActive(false);
-                  suppressConnectionClick.current = true;
-                  board.beginConnectionDrag({ stickyId: sticky.id, anchor });
-                }}
-                onMove={(point) =>
-                  board.moveConnectionDrag(viewport.toWorldClientPoint(point))
-                }
-                onFinish={(point) =>
-                  board.finishConnectionDrag(viewport.toWorldClientPoint(point))
-                }
-                onCancel={board.cancelConnectionDrag}
-              />
-            ) : null}
-            {target.some ? (
-              <span
-                className="sticky__connection-handle sticky__connection-target"
-                data-connection-anchor={target.value.anchor}
-                aria-hidden="true"
-              />
-            ) : null}
-          </Sticky>
-        );
-      })}
+                  onCancel={board.cancelConnectionDrag}
+                />
+              ) : null}
+              {target.some ? (
+                <span
+                  className="sticky__connection-handle sticky__connection-target"
+                  data-connection-anchor={target.value.anchor}
+                  aria-hidden="true"
+                />
+              ) : null}
+            </Sticky>
+          );
+        })}
+      </div>
     </CanvasView>
   );
 }

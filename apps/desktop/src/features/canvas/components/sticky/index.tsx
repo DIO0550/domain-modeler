@@ -8,10 +8,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
-import type {
-  Point,
-  Sticky as StickyModel,
-} from "@domain-modeler/canvas-core";
+import type { Point, Sticky as StickyModel } from "@domain-modeler/canvas-core";
 import {
   StickyAppearance,
   type StickyRotation,
@@ -62,6 +59,7 @@ export const StickyChrome = {
 type StickyProps = Readonly<{
   children?: ReactNode;
   sticky: StickyModel;
+  stackIndex?: number;
   chrome?: StickyChrome;
   connectionEndpoint?: "source" | "target";
   onActivate?: () => void;
@@ -100,6 +98,7 @@ type StickyStyle = CSSProperties & {
 export function Sticky({
   children,
   sticky,
+  stackIndex,
   chrome = { status: "plain" },
   connectionEndpoint,
   onActivate,
@@ -115,8 +114,12 @@ export function Sticky({
   const lineCount = StickyAppearance.bodyLineCount(sticky.size);
   const displayedText =
     chrome.status === "editing" ? chrome.draftText : sticky.text;
-  const accessibleName = stickyAccessibleName(appearance.caption, displayedText);
+  const accessibleName = stickyAccessibleName(
+    appearance.caption,
+    displayedText,
+  );
   const stickyStyle: StickyStyle = {
+    zIndex: stackIndex,
     left: `${sticky.position.x}px`,
     top: `${sticky.position.y}px`,
     width: `${sticky.size.width}px`,

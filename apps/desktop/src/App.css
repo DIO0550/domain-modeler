@@ -699,7 +699,7 @@ body,
 
 .sticky--selected {
   outline: 2px solid var(--sticky-selected-ring);
-  outline-offset: 2px;
+  outline-offset: -1px;
 }
 
 .sticky__face {
@@ -821,26 +821,26 @@ body,
 }
 
 .sticky__resize-handle[data-resize-corner="northWest"] {
-  top: -7px;
-  left: -7px;
+  top: -6px;
+  left: -6px;
   cursor: nwse-resize;
 }
 
 .sticky__resize-handle[data-resize-corner="northEast"] {
-  top: -7px;
-  right: -7px;
+  top: -6px;
+  right: -6px;
   cursor: nesw-resize;
 }
 
 .sticky__resize-handle[data-resize-corner="southEast"] {
-  right: -7px;
-  bottom: -7px;
+  right: -6px;
+  bottom: -6px;
   cursor: nwse-resize;
 }
 
 .sticky__resize-handle[data-resize-corner="southWest"] {
-  bottom: -7px;
-  left: -7px;
+  bottom: -6px;
+  left: -6px;
   cursor: nesw-resize;
 }
 
@@ -900,7 +900,7 @@ body,
 
 .sticky[data-connection-endpoint="target"] {
   outline: 2px solid var(--sticky-selected-ring);
-  outline-offset: 3px;
+  outline-offset: -1px;
 }
 .sticky__connection-target {
   pointer-events: none;
@@ -1052,4 +1052,15 @@ body,
     white-space: normal;
     text-align: left;
   }
+}
+
+/* DOM順を固定した付箋の前後関係を、接続レイヤーとは独立して制御する。 */
+.canvas-stickies {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.canvas-stickies > .sticky {
+  pointer-events: auto;
 }
