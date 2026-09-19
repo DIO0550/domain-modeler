@@ -50,6 +50,7 @@ export const HistoryButton = {
 } as const;
 
 type CanvasViewProps = Readonly<{
+  showToolbar?: boolean;
   placementTool?: Readonly<{ active: boolean; onSelect: () => void }>;
   inspector?: ReactNode;
   onPaletteDrop?: (
@@ -85,6 +86,7 @@ type CanvasViewProps = Readonly<{
  * @returns キャンバス画面。
  */
 export function CanvasView({
+  showToolbar = true,
   placementTool,
   inspector,
   onPaletteDrop,
@@ -150,24 +152,47 @@ export function CanvasView({
 
   return (
     <div className="canvas-view" onKeyDown={handleKeyDown} {...gestureEvents}>
-      <CanvasToolbar>
-        {placementTool !== undefined ? (
-          <button
-            type="button"
-            className={paletteButtonClassName(!placementTool.active)}
-            aria-pressed={!placementTool.active}
-            onClick={placementTool.onSelect}
-          >
-            選択
-          </button>
-        ) : null}
-        <HistoryControls undo={undo} redo={redo} />
-        {connectionTool !== undefined && (
-          <ConnectionControls tool={connectionTool} />
-        )}
-      </CanvasToolbar>
+      {showToolbar && (
+        <CanvasToolbar>
+          {placementTool !== undefined ? (
+            <button
+              type="button"
+              className={paletteButtonClassName(!placementTool.active)}
+              aria-pressed={!placementTool.active}
+              onClick={placementTool.onSelect}
+            >
+              選択
+            </button>
+          ) : null}
+          <HistoryControls undo={undo} redo={redo} />
+          {connectionTool !== undefined && (
+            <ConnectionControls tool={connectionTool} />
+          )}
+        </CanvasToolbar>
+      )}
       <div className="canvas-workspace">
         <aside className="canvas-sidebar" aria-label="部品パレット">
+          {placementTool !== undefined && !showToolbar && (
+            <button
+              type="button"
+              className="canvas-sidebar__select"
+              aria-pressed={!placementTool.active}
+              onClick={placementTool.onSelect}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden="true"
+              >
+                <path d="m5 3 14 10-7 1-3 7Z" />
+              </svg>
+              選択
+            </button>
+          )}
           <h2>部品</h2>
           <p id={paletteHelpId}>選んで空白をクリック、またはドラッグして配置</p>
           <Palette

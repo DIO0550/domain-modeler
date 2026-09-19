@@ -993,7 +993,7 @@ test("連続した外部キャンバス変更をundoすると直前の外部状�
   await vi.waitFor(() => {
     expect(host.querySelectorAll("article")).toHaveLength(2);
   });
-  act(() => buttonNamed(host, "元に戻す").click());
+  undoCanvas(host);
   expect(host.querySelectorAll("article")).toHaveLength(1);
   expect(host.textContent).toContain("older");
   expect(host.textContent).not.toContain("newer");
@@ -1345,9 +1345,7 @@ test("外部キャンバス変更を取り込んだ後もundoで変更前へ戻�
   });
 
   expect(host.querySelectorAll("article")).toHaveLength(1);
-  const undo = buttonNamed(host, "元に戻す");
-  expect(undo.getAttribute("aria-disabled")).toBe("false");
-  act(() => undo.click());
+  undoCanvas(host);
   expect(host.querySelectorAll("article")).toHaveLength(0);
 });
 
@@ -1640,3 +1638,10 @@ test("キャンバス文書を切り替えると種別の選択は文書ごと�
     "false",
   );
 });
+
+/** アクティブキャンバスへundoショートカットを送る。 */
+const undoCanvas = (host: HTMLDivElement): void => {
+  const surface = host.querySelector(".canvas-surface");
+  if (!surface) { throw new Error("キャンバスがありません"); }
+  act(() => surface.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+};

@@ -45,6 +45,7 @@ export function CanvasEditor({
   onDraftHistoryChange,
 }: CanvasEditorProps) {
   const [placementActive, setPlacementActive] = useState(false);
+  const [inspectorEditing, setInspectorEditing] = useState(false);
   // 接続ジェスチャー由来のclick/dblclickを、次の新しい押下まで抑止する。
   const suppressConnectionClick = useRef(false);
   const stopConnectionClick = (event: MouseEvent<HTMLDivElement>): void => {
@@ -104,6 +105,7 @@ export function CanvasEditor({
 
   return (
     <CanvasView
+      showToolbar={false}
       inspector={
         <StickyInspector
           sticky={board.stickies.find(
@@ -111,7 +113,15 @@ export function CanvasEditor({
               StickySession.chromeOf(board.session, sticky.id).status !==
               "plain",
           )}
-          onEdit={board.pressEnter}
+          onEditStart={() => {
+            setInspectorEditing(true);
+            board.pressEnter();
+          }}
+          onChange={board.changeDraft}
+          onCommit={() => {
+            board.commitEdit();
+            setInspectorEditing(false);
+          }}
         />
       }
       onPaletteDrop={({ type, point }) => {
@@ -251,7 +261,11 @@ export function CanvasEditor({
               sticky={sticky}
               stackIndex={stackIndex}
               chrome={StickyChrome.of(
-                StickySession.chromeOf(board.session, sticky.id),
+                inspectorEditing &&
+                  board.session.status === "editing" &&
+                  board.session.stickyId === sticky.id
+                  ? { status: "selected" }
+                  : StickySession.chromeOf(board.session, sticky.id),
                 {
                   onDraftChange: board.changeDraft,
                   onCommit: board.commitEdit,

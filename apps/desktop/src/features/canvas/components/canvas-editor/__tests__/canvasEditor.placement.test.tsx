@@ -162,17 +162,41 @@ test("配置待ちのEscでプレビューを消し、次のクリックでは�
   expect(host.querySelectorAll("article")).toHaveLength(0);
 });
 
-test("付箋を選ぶと右パネルに本文を表示し、編集ボタンから本文を編集できる", () => {
+test("右パネルで本文を直接編集し、確定後のundoで編集前へ戻す", () => {
   const host = renderEditor(existingStickyDocument);
   clickSurface(host, { x: 40, y: 50 });
-  expect(elementOf(host, ".canvas-inspector").textContent).toContain(
-    "注文が確定した",
+  const editor = host.querySelector<HTMLTextAreaElement>(
+    '[aria-label="プロパティの本文"]',
   );
+  if (!editor) {
+    throw new Error("本文欄がありません");
+  }
+  expect(editor.value).toBe("注文が確定した");
+  act(() => editor.focus());
+  expect(document.activeElement).toBe(editor);
   act(() => {
-    buttonNamed(host, "本文を編集").click();
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(editor, "変更した本文");
+    editor.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  expect(elementOf(host, "article").dataset.stickySession).toBe("editing");
-  expect(host.querySelector("textarea")).not.toBeNull();
+  expect(host.querySelector(".sticky__text")?.textContent).toBe("変更した本文");
+  act(() => editor.blur());
+  act(() =>
+    elementOf(host, ".canvas-surface").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }),
+    ),
+  );
+  expect(editor.value).toBe("注文が確定した");
+  expect(host.querySelector(".canvas-toolbar")).toBeNull();
+  expect(
+    [...host.querySelectorAll("button")].some((button) =>
+      ["本文を編集", "接続", "元に戻す", "やり直す"].includes(
+        button.textContent ?? "",
+      ),
+    ),
+  ).toBe(false);
 });
 
 test("付箋の左上が既存付箋に重なってもカーソルの中心が空白なら配置できる", () => {

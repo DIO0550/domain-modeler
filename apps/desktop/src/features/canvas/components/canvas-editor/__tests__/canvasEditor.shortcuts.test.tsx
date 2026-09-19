@@ -2,6 +2,7 @@ import { act } from "react";
 import { expect, test } from "vitest";
 import {
   articleOf,
+  expectUndoUnchanged,
   buttonNamed,
   clickSurface,
   documentWithConnection,
@@ -55,9 +56,7 @@ test.each([
   const host = renderEditor(documentWithConnection);
   clickSurface(host, { x: 20, y: 30 });
   press(articleOf(host), { key: "c", [modifier]: true });
-  expect(buttonNamed(host, "元に戻す").getAttribute("aria-disabled")).toBe(
-    "true",
-  );
+  expectUndoUnchanged(host);
   press(articleOf(host), { key: "v", [modifier]: true });
   const pasted = host.querySelector('article[data-sticky-session="selected"]');
   expect(host.querySelectorAll("article")).toHaveLength(3);

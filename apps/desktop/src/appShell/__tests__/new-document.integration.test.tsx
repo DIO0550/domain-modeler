@@ -118,7 +118,7 @@ test.each([
   await clickNamed(host, label);
   expect(files.get(path)).toBe(contents);
   expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain("new.");
-  const editorLabel = kind === "model" ? "ドメインモデルのテキスト" : "キャンバスツール";
+  const editorLabel = kind === "model" ? "ドメインモデルのテキスト" : "部品パレット";
   expect(host.querySelector(`[aria-label="${editorLabel}"]`)).not.toBeNull();
   expect(host.querySelector('[role="alert"]')).toBeNull();
 });

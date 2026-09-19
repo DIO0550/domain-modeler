@@ -11,7 +11,6 @@ import {
   buttonNamed,
   clickSurface,
   documentWithConnection,
-  documentWithTwoStickies,
   doubleClickSurface,
   editorOf,
   existingStickyDocument,
@@ -431,17 +430,6 @@ test("Ctrl+0 で全付箋をキャンバス面へ収める", () => {
   expect(host.querySelector('[aria-label="ズーム 160%"]')).not.toBeNull();
 });
 
-test("pan 中も接続作成セッションを維持する", () => {
-  const host = renderEditor(documentWithTwoStickies);
-  const surface = canvasSurfaceOf(host);
-
-  act(() => {
-    buttonNamed(host, "接続").click();
-  });
-  wheelSurface(surface, { x: 20, y: 30 });
-
-  expect(host.textContent).toContain("始点の付箋を選択");
-});
 
 test("本文エディタ上のホイールはキャンバスを移動しない", () => {
   const host = renderEditor(existingStickyDocument);
