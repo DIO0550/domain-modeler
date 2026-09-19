@@ -165,6 +165,8 @@ export function Sticky({
     }
     manipulation.onPointerMove(point);
   };
+  // 捕捉喪失だけでは移動を巻き戻さず、最後に表示した位置を確定する。
+  // pointerup後の捕捉喪失はidleで無視し、二重に履歴へ記録しない。
   const commitManipulation = (event: PointerEvent<HTMLElement>): void => {
     const tracking = pointerTrackingRef.current;
     if (manipulation === undefined || tracking.status === "idle") {
@@ -262,7 +264,7 @@ export function Sticky({
       onPointerMove={moveManipulation}
       onPointerUp={commitManipulation}
       onPointerCancel={cancelManipulation}
-      onLostPointerCapture={cancelManipulation}
+      onLostPointerCapture={commitManipulation}
     >
       <div className={stickyFaceClassName(appearance.rotation)}>
         <span className="sticky__caption">{appearance.caption}</span>
@@ -310,7 +312,7 @@ export function Sticky({
               onPointerMove={moveManipulation}
               onPointerUp={commitManipulation}
               onPointerCancel={cancelManipulation}
-              onLostPointerCapture={cancelManipulation}
+              onLostPointerCapture={commitManipulation}
               onClick={(event) => {
                 event.stopPropagation();
               }}
