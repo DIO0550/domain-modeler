@@ -1,3 +1,4 @@
+import { PointerDrag } from "../../domains/pointer-drag";
 import {
   useEffect,
   useEffectEvent,
@@ -153,7 +154,7 @@ export function Sticky({
     event.stopPropagation();
     const point = pointFromPointer(event);
     if (tracking.status === "pendingDrag") {
-      if (!dragThresholdReached(tracking.origin, point)) {
+      if (!PointerDrag.hasStarted({ origin: tracking.origin, point })) {
         return;
       }
       pointerTrackingRef.current = {
@@ -325,25 +326,6 @@ export function Sticky({
 }
 
 const resizeCorners = StickyResizeCorner.all();
-
-const DRAG_START_DISTANCE = 4;
-
-/**
- * クリック時の微小な揺れを除外し、ドラッグ開始距離へ達したか判定する。
- *
- * @param origin ポインタ押下位置。
- * @param point 現在位置。
- * @returns ドラッグ開始距離へ達していれば true。
- */
-const dragThresholdReached = (origin: Point, point: Point): boolean => {
-  const horizontalDistance = point.x - origin.x;
-  const verticalDistance = point.y - origin.y;
-  return (
-    horizontalDistance * horizontalDistance +
-      verticalDistance * verticalDistance >=
-    DRAG_START_DISTANCE * DRAG_START_DISTANCE
-  );
-};
 
 /**
  * 選択中またはポインタ操作中に四隅のリサイズハンドルを出す。

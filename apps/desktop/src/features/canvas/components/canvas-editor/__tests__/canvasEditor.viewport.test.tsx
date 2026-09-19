@@ -566,3 +566,36 @@ test("キャンバス上の Space キーではページスクロールを抑止�
 
   expect(event.defaultPrevented).toBe(true);
 });
+
+test("配置クリックで2pxだけ手が動いてもパンにせず1個配置する", () => {
+  const host = renderEditor();
+  act(() => buttonNamed(host, "Command").click());
+  panSurface(canvasWorldOf(host), 0, [
+    { x: 200, y: 200 },
+    { x: 202, y: 201 },
+  ]);
+  clickSurface(host, { x: 202, y: 201 });
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(0px, 0px) scale(1)",
+  );
+});
+
+test("配置待ちでも押下位置から4px動くとパンになり、その操作では配置しない", () => {
+  const host = renderEditor();
+  act(() => buttonNamed(host, "Command").click());
+  panSurface(canvasWorldOf(host), 0, [
+    { x: 200, y: 200 },
+    { x: 201, y: 200 },
+    { x: 202, y: 200 },
+    { x: 204, y: 200 },
+  ]);
+  clickSurface(host, { x: 204, y: 200 });
+  expect(host.querySelectorAll("article")).toHaveLength(0);
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(4px, 0px) scale(1)",
+  );
+  panSurface(canvasWorldOf(host), 0, [{ x: 300, y: 300 }]);
+  clickSurface(host, { x: 300, y: 300 });
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+});
