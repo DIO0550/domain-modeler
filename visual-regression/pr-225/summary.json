@@ -1,5 +1,5 @@
 {
-  "reportVersion": "52df6c1781c8089a2da04330b5dc78bca7736813",
+  "reportVersion": "f5b78ce5cc952b6100fe0530746abadf3b2007ee",
   "maxDiffRatio": 0.002,
   "changed": 14,
   "new": 0,
@@ -183,8 +183,8 @@
       "name": "All Props",
       "status": "changed",
       "reason": "pixel-diff",
-      "diffPixels": 49147,
-      "diffRatio": 0.0533,
+      "diffPixels": 49060,
+      "diffRatio": 0.053200000000000004,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
@@ -196,8 +196,8 @@
       "name": "Creating Connection",
       "status": "changed",
       "reason": "pixel-diff",
-      "diffPixels": 75707,
-      "diffRatio": 0.0821,
+      "diffPixels": 79086,
+      "diffRatio": 0.0858,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
@@ -209,8 +209,8 @@
       "name": "Default",
       "status": "changed",
       "reason": "pixel-diff",
-      "diffPixels": 18665,
-      "diffRatio": 0.0203,
+      "diffPixels": 18328,
+      "diffRatio": 0.0199,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
@@ -222,8 +222,8 @@
       "name": "Edge Cases",
       "status": "changed",
       "reason": "pixel-diff",
-      "diffPixels": 148369,
-      "diffRatio": 0.161,
+      "diffPixels": 202217,
+      "diffRatio": 0.2194,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
@@ -235,8 +235,8 @@
       "name": "Editing",
       "status": "changed",
       "reason": "pixel-diff",
-      "diffPixels": 49286,
-      "diffRatio": 0.0535,
+      "diffPixels": 48875,
+      "diffRatio": 0.053,
       "hasExpected": true,
       "hasActual": true,
       "hasDiff": true
