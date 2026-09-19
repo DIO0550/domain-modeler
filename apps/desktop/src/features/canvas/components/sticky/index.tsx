@@ -1,16 +1,15 @@
+import { PointerDrag } from "../../domains/pointer-drag";
 import {
   useEffect,
   useEffectEvent,
   useRef,
+  type ReactNode,
   type CSSProperties,
   type FocusEvent,
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
-import type {
-  Point,
-  Sticky as StickyModel,
-} from "@domain-modeler/canvas-core";
+import type { Point, Sticky as StickyModel } from "@domain-modeler/canvas-core";
 import {
   StickyAppearance,
   type StickyRotation,
@@ -59,9 +58,11 @@ export const StickyChrome = {
 } as const;
 
 type StickyProps = Readonly<{
+  children?: ReactNode;
   sticky: StickyModel;
+  stackIndex?: number;
   chrome?: StickyChrome;
-  connectionEndpoint?: "source";
+  connectionEndpoint?: "source" | "target";
   onActivate?: () => void;
   onKeyActivate?: () => void;
   manipulation?: StickyManipulation;
@@ -96,7 +97,9 @@ type StickyStyle = CSSProperties & {
  * @returns 付箋。
  */
 export function Sticky({
+  children,
   sticky,
+  stackIndex,
   chrome = { status: "plain" },
   connectionEndpoint,
   onActivate,
@@ -112,8 +115,12 @@ export function Sticky({
   const lineCount = StickyAppearance.bodyLineCount(sticky.size);
   const displayedText =
     chrome.status === "editing" ? chrome.draftText : sticky.text;
-  const accessibleName = stickyAccessibleName(appearance.caption, displayedText);
+  const accessibleName = stickyAccessibleName(
+    appearance.caption,
+    displayedText,
+  );
   const stickyStyle: StickyStyle = {
+    zIndex: stackIndex,
     left: `${sticky.position.x}px`,
     top: `${sticky.position.y}px`,
     width: `${sticky.size.width}px`,
@@ -147,7 +154,7 @@ export function Sticky({
     event.stopPropagation();
     const point = pointFromPointer(event);
     if (tracking.status === "pendingDrag") {
-      if (!dragThresholdReached(tracking.origin, point)) {
+      if (!PointerDrag.hasStarted({ origin: tracking.origin, point })) {
         return;
       }
       pointerTrackingRef.current = {
@@ -158,6 +165,8 @@ export function Sticky({
     }
     manipulation.onPointerMove(point);
   };
+  // 捕捉喪失だけでは移動を巻き戻さず、最後に表示した位置を確定する。
+  // pointerup後の捕捉喪失はidleで無視し、二重に履歴へ記録しない。
   const commitManipulation = (event: PointerEvent<HTMLElement>): void => {
     const tracking = pointerTrackingRef.current;
     if (manipulation === undefined || tracking.status === "idle") {
@@ -255,7 +264,7 @@ export function Sticky({
       onPointerMove={moveManipulation}
       onPointerUp={commitManipulation}
       onPointerCancel={cancelManipulation}
-      onLostPointerCapture={cancelManipulation}
+      onLostPointerCapture={commitManipulation}
     >
       <div className={stickyFaceClassName(appearance.rotation)}>
         <span className="sticky__caption">{appearance.caption}</span>
@@ -303,7 +312,7 @@ export function Sticky({
               onPointerMove={moveManipulation}
               onPointerUp={commitManipulation}
               onPointerCancel={cancelManipulation}
-              onLostPointerCapture={cancelManipulation}
+              onLostPointerCapture={commitManipulation}
               onClick={(event) => {
                 event.stopPropagation();
               }}
@@ -313,30 +322,12 @@ export function Sticky({
             />
           ))
         : null}
+      {children}
     </article>
   );
 }
 
 const resizeCorners = StickyResizeCorner.all();
-
-const DRAG_START_DISTANCE = 4;
-
-/**
- * クリック時の微小な揺れを除外し、ドラッグ開始距離へ達したか判定する。
- *
- * @param origin ポインタ押下位置。
- * @param point 現在位置。
- * @returns ドラッグ開始距離へ達していれば true。
- */
-const dragThresholdReached = (origin: Point, point: Point): boolean => {
-  const horizontalDistance = point.x - origin.x;
-  const verticalDistance = point.y - origin.y;
-  return (
-    horizontalDistance * horizontalDistance +
-      verticalDistance * verticalDistance >=
-    DRAG_START_DISTANCE * DRAG_START_DISTANCE
-  );
-};
 
 /**
  * 選択中またはポインタ操作中に四隅のリサイズハンドルを出す。

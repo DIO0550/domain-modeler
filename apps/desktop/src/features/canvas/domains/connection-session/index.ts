@@ -1,4 +1,12 @@
+import type { ConnectionTarget } from "../connection-target";
+import {
+  ConnectionSegment,
+  Option as OptionValue,
+} from "@domain-modeler/canvas-core";
 import type {
+  Option,
+  Anchor,
+  Point,
   ConnectionId,
   StickyId,
 } from "@domain-modeler/canvas-core";
@@ -6,6 +14,14 @@ import type {
 /** 接続の作成、選択、ラベル編集の状態。 */
 export type ConnectionSession =
   | Readonly<{ status: "idle" }>
+  | Readonly<{
+      status: "dragging";
+      sourceId: StickyId;
+      anchor: Anchor;
+      origin: Point;
+      point: Point;
+      target: Option<ConnectionTarget>;
+    }>
   | Readonly<{ status: "selectingSource" }>
   | Readonly<{ status: "selectingTarget"; sourceId: StickyId }>
   | Readonly<{ status: "selected"; connectionId: ConnectionId }>
@@ -18,6 +34,43 @@ export type ConnectionSession =
 
 /** 接続セッションの状態を問い合わせる関数群。 */
 export const ConnectionSession = {
+  /** 接続先の候補として強調する端点を返す。 */
+  targetOf(
+    session: ConnectionSession,
+    stickyId: StickyId,
+  ): Option<ConnectionTarget> {
+    if (
+      session.status === "dragging" &&
+      session.target.some &&
+      session.target.value.stickyId === stickyId
+    ) {
+      return session.target;
+    }
+    return OptionValue.none();
+  },
+  /** 操作した辺の外側へ出てからポインターへ向かうプレビュー経路。 */
+  previewPath(
+    session: Extract<ConnectionSession, { status: "dragging" }>,
+  ): string {
+    const normals: Readonly<Record<Anchor, Point>> = {
+      top: { x: 0, y: -1 },
+      right: { x: 1, y: 0 },
+      bottom: { x: 0, y: 1 },
+      left: { x: -1, y: 0 },
+    };
+    return ConnectionSegment.toRoute({
+      from: session.target.some
+        ? session.target.value.fromPoint
+        : session.origin,
+      to: session.target.some ? session.target.value.point : session.point,
+      fromOutwardNormal: session.target.some
+        ? session.target.value.fromOutwardNormal
+        : normals[session.anchor],
+      toOutwardNormal: session.target.some
+        ? session.target.value.outwardNormal
+        : { x: 0, y: 0 },
+    }).path;
+  },
   /**
    * 始点または終点を選択中か判定する。
    *
@@ -26,6 +79,7 @@ export const ConnectionSession = {
    */
   isCreating(session: ConnectionSession): boolean {
     return (
+      session.status === "dragging" ||
       session.status === "selectingSource" ||
       session.status === "selectingTarget"
     );
@@ -44,6 +98,7 @@ export const ConnectionSession = {
   ): "plain" | "selected" | "editing" {
     if (
       session.status === "idle" ||
+      session.status === "dragging" ||
       session.status === "selectingSource" ||
       session.status === "selectingTarget"
     ) {
@@ -64,7 +119,8 @@ export const ConnectionSession = {
    */
   isSource(session: ConnectionSession, stickyId: StickyId): boolean {
     return (
-      session.status === "selectingTarget" && session.sourceId === stickyId
+      (session.status === "selectingTarget" || session.status === "dragging") &&
+      session.sourceId === stickyId
     );
   },
 } as const;

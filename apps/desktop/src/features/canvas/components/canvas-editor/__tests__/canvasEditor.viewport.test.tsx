@@ -11,7 +11,6 @@ import {
   buttonNamed,
   clickSurface,
   documentWithConnection,
-  documentWithTwoStickies,
   doubleClickSurface,
   editorOf,
   existingStickyDocument,
@@ -143,8 +142,9 @@ test("空白部の左ドラッグで pan し、付箋を作成しない", () => 
   expect(host.querySelectorAll("article")).toHaveLength(0);
 });
 
-test("空白部の左クリックでは付箋を作成する", () => {
+test("配置ツールを選んで空白部を左クリックすると付箋を作成する", () => {
   const host = renderEditor();
+  act(() => buttonNamed(host, "Domain Event").click());
   const world = canvasWorldOf(host);
 
   panSurface(world, 0, [{ x: 100, y: 80 }]);
@@ -214,6 +214,7 @@ test("中ボタンドラッグで pan する", () => {
 
 test("中ボタンで pan した直後の左クリックで付箋を作成できる", () => {
   const host = renderEditor();
+  act(() => buttonNamed(host, "Domain Event").click());
   panSurface(canvasSurfaceOf(host), 1, [
     { x: 80, y: 90 },
     { x: 60, y: 130 },
@@ -295,6 +296,7 @@ test("pointer capture を失うと pan を中止する", () => {
 
 test("window が blur すると pan とクリック抑止を解除する", () => {
   const host = renderEditor();
+  act(() => buttonNamed(host, "Domain Event").click());
   const surface = canvasSurfaceOf(host);
 
   act(() => {
@@ -338,6 +340,7 @@ test("修飾キーなしのホイールで pan する", () => {
 
 test("Ctrl ホイールの前後でカーソル下のワールド座標を維持する", () => {
   const host = renderEditor();
+  act(() => buttonNamed(host, "Domain Event").click());
   const surface = canvasSurfaceOf(host);
 
   wheelSurface(
@@ -348,8 +351,14 @@ test("Ctrl ホイールの前後でカーソル下のワールド座標を維持
   clickSurface(host, { x: 240, y: 180 });
 
   const sticky = articleOf(host);
-  expect(Number.parseFloat(sticky.style.left)).toBeCloseTo(240);
-  expect(Number.parseFloat(sticky.style.top)).toBeCloseTo(180);
+  expect(
+    Number.parseFloat(sticky.style.left) +
+      Number.parseFloat(sticky.style.width) / 2,
+  ).toBeCloseTo(240);
+  expect(
+    Number.parseFloat(sticky.style.top) +
+      Number.parseFloat(sticky.style.height) / 2,
+  ).toBeCloseTo(180);
   expect(canvasWorldOf(host).style.transform).not.toBe(
     "translate(0px, 0px) scale(1)",
   );
@@ -421,17 +430,6 @@ test("Ctrl+0 で全付箋をキャンバス面へ収める", () => {
   expect(host.querySelector('[aria-label="ズーム 160%"]')).not.toBeNull();
 });
 
-test("pan 中も接続作成セッションを維持する", () => {
-  const host = renderEditor(documentWithTwoStickies);
-  const surface = canvasSurfaceOf(host);
-
-  act(() => {
-    buttonNamed(host, "接続").click();
-  });
-  wheelSurface(surface, { x: 20, y: 30 });
-
-  expect(host.textContent).toContain("始点の付箋を選択");
-});
 
 test("本文エディタ上のホイールはキャンバスを移動しない", () => {
   const host = renderEditor(existingStickyDocument);
@@ -555,4 +553,37 @@ test("キャンバス上の Space キーではページスクロールを抑止�
   });
 
   expect(event.defaultPrevented).toBe(true);
+});
+
+test("配置クリックで2pxだけ手が動いてもパンにせず1個配置する", () => {
+  const host = renderEditor();
+  act(() => buttonNamed(host, "Command").click());
+  panSurface(canvasWorldOf(host), 0, [
+    { x: 200, y: 200 },
+    { x: 202, y: 201 },
+  ]);
+  clickSurface(host, { x: 202, y: 201 });
+  expect(host.querySelectorAll("article")).toHaveLength(1);
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(0px, 0px) scale(1)",
+  );
+});
+
+test("配置待ちでも押下位置から4px動くとパンになり、その操作では配置しない", () => {
+  const host = renderEditor();
+  act(() => buttonNamed(host, "Command").click());
+  panSurface(canvasWorldOf(host), 0, [
+    { x: 200, y: 200 },
+    { x: 201, y: 200 },
+    { x: 202, y: 200 },
+    { x: 204, y: 200 },
+  ]);
+  clickSurface(host, { x: 204, y: 200 });
+  expect(host.querySelectorAll("article")).toHaveLength(0);
+  expect(canvasWorldOf(host).style.transform).toBe(
+    "translate(4px, 0px) scale(1)",
+  );
+  panSurface(canvasWorldOf(host), 0, [{ x: 300, y: 300 }]);
+  clickSurface(host, { x: 300, y: 300 });
+  expect(host.querySelectorAll("article")).toHaveLength(1);
 });

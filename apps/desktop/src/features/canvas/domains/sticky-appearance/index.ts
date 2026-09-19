@@ -1,5 +1,6 @@
 import {
   type Size,
+  type Point,
   STICKY_TYPES,
   type StickyType,
   type ValueOf,
@@ -126,6 +127,11 @@ const APPEARANCES: Readonly<Record<StickyType, StickyAppearance>> = {
 
 /** 付箋種別の表示を扱う関数群。 */
 export const StickyAppearance = {
+  /** 指定した中心点に標準サイズの付箋を置くときの左上座標。 */
+  positionAtCenter(type: StickyType, center: Point): Point {
+    const size = APPEARANCES[type].defaultSize;
+    return { x: center.x - size.width / 2, y: center.y - size.height / 2 };
+  },
   /**
    * 種別のキャプション、色系統、標準サイズ、傾きを返す。
    *

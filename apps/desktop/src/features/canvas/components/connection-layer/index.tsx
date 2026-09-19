@@ -82,6 +82,18 @@ export function ConnectionLayer({ document, interaction }: ConnectionLayerProps)
           <path d="M 0 0 L 10 5 L 0 10 z" />
         </marker>
       </defs>
+      {interaction?.session.status === "dragging" ? (
+        <path
+          data-connection-preview="true"
+          d={ConnectionSession.previewPath(interaction.session)}
+          fill="none"
+          stroke="var(--sticky-selected-ring)"
+          strokeWidth={2}
+          strokeDasharray="6 4"
+          pointerEvents="none"
+          markerEnd="url(#connection-arrow)"
+        />
+      ) : null}
       {document.connections.map((connection) => (
         <RenderedConnection
           key={connection.id}
