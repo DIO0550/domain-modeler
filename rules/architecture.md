@@ -1,24 +1,59 @@
 # アーキテクチャ規約
 
-## フォルダ構造(ドメイン + Feature ベース)
+**この規約は「誰が誰を import してよいか」(依存の向き)を規定する。** 「どこまでが同時に正しくなければならないか」(整合性境界)は `rules/consistency.md` が規定する。2つは別の軸で、両方を満たす必要がある。
 
-トップレベルおよび feature 内の構成は以下の通り。**各フォルダの内部をどうモジュール分割するかは実装者の設計判断に委ねる。**
+## ワークスペース構成
+
+pnpm workspace。**UIを持たない headless なコアはパッケージへ、画面とユースケースはアプリへ**置く。
 
 ```
-src/
-  app/         # エントリ層: main.tsx / App.tsx・ルーティング・Provider の組み立てのみ。薄く保つ
-  features/    # Feature 層: ユースケース単位(内部構成は後述)
-  domains/     # ドメイン層: 複数 feature から使われるドメインオブジェクト(コンパニオンオブジェクト)
-  services/    # ドメインサービス層: 複数ドメインを組み合わせるロジック(置く前に帰属先のドメインを探す)
-  components/  # 汎用UIコンポーネント(ドメイン知識を持たない)
-  hooks/       # 汎用カスタムフック(ドメイン知識を持たない)
-  libs/        # 外部世界との境界の入口。処理本体はドメイン単位でファイルを分ける
-  utils/       # 汎用純粋関数(ドメイン知識を持たない)
-  types/       # ロジックを持たない純粋な型定義のみ(コンパニオンオブジェクトを置いたら違反)
+packages/
+  model-core/       # @domain-modeler/model-core: .dmodel DSL の字句・構文解析・AST・診断・参照解決
+  canvas-core/      # @domain-modeler/canvas-core: キャンバスの操作・座標変換・ヒットテスト・履歴・接続・外部取り込み
+  scaffold/         # @domain-modeler/scaffold: キャンバス -> .dmodel の変換規則
+apps/
+  desktop/
+    src/            # React アプリ(後述)
+    src-tauri/      # Rust 側(後述)
+```
+
+- パッケージは**依存ゼロの headless コア**。React / Tauri API / DOM / アプリ層への依存は禁止
+- パッケージ同士の依存は一方向のみ(現状 `scaffold` -> `model-core` / `canvas-core`)。循環は禁止
+- 公開APIは `package.json` の `exports` で `./src/index.ts` の1点に固定する。**内部ファイルへの deep import はパッケージ解決の時点で失敗する**(規約を書き忘れても破れない)
+
+```json
+{
+  "name": "@domain-modeler/canvas-core",
+  "exports": { ".": "./src/index.ts" }
+}
+```
+
+### パッケージ内部の構成
+
+```
+packages/<name>/src/
+  index.ts     # 公開API(再export のみ)
+  <domain>/    # ドメインオブジェクト(型 + 同名コンパニオンオブジェクト)
+  utils/       # そのパッケージ内の汎用純粋関数(<型名>Ex)
+  types/       # ロジックを持たない純粋な型定義のみ
+```
+
+**各フォルダの内部をどうモジュール分割するかは実装者の設計判断に委ねる。**
+
+## アプリ層(apps/desktop/src)
+
+```
+apps/desktop/src/
+  main.tsx / App.tsx  # エントリ層: Provider の組み立てと appShell の呼び出しのみ。薄く保つ
+  appShell/           # 画面の骨格: タブ・ファイルオープン/保存・外部変更の取り込み・メニュー
+  features/           # Feature 層: ユースケース単位(内部構成は後述)
+  libs/               # 外部世界との境界の入口(Tauri IPC・DOM API)
+  utils/              # 汎用純粋関数(ドメイン知識を持たない)
 ```
 
 ```
 features/<feature-name>/
+  index.ts     # この feature の公開API
   domains/     # この feature 固有のドメインオブジェクト
   components/  # この feature 固有のUI
   hooks/       # この feature 固有のフック
@@ -26,13 +61,25 @@ features/<feature-name>/
   types/       # この feature 固有の型
 ```
 
+- **`src/domains/` `src/services/` はアプリ層に置かない。** 複数 feature が必要とするドメインは `packages/@domain-modeler/*` へ切り出す(後述)
+- 汎用UIコンポーネント・汎用カスタムフック(ドメイン知識を持たないもの)が必要になったら `src/components/` `src/hooks/` を作る。feature 固有のものは `features/<x>/` に置いたままにする
+- `appShell/` は複数 feature を1つの画面へ組み立てる場所。**ドメインロジックを書かない**(判定・計算・変換は feature の domains かパッケージへ)
+
 ## 配置の判断基準
 
-- ドメインオブジェクトはまず `features/<x>/domains/` に置き、**2つ以上の feature が必要としたら `src/domains/` に昇格**させる(重複実装は禁止)
-- ロジックを持たない純粋な型定義は `types/`(汎用は `src/types/`、feature 固有は `features/<x>/types/`)に置く。**`domains/` 内に型定義だけのファイル(`type.ts` / `types.ts` 等)を作ることは禁止**
+- ドメインオブジェクトはまず `features/<x>/domains/` に置き、**2つ以上の feature が必要としたら `packages/@domain-modeler/*` へ昇格**させる(重複実装は禁止)。feature 同士の参照は公開API(`index.ts`)経由なら可だが、共有物になったら昇格させる(`rules/consistency.md`「feature の構成とネスト」)
+- ロジックを持たない純粋な型定義は `types/`(feature 固有は `features/<x>/types/`、パッケージ内は `packages/<name>/src/types/`)に置く。**`domains/` 内に型定義だけのファイル(`type.ts` / `types.ts` 等)を作ることは禁止**
 - `domains/` に置いてよいのは「型 + 同名コンパニオンオブジェクト」が揃ったドメインオブジェクトのみ。型はコンパニオンオブジェクトと**同一ファイル**で定義する(型だけを別ファイルに分離しない)
-- I/O(Tauri API・localStorage・fetch・外部ライブラリ)・外部フォーマットの解釈は必ず `src/libs/` 経由
-- 複数ドメインを組み合わせるロジックで、UIにもI/Oにも依存しないものは `src/services/`。ただし置く前に**帰属先のドメインオブジェクトが無いかを確認する**(後述)
+- I/O(Tauri API・localStorage・fetch・DOM API・外部ライブラリ)・外部フォーマットの解釈は必ず `src/libs/` 経由
+- **`features/<x>/domains/` は `libs/` を import しない。** I/O の接点は hooks / components 側に置き、domains は副作用を `operations` として引数で受け取る(後述「I/O の呼び出し口」)
+
+## I/O の呼び出し口
+
+I/O の入口が散ると、検証を通らない書き込み経路が生まれる。**呼ぶ層を固定する。**
+
+- `libs/` を import してよいのは `appShell/` と `features/<x>/` の hooks / components / action(React 側)まで
+- `features/<x>/domains/` とパッケージは `libs/` を import しない。副作用は `XxxOperations` 型として引数で受け取り、実物を差し込むのは React 側の責務
+- 例外変換(`try-catch` -> `Result`)は `libs/` の内側で完結させる。**domains 側に throw しうる関数を渡さない**(`operations` は必ず `Result` を返す形で渡す)
 
 ## libs は入口にとどめる
 
@@ -78,71 +125,82 @@ apps/desktop/src-tauri/src/
 
 **判断の起点は「その規則は誰の性質か」。** 値を組み立てる・判定する・変換するコードは、その値を表す型のコンパニオンオブジェクトに置く。迷ったら、そのコードが第1引数に取っている型を見る。
 
-- ある型 `T` を受け取って `T` の性質を答える関数、`T` から別の表現を作る関数は、`T` のコンパニオンオブジェクトのメソッドにする。`services/` や呼び出し側にヘルパー関数として置かない
+- ある型 `T` を受け取って `T` の性質を答える関数、`T` から別の表現を作る関数は、`T` のコンパニオンオブジェクトのメソッドにする。`appShell/` や呼び出し側にヘルパー関数として置かない
 - 2つの値が**常に対で意味を持つ**(片方だけでは答えが決まらない)なら、対を表す型を作ってそちらに帰属させる
 - **汎用の型に個別ドメインの知識を集めない。** 「A が空のときは出力しない」のような規則は A の性質なので A 側に置く。汎用の B 側に `bFromA()` を生やすと、他のドメインもすべて B に集まって肥大化する
 - 帰属先の型がまだ無いなら、**そのときが型を作るタイミング**。引数を4つも5つも取る中間ヘルパーや `readonly [string, string]` のようなタプルは、「名前の付いていない型がここにある」というサイン
 
-## services はドメインを探してから使う
+## 共有の置き場を作る前にドメインを探す
 
-`services/` は複数ドメインを組み合わせるロジックの置き場として使ってよい。ただし**「複数ドメインに跨る」という感触だけを根拠に置かない**。多くの場合、帰属先のドメインオブジェクトが見つかっていないか、まだ作られていないだけで、そのまま置くと `services/` が帰属先未定のコードの集積場所になる。
+「これは複数ドメインに跨るから共通の置き場が要る」と感じたときほど、**帰属先のドメインオブジェクトが見つかっていないだけ**であることが多い。そのまま置くと帰属先未定コードの集積場所ができる。
 
-「これはサービスだ」と感じたときは、**先に次の順で置き場所を探す**。実際、過去のレビューで services に置かれたロジックの多くはここで帰属先が見つかっている。
+**「複数に跨る」という感触だけを根拠に共有フォルダへ置かない。** 先に次の順で置き場所を探す。
 
 1. **その処理が第1引数に取っている型は何か** → その型のコンパニオンオブジェクトのメソッドにする
-2. **2つ以上の値が常に対で渡っていないか** → 対を表す型を作り、その型に帰属させる(`TypographyFieldRef` / `Padding` など)
+2. **2つ以上の値が常に対で渡っていないか** → 対を表す型を作り、その型に帰属させる
 3. **やっていることが走査・再帰・`Result` の取り回しだけではないか** → 走査対象の型(ツリーならノードの型)がそのメソッドを持てる
-4. **ドメイン知識を持たない汎用操作ではないか** → `src/utils/`(`<型名>Ex`)
+4. **ドメイン知識を持たない汎用操作ではないか** → `utils/`(`<型名>Ex`)
 5. **外部フォーマットの解釈・I/O ではないか** → `src/libs/`
 6. **特定のユースケースでしか意味を持たない手順ではないか** → `features/<x>/`(feature 固有のドメインオブジェクトを含む)
 
-1〜6 のどれにも当てはまらなければ `services/` に置いてよい。その場合、**なぜどのドメインにも帰属しないのかを PR に一言書く**(「どちらの型にも帰属しない調停そのものが目的」など)。判断が割れそうなら実装前に相談する。
+1〜6 のどれにも当てはまらず、UIにもI/Oにも依存しないオーケストレーション(ドメインを呼ぶ順序、ツリーの走査、`Result` の取り回し)だけが残ったときは、`packages/@domain-modeler/<name>/src/` に置く。**その場合、なぜどのドメインにも帰属しないのかを PR に一言書く**(「どちらの型にも帰属しない調停そのものが目的」など)。判断が割れそうなら実装前に相談する。
 
-### services の責務
-
-- 責務は**オーケストレーション**(ドメインを呼ぶ順序、ツリーの走査、`Result` の取り回し)に限る
-- `services/` に「値の組み立て」「判定」「変換」のロジックが現れたら、それは帰属先のドメインオブジェクトが無いか、あるのに使われていないサイン。ドメインへ移すか、新しいドメインオブジェクトを作る
-- 単一のドメインオブジェクトの検証・整合性チェックを `services/` に切り出さない。`XxxValidator` のようなモジュールを作らず、**そのドメインオブジェクト自身に持たせる**
+- **アプリ層に `services/` を作らない。** UIにもI/Oにも依存しないなら、それはパッケージへ出せる(出せないなら、まだ何かに依存している)
+- 「値の組み立て」「判定」「変換」が現れたら、それは帰属先のドメインオブジェクトが無いか、あるのに使われていないサイン
+- 単一のドメインオブジェクトの検証・整合性チェックを外へ切り出さない。`XxxValidator` のようなモジュールを作らず、**そのドメインオブジェクト自身に持たせる**
 - モジュール名が「対象 + 動作(`-validator` / `-manager` 等)」になったら置き場所を疑う
-- 既存の service を触るときは、**まずドメインへ移せないかを検討**してから変更する(そのまま肥大化させない)
+
+### 複数 feature に跨るものの行き先
+
+| 押し出されるもの | 行き先 |
+| --------------- | ------ |
+| 複数 feature の UI の組み合わせ | 呼び出し元(`appShell/`) |
+| 2つ以上の feature が必要とするドメイン | `packages/@domain-modeler/*` へ切り出す |
+| 1操作が2つの feature に跨る手順 | 呼び出し元(`appShell/`)に置く。動詞で名付ける |
 
 ### ドメインが出力形式を必要とする場合
 
-「CSS に出力する」など、ドメインの外側の知識が要るからサービスにする、という判断はしない。ドメインから `services/` は import できないので、**変換手段を引数で受け取る**(変換関数・対応表を渡す)ことで依存方向を保ったままドメインに置ける。
+「CSS に出力する」など、ドメインの外側の知識が要るから外へ出す、という判断はしない。**変換手段を引数で受け取る**(変換関数・対応表を渡す)ことで、依存方向を保ったままドメインに置ける。
 
 ```typescript
-// OK: カスタムプロパティ名の綴り方(出力層の知識)は引数で受け取る
-// domains/padding
+// OK: 綴り方(出力層の知識)は引数で受け取る
 declarations(padding: Padding, resolveToken: (token: string) => string): readonly CssDeclaration[]
 ```
 
 ## utils の形式
 
-`src/utils/` はドメイン知識を持たない汎用純粋関数の置き場。**フラットな1ファイル + PascalCase** とし、ファイル名と同名の名前空間オブジェクトを export する(`ArrayEx` / `NumberEx` / `StringEx` / `Result` / `Option` / `Font`)。フォルダ + `index.ts` の形にはしない(テストは `src/utils/__tests__/` に集約)。
+`apps/desktop/src/utils/` と `packages/<name>/src/utils/` はドメイン知識を持たない汎用純粋関数の置き場。**フラットな1ファイル + PascalCase** とし、ファイル名と同名の名前空間オブジェクトを export する(`ArrayEx` / `NumberEx` / `Option` / `EventTargetEx` / `WheelEventEx`)。フォルダ + `index.ts` の形にはしない(テストは同階層の `__tests__/` に集約)。
 
-- 組み込み型に対する汎用操作は `<型名>Ex` に集約する。配列の範囲判定・挿入・移動、数値の性質判定、文字種の判定などを、ドメインやサービスのローカル関数として書かない
+- 組み込み型・ブラウザ標準型に対する汎用操作は `<型名>Ex` に集約する。配列の範囲判定・挿入・移動、数値の性質判定、イベントの判定などを、ドメインや feature のローカル関数として書かない
 - 汎用ユーティリティ同士も重複させない(`ArrayEx` の範囲チェックは `NumberEx.isNatural` を使う)
-- ドメイン概念になった時点で `utils/` から `domains/` へ移す。判断軸は「その値に生成・判定・変換の規則が付いてくるか」(規則を持つ `Px` は `domains/px/`、文字列定数だけの `Font` は `utils/`)
+- ドメイン概念になった時点で `utils/` から `domains/` へ移す。判断軸は「その値に生成・判定・変換の規則が付いてくるか」
 
 ## モジュールの公開API
 
-- モジュールフォルダ(domains/services/features の各サブフォルダ)は `index.ts` を公開APIとする
+- モジュールフォルダ(features の各サブフォルダ、パッケージの各ドメインフォルダ)は `index.ts` を公開APIとする
 - モジュールフォルダの基本形は「`index.ts` + `__tests__/`」。**実装は `index.ts` に直接書く**。複数ファイルへの分割が必要になったら、実装ファイルを1つだけ切り出すのではなく、その時点で**サブフォルダに分割**する(サブフォルダも同じ形を保つ)
 - フォルダ外部からの import は必ず `index.ts` 経由とし、**内部ファイルへの deep import は禁止**
+- feature は `features/<x>/index.ts` を公開APIとする。`appShell/` からの import はここ経由のみ
+- パッケージは `package.json` の `exports` を公開APIとする。`packages/<name>/src/<内部>` への import は禁止
 - `index.ts` から export するのは外部に公開する必要があるものだけに絞る
-- **型を公開APIとして export するなら、その型と同名コンパニオンオブジェクトを別フォルダに置く。** 他モジュールの `index.ts` へ型定義だけを相乗りさせない。その型を返す・使う操作は、そのコンパニオンオブジェクトの関数にする
+- **型を公開APIとして export するなら、その型と同名コンパニオンオブジェクトを別フォルダに置く。** 他モジュールの `index.ts` へ型定義だけを相乗りさせない
 
 ## 依存方向のルール(必須要件)
 
 ```
-app → features → services → domains
+main/App -> appShell -> features/<x> -> packages/@domain-modeler/*
+                  \                 \
+                   `--> libs ------->`--> utils
 ```
 
-- `src/domains/<x>/` は他の domain を import してよい(一方向のみ・循環禁止)。services / features / React / Tauri API への依存は禁止
-- `src/services/` は `src/domains/` と `src/types/` と `src/utils/` のみ import 可。React / Tauri API への依存は禁止
-- `features/<x>/` は自分の内部、`src/services/`、`src/domains/`、横断層(`components/` `hooks/` `libs/` `utils/` `types/`)を import 可。**他 feature の import も可**(ただし公開API = その feature の `index.ts` 経由のみ・feature 間の循環参照は禁止)
-- `features/<x>/domains/` は `src/domains/` を import してよいが、他 feature の domains への直接 import は不可(2つ以上の feature が必要とするドメインオブジェクトは `src/domains/` へ昇格させる)
-- `app/` はロジックを持たない。`features/` の呼び出しとルーティング・Provider の組み立てのみ
-- `components/` `hooks/` `utils/` `types/` は domains / services / features を import してはならない(ドメイン知識の流入禁止)
-- `libs/` は外部ライブラリ(`@tauri-apps/*` 等)と `src/types/` のみ import 可
+- `packages/<name>/src/` は他のパッケージを `exports` 経由で import してよい(一方向のみ・循環禁止)。**React / Tauri API / DOM API / `apps/` への依存は禁止**
+- `features/<x>/` は自分の内部、`packages/@domain-modeler/*`、横断層(`libs/` `utils/` と、作られていれば `components/` `hooks/` `types/`)を import 可。他 feature は**公開API(`index.ts`)経由のみ**で、内部への deep import と feature 間の循環は禁止(`rules/consistency.md`)
+- 親でしか使わない feature は `features/<親>/features/<子>/` へネストする(深さ2段まで)。ネストしても公開API・循環のルールは同じ
+- `features/<x>/domains/` は `packages/@domain-modeler/*` と `utils/`、他 feature の公開APIを import 可。`libs/` / React / 他 feature の内部は禁止
+- `appShell/` は `features/<x>/index.ts`・横断層・パッケージを import 可。features から appShell を import してはならない
+- `App.tsx` / `main.tsx` はロジックを持たない。`appShell/` の呼び出しと Provider の組み立てのみ
+- `utils/` `types/`(と将来の `components/` `hooks/`)は features / appShell / パッケージを import してはならない(ドメイン知識の流入禁止)
+- `libs/` は外部ライブラリ(`@tauri-apps/*`)・DOM API と `src/types/` のみ import 可
 - 循環依存は全面禁止
+
+境界は `pnpm run check:boundaries` で機械的に検査する(CI の frontend ワークフローと push 前フックで実行)。

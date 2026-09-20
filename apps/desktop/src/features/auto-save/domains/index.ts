@@ -1,8 +1,4 @@
-import {
-  writeFileAsResult,
-  type FileWriteError,
-  type FileWriteResult,
-} from "@/libs/file-write";
+import type { FileWriteError, FileWriteResult } from "@/types/file-write";
 
 export const AUTO_SAVE_DEBOUNCE_MS = 500;
 export const AUTO_SAVE_MAX_INTERVAL_MS = 2_000;
@@ -73,7 +69,10 @@ export type AutoSaveDue =
   | Readonly<{ status: "notScheduled" }>
   | Readonly<{ status: "scheduled"; delayMs: number }>;
 
-/** 自動保存がファイルへ書き込むための外部操作。 */
+/**
+ * 自動保存がファイルへ書き込むための外部操作。
+ * `writeFile` は失敗も `FileWriteResult` で返す(例外は hooks 層で失敗結果へ変換してから渡す)。
+ */
 export type AutoSaveOperations = Readonly<{
   writeFile: (path: string, contents: string) => Promise<FileWriteResult>;
   now: () => number;
@@ -313,10 +312,10 @@ const save = async (
     return autoSave;
   }
 
-  const result = await writeFileAsResult(operations.writeFile, {
-    path: saving.path,
-    contents: saving.writingContents,
-  });
+  const result = await operations.writeFile(
+    saving.path,
+    saving.writingContents,
+  );
   return AutoSave.finishSaving(saving, {
     contents: saving.writingContents,
     result,

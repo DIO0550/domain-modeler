@@ -1,17 +1,12 @@
 import { Document } from "@domain-modeler/canvas-core";
 import { Generate } from "@domain-modeler/scaffold";
 import { expect, test } from "vitest";
-import { TabsState } from "@/appShell/tabs";
-import type { FileWriteResult } from "@/libs/file-write";
+import type { FileWriteResult } from "@/types/file-write";
 import { Option } from "@/utils/Option";
 import { ScaffoldAction } from "../index";
 
 function setup() {
-  let tabs = TabsState.reducer(TabsState.create(), {
-    type: "openTab",
-    path: "/source.dcanvas",
-    documentType: "canvas",
-  });
+  const openedTabs: Readonly<{ path: string; documentType: "model" }>[] = [];
   const files = new Map<string, string>([
     ["/source.dcanvas", "original canvas"],
   ]);
@@ -45,10 +40,10 @@ function setup() {
     },
     selectSavePath: async () => Option.some("/generated.dmodel"),
     openTab: (path: string, documentType: "model") => {
-      tabs = TabsState.reducer(tabs, { type: "openTab", path, documentType });
+      openedTabs.push({ path, documentType });
     },
   };
-  return { source, operations, files, previews, tabs: () => tabs };
+  return { source, operations, files, previews, openedTabs };
 }
 
 test("確認した全文を新規保存し元キャンバスを残してモデルタブを前面に開く", async () => {
@@ -62,13 +57,9 @@ test("確認した全文を新規保存し元キャンバスを残してモデ�
   expect(state.previews).toEqual([text]);
   expect(state.files.get("/generated.dmodel")).toBe(text);
   expect(state.files.get("/source.dcanvas")).toBe("original canvas");
-  expect(state.tabs()).toMatchObject({
-    activePath: "/generated.dmodel",
-    tabs: [
-      { path: "/source.dcanvas" },
-      { path: "/generated.dmodel", documentType: "model" },
-    ],
-  });
+  expect(state.openedTabs).toEqual([
+    { path: "/generated.dmodel", documentType: "model" },
+  ]);
 });
 
 test("確認で取り消すと保存先を選ばず文書もタブも増えない", async () => {
@@ -82,7 +73,7 @@ test("確認で取り消すと保存先を選ばず文書もタブも増えな�
   });
   expect(result).toEqual({ status: "cancelled" });
   expect(state.files.size).toBe(1);
-  expect(state.tabs().tabs).toHaveLength(1);
+  expect(state.openedTabs).toHaveLength(0);
 });
 
 test("保存先選択を取り消すと文書もタブも増えない", async () => {
@@ -93,7 +84,7 @@ test("保存先選択を取り消すと文書もタブも増えない", async ()
   });
   expect(result).toEqual({ status: "cancelled" });
   expect(state.files.size).toBe(1);
-  expect(state.tabs().tabs).toHaveLength(1);
+  expect(state.openedTabs).toHaveLength(0);
 });
 
 test("既存モデルへの保存は失敗し内容とタブを維持する", async () => {
@@ -102,7 +93,7 @@ test("既存モデルへの保存は失敗し内容とタブを維持する", as
   const result = await ScaffoldAction.run(state.source, state.operations);
   expect(result).toMatchObject({ status: "writeFailed" });
   expect(state.files.get("/generated.dmodel")).toBe("hand written model");
-  expect(state.tabs().tabs).toHaveLength(1);
+  expect(state.openedTabs).toHaveLength(0);
 });
 
 test("保存が失敗すると失敗を返しモデルタブを開かない", async () => {
@@ -118,7 +109,7 @@ test("保存が失敗すると失敗を返しモデルタブを開かない", as
     status: "writeFailed",
     error: { message: "connection failed" },
   });
-  expect(state.tabs().tabs).toHaveLength(1);
+  expect(state.openedTabs).toHaveLength(0);
 });
 
 test.each([
@@ -133,5 +124,5 @@ test.each([
   expect(result).toEqual({ status: "unavailable" });
   expect(state.previews).toEqual([]);
   expect(state.files.size).toBe(1);
-  expect(state.tabs().tabs).toHaveLength(1);
+  expect(state.openedTabs).toHaveLength(0);
 });

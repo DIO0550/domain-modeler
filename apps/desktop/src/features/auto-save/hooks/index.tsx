@@ -29,6 +29,21 @@ const AutoSaveContext = createContext<AutoSaveContextValue | undefined>(
   undefined,
 );
 
+/**
+ * 呼び出し側から渡された書き込み操作を、例外も失敗結果として返す形へ包む。
+ * domains へは throw しない操作だけを渡す(例外変換は libs 境界の責務)。
+ *
+ * @param operations 呼び出し側が差し込んだ自動保存操作。
+ * @returns writeFile が必ず FileWriteResult を返す自動保存操作。
+ */
+const asResultOperations = (
+  operations: AutoSaveOperations,
+): AutoSaveOperations => ({
+  ...operations,
+  writeFile: (path, contents) =>
+    writeFileAsResult(operations.writeFile, { path, contents }),
+});
+
 type AutoSaveProviderProps = Readonly<{
   path: string | Readonly<{ draftId: string }>;
   sessionKey?: string;
@@ -75,11 +90,11 @@ function AutoSaveSession({
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
   const autoSaveRef = useRef(autoSave);
-  const operationsRef = useRef(operations);
+  const operationsRef = useRef(asResultOperations(operations));
   const writeQueueRef = useRef(Promise.resolve());
   const sessionMountedRef = useRef(true);
   autoSaveRef.current = autoSave;
-  operationsRef.current = operations;
+  operationsRef.current = asResultOperations(operations);
 
   useEffect(() => {
     sessionMountedRef.current = true;
@@ -129,10 +144,10 @@ function AutoSaveSession({
       }
 
       replaceAutoSave(saving);
-      const result = await writeFileAsResult(operationsRef.current.writeFile, {
-        path: saving.path,
-        contents: saving.writingContents,
-      });
+      const result = await operationsRef.current.writeFile(
+        saving.path,
+        saving.writingContents,
+      );
       replaceAutoSave((latest) =>
         AutoSave.finishSaving(latest, {
           contents: saving.writingContents,
@@ -230,10 +245,7 @@ function AutoSaveSession({
             return false;
           }
           const path = current.path;
-          const result = await writeFileAsResult(
-            operationsRef.current.writeFile,
-            { path, contents },
-          );
+          const result = await operationsRef.current.writeFile(path, contents);
           if (result.type !== "ok") {
             return false;
           }

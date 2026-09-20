@@ -1,16 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 
-/** ファイル書き込みに失敗した理由。 */
-export type FileWriteError = Readonly<{
-  kind: "writeFailed";
-  path: string;
-  message: string;
-}>;
+import type { FileWriteError, FileWriteResult } from "@/types/file-write";
 
-/** ファイル書き込み IPC の結果。 */
-export type FileWriteResult =
-  | Readonly<{ type: "ok" }>
-  | Readonly<{ type: "err"; error: FileWriteError }>;
+export type { FileWriteError, FileWriteResult };
 
 /**
  * ファイル書き込みの例外を失敗結果へ変換する。

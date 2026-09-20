@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef } from "react";
-import { isTauri } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { DocumentWorkspace } from "./appShell/document-workspace";
 import { useAppShell } from "./appShell/hooks";
 import { MenuBar } from "./appShell/menu-bar";
 import { TabBar } from "./appShell/tab-bar";
+import {
+  isAppWindowAvailable,
+  listenCloseRequested,
+} from "./libs/app-window";
 import { FILE_WATCH_OPERATIONS } from "./libs/file-watch";
 import "./App.css";
 
@@ -48,26 +50,20 @@ function App() {
   );
 
   useEffect(() => {
-    if (import.meta.env.MODE === "test" || !isTauri()) {
+    if (import.meta.env.MODE === "test" || !isAppWindowAvailable()) {
       return;
     }
-    const appWindow = getCurrentWindow();
     let disposed = false;
     let unlisten: (() => void) | undefined;
-    void appWindow
-      .onCloseRequested(async (event) => {
-        event.preventDefault();
-        if (await flushStableSaveSessions(saveSessions.current)) {
-          await appWindow.destroy();
-        }
-      })
-      .then((nextUnlisten) => {
-        if (disposed) {
-          nextUnlisten();
-          return;
-        }
-        unlisten = nextUnlisten;
-      });
+    void listenCloseRequested(() =>
+      flushStableSaveSessions(saveSessions.current),
+    ).then((nextUnlisten) => {
+      if (disposed) {
+        nextUnlisten();
+        return;
+      }
+      unlisten = nextUnlisten;
+    });
     return () => {
       disposed = true;
       unlisten?.();
