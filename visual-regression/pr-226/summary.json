@@ -1,11 +1,11 @@
 {
-  "reportVersion": "1eb3a7a8e07a08659f87f51db95512cfa5f2aae9",
+  "reportVersion": "19fa745c5abc9ede646bcaa56ef0233d8f63c202",
   "maxDiffRatio": 0.002,
-  "changed": 0,
+  "changed": 3,
   "new": 0,
   "deleted": 0,
-  "passed": 58,
-  "failed": 0,
+  "passed": 55,
+  "failed": 3,
   "results": [
     {
       "story": "appshell-menu-bar-menubar--all-props",
@@ -649,39 +649,39 @@
       "id": "model-modeldiagnostics--all-props",
       "title": "Model/ModelDiagnostics",
       "name": "All Props",
-      "status": "passed",
-      "reason": "match",
-      "diffPixels": 0,
-      "diffRatio": 0,
+      "status": "changed",
+      "reason": "pixel-diff",
+      "diffPixels": 10685,
+      "diffRatio": 0.0116,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": false
+      "hasDiff": true
     },
     {
       "story": "model-modeldiagnostics--default",
       "id": "model-modeldiagnostics--default",
       "title": "Model/ModelDiagnostics",
       "name": "Default",
-      "status": "passed",
-      "reason": "match",
-      "diffPixels": 0,
-      "diffRatio": 0,
+      "status": "changed",
+      "reason": "pixel-diff",
+      "diffPixels": 23123,
+      "diffRatio": 0.025099999999999997,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": false
+      "hasDiff": true
     },
     {
       "story": "model-modeldiagnostics--edge-cases",
       "id": "model-modeldiagnostics--edge-cases",
       "title": "Model/ModelDiagnostics",
       "name": "Edge Cases",
-      "status": "passed",
-      "reason": "match",
-      "diffPixels": 0,
-      "diffRatio": 0,
+      "status": "changed",
+      "reason": "pixel-diff",
+      "diffPixels": 8384,
+      "diffRatio": 0.0091,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": false
+      "hasDiff": true
     },
     {
       "story": "model-modeldiagnostics--empty",
@@ -689,12 +689,12 @@
       "title": "Model/ModelDiagnostics",
       "name": "Empty",
       "status": "passed",
-      "reason": "match",
-      "diffPixels": 0,
-      "diffRatio": 0,
+      "reason": "within-threshold",
+      "diffPixels": 1194,
+      "diffRatio": 0.0013,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": false
+      "hasDiff": true
     },
     {
       "story": "model-modeleditor--default",
