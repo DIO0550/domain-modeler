@@ -13,6 +13,7 @@ import { AutoSave, type AutoSaveOperations } from "../domains";
 /** Context 経由で公開する、1文書の自動保存操作。 */
 export type AutoSaveContextValue = Readonly<{
   autoSave: AutoSave;
+  attachFile: (file: Readonly<{ path: string; contents: string }>) => void;
   notifyContentsChanged: (contents: string) => void;
   acceptExternalContents: (contents: string) => void;
   pause: () => void;
@@ -29,7 +30,8 @@ const AutoSaveContext = createContext<AutoSaveContextValue | undefined>(
 );
 
 type AutoSaveProviderProps = Readonly<{
-  path: string;
+  path: string | Readonly<{ draftId: string }>;
+  sessionKey?: string;
   initialContents: string;
   operations: AutoSaveOperations;
   children: ReactNode;
@@ -37,14 +39,22 @@ type AutoSaveProviderProps = Readonly<{
 
 /**
  * 1文書の自動保存状態を保持し、期限が来たら書き込む。
- * path が変わったときは key によりセッションを作り直し、
- * 進行中の書き込み結果は新しい文書へ反映しない。
+ * 別文書への切り替えではセッションを作り直す。初回保存では同じ sessionKey を維持し、
+ * attachFile で編集内容と履歴を保持したまま保存先へ接続する。
  *
  * @param props 対象パス、初期内容、書き込み操作、子要素。
  * @returns 自動保存操作を下位へ渡す Provider。
  */
 export function AutoSaveProvider(props: AutoSaveProviderProps) {
-  return <AutoSaveSession key={props.path} {...props} />;
+  return (
+    <AutoSaveSession
+      key={
+        props.sessionKey ??
+        (typeof props.path === "string" ? props.path : props.path.draftId)
+      }
+      {...props}
+    />
+  );
 }
 
 /**
@@ -155,7 +165,7 @@ function AutoSaveSession({
         () => undefined,
         () => undefined,
       );
-    }, due.delayMs);
+    }, Math.ceil(due.delayMs));
 
     return () => {
       clearTimeout(timer);
@@ -165,6 +175,11 @@ function AutoSaveSession({
   const value = useMemo((): AutoSaveContextValue => {
     return {
       autoSave,
+      attachFile: (file) => {
+        replaceAutoSave((current) =>
+          AutoSave.attachFile(current, file, operationsRef.current.now()),
+        );
+      },
       notifyContentsChanged: (contents) => {
         replaceAutoSave((current) =>
           AutoSave.notifyContentsChanged(
@@ -198,6 +213,9 @@ function AutoSaveSession({
         replaceAutoSave(AutoSave.endTransaction);
       },
       flush: async () => {
+        if (autoSaveRef.current.status === "unsaved") {
+          return false;
+        }
         while (AutoSave.isDirty(autoSaveRef.current)) {
           if (!(await runSave(true))) {
             return false;
@@ -207,6 +225,11 @@ function AutoSaveSession({
       },
       overwrite: async (contents) => {
         const run = async (): Promise<boolean> => {
+          const current = autoSaveRef.current;
+          if (current.status === "unsaved") {
+            return false;
+          }
+          const path = current.path;
           const result = await writeFileAsResult(
             operationsRef.current.writeFile,
             { path, contents },
@@ -246,7 +269,9 @@ function AutoSaveSession({
   }, [autoSave]);
 
   return (
-    <AutoSaveContext.Provider value={value}>{children}</AutoSaveContext.Provider>
+    <AutoSaveContext.Provider value={value}>
+      {children}
+    </AutoSaveContext.Provider>
   );
 }
 

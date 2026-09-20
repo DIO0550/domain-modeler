@@ -2,13 +2,14 @@ import { mockIPC, clearMocks } from "@tauri-apps/api/mocks";
 import { Document, Serialize } from "@domain-modeler/canvas-core";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import App from "../../App";
 
 const cleanups: (() => void)[] = [];
 afterEach(() => {
   cleanups.splice(0).forEach((cleanup) => cleanup());
   clearMocks();
+  vi.useRealTimers();
 });
 
 /** 実際のAppを描画する。外部I/Oだけを各テストで差し替える。 */
@@ -33,161 +34,284 @@ const clickNamed = async (host: HTMLElement, name: string) => {
   await act(async () => button?.click());
 };
 
-test.each(["model", "canvas"])("開いている %s のパスを別の大文字小文字で再選択しても編集状態を保持し再作成しない", async (kind) => {
-  const path = kind === "model" ? "/Draft.dmodel" : "/Draft.dcanvas";
-  const selectedPath = path.toLowerCase();
-  const label = kind === "model" ? "新規ドメインモデル" : "新規キャンバス";
-  const files = new Map<string, string>();
-  let selectionCount = 0;
-  mockIPC((command, payload) => {
-    if (command === "save_file_dialog") {
-      selectionCount += 1;
-      return selectionCount === 1 ? path : selectedPath;
-    }
-    if (command === "same_file_path") {
-      const { left, right } = payload as { left: string; right: string };
-      return left.toLowerCase() === right.toLowerCase();
-    }
-    expect(command).toBe("create_file");
-    const { contents } = payload as { contents: string };
-    files.set(path, contents);
-    return { type: "ok" };
-  });
-  const host = renderApp();
+const newDocument = async (host: HTMLElement, kind: "model" | "canvas") => {
   await clickNamed(host, "ファイル");
-  await clickNamed(host, label);
-  const textarea = host.querySelector("textarea");
-  if (textarea === null) { await clickNamed(host, "Domain Event"); }
+  await clickNamed(
+    host,
+    kind === "model" ? "新規ドメインモデル" : "新規キャンバス",
+  );
+};
+const editModel = async (host: HTMLElement, text: string) => {
+  const input = host.querySelector("textarea");
   await act(async () => {
-    if (textarea !== null) {
-      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(textarea, "// draft");
-      textarea.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-    host.querySelector(".canvas-world")?.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 50, clientY: 60 }));
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, text);
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  // 外部削除後も、開いている編集セッションへの新規作成を拒否する。
-  files.delete(path);
-  await clickNamed(host, "ファイル");
-  await clickNamed(host, label);
-  expect(files.has(selectedPath)).toBe(false);
-  expect(host.querySelectorAll('[role="tab"]')).toHaveLength(1);
-  expect(host.querySelector('[role="alert"]')?.textContent).toContain("開いている文書と同じパス");
-  if (kind === "model") {
-    expect(host.querySelector("textarea")?.value).toBe("// draft");
-    return;
-  }
-  expect(host.querySelectorAll("article")).toHaveLength(1);
-});
-
-test.each(["model", "canvas"])("保存先選択後に競合した %s ファイルを保護しタブを追加しない", async (kind) => {
-  const path = kind === "model" ? "/existing.dmodel" : "/existing.dcanvas";
-  const files = new Map<string, string>();
-  mockIPC((command) => {
-    if (command === "save_file_dialog") {
-      files.set(path, "other process contents");
-      return path;
-    }
-    expect(command).toBe("create_file");
-    return { type: "err", error: { kind: "writeFailed", path, message: "already exists" } };
-  });
-  const host = renderApp();
-  await clickNamed(host, "ファイル");
-  await clickNamed(host, kind === "model" ? "新規ドメインモデル" : "新規キャンバス");
-  expect(files.get(path)).toBe("other process contents");
-  expect(host.querySelector('[role="tab"]')).toBeNull();
-  expect(host.querySelector('[role="alert"]')?.textContent).toContain("already exists");
-});
+};
+const saveShortcut = async () => {
+  await act(async () =>
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true }),
+    ),
+  );
+};
 
 test.each([
-  { kind: "canvas", label: "新規キャンバス", path: "/new.dcanvas", contents: Serialize.stringify(Document.empty()) },
-  { kind: "model", label: "新規ドメインモデル", path: "/new.dmodel", contents: "" },
-])("$label からファイルを作成し編集画面を開く", async ({ kind, label, path, contents }) => {
-  const files = new Map<string, string>();
-  mockIPC((command, payload) => {
-    if (command === "save_file_dialog") {
-      expect(payload).toEqual({ kind });
-      return path;
-    }
-    expect(command).toBe("create_file");
-    expect(payload).toEqual({ path, contents });
-    files.set(path, contents);
-    return { type: "ok" };
-  });
-  const host = renderApp();
-  await clickNamed(host, "ファイル");
-  await clickNamed(host, label);
-  expect(files.get(path)).toBe(contents);
-  expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain("new.");
-  const editorLabel = kind === "model" ? "ドメインモデルのテキスト" : "部品パレット";
-  expect(host.querySelector(`[aria-label="${editorLabel}"]`)).not.toBeNull();
-  expect(host.querySelector('[role="alert"]')).toBeNull();
-});
-
-test("保存ダイアログをキャンセルすると書き込まず文書なしのままになる", async () => {
+  "canvas",
+  "model",
+] as const)("%s の新規作成はダイアログも書き込みも行わず編集画面を開く", async (kind) => {
+  const commands: string[] = [];
   mockIPC((command) => {
-    expect(command).toBe("save_file_dialog");
+    commands.push(command);
     return null;
   });
   const host = renderApp();
-  await clickNamed(host, "ファイル");
-  await clickNamed(host, "新規キャンバス");
-  expect(host.querySelector('[role="tab"]')).toBeNull();
-  expect(host.textContent).toContain("文書が開かれていません");
-  expect(host.querySelector('[role="alert"]')).toBeNull();
+  await newDocument(host, kind);
+  expect(host.querySelector('[role="tab"]')?.textContent).toContain("未保存");
+  expect(
+    host.querySelector(kind === "model" ? "textarea" : ".canvas-surface"),
+  ).not.toBeNull();
+  expect(commands).toEqual([]);
 });
 
-test.each(["dialog", "write"])("%s の失敗を表示し、再操作で新規作成できる", async (failure) => {
-  let shouldFail = true;
-  mockIPC((command) => {
+test.each([
+  "canvas",
+  "model",
+] as const)("%s を初回保存すると内容とタブ名を保存先へ引き継ぐ", async (kind) => {
+  const path = `/new.d${kind}`;
+  const files = new Map<string, string>();
+  mockIPC((command, payload) => {
     if (command === "save_file_dialog") {
-      if (failure === "dialog" && shouldFail) { throw new Error("dialog unavailable"); }
-      return "/retry.dmodel";
+      return path;
     }
     expect(command).toBe("create_file");
-    if (shouldFail) { throw new Error("permission denied"); }
+    const file = payload as { path: string; contents: string };
+    files.set(file.path, file.contents);
     return { type: "ok" };
   });
   const host = renderApp();
-  await clickNamed(host, "ファイル");
-  await clickNamed(host, "新規ドメインモデル");
-  expect(host.querySelector('[role="tab"]')).toBeNull();
+  await newDocument(host, kind);
+  if (kind === "model") {
+    await editModel(host, "data Order = string");
+  }
+  await saveShortcut();
+  expect(host.querySelector('[role="tab"]')?.textContent).toContain(
+    `new.d${kind}`,
+  );
+  expect(files.get(path)).toBe(
+    kind === "model"
+      ? "data Order = string"
+      : Serialize.stringify(Document.empty()),
+  );
+  if (kind === "model") {
+    expect(host.querySelector("textarea")?.value).toBe("data Order = string");
+  }
+});
+
+test("保存取消後もモデルの編集を保持し、保存前の自動保存は書き込まない", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+  const commands: string[] = [];
+  mockIPC((command) => {
+    commands.push(command);
+    return null;
+  });
+  const host = renderApp();
+  await newDocument(host, "model");
+  await editModel(host, "data Order = string");
+  await saveShortcut();
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  expect(host.querySelector("textarea")?.value).toBe("data Order = string");
+  expect(host.querySelector('[role="tab"]')?.textContent).toContain("未保存");
+  expect(commands).toEqual(["save_file_dialog"]);
+});
+
+test.each([
+  "dialog",
+  "write",
+])("%s の失敗後も編集を保持して保存を再試行できる", async (failure) => {
+  let shouldFail = true;
+  mockIPC((command) => {
+    if (command === "save_file_dialog") {
+      if (failure === "dialog" && shouldFail) {
+        throw new Error("dialog unavailable");
+      }
+      return "/retry.dmodel";
+    }
+    expect(command).toBe("create_file");
+    if (shouldFail) {
+      throw new Error("permission denied");
+    }
+    return { type: "ok" };
+  });
+  const host = renderApp();
+  await newDocument(host, "model");
+  await editModel(host, "data Order = string");
+  await saveShortcut();
   expect(host.querySelector('[role="alert"]')?.textContent).toContain(
     failure === "dialog" ? "dialog unavailable" : "permission denied",
   );
-  expect(host.querySelector('[role="alert"]')?.textContent).not.toContain("Error:");
+  expect(host.querySelector("textarea")?.value).toBe("data Order = string");
   shouldFail = false;
-  await clickNamed(host, "ファイル");
-  await clickNamed(host, "新規ドメインモデル");
-  expect(host.querySelector('[role="tab"]')?.textContent).toContain("retry.dmodel");
+  await saveShortcut();
+  expect(host.querySelector('[role="tab"]')?.textContent).toContain(
+    "retry.dmodel",
+  );
   expect(host.querySelector('[role="alert"]')).toBeNull();
 });
 
-test("保存先を選択中は両方の新規作成操作を無効にする", async () => {
-  let cancel: (value: null) => void = () => {};
-  let dialogCount = 0;
-  mockIPC(() => {
-    dialogCount += 1;
-    return new Promise<null>((resolve) => { cancel = resolve; });
-  });
-  const host = renderApp();
-  await clickNamed(host, "ファイル");
-  await clickNamed(host, "新規キャンバス");
-  await clickNamed(host, "ファイル");
-  const buttons = Array.from(host.querySelectorAll("button")).filter(
-    (button) => button.textContent?.startsWith("新規"),
+test("保存先の既存ファイルと競合しても下書きを保持する", async () => {
+  mockIPC((command) =>
+    command === "save_file_dialog"
+      ? "/existing.dmodel"
+      : {
+          type: "err",
+          error: {
+            kind: "writeFailed",
+            path: "/existing.dmodel",
+            message: "already exists",
+          },
+        },
   );
-  expect(buttons).toHaveLength(2);
-  expect(buttons.every((button) => button.getAttribute("aria-disabled") === "true")).toBe(true);
-  for (const button of buttons) {
-    button.focus();
-    expect(document.activeElement).toBe(button);
-    await act(async () => button.click());
-  }
-  expect(dialogCount).toBe(1);
-  await act(async () => cancel(null));
-  expect(buttons.every((button) => button.getAttribute("aria-disabled") === "false")).toBe(true);
+  const host = renderApp();
+  await newDocument(host, "model");
+  await editModel(host, "data Order = string");
+  await saveShortcut();
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "already exists",
+  );
+  expect(host.querySelector("textarea")?.value).toBe("data Order = string");
 });
 
+test("初回保存の書き込み中に再編集しても最新内容を同じファイルに保存する", async () => {
+  let finish: (result: { type: "ok" }) => void = () => {};
+  const files = new Map<string, string>();
+  let dialogs = 0;
+  mockIPC((command, payload) => {
+    if (command === "save_file_dialog") {
+      dialogs += 1;
+      return "/draft.dmodel";
+    }
+    const file = payload as { path: string; contents: string };
+    if (command === "create_file") {
+      return new Promise<{ type: "ok" }>((resolve) => {
+        finish = (result) => {
+          files.set(file.path, file.contents);
+          resolve(result);
+        };
+      });
+    }
+    expect(command).toBe("write_file");
+    files.set(file.path, file.contents);
+    return { type: "ok" };
+  });
+  const host = renderApp();
+  await newDocument(host, "model");
+  await editModel(host, "data Before = string");
+  await saveShortcut();
+  await saveShortcut();
+  await editModel(host, "data After = int");
+  await act(async () => finish({ type: "ok" }));
+  await saveShortcut();
+  expect(files.get("/draft.dmodel")).toBe("data After = int");
+  expect(host.querySelector("textarea")?.value).toBe("data After = int");
+  expect(dialogs).toBe(1);
+});
+
+test.each([
+  "キャンセル",
+  "保存せずに閉じる",
+  "保存して閉じる",
+])("未保存タブを閉じるとき %s を選べる", async (choice) => {
+  const files = new Map<string, string>();
+  mockIPC((command, payload) => {
+    if (command === "save_file_dialog") {
+      return "/draft.dmodel";
+    }
+    const file = payload as { path: string; contents: string };
+    files.set(file.path, file.contents);
+    return { type: "ok" };
+  });
+  const host = renderApp();
+  await newDocument(host, "model");
+  await editModel(host, "data Order = string");
+  await clickNamed(host, "ファイル");
+  await clickNamed(host, "タブを閉じる");
+  expect(host.querySelector("dialog")).not.toBeNull();
+  await clickNamed(host, choice);
+  expect(host.querySelector('[role="tab"]') !== null).toBe(
+    choice === "キャンセル",
+  );
+  expect(files.has("/draft.dmodel")).toBe(choice === "保存して閉じる");
+});
+
+test.each([
+  "model",
+  "canvas",
+] as const)("%s の終了時に初回保存を取り消してもタブを閉じない", async (kind) => {
+  mockIPC(() => null);
+  const host = renderApp();
+  await newDocument(host, kind);
+  await clickNamed(host, "ファイル");
+  await clickNamed(host, "タブを閉じる");
+  await clickNamed(host, "保存して閉じる");
+  expect(host.querySelector('[role="tab"]')?.textContent).toContain("未保存");
+  expect(host.querySelector("dialog")).toBeNull();
+});
+
+test.each([
+  "model",
+  "canvas",
+] as const)("%s の初回保存先が別のタブのパスと一致したら既存文書を保護する", async (kind) => {
+  let selections = 0;
+  const created: string[] = [];
+  mockIPC((command, payload) => {
+    if (command === "save_file_dialog") {
+      selections += 1;
+      return selections === 1 ? `/Draft.d${kind}` : `/draft.d${kind}`;
+    }
+    if (command === "same_file_path") {
+      return true;
+    }
+    expect(command).toBe("create_file");
+    created.push((payload as { path: string }).path);
+    return { type: "ok" };
+  });
+  const host = renderApp();
+  await newDocument(host, kind);
+  await saveShortcut();
+  await newDocument(host, kind);
+  await saveShortcut();
+  expect(created).toEqual([`/Draft.d${kind}`]);
+  expect(host.querySelectorAll('[role="tab"]')).toHaveLength(2);
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "開いている文書と同じパス",
+  );
+});
+
+test("初回保存後のモデル編集は選択済みのパスに自動保存する", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+  const files = new Map<string, string>();
+  let selections = 0;
+  mockIPC((command, payload) => {
+    if (command === "save_file_dialog") {
+      selections += 1;
+      return "/draft.dmodel";
+    }
+    const file = payload as { path: string; contents: string };
+    files.set(file.path, file.contents);
+    return { type: "ok" };
+  });
+  const host = renderApp();
+  await newDocument(host, "model");
+  await saveShortcut();
+  await editModel(host, "data After = string");
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get("/draft.dmodel")).toBe("data After = string");
+  expect(selections).toBe(1);
+});
 
 test("モデルの構造化プレビューは編集と文書切り替え後も入力内容に追従する", async () => {
   mockIPC((command, payload) => {
@@ -201,28 +325,47 @@ test("モデルの構造化プレビューは編集と文書切り替え後も�
   const host = renderApp();
   await clickNamed(host, "ファイル");
   await clickNamed(host, "新規ドメインモデル");
+  await saveShortcut();
   const input = host.querySelector("textarea");
   expect(input).toBeInstanceOf(HTMLTextAreaElement);
   await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(input, "data 注文 = string");
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "data 注文 = string");
     input?.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  expect(host.querySelector('[aria-label="構造化プレビュー"] [data-decl-name="注文"]')?.textContent).toContain("string");
+  expect(
+    host.querySelector(
+      '[aria-label="構造化プレビュー"] [data-decl-name="注文"]',
+    )?.textContent,
+  ).toContain("string");
   await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(input, "data 数量 = int constrained 1..100");
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(input, "data 数量 = int constrained 1..100");
     input?.dispatchEvent(new Event("input", { bubbles: true }));
   });
   expect(host.querySelector('[data-decl-name="注文"]')).toBeNull();
-  expect(host.querySelector('[data-decl-name="数量"]')?.textContent).toContain("1..100");
+  expect(host.querySelector('[data-decl-name="数量"]')?.textContent).toContain(
+    "1..100",
+  );
   await clickNamed(host, "ファイル");
   await clickNamed(host, "新規キャンバス");
-  const modelTab = Array.from(host.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(
-    (tab) => tab.textContent?.includes("draft.dmodel"),
-  );
+  await saveShortcut();
+  const modelTab = Array.from(
+    host.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+  ).find((tab) => tab.textContent?.includes("draft.dmodel"));
   expect(modelTab).toBeDefined();
   await act(async () => modelTab?.click());
-  expect(host.querySelector<HTMLTextAreaElement>('section:not([hidden]) textarea')?.value).toBe("data 数量 = int constrained 1..100");
-  expect(host.querySelector('[data-decl-name="数量"]')?.textContent).toContain("VALUE");
+  expect(
+    host.querySelector<HTMLTextAreaElement>("section:not([hidden]) textarea")
+      ?.value,
+  ).toBe("data 数量 = int constrained 1..100");
+  expect(host.querySelector('[data-decl-name="数量"]')?.textContent).toContain(
+    "VALUE",
+  );
 });
 
 test("モデルの未保存入力を書き終えるまでタブを閉じない", async () => {
@@ -244,6 +387,7 @@ test("モデルの未保存入力を書き終えるまでタブを閉じない",
   const host = renderApp();
   await clickNamed(host, "ファイル");
   await clickNamed(host, "新規ドメインモデル");
+  await saveShortcut();
   const input = host.querySelector("textarea");
   act(() => {
     Object.getOwnPropertyDescriptor(
@@ -289,6 +433,7 @@ test("モデルの未保存入力を書き込めなければタブを閉じな�
   const host = renderApp();
   await clickNamed(host, "ファイル");
   await clickNamed(host, "新規ドメインモデル");
+  await saveShortcut();
   const input = host.querySelector("textarea");
   act(() => {
     Object.getOwnPropertyDescriptor(
@@ -322,6 +467,7 @@ test("キャンバスの編集内容を保存してからタブを閉じる", as
   const host = renderApp();
   await clickNamed(host, "ファイル");
   await clickNamed(host, "新規キャンバス");
+  await saveShortcut();
   await clickNamed(host, "Domain Event");
   act(() => {
     host.querySelector(".canvas-surface")?.dispatchEvent(

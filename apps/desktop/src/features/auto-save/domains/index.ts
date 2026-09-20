@@ -52,8 +52,17 @@ export type FailedAutoSave = Readonly<{
   error: FileWriteError;
 }>;
 
+/** 保存先をまだ持たない編集内容。自動保存の書き込み状態へは遷移しない。 */
+export type UnsavedAutoSave = Readonly<{
+  status: "unsaved";
+  lastSavedContents: string;
+  pendingContents: string;
+  transactionDepth: number;
+}>;
+
 /** 文書単位の自動保存状態。 */
 export type AutoSave =
+  | UnsavedAutoSave
   | IdleAutoSave
   | PendingAutoSave
   | SavingAutoSave
@@ -79,14 +88,41 @@ export type AutoSaveWriteOutcome = Readonly<{
 
 /** 文書単位の自動保存状態を扱う関数群。 */
 export const AutoSave = {
+  /** 初回保存成功後、保存中の追加編集を保持して保存先へ接続する。 */
+  attachFile(
+    autoSave: AutoSave,
+    file: Readonly<{ path: string; contents: string }>,
+    now: number,
+  ): AutoSave {
+    const saved = {
+      ...AutoSave.create(file.path, file.contents),
+      transactionDepth: autoSave.transactionDepth,
+    };
+    return AutoSave.notifyContentsChanged(
+      saved,
+      pendingContentsOf(autoSave),
+      now,
+    );
+  },
   /**
-   * 開いた時点でファイルへ保存済みの内容から、自動保存状態を生成する。
+   * ファイルの内容または保存先のない下書きから、自動保存状態を生成する。
    *
-   * @param path 保存対象のファイルパス。
+   * @param path 保存対象のファイルパス、または未保存文書の識別子。
    * @param initialContents 開いた時点でファイルへ保存済みの内容。
-   * @returns 未保存変更のない自動保存状態。
+   * @returns 保存済みの idle 状態、または保存先を持たない unsaved 状態。
    */
-  create(path: string, initialContents: string): AutoSave {
+  create(
+    path: string | Readonly<{ draftId: string }>,
+    initialContents: string,
+  ): AutoSave {
+    if (typeof path !== "string") {
+      return {
+        status: "unsaved",
+        lastSavedContents: initialContents,
+        pendingContents: initialContents,
+        transactionDepth: 0,
+      };
+    }
     return {
       status: "idle",
       path,
@@ -108,6 +144,9 @@ export const AutoSave = {
     contents: string,
     now: number,
   ): AutoSave {
+    if (autoSave.status === "unsaved") {
+      return { ...autoSave, pendingContents: contents };
+    }
     if (contents === autoSave.lastSavedContents) {
       if (autoSave.status !== "saving") {
         return toIdle(autoSave, contents);
@@ -212,7 +251,7 @@ export const AutoSave = {
    * @returns 書き込み中の状態。書き込むものがなければ元の状態。
    */
   startSaving(autoSave: AutoSave): AutoSave {
-    if (autoSave.status === "idle") {
+    if (autoSave.status === "idle" || autoSave.status === "unsaved") {
       return autoSave;
     }
     if (
@@ -245,7 +284,10 @@ export const AutoSave = {
    * @returns 未保存変更があるとき true。
    */
   isDirty(autoSave: AutoSave): boolean {
-    return pendingContentsOf(autoSave) !== autoSave.lastSavedContents;
+    return (
+      autoSave.status === "unsaved" ||
+      pendingContentsOf(autoSave) !== autoSave.lastSavedContents
+    );
   },
 } as const;
 
@@ -272,7 +314,7 @@ const save = async (
   }
 
   const result = await writeFileAsResult(operations.writeFile, {
-    path: autoSave.path,
+    path: saving.path,
     contents: saving.writingContents,
   });
   return AutoSave.finishSaving(saving, {
@@ -317,7 +359,7 @@ const applyWriteOutcome = (
  * @returns idle 状態。
  */
 const toIdle = (
-  autoSave: AutoSave,
+  autoSave: Exclude<AutoSave, UnsavedAutoSave>,
   lastSavedContents: string,
 ): IdleAutoSave => ({
   status: "idle",
@@ -379,7 +421,7 @@ const failedRetryDue = (autoSave: FailedAutoSave, now: number): AutoSaveDue => {
  * @returns pending 状態。
  */
 const toPending = (
-  autoSave: AutoSave,
+  autoSave: Exclude<AutoSave, UnsavedAutoSave>,
   pendingContents: string,
   lastChangedAt: number,
   firstDirtyAt: number,
@@ -401,7 +443,7 @@ const toPending = (
  * @returns saving 状態。
  */
 const toSaving = (
-  autoSave: Exclude<AutoSave, IdleAutoSave>,
+  autoSave: Exclude<AutoSave, IdleAutoSave | UnsavedAutoSave>,
   writingContents: string,
 ): SavingAutoSave => ({
   status: "saving",
@@ -423,7 +465,7 @@ const toSaving = (
  * @returns 更新後の状態。
  */
 const withPendingContents = (
-  autoSave: Exclude<AutoSave, IdleAutoSave>,
+  autoSave: Exclude<AutoSave, IdleAutoSave | UnsavedAutoSave>,
   pendingContents: string,
   lastChangedAt: number,
 ): AutoSave => {
@@ -461,4 +503,6 @@ const withTransactionDepth = (
  * @returns idle なら保存済み内容、それ以外なら pendingContents。
  */
 const pendingContentsOf = (autoSave: AutoSave): string =>
-  autoSave.status === "idle" ? autoSave.lastSavedContents : autoSave.pendingContents;
+  autoSave.status === "idle"
+    ? autoSave.lastSavedContents
+    : autoSave.pendingContents;

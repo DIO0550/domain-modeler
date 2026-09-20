@@ -13,10 +13,7 @@ import {
   type History as CanvasHistory,
 } from "@domain-modeler/canvas-core";
 import { ModelDiagnostics } from "@/features/model";
-import {
-  CanvasEditor,
-  type SaveIndicatorStatus,
-} from "@/features/canvas";
+import { CanvasEditor, type SaveIndicatorStatus } from "@/features/canvas";
 import {
   AutoSaveProvider,
   AutoSave,
@@ -24,7 +21,11 @@ import {
   type AutoSaveContextValue,
   type AutoSaveOperations,
 } from "@/features/auto-save";
-import { writeFile } from "@/libs/file-write";
+import { selectSavePath } from "@/libs/file-dialog";
+import { sameFilePath } from "@/libs/file-path";
+import { FileActions } from "./fileActions";
+import { UnsavedCloseDialog } from "./unsaved-close-dialog";
+import { createFile, writeFile } from "@/libs/file-write";
 import type { FileWatchOperations, FileWatchEvent } from "@/libs/file-watch";
 import {
   ExternalFileEvents,
@@ -35,6 +36,10 @@ import type { TabsState, TabsAction, Tab } from "./tabs";
 
 type DocumentWorkspaceProps = Readonly<{
   tabsState: TabsState;
+  registerManualSave?: (
+    path: string,
+    save: () => Promise<boolean>,
+  ) => () => void;
   registerSaveSession?: (
     path: string,
     flush: () => Promise<boolean>,
@@ -46,6 +51,7 @@ type DocumentWorkspaceProps = Readonly<{
       TabsAction,
       {
         type:
+          | "savedTab"
           | "markFileMissing"
           | "clearFileMissing"
           | "markBackgroundChanged";
@@ -115,6 +121,7 @@ const canvasSessionReducer = (
 export function DocumentWorkspace({
   tabsState,
   registerSaveSession,
+  registerManualSave,
   autoSaveOperations = DEFAULT_AUTO_SAVE_OPERATIONS,
   fileWatchOperations,
   dispatchExternalFileAction,
@@ -131,10 +138,14 @@ export function DocumentWorkspace({
     <main className="document-workspace">
       {tabsState.tabs.map((tab) => (
         <DocumentSession
-          key={tab.path}
+          key={tab.sessionKey ?? tab.path}
           tab={tab}
           isActive={tab.path === tabsState.activePath}
           registerSaveSession={registerSaveSession}
+          registerManualSave={registerManualSave}
+          openPaths={tabsState.tabs
+            .filter((item) => item.fileState.status !== "unsaved")
+            .map((item) => item.path)}
           autoSaveOperations={autoSaveOperations}
           fileWatchOperations={fileWatchOperations}
           dispatchExternalFileAction={dispatchExternalFileAction}
@@ -149,6 +160,8 @@ function DocumentSession({
   tab,
   isActive,
   registerSaveSession,
+  registerManualSave,
+  openPaths,
   autoSaveOperations,
   fileWatchOperations,
   dispatchExternalFileAction,
@@ -156,6 +169,8 @@ function DocumentSession({
   tab: Tab;
   isActive: boolean;
   registerSaveSession?: DocumentWorkspaceProps["registerSaveSession"];
+  registerManualSave?: DocumentWorkspaceProps["registerManualSave"];
+  openPaths?: readonly string[];
   autoSaveOperations: AutoSaveOperations;
   fileWatchOperations?: FileWatchOperations;
   dispatchExternalFileAction?: DocumentWorkspaceProps["dispatchExternalFileAction"];
@@ -164,7 +179,10 @@ function DocumentSession({
     tab.documentType === "canvas" ? EMPTY_CANVAS_CONTENTS : "";
   return (
     <AutoSaveProvider
-      path={tab.path}
+      path={
+        tab.fileState.status === "unsaved" ? { draftId: tab.path } : tab.path
+      }
+      sessionKey={tab.sessionKey ?? tab.path}
       initialContents={initialContents}
       operations={autoSaveOperations}
     >
@@ -172,6 +190,8 @@ function DocumentSession({
         tab={tab}
         isActive={isActive}
         registerSaveSession={registerSaveSession}
+        registerManualSave={registerManualSave}
+        openPaths={openPaths}
         fileWatchOperations={fileWatchOperations}
         dispatchExternalFileAction={dispatchExternalFileAction}
       />
@@ -183,16 +203,31 @@ function PersistedDocument({
   tab,
   isActive,
   registerSaveSession,
+  registerManualSave,
+  openPaths,
   fileWatchOperations,
   dispatchExternalFileAction,
 }: Readonly<{
   tab: Tab;
   isActive: boolean;
   registerSaveSession?: DocumentWorkspaceProps["registerSaveSession"];
+  registerManualSave?: DocumentWorkspaceProps["registerManualSave"];
+  openPaths?: readonly string[];
   fileWatchOperations?: FileWatchOperations;
   dispatchExternalFileAction?: DocumentWorkspaceProps["dispatchExternalFileAction"];
 }>) {
   const autoSave = useAutoSave();
+  const [saveAttempt, setSaveAttempt] = useState<
+    | Readonly<{ status: "idle" | "saving" }>
+    | Readonly<{ status: "failed"; message: string }>
+  >({ status: "idle" });
+  const saveTask = useRef<Promise<boolean> | undefined>(undefined);
+  const closeTask = useRef<Promise<boolean> | undefined>(undefined);
+  const [closeChoice, setCloseChoice] =
+    useState<
+      Readonly<{ resolve: (choice: "save" | "discard" | "cancel") => void }>
+    >();
+
   const [text, setText] = useState("");
   const [canvas, dispatchCanvas] = useReducer(canvasSessionReducer, {
     history: History.create(EMPTY_CANVAS_DOCUMENT),
@@ -237,12 +272,114 @@ function PersistedDocument({
     }
   };
 
+  const currentContents = (): string =>
+    tab.documentType === "canvas"
+      ? Serialize.stringify(
+          (canvasRef.current.draftHistory ?? canvasRef.current.history).current,
+        )
+      : textRef.current;
+
+  const saveDocument = (): Promise<boolean> => {
+    if (saveTask.current !== undefined) {
+      return saveTask.current;
+    }
+    const run = async (): Promise<boolean> => {
+      if (autoSave === undefined) {
+        return false;
+      }
+      if (autoSave.autoSave.status !== "unsaved") {
+        return flushDocument();
+      }
+      setSaveAttempt({ status: "saving" });
+      let writtenContents = "";
+      const result = await FileActions.saveNewDocument(
+        tab.documentType,
+        {
+          selectSavePath,
+          sameFilePath,
+          contents: currentContents,
+          createFile: async (path, contents) => {
+            writtenContents = contents;
+            return createFile(path, contents);
+          },
+          openTab: () => {},
+        },
+        openPaths,
+      );
+      if (result.status === "dialogFailed") {
+        setSaveAttempt({ status: "failed", message: result.message });
+        return false;
+      }
+      if (result.status === "writeFailed") {
+        setSaveAttempt({ status: "failed", message: result.error.message });
+        return false;
+      }
+      setSaveAttempt({ status: "idle" });
+      if (result.status !== "created") {
+        return false;
+      }
+      autoSave.notifyContentsChanged(currentContents());
+      autoSave.attachFile({ path: result.path, contents: writtenContents });
+      dispatchExternalFileAction?.({
+        type: "savedTab",
+        draftPath: tab.path,
+        path: result.path,
+      });
+      return flushDocument();
+    };
+    const task = run();
+    saveTask.current = task;
+    void task.finally(() => {
+      saveTask.current = undefined;
+    });
+    return task;
+  };
+
+  const closeLatestDocument = useEffectEvent((): Promise<boolean> => {
+    if (closeTask.current !== undefined) {
+      return closeTask.current;
+    }
+    const run = async (): Promise<boolean> => {
+      if (autoSave === undefined) {
+        return false;
+      }
+      if (saveTask.current !== undefined && !(await saveTask.current)) {
+        return false;
+      }
+      if ((await autoSave.waitForPendingWrites()).status !== "unsaved") {
+        return flushDocument();
+      }
+      const choice = await new Promise<"save" | "discard" | "cancel">(
+        (resolve) => setCloseChoice({ resolve }),
+      );
+      setCloseChoice(undefined);
+      if (choice === "discard") {
+        return true;
+      }
+      if (choice === "cancel") {
+        return false;
+      }
+      return saveDocument();
+    };
+    const task = run();
+    closeTask.current = task;
+    void task.finally(() => {
+      closeTask.current = undefined;
+    });
+    return task;
+  });
+  const saveLatestDocument = useEffectEvent(saveDocument);
+
   useEffect(() => {
     if (autoSave === undefined || registerSaveSession === undefined) {
       return;
     }
-    return registerSaveSession(tab.path, flushDocument);
-  }, [autoSave, registerSaveSession, tab.path]);
+    return registerSaveSession(tab.path, () => closeLatestDocument());
+  }, [autoSave, canvas, registerSaveSession, tab.path]);
+
+  useEffect(() => {
+    return registerManualSave?.(tab.path, () => saveLatestDocument());
+  }, [registerManualSave, tab.path]);
 
   const handleFileWatchEvent = useEffectEvent(
     async (_event: FileWatchEvent): Promise<void> => {
@@ -343,9 +480,7 @@ function PersistedDocument({
           saveSnapshot = settledSnapshot;
           continue;
         }
-        if (
-          hasUnsavedContents(settledSnapshot)
-        ) {
+        if (hasUnsavedContents(settledSnapshot)) {
           setExternalConflict({
             kind: "changed",
             document: result.document,
@@ -380,7 +515,10 @@ function PersistedDocument({
   );
 
   useEffect(() => {
-    if (fileWatchOperations === undefined) {
+    if (
+      fileWatchOperations === undefined ||
+      tab.fileState.status === "unsaved"
+    ) {
       return;
     }
     let stopped = false;
@@ -412,7 +550,7 @@ function PersistedDocument({
       stopped = true;
       void stop?.();
     };
-  }, [fileWatchOperations, tab.path]);
+  }, [fileWatchOperations, tab.path, tab.fileState.status]);
 
   if (autoSave === undefined) {
     return null;
@@ -490,7 +628,30 @@ function PersistedDocument({
     setExternalConflict(undefined);
   };
   return (
-    <section className="document-workspace__document" hidden={!isActive}>
+    <section
+      className="document-workspace__document"
+      hidden={!isActive && closeChoice === undefined}
+    >
+      {saveAttempt.status === "failed" && (
+        <p className="document-workspace__banner" role="alert">
+          保存できませんでした: {saveAttempt.message}
+        </p>
+      )}
+      {tab.fileState.status === "unsaved" && (
+        <p className="document-workspace__banner" role="status">
+          未保存 — 初回の保存で保存先を選択してください。
+          <button
+            type="button"
+            disabled={saveAttempt.status === "saving"}
+            onClick={() => void saveDocument()}
+          >
+            {saveAttempt.status === "saving" ? "保存中…" : "保存"}
+          </button>
+        </p>
+      )}
+      {closeChoice && (
+        <UnsavedCloseDialog name={tab.path} onChoose={closeChoice.resolve} />
+      )}
       <Activity mode={isActive ? "visible" : "hidden"}>
         <DocumentEditor
           tab={tab}
@@ -579,7 +740,7 @@ function DocumentEditor({
         {watchFailureBanner}
         {conflictBanner}
         <CanvasEditor
-          key={`${tab.path}:${canvas.revision}`}
+          key={`${tab.sessionKey ?? tab.path}:${canvas.revision}`}
           initialHistory={canvas.history}
           saveStatus={saveStatusOf(autoSave.autoSave)}
           onHistoryChange={(history) => {
@@ -592,7 +753,9 @@ function DocumentEditor({
               draftHistory: undefined,
             };
             dispatchCanvas({ type: "historyChanged", history });
-            autoSave.notifyContentsChanged(Serialize.stringify(history.current));
+            autoSave.notifyContentsChanged(
+              Serialize.stringify(history.current),
+            );
           }}
           onDraftHistoryChange={(history) => {
             if (canvasRef.current.revision !== canvas.revision) {
@@ -627,6 +790,9 @@ function DocumentEditor({
 }
 
 const saveStatusOf = (autoSave: AutoSave): SaveIndicatorStatus => {
+  if (autoSave.status === "unsaved") {
+    return "unsaved";
+  }
   if (autoSave.status === "idle") {
     return "saved";
   }
@@ -678,9 +844,7 @@ const externalConflictMessage = (conflict: ExternalFileConflict): string => {
   return "外部の変更と未保存の編集が競合しています。";
 };
 
-const externalConflictKeepLabel = (
-  conflict: ExternalFileConflict,
-): string => {
+const externalConflictKeepLabel = (conflict: ExternalFileConflict): string => {
   if (conflict.kind === "deleted") {
     return "編集内容で再作成";
   }

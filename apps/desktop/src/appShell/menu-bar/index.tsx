@@ -31,6 +31,7 @@ const MENU_GROUPS: readonly MenuGroupDefinition[] = [
       { commandId: "newCanvas", label: "新規キャンバス" },
       { commandId: "newModel", label: "新規ドメインモデル" },
       { commandId: "open", label: "開く" },
+      { commandId: "save", label: "保存" },
       { commandId: "closeTab", label: "タブを閉じる" },
     ],
   },
@@ -69,6 +70,7 @@ export function MenuBar({ menuState, onCommand }: MenuBarProps) {
     setOpenState({ status: "closed" });
   };
 
+  useSaveShortcut(menuState, onCommand);
   useMenuBarDismiss(openState.status === "open", rootRef, close);
 
   const handleToggle = (menuId: MenuGroupId): void => {
@@ -311,3 +313,28 @@ const menuItemClassName = (availability: MenuState[MenuCommandId]): string => {
   const classNames = ["menu-bar__item", ...disabledClass];
   return classNames.join(" ");
 };
+
+/** 文書全体の保存ショートカットを登録する。 */
+function useSaveShortcut(
+  menuState: MenuState,
+  onCommand: MenuBarProps["onCommand"],
+) {
+  useEffect(() => {
+    const handle = (event: KeyboardEvent) => {
+      if (
+        !(event.metaKey || event.ctrlKey) ||
+        event.altKey ||
+        event.shiftKey ||
+        event.key.toLowerCase() !== "s"
+      ) {
+        return;
+      }
+      event.preventDefault();
+      if (menuState.save === "enabled" && !event.repeat) {
+        onCommand("save");
+      }
+    };
+    document.addEventListener("keydown", handle);
+    return () => document.removeEventListener("keydown", handle);
+  }, [menuState, onCommand]);
+}

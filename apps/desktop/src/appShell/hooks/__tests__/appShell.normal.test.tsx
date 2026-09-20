@@ -62,6 +62,7 @@ test("初期状態は文書なしで閉じる・undo・redo・生成が無効に
     newCanvas: "enabled",
     newModel: "enabled",
     open: "enabled",
+    save: "disabled",
     closeTab: "disabled",
     undo: "disabled",
     redo: "disabled",

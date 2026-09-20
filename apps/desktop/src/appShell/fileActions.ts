@@ -19,11 +19,10 @@ export type FileReadResult =
   | Readonly<{ type: "ok"; value: string }>
   | Readonly<{ type: "err"; error: FileReadError }>;
 
-/** 新規作成フローが利用する外部操作。createFile は既存パスを上書きしない。 */
+/** 初回保存フローが利用する外部操作。createFile は既存パスを上書きしない。 */
 export type NewDocumentOperations = Readonly<{
-  selectSavePath: (
-    documentType: TabDocumentType,
-  ) => Promise<SavePathSelection>;
+  contents?: () => string;
+  selectSavePath: (documentType: TabDocumentType) => Promise<SavePathSelection>;
   createFile: (path: string, contents: string) => Promise<FileWriteResult>;
   sameFilePath: (left: string, right: string) => Promise<boolean>;
   openTab: (path: string, documentType: TabDocumentType) => void;
@@ -36,7 +35,7 @@ export type OpenDocumentOperations = Readonly<{
   notifyError: (error: OpenDocumentError) => void;
 }>;
 
-/** 新規作成フローの完了状態。 */
+/** 初回保存フローの完了状態。 */
 export type NewDocumentResult =
   | Readonly<{ status: "created"; path: string }>
   | Readonly<{ status: "cancelled" }>
@@ -61,14 +60,14 @@ export type OpenDocumentResult =
 /** ファイルの新規作成・オープンフローを扱う関数群。 */
 export const FileActions = {
   /**
-   * 保存先を選択し、初期内容の書き込み成功後にタブを開く。
+   * 保存先を選択し、編集内容を書き込んでから保存先を通知する。
    *
    * @param documentType 作成する文書の種別。
    * @param operations 保存先選択、書き込み、タブ追加を行う外部操作。
    * @param openPaths 編集中のため新規作成先として拒否するパス。
    * @returns 作成、キャンセル、ダイアログ失敗、または書き込み失敗の結果。
    */
-  async createNewDocument(
+  async saveNewDocument(
     documentType: TabDocumentType,
     operations: NewDocumentOperations,
     openPaths: readonly string[] = [],
@@ -88,14 +87,15 @@ export const FileActions = {
         error: {
           kind: "writeFailed",
           path: selection.path,
-          message: "開いている文書と同じパスには新規作成できません。別の保存先を選択してください。",
+          message:
+            "開いている文書と同じパスには新規作成できません。別の保存先を選択してください。",
         },
       };
     }
 
     const writeResult = await operations.createFile(
       selection.path,
-      initialContents(documentType),
+      operations.contents?.() ?? initialContents(documentType),
     );
     if (writeResult.type === "err") {
       return { status: "writeFailed", error: writeResult.error };

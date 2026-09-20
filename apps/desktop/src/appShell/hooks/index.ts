@@ -1,8 +1,4 @@
 import { useReducer } from "react";
-import { selectSavePath } from "@/libs/file-dialog";
-import { sameFilePath } from "@/libs/file-path";
-import { createFile } from "@/libs/file-write";
-import { FileActions, type NewDocumentResult } from "../fileActions";
 import { MenuState, type MenuCommandId } from "../menu";
 import { TabsState, type TabsAction } from "../tabs";
 
@@ -12,12 +8,12 @@ export type UseAppShellResult = Readonly<{
   menuState: MenuState;
   activate: (path: string) => void;
   runCommand: (commandId: MenuCommandId) => Promise<void>;
-  creation: Readonly<{ status: "idle" | "creating" }> | NewDocumentResult;
   dispatchExternalFileAction: (
     action: Extract<
       TabsAction,
       {
         type:
+          | "savedTab"
           | "markFileMissing"
           | "clearFileMissing"
           | "markBackgroundChanged";
@@ -27,29 +23,12 @@ export type UseAppShellResult = Readonly<{
 }>;
 
 export type AppShellOperations = Readonly<{
+  saveDocument?: (path: string) => Promise<boolean>;
   flushDocument: (path: string) => Promise<boolean>;
 }>;
 
 const DEFAULT_OPERATIONS: AppShellOperations = {
   flushDocument: async () => true,
-};
-
-type AppShellState = Readonly<{
-  tabsState: TabsState;
-  creation: UseAppShellResult["creation"];
-}>;
-
-type AppShellAction = TabsAction | Readonly<{
-  type: "setCreation";
-  creation: UseAppShellResult["creation"];
-}>;
-
-/** タブ操作と新規作成の進行状態を更新する純粋なreducer。 */
-const appShellReducer = (state: AppShellState, action: AppShellAction): AppShellState => {
-  if (action.type === "setCreation") {
-    return { ...state, creation: action.creation };
-  }
-  return { ...state, tabsState: TabsState.reducer(state.tabsState, action) };
 };
 
 /**
@@ -60,11 +39,11 @@ const appShellReducer = (state: AppShellState, action: AppShellAction): AppShell
 export function useAppShell(
   operations: AppShellOperations = DEFAULT_OPERATIONS,
 ): UseAppShellResult {
-  const [{ tabsState, creation }, dispatch] = useReducer(appShellReducer, {
-    tabsState: TabsState.create(),
-    creation: { status: "idle" },
-  });
-  const menuState = MenuState.from(tabsState, creation.status === "creating");
+  const [tabsState, dispatch] = useReducer(
+    TabsState.reducer,
+    TabsState.create(),
+  );
+  const menuState = MenuState.from(tabsState);
 
   const activate = (path: string): void => {
     dispatch({ type: "activateTab", path });
@@ -72,21 +51,14 @@ export function useAppShell(
 
   const runCommand = async (commandId: MenuCommandId): Promise<void> => {
     if (commandId === "newCanvas" || commandId === "newModel") {
-      if (creation.status === "creating") {
-        return;
-      }
-      dispatch({ type: "setCreation", creation: { status: "creating" } });
-      const result = await FileActions.createNewDocument(
-        commandId === "newCanvas" ? "canvas" : "model",
-        {
-          selectSavePath,
-          createFile,
-          sameFilePath,
-          openTab: (path, documentType) => dispatch({ type: "openTab", path, documentType }),
-        },
-        tabsState.status === "active" ? tabsState.tabs.map((tab) => tab.path) : [],
-      );
-      dispatch({ type: "setCreation", creation: result });
+      dispatch({
+        type: "newTab",
+        documentType: commandId === "newCanvas" ? "canvas" : "model",
+      });
+      return;
+    }
+    if (commandId === "save" && tabsState.status === "active") {
+      await operations.saveDocument?.(tabsState.activePath);
       return;
     }
     if (commandId !== "closeTab") {
@@ -111,7 +83,6 @@ export function useAppShell(
     menuState,
     activate,
     runCommand,
-    creation,
     dispatchExternalFileAction,
   };
 }

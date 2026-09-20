@@ -9,15 +9,17 @@ import { FILE_WATCH_OPERATIONS } from "./libs/file-watch";
 import "./App.css";
 
 function App() {
+  const manualSaves = useRef(new Map<string, () => Promise<boolean>>());
   const saveSessions = useRef(new Map<string, () => Promise<boolean>>());
   const {
     tabsState,
     menuState,
     activate,
     runCommand,
-    creation,
     dispatchExternalFileAction,
   } = useAppShell({
+    saveDocument: async (path) =>
+      await (manualSaves.current.get(path)?.() ?? Promise.resolve(false)),
     flushDocument: async (path) =>
       await flushStableSaveSession(saveSessions.current, path),
   });
@@ -27,6 +29,18 @@ function App() {
       return () => {
         if (saveSessions.current.get(path) === flush) {
           saveSessions.current.delete(path);
+        }
+      };
+    },
+    [],
+  );
+
+  const registerManualSave = useCallback(
+    (path: string, save: () => Promise<boolean>) => {
+      manualSaves.current.set(path, save);
+      return () => {
+        if (manualSaves.current.get(path) === save) {
+          manualSaves.current.delete(path);
         }
       };
     },
@@ -63,16 +77,11 @@ function App() {
   return (
     <div className="app-shell">
       <MenuBar menuState={menuState} onCommand={runCommand} />
-      {creation.status === "dialogFailed" && (
-        <p className="document-workspace__banner" role="alert">保存先を選択できませんでした: {creation.message}</p>
-      )}
-      {creation.status === "writeFailed" && (
-        <p className="document-workspace__banner" role="alert">ファイルを作成できませんでした: {creation.error.message}</p>
-      )}
       <TabBar tabsState={tabsState} onActivate={activate} />
       <DocumentWorkspace
         tabsState={tabsState}
         registerSaveSession={registerSaveSession}
+        registerManualSave={registerManualSave}
         fileWatchOperations={
           import.meta.env.MODE === "test" ? undefined : FILE_WATCH_OPERATIONS
         }
@@ -91,13 +100,17 @@ function App() {
 export async function flushStableSaveSessions(
   sessions: ReadonlyMap<string, () => Promise<boolean>>,
 ): Promise<boolean> {
+  const verified = new Map<string, () => Promise<boolean>>();
   while (true) {
     const snapshot = [...sessions.entries()];
-    const results = await Promise.all(
-      snapshot.map(async ([, flush]) => await flush()),
-    );
-    if (!results.every(Boolean)) {
-      return false;
+    for (const [path, flush] of snapshot) {
+      if (verified.get(path) === flush) {
+        continue;
+      }
+      if (!(await flush())) {
+        return false;
+      }
+      verified.set(path, flush);
     }
     const isStable =
       snapshot.length === sessions.size &&
