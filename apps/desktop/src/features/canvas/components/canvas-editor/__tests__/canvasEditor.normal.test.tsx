@@ -90,6 +90,36 @@ test("パレットの種別を選んで空白をクリックするとその種�
   expect(host.querySelector<HTMLTextAreaElement>(".sticky__editor")).not.toBeNull();
 });
 
+test("アクティブなキャンバスの履歴状態をタイトル行へ渡せる", () => {
+  const controls: string[] = [];
+  const host = renderEditor(undefined, {
+    onHistoryControlsChange: (value) => {
+      controls.push(
+        `${value.undo.availability}:${value.redo.availability}`,
+      );
+    },
+  });
+
+  expect(controls[controls.length - 1]).toBe("disabled:disabled");
+
+  act(() => {
+    buttonNamed(host, "Command").click();
+  });
+  clickSurface(host, { x: 80, y: 90 });
+
+  expect(controls[controls.length - 1]).toBe("enabled:disabled");
+});
+
+test("非アクティブなキャンバスは履歴状態をタイトル行へ渡さない", () => {
+  const controls: string[] = [];
+  renderEditor(undefined, {
+    isActive: false,
+    onHistoryControlsChange: () => controls.push("called"),
+  });
+
+  expect(controls).toEqual([]);
+});
+
 test("接続線をクリックしても新しい付箋を作成しない", () => {
   const host = renderEditor(documentWithConnection);
   const path = host.querySelector(".connection-layer__path");

@@ -13,7 +13,11 @@ import {
   type History as CanvasHistory,
 } from "@domain-modeler/canvas-core";
 import { ModelDiagnostics } from "@/features/model";
-import { CanvasEditor, type SaveIndicatorStatus } from "@/features/canvas";
+import {
+  CanvasEditor,
+  type HistoryControlsValue,
+  type SaveIndicatorStatus,
+} from "@/features/canvas";
 import {
   AutoSaveProvider,
   AutoSave,
@@ -57,6 +61,10 @@ type DocumentWorkspaceProps = Readonly<{
           | "markBackgroundChanged";
       }
     >,
+  ) => void;
+  onHistoryControlsChange?: (
+    path: string,
+    controls: HistoryControlsValue | undefined,
   ) => void;
 }>;
 
@@ -125,6 +133,7 @@ export function DocumentWorkspace({
   autoSaveOperations = DEFAULT_AUTO_SAVE_OPERATIONS,
   fileWatchOperations,
   dispatchExternalFileAction,
+  onHistoryControlsChange,
 }: DocumentWorkspaceProps) {
   if (tabsState.status === "empty") {
     return (
@@ -149,6 +158,7 @@ export function DocumentWorkspace({
           autoSaveOperations={autoSaveOperations}
           fileWatchOperations={fileWatchOperations}
           dispatchExternalFileAction={dispatchExternalFileAction}
+          onHistoryControlsChange={onHistoryControlsChange}
         />
       ))}
     </main>
@@ -165,6 +175,7 @@ function DocumentSession({
   autoSaveOperations,
   fileWatchOperations,
   dispatchExternalFileAction,
+  onHistoryControlsChange,
 }: Readonly<{
   tab: Tab;
   isActive: boolean;
@@ -174,6 +185,7 @@ function DocumentSession({
   autoSaveOperations: AutoSaveOperations;
   fileWatchOperations?: FileWatchOperations;
   dispatchExternalFileAction?: DocumentWorkspaceProps["dispatchExternalFileAction"];
+  onHistoryControlsChange?: DocumentWorkspaceProps["onHistoryControlsChange"];
 }>) {
   const initialContents =
     tab.documentType === "canvas" ? EMPTY_CANVAS_CONTENTS : "";
@@ -194,6 +206,7 @@ function DocumentSession({
         openPaths={openPaths}
         fileWatchOperations={fileWatchOperations}
         dispatchExternalFileAction={dispatchExternalFileAction}
+        onHistoryControlsChange={onHistoryControlsChange}
       />
     </AutoSaveProvider>
   );
@@ -207,6 +220,7 @@ function PersistedDocument({
   openPaths,
   fileWatchOperations,
   dispatchExternalFileAction,
+  onHistoryControlsChange,
 }: Readonly<{
   tab: Tab;
   isActive: boolean;
@@ -215,6 +229,7 @@ function PersistedDocument({
   openPaths?: readonly string[];
   fileWatchOperations?: FileWatchOperations;
   dispatchExternalFileAction?: DocumentWorkspaceProps["dispatchExternalFileAction"];
+  onHistoryControlsChange?: DocumentWorkspaceProps["onHistoryControlsChange"];
 }>) {
   const autoSave = useAutoSave();
   const [saveAttempt, setSaveAttempt] = useState<
@@ -663,8 +678,10 @@ function PersistedDocument({
           dispatchCanvas={dispatchCanvas}
           watchError={watchError}
           externalConflict={externalConflict}
+          isActive={isActive}
           onUseExternalContents={useExternalContents}
           onKeepEditingContents={keepEditingContents}
+          onHistoryControlsChange={onHistoryControlsChange}
         />
       </Activity>
     </section>
@@ -682,8 +699,10 @@ function DocumentEditor({
   dispatchCanvas,
   watchError,
   externalConflict,
+  isActive,
   onUseExternalContents,
   onKeepEditingContents,
+  onHistoryControlsChange,
 }: Readonly<{
   tab: Tab;
   autoSave: AutoSaveContextValue;
@@ -694,8 +713,10 @@ function DocumentEditor({
   dispatchCanvas: React.Dispatch<CanvasSessionAction>;
   watchError: string | undefined;
   externalConflict: ExternalFileConflict | undefined;
+  isActive: boolean;
   onUseExternalContents: () => void;
   onKeepEditingContents: () => void;
+  onHistoryControlsChange?: DocumentWorkspaceProps["onHistoryControlsChange"];
 }>) {
   const missingBanner =
     tab.fileState.status === "missing" ? (
@@ -740,6 +761,7 @@ function DocumentEditor({
         {watchFailureBanner}
         {conflictBanner}
         <CanvasEditor
+          isActive={isActive}
           key={`${tab.sessionKey ?? tab.path}:${canvas.revision}`}
           initialHistory={canvas.history}
           saveStatus={saveStatusOf(autoSave.autoSave)}
@@ -766,6 +788,9 @@ function DocumentEditor({
               draftHistory: history,
             };
             dispatchCanvas({ type: "draftChanged", history });
+          }}
+          onHistoryControlsChange={(controls) => {
+            onHistoryControlsChange?.(tab.path, controls);
           }}
         />
       </>
