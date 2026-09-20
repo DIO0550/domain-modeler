@@ -12,7 +12,7 @@ import {
   Serialize,
   type History as CanvasHistory,
 } from "@domain-modeler/canvas-core";
-import { ModelEditor } from "@/features/model";
+import { ModelDiagnostics } from "@/features/model";
 import {
   CanvasEditor,
   type SaveIndicatorStatus,
@@ -615,7 +615,7 @@ function DocumentEditor({
       {saveFailureBanner}
       {watchFailureBanner}
       {conflictBanner}
-      <ModelEditor
+      <ModelDiagnostics
         value={text}
         onChange={(nextText) => {
           setText(nextText);

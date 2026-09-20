@@ -166,7 +166,7 @@ test("data雛形をカーソル位置へ挿入し名前部分を選択する", (
       ? found
       : document.createElement("textarea");
   const insertButton = Array.from(host.querySelectorAll("button")).find(
-    (button) => button.textContent === "data雛形",
+    (button) => button.textContent === "＋ data",
   );
 
   act(() => {
