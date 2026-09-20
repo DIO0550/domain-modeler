@@ -1170,3 +1170,19 @@ body,
 .canvas-stickies > .sticky {
   pointer-events: auto;
 }
+
+.unsaved-dialog {
+  margin: auto;
+  max-width: 480px;
+  padding: 24px;
+  border: 1px solid var(--tab-bar-border);
+  border-radius: 12px;
+  background: var(--menu-panel-bg);
+  color: var(--shell-text);
+  box-shadow: var(--menu-panel-shadow);
+}
+.unsaved-dialog::backdrop { background: rgb(0 0 0 / 40%); }
+.unsaved-dialog h2 { font-size: 18px; margin-bottom: 12px; }
+.unsaved-dialog__actions { display: flex; gap: 12px; margin-top: 24px; }
+.unsaved-dialog button { padding: 8px 12px; border: 1px solid var(--tab-bar-border); border-radius: 6px; }
+.unsaved-dialog button:focus-visible { outline: 2px solid var(--model-editor-focus); outline-offset: 2px; }

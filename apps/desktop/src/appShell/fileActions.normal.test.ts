@@ -74,7 +74,7 @@ const openOperationsRecording = (
 test("キャンバスの保存先を選ぶと空の初期内容を書いてからタブを開く", async () => {
   const calls: OperationCall[] = [];
 
-  const result = await FileActions.createNewDocument(
+  const result = await FileActions.saveNewDocument(
     "canvas",
     operationsRecording(calls, {
       status: "selected",
@@ -104,7 +104,7 @@ test("キャンバスの保存先を選ぶと空の初期内容を書いてか�
 test("モデルの保存先を選ぶと空文字を書いてからタブを開く", async () => {
   const calls: OperationCall[] = [];
 
-  const result = await FileActions.createNewDocument(
+  const result = await FileActions.saveNewDocument(
     "model",
     operationsRecording(calls, {
       status: "selected",
@@ -134,7 +134,7 @@ test("モデルの保存先を選ぶと空文字を書いてからタブを開�
 test("保存先の選択をキャンセルすると状態を変更しない", async () => {
   const calls: OperationCall[] = [];
 
-  const result = await FileActions.createNewDocument(
+  const result = await FileActions.saveNewDocument(
     "canvas",
     operationsRecording(calls, { status: "cancelled" }),
   );
@@ -153,7 +153,7 @@ test("初期内容を書き込めないとタブを開かない", async () => {
     message: "permission denied",
   } as const;
 
-  const result = await FileActions.createNewDocument(
+  const result = await FileActions.saveNewDocument(
     "canvas",
     operationsRecording(
       calls,
@@ -176,7 +176,7 @@ test("ファイルシステム上で同一の編集中パスには新規作成�
     status: "selected",
     path: "/documents/draft.dmodel",
   });
-  const result = await FileActions.createNewDocument(
+  const result = await FileActions.saveNewDocument(
     "model",
     {
       ...operations,

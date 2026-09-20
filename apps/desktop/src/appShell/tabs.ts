@@ -5,6 +5,7 @@ export type TabDocumentType = "canvas" | "model";
 
 /** タブに対応するファイルの状態。 */
 export type TabFileState =
+  | Readonly<{ status: "unsaved" }>
   | Readonly<{ status: "available" }>
   | Readonly<{ status: "missing" }>;
 
@@ -15,6 +16,7 @@ export type TabBackgroundChangeState =
 
 /** 開いている文書を表すタブ。 */
 export type Tab = Readonly<{
+  sessionKey?: string;
   path: string;
   documentType: TabDocumentType;
   fileState: TabFileState;
@@ -57,6 +59,8 @@ export type TabsState =
 
 /** タブ状態に適用できる操作。 */
 export type TabsAction =
+  | Readonly<{ type: "newTab"; documentType: TabDocumentType }>
+  | Readonly<{ type: "savedTab"; draftPath: string; path: string }>
   | Readonly<{
       type: "openTab";
       path: string;
@@ -87,12 +91,54 @@ export const TabsState = {
    * @returns 操作後の新しいタブ状態。
    */
   reducer(state: TabsState, action: TabsAction): TabsState {
+    if (action.type === "newTab") {
+      const number =
+        state.tabs.reduce(
+          (max, tab) =>
+            Math.max(
+              max,
+              Number(tab.sessionKey?.match(/^未保存 (\d+)/)?.[1]) || 0,
+            ),
+          0,
+        ) + 1;
+      const path = `未保存 ${number}.${action.documentType === "canvas" ? "dcanvas" : "dmodel"}`;
+      const tab: Tab = {
+        path,
+        sessionKey: path,
+        documentType: action.documentType,
+        fileState: { status: "unsaved" },
+        backgroundChangeState: { status: "unchanged" },
+      };
+      return { status: "active", tabs: [...state.tabs, tab], activePath: path };
+    }
+    if (action.type === "savedTab") {
+      if (state.status === "empty") {
+        return state;
+      }
+      const tabs = state.tabs.map(
+        (tab): Tab =>
+          tab.path === action.draftPath
+            ? { ...tab, path: action.path, fileState: { status: "available" } }
+            : tab,
+      ) as [Tab, ...Tab[]];
+      return {
+        ...state,
+        tabs,
+        activePath:
+          state.activePath === action.draftPath
+            ? action.path
+            : state.activePath,
+      };
+    }
     if (action.type === "openTab") {
       const existingTab = state.tabs.find((tab) => tab.path === action.path);
       if (existingTab !== undefined) {
         const tabs = state.tabs.map((tab) =>
           tab.path === action.path
-            ? { ...tab, backgroundChangeState: { status: "unchanged" } as const }
+            ? {
+                ...tab,
+                backgroundChangeState: { status: "unchanged" } as const,
+              }
             : tab,
         ) as [Tab, ...Tab[]];
         return { status: "active", tabs, activePath: action.path };
@@ -204,12 +250,15 @@ const closeTab = (
   state: Extract<TabsState, { status: "active" }>,
   path: string,
 ): TabsState => {
-  const index = state.tabs.findIndex((tab) => tab.path === path);
+  const index = state.tabs.findIndex(
+    (tab) => tab.path === path || tab.sessionKey === path,
+  );
   if (index < 0) {
     return state;
   }
 
-  const remaining = state.tabs.filter((tab) => tab.path !== path);
+  const closedPath = state.tabs[index].path;
+  const remaining = state.tabs.filter((tab) => tab.path !== closedPath);
   if (remaining.length === 0) {
     return { status: "empty", tabs: [] };
   }
@@ -217,7 +266,7 @@ const closeTab = (
   return {
     status: "active",
     tabs: remaining as [Tab, ...Tab[]],
-    activePath: nextActivePathAfterClose(state, path, remaining, index),
+    activePath: nextActivePathAfterClose(state, closedPath, remaining, index),
   };
 };
 
@@ -294,7 +343,9 @@ const pathSegments = (path: string): readonly string[] =>
  * @param path タブのファイルパス。
  * @returns パスの区切り文字。
  */
-const pathSeparator = (path: string): typeof WINDOWS_SEPARATOR | typeof POSIX_SEPARATOR => {
+const pathSeparator = (
+  path: string,
+): typeof WINDOWS_SEPARATOR | typeof POSIX_SEPARATOR => {
   path = displayFilePath(path);
   if (path.includes(WINDOWS_SEPARATOR) && !path.includes(POSIX_SEPARATOR)) {
     return WINDOWS_SEPARATOR;
@@ -364,7 +415,10 @@ const distinguishingDepth = (
  * @param depth 末尾から取るディレクトリの段数。
  * @returns すべて異なるとき true。
  */
-const areSuffixesUnique = (colliding: readonly Tab[], depth: number): boolean => {
+const areSuffixesUnique = (
+  colliding: readonly Tab[],
+  depth: number,
+): boolean => {
   const suffixes = colliding.map((tab) => directorySuffix(tab.path, depth));
   return new Set(suffixes).size === suffixes.length;
 };

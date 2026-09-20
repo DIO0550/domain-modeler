@@ -4,6 +4,7 @@ import { TabsState } from "../tabs";
 export type MenuCommandId =
   | "newCanvas"
   | "newModel"
+  | "save"
   | "open"
   | "closeTab"
   | "undo"
@@ -22,14 +23,14 @@ export const MenuState = {
    * タブ状態からメニューコマンドの有効状態を返す。
    *
    * @param tabsState 開いている文書とアクティブタブ。
-   * @param isCreating 新規作成操作が進行中か。
    * @returns コマンドごとの有効 / 無効。
    */
-  from(tabsState: TabsState, isCreating = false): MenuState {
+  from(tabsState: TabsState): MenuState {
     return {
-      newCanvas: isCreating ? "disabled" : "enabled",
-      newModel: isCreating ? "disabled" : "enabled",
+      newCanvas: "enabled",
+      newModel: "enabled",
       open: "enabled",
+      save: documentCommandAvailability(tabsState),
       closeTab: documentCommandAvailability(tabsState),
       undo: documentCommandAvailability(tabsState),
       redo: documentCommandAvailability(tabsState),

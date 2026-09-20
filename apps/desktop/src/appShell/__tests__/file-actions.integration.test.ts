@@ -62,7 +62,7 @@ test.each([
   const path = `/documents/order.${documentType === "canvas" ? "dcanvas" : "dmodel"}`;
   const app = setup({ status: "selected", path });
   expect(
-    await FileActions.createNewDocument(documentType, app.operations),
+    await FileActions.saveNewDocument(documentType, app.operations),
   ).toEqual({ status: "created", path });
   const saved = await app.operations.readFile(path);
   if (saved.type !== "ok") {
@@ -94,7 +94,7 @@ test.each([
 test("同じファイルを開き直すと重複タブを作らず元のタブを前面にする", async () => {
   const path = "/documents/order.dcanvas";
   const app = setup({ status: "selected", path });
-  await FileActions.createNewDocument("canvas", app.operations);
+  await FileActions.saveNewDocument("canvas", app.operations);
   app.files.set("/documents/other.dmodel", "data 顧客 = string");
   await FileActions.openDocument("/documents/other.dmodel", app.operations);
   await FileActions.openDocument(path, app.operations);
@@ -110,7 +110,7 @@ test.each([
   JSON.stringify({ ...Document.empty(), stickies: [{ id: "invalid" }] }),
 ])("不正キャンバス %s を開いても既存タブとファイルを変更しない", async (contents) => {
   const app = setup({ status: "selected", path: "/documents/order.dmodel" });
-  await FileActions.createNewDocument("model", app.operations);
+  await FileActions.saveNewDocument("model", app.operations);
   const previous = app.tabs();
   const path = "/documents/broken.dcanvas";
   app.files.set(path, contents);
@@ -149,7 +149,7 @@ test("構文エラーのあるモデルも全文を保持してタブを開け�
 
 test("存在しないファイルを開こうとしても既存タブを閉じずエラーを通知する", async () => {
   const app = setup({ status: "selected", path: "/documents/order.dcanvas" });
-  await FileActions.createNewDocument("canvas", app.operations);
+  await FileActions.saveNewDocument("canvas", app.operations);
   const previous = app.tabs();
   const path = "/documents/missing.dmodel";
   expect(await FileActions.openDocument(path, app.operations)).toEqual({
@@ -166,7 +166,7 @@ test("存在しないファイルを開こうとしても既存タブを閉じ�
 test("開いたキャンバスが外部で削除されても文書とタブは欠損状態で残る", async () => {
   const path = "/documents/order.dcanvas";
   const app = setup({ status: "selected", path });
-  await FileActions.createNewDocument("canvas", app.operations);
+  await FileActions.saveNewDocument("canvas", app.operations);
   const read = await app.operations.readFile(path);
   if (read.type !== "ok") {
     throw new Error("キャンバスを読めません");
@@ -194,7 +194,7 @@ test("新規作成をキャンセルすると既存タブも保存済みファ�
   app.files.set(path, "data 注文 = string");
   await FileActions.openDocument(path, app.operations);
   const previous = app.tabs();
-  expect(await FileActions.createNewDocument("canvas", app.operations)).toEqual(
+  expect(await FileActions.saveNewDocument("canvas", app.operations)).toEqual(
     { status: "cancelled" },
   );
   expect(app.tabs()).toEqual(previous);

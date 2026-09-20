@@ -17,10 +17,7 @@ type WriteCall = Readonly<{ path: string; contents: string }>;
 
 type AutoSaveProbe = Readonly<{
   latest: { current: AutoSaveContextValue | undefined };
-  rerender: (next: {
-    path: string;
-    initialContents: string;
-  }) => void;
+  rerender: (next: { path: string; initialContents: string }) => void;
   unmount: () => void;
 }>;
 
@@ -57,10 +54,7 @@ const renderAutoSave = (operations: AutoSaveOperations): AutoSaveProbe => {
     return null;
   };
 
-  const renderProvider = (next: {
-    path: string;
-    initialContents: string;
-  }) => {
+  const renderProvider = (next: { path: string; initialContents: string }) => {
     act(() => {
       root.render(
         <AutoSaveProvider
@@ -577,4 +571,23 @@ test("文書パスを切り替えると進行中の書き込み結果を新し�
     path: "/documents/other.dcanvas",
     lastSavedContents: '{"other":true}',
   });
+});
+
+test("タイマー設定時刻に小数があっても期限後に編集内容を自動保存する", async () => {
+  vi.useFakeTimers();
+  const writes: WriteCall[] = [];
+  let fractionalOffset = 0;
+  const probe = renderAutoSave({
+    ...operationsRecording(writes),
+    now: () => Date.now() + fractionalOffset,
+  });
+  probes.push(probe);
+  act(() => {
+    probe.latest.current?.notifyContentsChanged("edited");
+    fractionalOffset = 0.25;
+  });
+  await act(async () => vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS));
+  expect(writes).toEqual([
+    { path: "/documents/context.dcanvas", contents: "edited" },
+  ]);
 });

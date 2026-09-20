@@ -6,18 +6,15 @@ test("終了保存中に再編集された文書も次の世代までflushする
   let slowFlushCount = 0;
   let latestFlushCount = 0;
   const sessions = new Map<string, () => Promise<boolean>>();
-  sessions.set(
-    "/slow.dmodel",
-    async () => {
-      slowFlushCount += 1;
-      if (slowFlushCount > 1) {
-        return true;
-      }
-      return await new Promise<boolean>((resolve) => {
-        finishSlowSave = resolve;
-      });
-    },
-  );
+  sessions.set("/slow.dmodel", async () => {
+    slowFlushCount += 1;
+    if (slowFlushCount > 1) {
+      return true;
+    }
+    return await new Promise<boolean>((resolve) => {
+      finishSlowSave = resolve;
+    });
+  });
   sessions.set("/edited.dmodel", async () => true);
 
   const closing = flushStableSaveSessions(sessions);
@@ -62,4 +59,19 @@ test("タブ終了保存中に新しい保存世代が登録されたら再flush
 
   await expect(closing).resolves.toBe(true);
   expect(latestFlushCount).toBe(1);
+});
+
+test("終了確認中に別の文書の世代が変わっても確認済みの文書を再確認しない", async () => {
+  const sessions = new Map<string, () => Promise<boolean>>();
+  let confirmations = 0;
+  sessions.set("draft", async () => {
+    confirmations += 1;
+    return true;
+  });
+  sessions.set("saved", async () => {
+    sessions.set("saved", async () => true);
+    return true;
+  });
+  await expect(flushStableSaveSessions(sessions)).resolves.toBe(true);
+  expect(confirmations).toBe(1);
 });

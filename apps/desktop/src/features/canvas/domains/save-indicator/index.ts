@@ -2,6 +2,7 @@ import type { ValueOf } from "@domain-modeler/canvas-core";
 
 /** 自動保存インジケータの状態。 */
 export const SAVE_INDICATOR_STATUSES = {
+  unsaved: "unsaved",
   saved: "saved",
   saving: "saving",
   failed: "failed",
@@ -16,6 +17,7 @@ export type SaveIndicator = Readonly<{
 }>;
 
 const LABELS = {
+  unsaved: "未保存",
   saved: "保存済み",
   saving: "保存中",
   failed: "保存に失敗",
