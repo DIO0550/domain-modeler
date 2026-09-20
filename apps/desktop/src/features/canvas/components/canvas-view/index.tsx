@@ -24,33 +24,7 @@ import { ZoomLabel } from "../../domains/zoom-label";
 import { useCanvasSurface, type ViewportSurfaceInteraction } from "../../hooks";
 import { EventTargetEx } from "@/utils/EventTargetEx";
 
-/** ツールバーの undo / redo。有効なときだけハンドラを持つ。 */
-export type HistoryButton =
-  | Readonly<{ availability: "disabled" }>
-  | Readonly<{ availability: "enabled"; onClick: () => void }>;
-
-/** `HistoryButton` を生成する関数群。 */
-export const HistoryButton = {
-  /**
-   * 押せない履歴ボタンを返す。
-   *
-   * @returns 無効な履歴ボタン。
-   */
-  disabled: (): HistoryButton => ({ availability: "disabled" }),
-  /**
-   * 押すと操作を実行する履歴ボタンを返す。
-   *
-   * @param onClick 実行する操作。
-   * @returns 有効な履歴ボタン。
-   */
-  enabled: (onClick: () => void): HistoryButton => ({
-    availability: "enabled",
-    onClick,
-  }),
-} as const;
-
 type CanvasViewProps = Readonly<{
-  showToolbar?: boolean;
   placementTool?: Readonly<{ active: boolean; onSelect: () => void }>;
   inspector?: ReactNode;
   onPaletteDrop?: (
@@ -63,8 +37,6 @@ type CanvasViewProps = Readonly<{
   viewport: ViewportModel;
   viewportInteraction?: ViewportSurfaceInteraction;
   saveStatus: SaveIndicatorStatus;
-  undo: HistoryButton;
-  redo: HistoryButton;
   children?: ReactNode;
   selectedType?: StickyType;
   onSelectType?: (type: StickyType) => void;
@@ -72,21 +44,15 @@ type CanvasViewProps = Readonly<{
   onSurfaceDoubleClick?: (point: Point) => void;
   onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
   onSurfaceKeyDown?: (key: "Enter" | "Escape" | "Delete" | "Backspace") => void;
-  connectionTool?: Readonly<{
-    status: "inactive" | "selectingSource" | "selectingTarget";
-    errorMessage?: string;
-    onToggle: () => void;
-  }>;
 }>;
 
 /**
  * キャンバス画面。種別パレット、無限キャンバス、保存/ズーム表示を持つ。
  *
- * @param props ズーム、保存状態、履歴ボタン、キャンバス面の子要素と操作。
+ * @param props ズーム、保存状態、キャンバス面の子要素と操作。
  * @returns キャンバス画面。
  */
 export function CanvasView({
-  showToolbar = true,
   placementTool,
   inspector,
   onPaletteDrop,
@@ -94,8 +60,6 @@ export function CanvasView({
   viewport,
   viewportInteraction,
   saveStatus,
-  undo,
-  redo,
   children,
   selectedType: selectedTypeProp,
   onSelectType,
@@ -103,7 +67,6 @@ export function CanvasView({
   onSurfaceDoubleClick,
   onSurfaceKeyDown,
   onKeyDown,
-  connectionTool,
 }: CanvasViewProps) {
   const paletteHelpId = useId();
   const [dragType, setDragType] = useState<Option<StickyType>>(Option.none());
@@ -152,27 +115,9 @@ export function CanvasView({
 
   return (
     <div className="canvas-view" onKeyDown={handleKeyDown} {...gestureEvents}>
-      {showToolbar && (
-        <CanvasToolbar>
-          {placementTool !== undefined ? (
-            <button
-              type="button"
-              className={paletteButtonClassName(!placementTool.active)}
-              aria-pressed={!placementTool.active}
-              onClick={placementTool.onSelect}
-            >
-              選択
-            </button>
-          ) : null}
-          <HistoryControls undo={undo} redo={redo} />
-          {connectionTool !== undefined && (
-            <ConnectionControls tool={connectionTool} />
-          )}
-        </CanvasToolbar>
-      )}
       <div className="canvas-workspace">
         <aside className="canvas-sidebar" aria-label="部品パレット">
-          {placementTool !== undefined && !showToolbar && (
+          {placementTool !== undefined && (
             <button
               type="button"
               className="canvas-sidebar__select"
@@ -250,56 +195,6 @@ export function CanvasView({
   );
 }
 
-type ConnectionControlsProps = Readonly<{
-  tool: NonNullable<CanvasViewProps["connectionTool"]>;
-}>;
-
-/** 接続モードの切り替え、次の操作、core エラーを表示する。 */
-function ConnectionControls({ tool }: ConnectionControlsProps) {
-  const active = tool.status !== "inactive";
-  const instruction = connectionInstruction(tool.status);
-  return (
-    <div className="canvas-connection" role="group" aria-label="接続操作">
-      <button
-        type="button"
-        className={connectionButtonClassName(active)}
-        aria-pressed={active}
-        onClick={tool.onToggle}
-      >
-        接続
-      </button>
-      {instruction.length > 0 && (
-        <span className="canvas-connection__instruction" role="status">
-          {instruction}
-        </span>
-      )}
-      {tool.errorMessage !== undefined && (
-        <span className="canvas-connection__error" role="alert">
-          {tool.errorMessage}
-        </span>
-      )}
-    </div>
-  );
-}
-
-type CanvasToolbarProps = Readonly<{
-  children: ReactNode;
-}>;
-
-/**
- * 選択・履歴・接続の共通操作を並べる上部ツールバー。
- *
- * @param props 共通操作の子要素。
- * @returns ツールバー。
- */
-function CanvasToolbar({ children }: CanvasToolbarProps) {
-  return (
-    <div className="canvas-toolbar" role="group" aria-label="キャンバスツール">
-      {children}
-    </div>
-  );
-}
-
 type PaletteProps = Readonly<{
   helpId: string;
   appearances: readonly StickyAppearance[];
@@ -336,26 +231,6 @@ function Palette({
           dragEvents={dragEvents}
         />
       ))}
-    </div>
-  );
-}
-
-type HistoryControlsProps = Readonly<{
-  undo: HistoryButton;
-  redo: HistoryButton;
-}>;
-
-/**
- * undo / redo ボタン群。
- *
- * @param props 履歴ボタン。
- * @returns 履歴グループ。
- */
-function HistoryControls({ undo, redo }: HistoryControlsProps) {
-  return (
-    <div className="canvas-history" role="group" aria-label="履歴">
-      <HistoryControlButton label="元に戻す" button={undo} />
-      <HistoryControlButton label="やり直す" button={redo} />
     </div>
   );
 }
@@ -416,36 +291,6 @@ function PaletteButton({
         aria-hidden="true"
       />
       <span className="canvas-palette__caption">{appearance.caption}</span>
-    </button>
-  );
-}
-
-type HistoryControlButtonProps = Readonly<{
-  label: string;
-  button: HistoryButton;
-}>;
-
-/**
- * undo / redo ボタン。無効なときは実行しない。
- *
- * @param props 表示名と有効状態。
- * @returns 履歴ボタン。
- */
-function HistoryControlButton({ label, button }: HistoryControlButtonProps) {
-  const isDisabled = button.availability === "disabled";
-  return (
-    <button
-      type="button"
-      className={historyButtonClassName(button.availability)}
-      aria-disabled={isDisabled}
-      onClick={() => {
-        if (button.availability === "disabled") {
-          return;
-        }
-        button.onClick();
-      }}
-    >
-      {label}
     </button>
   );
 }
@@ -761,38 +606,4 @@ const paletteButtonClassName = (selected: boolean): string => {
   const selectedClass = selected ? ["canvas-palette__button--selected"] : [];
   const classNames = ["canvas-palette__button", ...selectedClass];
   return classNames.join(" ");
-};
-
-/**
- * 履歴ボタンの class を組み立てる。
- *
- * @param availability 有効または無効。
- * @returns canvas-history__button と無効修飾。
- */
-const historyButtonClassName = (
-  availability: HistoryButton["availability"],
-): string => {
-  const disabledClass =
-    availability === "disabled" ? ["canvas-history__button--disabled"] : [];
-  const classNames = ["canvas-history__button", ...disabledClass];
-  return classNames.join(" ");
-};
-
-/** 接続モードで次に選ぶ端点を案内する。 */
-const connectionInstruction = (
-  status: NonNullable<CanvasViewProps["connectionTool"]>["status"],
-): string => {
-  if (status === "selectingSource") {
-    return "始点の付箋を選択";
-  }
-  if (status === "selectingTarget") {
-    return "終点の付箋を選択";
-  }
-  return "";
-};
-
-/** 接続ボタンの class を組み立てる。 */
-const connectionButtonClassName = (active: boolean): string => {
-  const activeClass = active ? ["canvas-connection__button--active"] : [];
-  return ["canvas-connection__button", ...activeClass].join(" ");
 };

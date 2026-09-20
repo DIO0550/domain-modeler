@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn, userEvent } from "storybook/test";
+import { userEvent } from "storybook/test";
 import {
   Sticky as StickyModel,
   StickyId,
@@ -7,16 +7,10 @@ import {
 } from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../../domains/sticky-appearance";
 import { Sticky } from "../sticky";
-import { CanvasView, HistoryButton } from "./index";
-
-const disabledHistory = HistoryButton.disabled();
+import { CanvasView } from "./index";
 
 const meta: Meta<typeof CanvasView> = {
   component: CanvasView,
-  argTypes: {
-    undo: { control: false },
-    redo: { control: false },
-  },
   parameters: {
     layout: "fullscreen",
   },
@@ -64,8 +58,6 @@ export const Default: Story = {
   args: {
     viewport: { x: 0, y: 0, zoom: 1 },
     saveStatus: "saved",
-    undo: disabledHistory,
-    redo: disabledHistory,
   },
 };
 
@@ -73,8 +65,6 @@ export const AllTypes: Story = {
   args: {
     viewport: { x: 0, y: 0, zoom: 1 },
     saveStatus: "saved",
-    undo: disabledHistory,
-    redo: disabledHistory,
   },
   render: (args) => <CanvasView {...args}>{allStickies}</CanvasView>,
 };
@@ -83,8 +73,6 @@ export const AllProps: Story = {
   args: {
     viewport: { x: 0, y: 0, zoom: 1.5 },
     saveStatus: "saving",
-    undo: { availability: "enabled", onClick: fn() },
-    redo: { availability: "enabled", onClick: fn() },
   },
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Command" }));
@@ -95,8 +83,6 @@ export const Saving: Story = {
   args: {
     viewport: { x: 0, y: 0, zoom: 1 },
     saveStatus: "saving",
-    undo: disabledHistory,
-    redo: disabledHistory,
   },
 };
 
@@ -104,17 +90,6 @@ export const Failed: Story = {
   args: {
     viewport: { x: 0, y: 0, zoom: 1 },
     saveStatus: "failed",
-    undo: disabledHistory,
-    redo: disabledHistory,
-  },
-};
-
-export const HistoryEnabled: Story = {
-  args: {
-    viewport: { x: 0, y: 0, zoom: 1 },
-    saveStatus: "saved",
-    undo: { availability: "enabled", onClick: fn() },
-    redo: { availability: "enabled", onClick: fn() },
   },
 };
 
@@ -122,8 +97,6 @@ export const ZoomMin: Story = {
   args: {
     viewport: { x: 0, y: 0, zoom: 0.1 },
     saveStatus: "saved",
-    undo: disabledHistory,
-    redo: disabledHistory,
   },
 };
 
@@ -131,8 +104,6 @@ export const ZoomMax: Story = {
   args: {
     viewport: { x: 0, y: 0, zoom: 4 },
     saveStatus: "saved",
-    undo: disabledHistory,
-    redo: disabledHistory,
   },
 };
 
@@ -140,8 +111,6 @@ export const EdgeCases: Story = {
   args: {
     viewport: { x: 0, y: 0, zoom: 0.1 },
     saveStatus: "failed",
-    undo: HistoryButton.enabled(fn()),
-    redo: HistoryButton.disabled(),
   },
   play: async ({ canvas }) => {
     await userEvent.click(

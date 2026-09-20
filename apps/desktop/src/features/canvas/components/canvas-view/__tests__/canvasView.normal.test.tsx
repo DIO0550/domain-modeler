@@ -1,7 +1,7 @@
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vitest";
-import { CanvasView, HistoryButton } from "../index";
+import { CanvasView } from "../index";
 
 type RenderedCanvasView = Readonly<{
   host: HTMLDivElement;
@@ -16,8 +16,6 @@ afterEach(() => {
   }
 });
 
-const disabledHistory = HistoryButton.disabled();
-
 /**
  * CanvasView を描画してホスト要素を返す。
  *
@@ -27,8 +25,6 @@ const disabledHistory = HistoryButton.disabled();
 const renderCanvasView = (props: {
   zoom?: number;
   saveStatus?: "saved" | "saving" | "failed";
-  undo?: HistoryButton;
-  redo?: HistoryButton;
   children?: ReactNode;
 }): HTMLDivElement => {
   const host = document.createElement("div");
@@ -40,8 +36,6 @@ const renderCanvasView = (props: {
       <CanvasView
         viewport={{ x: 0, y: 0, zoom: props.zoom ?? 1 }}
         saveStatus={props.saveStatus ?? "saved"}
-        undo={props.undo ?? disabledHistory}
-        redo={props.redo ?? disabledHistory}
       >
         {props.children}
       </CanvasView>,
@@ -128,34 +122,6 @@ test("Command を選ぶと Command が押下状態になり Domain Event は解�
   expect(buttonNamed(host, "Domain Event").getAttribute("aria-pressed")).toBe(
     "false",
   );
-});
-
-test("undo が無効のときは押してもハンドラを呼ばない", () => {
-  const host = renderCanvasView({
-    undo: HistoryButton.disabled(),
-  });
-  const undoButton = buttonNamed(host, "元に戻す");
-
-  expect(undoButton.getAttribute("aria-disabled")).toBe("true");
-  act(() => {
-    undoButton.click();
-  });
-  expect(undoButton.getAttribute("aria-disabled")).toBe("true");
-});
-
-test("undo が有効のときは押すとハンドラを1回呼ぶ", () => {
-  const clicks: string[] = [];
-  const host = renderCanvasView({
-    undo: HistoryButton.enabled(() => {
-      clicks.push("undo");
-    }),
-  });
-
-  act(() => {
-    buttonNamed(host, "元に戻す").click();
-  });
-
-  expect(clicks).toEqual(["undo"]);
 });
 
 test("キャンバス領域はスクロールバーを持たない面として置かれる", () => {

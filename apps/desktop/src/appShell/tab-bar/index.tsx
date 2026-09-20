@@ -1,4 +1,8 @@
 import type { KeyboardEvent } from "react";
+import {
+  HistoryControls,
+  type HistoryControlsValue,
+} from "@/features/canvas";
 import { displayFilePath } from "@/libs/file-path";
 import { ArrayEx } from "../../utils/ArrayEx";
 import {
@@ -13,6 +17,7 @@ import {
 type TabBarProps = Readonly<{
   tabsState: TabsState;
   onActivate: (path: string) => void;
+  historyControls?: HistoryControlsValue;
 }>;
 
 type TabBarItemProps = Readonly<{
@@ -44,7 +49,11 @@ const documentTypeLabelOf = (documentType: TabDocumentType): string => {
  * @param props タブ状態と選択ハンドラ。
  * @returns タブリスト。
  */
-export function TabBar({ tabsState, onActivate }: TabBarProps) {
+export function TabBar({
+  tabsState,
+  onActivate,
+  historyControls,
+}: TabBarProps) {
   const views = TabsState.tabViews(tabsState);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
@@ -67,19 +76,22 @@ export function TabBar({ tabsState, onActivate }: TabBarProps) {
   };
 
   return (
-    <div
-      className="tab-bar"
-      role="tablist"
-      aria-label="開いている文書"
-      onKeyDown={handleKeyDown}
-    >
-      {views.map((view) => (
-        <TabBarItem
-          key={view.tab.path}
-          view={view}
-          onActivate={onActivate}
-        />
-      ))}
+    <div className="tab-bar">
+      <div
+        className="tab-bar__tabs"
+        role="tablist"
+        aria-label="開いている文書"
+        onKeyDown={handleKeyDown}
+      >
+        {views.map((view) => (
+          <TabBarItem
+            key={view.tab.path}
+            view={view}
+            onActivate={onActivate}
+          />
+        ))}
+      </div>
+      <HistoryControls value={historyControls} />
     </div>
   );
 }

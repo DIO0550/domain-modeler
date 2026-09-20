@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import type { HistoryControlsValue } from "@/features/canvas";
 import { DocumentWorkspace } from "./appShell/document-workspace";
 import { useAppShell } from "./appShell/hooks";
 import { MenuBar } from "./appShell/menu-bar";
@@ -11,6 +12,9 @@ import "./App.css";
 function App() {
   const manualSaves = useRef(new Map<string, () => Promise<boolean>>());
   const saveSessions = useRef(new Map<string, () => Promise<boolean>>());
+  const [canvasHistory, setCanvasHistory] = useState<
+    Readonly<{ path: string; controls: HistoryControlsValue }> | undefined
+  >();
   const {
     tabsState,
     menuState,
@@ -23,6 +27,17 @@ function App() {
     flushDocument: async (path) =>
       await flushStableSaveSession(saveSessions.current, path),
   });
+  const updateCanvasHistory = useCallback(
+    (path: string, controls: HistoryControlsValue | undefined): void => {
+      if (tabsState.status !== "active" || tabsState.activePath !== path) {
+        return;
+      }
+      setCanvasHistory(
+        controls === undefined ? undefined : { path, controls },
+      );
+    },
+    [tabsState],
+  );
   const registerSaveSession = useCallback(
     (path: string, flush: () => Promise<boolean>): (() => void) => {
       saveSessions.current.set(path, flush);
@@ -77,7 +92,16 @@ function App() {
   return (
     <div className="app-shell">
       <MenuBar menuState={menuState} onCommand={runCommand} />
-      <TabBar tabsState={tabsState} onActivate={activate} />
+      <TabBar
+        tabsState={tabsState}
+        onActivate={activate}
+        historyControls={
+          tabsState.status === "active" &&
+          canvasHistory?.path === tabsState.activePath
+            ? canvasHistory.controls
+            : undefined
+        }
+      />
       <DocumentWorkspace
         tabsState={tabsState}
         registerSaveSession={registerSaveSession}
@@ -86,6 +110,7 @@ function App() {
           import.meta.env.MODE === "test" ? undefined : FILE_WATCH_OPERATIONS
         }
         dispatchExternalFileAction={dispatchExternalFileAction}
+        onHistoryControlsChange={updateCanvasHistory}
       />
     </div>
   );
