@@ -115,11 +115,6 @@
     "name": "Failed"
   },
   {
-    "id": "features-canvas-components-canvas-view-canvasview--history-enabled",
-    "title": "features/canvas/components/canvas-view/CanvasView",
-    "name": "History Enabled"
-  },
-  {
     "id": "features-canvas-components-canvas-view-canvasview--saving",
     "title": "features/canvas/components/canvas-view/CanvasView",
     "name": "Saving"
