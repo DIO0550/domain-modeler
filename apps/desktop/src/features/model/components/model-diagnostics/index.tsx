@@ -111,25 +111,29 @@ export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
 
   return (
     <div className="model-diagnostics">
+      <div className="model-diagnostics__editor-heading">モデル定義</div>
       <div
         className="model-diagnostics__toolbar"
         role="toolbar"
         aria-label="編集支援"
       >
-        <button
-          type="button"
-          className="model-diagnostics__toolbar-button"
-          onClick={() => insertTemplate(DeclTemplate.data())}
-        >
-          data雛形
-        </button>
-        <button
-          type="button"
-          className="model-diagnostics__toolbar-button"
-          onClick={() => insertTemplate(DeclTemplate.workflow())}
-        >
-          workflow雛形
-        </button>
+        <span className="model-diagnostics__preview-heading">プレビュー</span>
+        <div className="model-diagnostics__actions">
+          <button
+            type="button"
+            className="model-diagnostics__toolbar-button"
+            onClick={() => insertTemplate(DeclTemplate.data())}
+          >
+            ＋ data
+          </button>
+          <button
+            type="button"
+            className="model-diagnostics__toolbar-button"
+            onClick={() => insertTemplate(DeclTemplate.workflow())}
+          >
+            ＋ workflow
+          </button>
+        </div>
       </div>
       <section className="model-diagnostics__editor" aria-label="テキストエディタ">
         <ModelEditorDisplay editing={editing} />

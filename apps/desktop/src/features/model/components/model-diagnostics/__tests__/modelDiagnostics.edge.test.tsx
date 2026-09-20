@@ -122,7 +122,7 @@ test("CRLF の文書でも雛形挿入位置がずれない", () => {
       ? found
       : document.createElement("textarea");
   const insertButton = Array.from(host.querySelectorAll("button")).find(
-    (button) => button.textContent === "data雛形",
+    (button) => button.textContent === "＋ data",
   );
 
   act(() => {
@@ -252,7 +252,7 @@ test("workflow雛形をカーソル位置へ挿入し名前部分を選択する
       ? found
       : document.createElement("textarea");
   const insertButton = Array.from(host.querySelectorAll("button")).find(
-    (button) => button.textContent === "workflow雛形",
+    (button) => button.textContent === "＋ workflow",
   );
 
   act(() => {
