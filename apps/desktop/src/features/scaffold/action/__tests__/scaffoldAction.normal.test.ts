@@ -1,53 +1,11 @@
-import { Document } from "@domain-modeler/canvas-core";
 import { Generate } from "@domain-modeler/scaffold";
 import { expect, test } from "vitest";
-import type { FileWriteResult } from "@/types/file-write";
 import { Option } from "@/utils/Option";
 import { ScaffoldAction } from "../index";
-
-function setup() {
-  const openedTabs: Readonly<{ path: string; documentType: "model" }>[] = [];
-  const files = new Map<string, string>([
-    ["/source.dcanvas", "original canvas"],
-  ]);
-  const previews: string[] = [];
-  const source = {
-    activeDocument: Option.some({
-      kind: "canvas" as const,
-      document: { ...Document.empty(), title: "注文" },
-    }),
-    generatedOn: "2026-09-14",
-  };
-  const createFile = async (target: Readonly<{ path: string; contents: string }>): Promise<FileWriteResult> => {
-    if (files.has(target.path)) {
-      return {
-        type: "err",
-        error: {
-          kind: "writeFailed",
-          path: target.path,
-          message: "already exists",
-        },
-      };
-    }
-    files.set(target.path, target.contents);
-    return { type: "ok" };
-  };
-  const operations = {
-    createFile,
-    confirm: async (text: string): Promise<"confirmed" | "cancelled"> => {
-      previews.push(text);
-      return "confirmed";
-    },
-    selectSavePath: async () => Option.some("/generated.dmodel"),
-    openTab: (path: string, documentType: "model") => {
-      openedTabs.push({ path, documentType });
-    },
-  };
-  return { source, operations, files, previews, openedTabs };
-}
+import { setupScaffoldAction } from "./scaffoldAction.test-support";
 
 test("確認した全文を新規保存し元キャンバスを残してモデルタブを前面に開く", async () => {
-  const state = setup();
+  const state = setupScaffoldAction();
   const result = await ScaffoldAction.run(state.source, state.operations);
   const text = Generate.toDmodelText(
     state.source.activeDocument.value.document,
@@ -63,7 +21,7 @@ test("確認した全文を新規保存し元キャンバスを残してモデ�
 });
 
 test("確認で取り消すと保存先を選ばず文書もタブも増えない", async () => {
-  const state = setup();
+  const state = setupScaffoldAction();
   const result = await ScaffoldAction.run(state.source, {
     ...state.operations,
     confirm: async () => "cancelled",
@@ -77,7 +35,7 @@ test("確認で取り消すと保存先を選ばず文書もタブも増えな�
 });
 
 test("保存先選択を取り消すと文書もタブも増えない", async () => {
-  const state = setup();
+  const state = setupScaffoldAction();
   const result = await ScaffoldAction.run(state.source, {
     ...state.operations,
     selectSavePath: async () => Option.none(),
@@ -88,7 +46,7 @@ test("保存先選択を取り消すと文書もタブも増えない", async ()
 });
 
 test("既存モデルへの保存は失敗し内容とタブを維持する", async () => {
-  const state = setup();
+  const state = setupScaffoldAction();
   state.files.set("/generated.dmodel", "hand written model");
   const result = await ScaffoldAction.run(state.source, state.operations);
   expect(result).toMatchObject({ status: "writeFailed" });
@@ -97,7 +55,7 @@ test("既存モデルへの保存は失敗し内容とタブを維持する", as
 });
 
 test("保存が失敗すると失敗を返しモデルタブを開かない", async () => {
-  const state = setup();
+  const state = setupScaffoldAction();
   const result = await ScaffoldAction.run(state.source, {
     ...state.operations,
     createFile: async (target) => ({
@@ -116,7 +74,7 @@ test.each([
   Option.none(),
   Option.some({ kind: "model" as const }),
 ])("アクティブキャンバスがないと確認も保存もしない (%j)", async (activeDocument) => {
-  const state = setup();
+  const state = setupScaffoldAction();
   const result = await ScaffoldAction.run(
     { ...state.source, activeDocument },
     state.operations,

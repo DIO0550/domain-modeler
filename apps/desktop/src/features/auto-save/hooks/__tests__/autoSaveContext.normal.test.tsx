@@ -1,5 +1,4 @@
 import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
 import {
   AUTO_SAVE_DEBOUNCE_MS,
@@ -8,82 +7,12 @@ import {
   type AutoSaveOperations,
 } from "../../domains";
 import {
-  AutoSaveProvider,
-  useAutoSave,
-  type AutoSaveContextValue,
-} from "../index";
-
-type WriteCall = Readonly<{ path: string; contents: string }>;
-
-type AutoSaveProbe = Readonly<{
-  latest: { current: AutoSaveContextValue | undefined };
-  rerender: (next: { path: string; initialContents: string }) => void;
-  unmount: () => void;
-}>;
-
-/**
- * 呼び出し履歴を記録する自動保存用の外部操作を組み立てる。
- *
- * @param writes ファイル書き込みの呼び出し履歴。
- * @returns テスト用の自動保存操作。
- */
-const operationsRecording = (writes: WriteCall[]): AutoSaveOperations => ({
-  writeFile: async (path, contents) => {
-    writes.push({ path, contents });
-    return { type: "ok" };
-  },
-  now: () => Date.now(),
-});
-
-/**
- * Provider 配下の自動保存操作を参照できるテスト用ツリーを描画する。
- *
- * @param operations ファイル書き込みと時刻取得。
- * @returns 最新の Context 値、再描画、unmount。
- */
-const renderAutoSave = (operations: AutoSaveOperations): AutoSaveProbe => {
-  const latest: { current: AutoSaveContextValue | undefined } = {
-    current: undefined,
-  };
-  const host = document.createElement("div");
-  document.body.append(host);
-  const root: Root = createRoot(host);
-
-  const Probe = () => {
-    latest.current = useAutoSave();
-    return null;
-  };
-
-  const renderProvider = (next: { path: string; initialContents: string }) => {
-    act(() => {
-      root.render(
-        <AutoSaveProvider
-          path={next.path}
-          initialContents={next.initialContents}
-          operations={operations}
-        >
-          <Probe />
-        </AutoSaveProvider>,
-      );
-    });
-  };
-
-  renderProvider({
-    path: "/documents/context.dcanvas",
-    initialContents: "{}",
-  });
-
-  return {
-    latest,
-    rerender: renderProvider,
-    unmount: () => {
-      act(() => {
-        root.unmount();
-      });
-      host.remove();
-    },
-  };
-};
+  operationsBlockingFirstWrite,
+  operationsRecording,
+  renderAutoSave,
+  type AutoSaveProbe,
+  type WriteCall,
+} from "./autoSaveContext.test-support";
 
 const probes: AutoSaveProbe[] = [];
 
@@ -429,21 +358,10 @@ test("保存中のflushは進行中の書き込みの完了後に最新内容を
 });
 
 test("明示上書き中に加えた編集は上書き完了後も未保存変更として残す", async () => {
-  let finishOverwrite: () => void = () => {};
   const writes: WriteCall[] = [];
-  const operations: AutoSaveOperations = {
-    writeFile: async (path, contents) => {
-      writes.push({ path, contents });
-      if (writes.length > 1) {
-        return { type: "ok" };
-      }
-      return await new Promise((resolve) => {
-        finishOverwrite = () => resolve({ type: "ok" });
-      });
-    },
-    now: () => Date.now(),
-  };
-  const probe = renderAutoSave(operations);
+  const blocking = operationsBlockingFirstWrite(writes);
+  const finishOverwrite = blocking.finish;
+  const probe = renderAutoSave(blocking.operations);
   probes.push(probe);
 
   const overwrite = probe.latest.current?.overwrite('{"version":1}');

@@ -1,20 +1,12 @@
 import { expect, test } from "vitest";
 import { flushStableSaveSession, flushStableSaveSessions } from "./App";
+import { slowFirstFlushSession } from "./App.test-support";
 
 test("終了保存中に再編集された文書も次の世代までflushする", async () => {
-  let finishSlowSave: (saved: boolean) => void = () => {};
-  let slowFlushCount = 0;
   let latestFlushCount = 0;
+  const slowSave = slowFirstFlushSession();
   const sessions = new Map<string, () => Promise<boolean>>();
-  sessions.set("/slow.dmodel", async () => {
-    slowFlushCount += 1;
-    if (slowFlushCount > 1) {
-      return true;
-    }
-    return await new Promise<boolean>((resolve) => {
-      finishSlowSave = resolve;
-    });
-  });
+  sessions.set("/slow.dmodel", slowSave.flush);
   sessions.set("/edited.dmodel", async () => true);
 
   const closing = flushStableSaveSessions(sessions);
@@ -23,7 +15,7 @@ test("終了保存中に再編集された文書も次の世代までflushする
     latestFlushCount += 1;
     return true;
   });
-  finishSlowSave(true);
+  slowSave.finish(true);
 
   await expect(closing).resolves.toBe(true);
   expect(latestFlushCount).toBe(1);

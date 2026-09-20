@@ -6,76 +6,36 @@ import {
 } from "@domain-modeler/canvas-core";
 import { Parse } from "@domain-modeler/model-core";
 import { expect, test } from "vitest";
-import type { FileWriteResult } from "@/libs/file-write";
+import { FileActions } from "../fileActions";
+import { ExternalFileEvents } from "../external-file-events";
+import { TabsState } from "../tabs";
 import {
-  FileActions,
-  type FileReadResult,
-  type OpenDocumentError,
-  type SavePathSelection,
-} from "../fileActions";
-import {
-  ExternalFileEvents,
-  type ExternalFileEventError,
-} from "../external-file-events";
-import { TabsState, type TabsAction, type TabDocumentType } from "../tabs";
-
-/** I/Oだけをメモリ上で代替し、タブ更新は実際のreducerに接続する。 */
-const setup = (selection: SavePathSelection) => {
-  const files = new Map<string, string>();
-  const errors: (OpenDocumentError | ExternalFileEventError)[] = [];
-  let tabs = TabsState.create();
-  const dispatchTabs = (action: TabsAction) => {
-    tabs = TabsState.reducer(tabs, action);
-  };
-  const operations = {
-    selectSavePath: async () => selection,
-    createFile: async (
-      path: string,
-      contents: string,
-    ): Promise<FileWriteResult> => {
-      files.set(path, contents);
-      return { type: "ok" };
-    },
-    sameFilePath: async (left: string, right: string) => left === right,
-    readFile: async (path: string): Promise<FileReadResult> => {
-      const value = files.get(path);
-      if (value === undefined) {
-        return { type: "err", error: { kind: "notFound", path } };
-      }
-      return { type: "ok", value };
-    },
-    openTab: (path: string, documentType: TabDocumentType) =>
-      dispatchTabs({ type: "openTab", path, documentType }),
-    dispatchTabs,
-    notifyError: (error: OpenDocumentError | ExternalFileEventError) => {
-      errors.push(error);
-    },
-    hashContents: (contents: string) => contents,
-  };
-  return { files, errors, operations, tabs: () => tabs };
-};
+  readContents,
+  setupFileActions,
+} from "./fileActions.test-support";
 
 test.each([
-  "canvas",
-  "model",
-] as const)("新規%sを保存して閉じた後、同じファイルを再び開ける", async (documentType) => {
-  const path = `/documents/order.${documentType === "canvas" ? "dcanvas" : "dmodel"}`;
-  const app = setup({ status: "selected", path });
+  {
+    documentType: "canvas",
+    path: "/documents/order.dcanvas",
+    expectInitialContents: (contents: string) =>
+      expect(Result.unwrap(Serialize.parse(contents))).toEqual(
+        Document.empty(),
+      ),
+  },
+  {
+    documentType: "model",
+    path: "/documents/order.dmodel",
+    expectInitialContents: (contents: string) => expect(contents).toBe(""),
+  },
+] as const)(
+  "新規$documentTypeを保存して閉じた後、同じファイルを再び開ける",
+  async ({ documentType, path, expectInitialContents }) => {
+  const app = setupFileActions({ status: "selected", path });
   expect(
     await FileActions.saveNewDocument(documentType, app.operations),
   ).toEqual({ status: "created", path });
-  const saved = await app.operations.readFile(path);
-  if (saved.type !== "ok") {
-    throw new Error("作成したファイルを読めません");
-  }
-  if (documentType === "canvas") {
-    expect(Result.unwrap(Serialize.parse(saved.value))).toEqual(
-      Document.empty(),
-    );
-  }
-  if (documentType === "model") {
-    expect(saved.value).toBe("");
-  }
+  expectInitialContents(readContents(await app.operations.readFile(path)));
   app.operations.dispatchTabs({ type: "closeTab", path });
   expect(app.tabs()).toEqual(TabsState.create());
   expect(await FileActions.openDocument(path, app.operations)).toEqual({
@@ -89,11 +49,12 @@ test.each([
     tabs: [{ path, documentType, fileState: { status: "available" } }],
   });
   expect(app.errors).toEqual([]);
-});
+  },
+);
 
 test("同じファイルを開き直すと重複タブを作らず元のタブを前面にする", async () => {
   const path = "/documents/order.dcanvas";
-  const app = setup({ status: "selected", path });
+  const app = setupFileActions({ status: "selected", path });
   await FileActions.saveNewDocument("canvas", app.operations);
   app.files.set("/documents/other.dmodel", "data 顧客 = string");
   await FileActions.openDocument("/documents/other.dmodel", app.operations);
@@ -109,7 +70,7 @@ test.each([
   "not json",
   JSON.stringify({ ...Document.empty(), stickies: [{ id: "invalid" }] }),
 ])("不正キャンバス %s を開いても既存タブとファイルを変更しない", async (contents) => {
-  const app = setup({ status: "selected", path: "/documents/order.dmodel" });
+  const app = setupFileActions({ status: "selected", path: "/documents/order.dmodel" });
   await FileActions.saveNewDocument("model", app.operations);
   const previous = app.tabs();
   const path = "/documents/broken.dcanvas";
@@ -127,7 +88,7 @@ test.each([
 
 test("構文エラーのあるモデルも全文を保持してタブを開ける", async () => {
   const path = "/documents/broken.dmodel";
-  const app = setup({ status: "cancelled" });
+  const app = setupFileActions({ status: "cancelled" });
   const contents = "data 数量 = int constrained 10..1\ndata 注文ID = string";
   app.files.set(path, contents);
   expect(await FileActions.openDocument(path, app.operations)).toMatchObject({
@@ -135,10 +96,7 @@ test("構文エラーのあるモデルも全文を保持してタブを開け�
   });
   const read = await app.operations.readFile(path);
   expect(read).toEqual({ type: "ok", value: contents });
-  if (read.type !== "ok") {
-    throw new Error("モデルを読めません");
-  }
-  expect(Parse.parse(read.value).diagnostics).toEqual([
+  expect(Parse.parse(readContents(read)).diagnostics).toEqual([
     expect.objectContaining({ severity: "error" }),
   ]);
   expect(app.tabs().tabs).toMatchObject([
@@ -148,7 +106,7 @@ test("構文エラーのあるモデルも全文を保持してタブを開け�
 });
 
 test("存在しないファイルを開こうとしても既存タブを閉じずエラーを通知する", async () => {
-  const app = setup({ status: "selected", path: "/documents/order.dcanvas" });
+  const app = setupFileActions({ status: "selected", path: "/documents/order.dcanvas" });
   await FileActions.saveNewDocument("canvas", app.operations);
   const previous = app.tabs();
   const path = "/documents/missing.dmodel";
@@ -165,15 +123,15 @@ test("存在しないファイルを開こうとしても既存タブを閉じ�
 
 test("開いたキャンバスが外部で削除されても文書とタブは欠損状態で残る", async () => {
   const path = "/documents/order.dcanvas";
-  const app = setup({ status: "selected", path });
+  const app = setupFileActions({ status: "selected", path });
   await FileActions.saveNewDocument("canvas", app.operations);
-  const read = await app.operations.readFile(path);
-  if (read.type !== "ok") {
-    throw new Error("キャンバスを読めません");
-  }
   const document = {
     documentType: "canvas",
-    history: History.create(Result.unwrap(Serialize.parse(read.value))),
+    history: History.create(
+      Result.unwrap(
+        Serialize.parse(readContents(await app.operations.readFile(path))),
+      ),
+    ),
   } as const;
   app.files.delete(path);
   expect(
@@ -189,7 +147,7 @@ test("開いたキャンバスが外部で削除されても文書とタブは�
 });
 
 test("新規作成をキャンセルすると既存タブも保存済みファイルも変わらない", async () => {
-  const app = setup({ status: "cancelled" });
+  const app = setupFileActions({ status: "cancelled" });
   const path = "/documents/order.dmodel";
   app.files.set(path, "data 注文 = string");
   await FileActions.openDocument(path, app.operations);

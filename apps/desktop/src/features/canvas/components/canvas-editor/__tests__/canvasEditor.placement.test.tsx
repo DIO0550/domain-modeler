@@ -4,7 +4,9 @@ import { Document } from "@domain-modeler/canvas-core";
 import {
   buttonNamed,
   clickSurface,
+  elementOf,
   existingStickyDocument,
+  propertyBodyOf,
   renderEditor,
 } from "./canvasEditor.test-support";
 
@@ -25,15 +27,6 @@ const drag = (
     Object.defineProperty(event, "dataTransfer", { value: new DataTransfer() });
     element.dispatchEvent(event);
   });
-};
-
-/** レンダリング済みの操作対象を取得する。 */
-const elementOf = (host: HTMLElement, selector: string): HTMLElement => {
-  const element = host.querySelector(selector);
-  if (!(element instanceof HTMLElement)) {
-    throw new Error(`要素がありません: ${selector}`);
-  }
-  return element;
 };
 
 test("部品を選んでカーソルを動かすと配置位置にプレビューを表示し、1個配置すると消える", () => {
@@ -165,12 +158,7 @@ test("配置待ちのEscでプレビューを消し、次のクリックでは�
 test("右パネルで本文を直接編集し、確定後のundoで編集前へ戻す", () => {
   const host = renderEditor(existingStickyDocument);
   clickSurface(host, { x: 40, y: 50 });
-  const editor = host.querySelector<HTMLTextAreaElement>(
-    '[aria-label="プロパティの本文"]',
-  );
-  if (!editor) {
-    throw new Error("本文欄がありません");
-  }
+  const editor = propertyBodyOf(host);
   expect(editor.value).toBe("注文が確定した");
   act(() => editor.focus());
   expect(document.activeElement).toBe(editor);
