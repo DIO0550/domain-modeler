@@ -10,6 +10,7 @@ import {
   type Document as CanvasDocument,
 } from "@domain-modeler/canvas-core";
 import { CanvasEditor } from "../index";
+import type { HistoryControlsValue } from "../../history-controls";
 
 type RenderedEditor = Readonly<{
   host: HTMLDivElement;
@@ -80,6 +81,10 @@ export const documentWithConnection = {
 /** CanvasEditor を描画してホスト要素を返す。 */
 export const renderEditor = (
   initialDocument?: CanvasDocument,
+  options: Readonly<{
+    isActive?: boolean;
+    onHistoryControlsChange?: (controls: HistoryControlsValue) => void;
+  }> = {},
 ): HTMLDivElement => {
   const host = document.createElement("div");
   document.body.append(host);
@@ -87,7 +92,12 @@ export const renderEditor = (
 
   act(() => {
     root.render(
-      <CanvasEditor saveStatus="saved" initialDocument={initialDocument} />,
+      <CanvasEditor
+        saveStatus="saved"
+        initialDocument={initialDocument}
+        isActive={options.isActive}
+        onHistoryControlsChange={options.onHistoryControlsChange}
+      />,
     );
   });
 

@@ -16,18 +16,24 @@ import {
   useViewportInteractions,
 } from "../../hooks";
 import { Sticky, StickyChrome } from "../sticky";
-import { CanvasView, HistoryButton } from "../canvas-view";
+import { CanvasView } from "../canvas-view";
+import {
+  HistoryButton,
+  type HistoryControlsValue,
+} from "../history-controls";
 import { StickyInspector } from "../sticky-inspector";
 import { ConnectionHandles } from "../connection-handles";
 import { ConnectionLayer } from "../connection-layer";
 
 type CanvasEditorProps = Readonly<{
+  isActive?: boolean;
   saveStatus: SaveIndicatorStatus;
   initialDocument?: Document;
   initialHistory?: History;
   onDocumentChange?: (document: Document) => void;
   onHistoryChange?: (history: History) => void;
   onDraftHistoryChange?: (history: History | undefined) => void;
+  onHistoryControlsChange?: (controls: HistoryControlsValue) => void;
 }>;
 
 /**
@@ -37,12 +43,14 @@ type CanvasEditorProps = Readonly<{
  * @returns 操作可能なキャンバス。
  */
 export function CanvasEditor({
+  isActive = true,
   saveStatus,
   initialDocument,
   initialHistory,
   onDocumentChange,
   onHistoryChange,
   onDraftHistoryChange,
+  onHistoryControlsChange,
 }: CanvasEditorProps) {
   const [placementActive, setPlacementActive] = useState(false);
   const [inspectorEditing, setInspectorEditing] = useState(false);
@@ -83,6 +91,24 @@ export function CanvasEditor({
   useEffect(() => {
     notifyDraftHistoryChange(board.draftHistory);
   }, [board.draftHistory]);
+  const notifyHistoryControlsChange = useEffectEvent(
+    (controls: HistoryControlsValue): void => {
+      onHistoryControlsChange?.(controls);
+    },
+  );
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+    notifyHistoryControlsChange({
+      undo: board.hasUndo
+        ? HistoryButton.enabled(board.undo)
+        : HistoryButton.disabled(),
+      redo: board.hasRedo
+        ? HistoryButton.enabled(board.redo)
+        : HistoryButton.disabled(),
+    });
+  }, [isActive, board.hasUndo, board.hasRedo]);
   const viewport = useViewportInteractions(
     board.document.viewport,
     board.document.stickies,
@@ -91,11 +117,6 @@ export function CanvasEditor({
   const connectionModeActive = ConnectionSession.isCreating(
     board.connectionSession,
   );
-  const connectionToolStatus =
-    board.connectionSession.status === "selectingSource" ||
-    board.connectionSession.status === "selectingTarget"
-      ? board.connectionSession.status
-      : "inactive";
 
   // ドラッグ中のDOM再挿入でpointer captureを失わないよう、DOM順はIDで固定する。
   // 文書の並びが表す前後関係はz-indexだけで反映する。
@@ -105,7 +126,6 @@ export function CanvasEditor({
 
   return (
     <CanvasView
-      showToolbar={false}
       inspector={
         <StickyInspector
           sticky={board.stickies.find(
@@ -188,16 +208,6 @@ export function CanvasEditor({
       viewport={viewport.viewport}
       viewportInteraction={viewport.surfaceInteraction}
       saveStatus={saveStatus}
-      undo={
-        board.hasUndo
-          ? HistoryButton.enabled(board.undo)
-          : HistoryButton.disabled()
-      }
-      redo={
-        board.hasRedo
-          ? HistoryButton.enabled(board.redo)
-          : HistoryButton.disabled()
-      }
       selectedType={board.selectedType}
       onSelectType={(type) => {
         board.pressEscape();
@@ -227,16 +237,6 @@ export function CanvasEditor({
           return;
         }
         board.pressDelete();
-      }}
-      connectionTool={{
-        status: connectionToolStatus,
-        errorMessage: board.connectionError.some
-          ? board.connectionError.value.message
-          : undefined,
-        onToggle: () => {
-          setPlacementActive(false);
-          board.toggleConnectionMode();
-        },
       }}
     >
       <ConnectionLayer
