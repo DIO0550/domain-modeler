@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { flushStableSaveSession, flushStableSaveSessions } from "./App";
+import { flushStableSaveSession, flushStableSaveSessions } from "../App";
 import { slowFirstFlushSession } from "./App.test-support";
 
 test("終了保存中に再編集された文書も次の世代までflushする", async () => {

@@ -2,8 +2,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vitest";
 import { HistoryButton, type HistoryControlsValue } from "@/features/canvas";
-import { TabBar } from "./index";
-import { TabsState } from "../tabs";
+import { TabBar } from "../index";
+import { TabsState } from "../../tabs";
 
 type RenderedTabBar = Readonly<{
   host: HTMLDivElement;

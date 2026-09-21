@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { type TabDocumentType, TabsState } from "./tabs";
+import { type TabDocumentType, TabsState } from "../tabs";
 
 type TabDocument = Readonly<{
   path: string;

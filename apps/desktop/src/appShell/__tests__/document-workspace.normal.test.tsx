@@ -11,13 +11,13 @@ import type {
   FileWatchEvent,
   FileWatchOperations,
 } from "@/libs/file-watch";
-import { DocumentWorkspace } from "./document-workspace";
+import { DocumentWorkspace } from "../document-workspace";
 import {
   autoSaveBlockingFirstWrite,
   fileWatchDeferringFirstRead,
   undoCanvas,
 } from "./document-workspace.test-support";
-import { TabsState } from "./tabs";
+import { TabsState } from "../tabs";
 
 type RenderedWorkspace = Readonly<{
   host: HTMLDivElement;

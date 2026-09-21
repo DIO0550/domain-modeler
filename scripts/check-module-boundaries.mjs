@@ -183,6 +183,10 @@ const NEST_DEPTH_RULE = {
   id: "feature-nest-depth",
   message: "feature のネストは features/<親>/features/<子> の2段まで",
 };
+const TEST_PLACEMENT_RULE = {
+  id: "test-file-placement",
+  message: "テスト関連のファイルは対象と同じ階層の __tests__/ に置く",
+};
 const FEATURE_CYCLE_RULE = {
   id: "no-feature-cycle",
   message: "feature 同士の循環参照は禁止(共有部分を1つ上の階層へ上げるか1つにまとめる)",
@@ -216,6 +220,16 @@ const collectOverNestedFeatures = () => {
   return overNested;
 };
 
+/** __tests__/ の外に置かれたテスト関連ファイルを返す。 */
+const collectMisplacedTestFiles = (files) =>
+  files
+    .map((file) => relative(ROOT, file))
+    .filter(
+      (repoPath) =>
+        /\.(test|test-support)\.tsx?$/.test(repoPath) &&
+        !repoPath.includes("/__tests__/"),
+    );
+
 /** feature 間の参照から循環を1つずつ取り出す。 */
 const collectFeatureCycles = (edges) => {
   const cycles = [];
@@ -246,7 +260,8 @@ const collectFeatureCycles = (edges) => {
 
 const violations = [];
 const featureEdges = new Map();
-for (const file of [...collectSourceFiles(APP_SRC), ...collectSourceFiles(PACKAGES)]) {
+const sourceFiles = [...collectSourceFiles(APP_SRC), ...collectSourceFiles(PACKAGES)];
+for (const file of sourceFiles) {
   const repoPath = relative(ROOT, file);
   const from = layerOf(repoPath);
   const source = readFileSync(file, "utf8");
@@ -271,6 +286,15 @@ for (const file of [...collectSourceFiles(APP_SRC), ...collectSourceFiles(PACKAG
       }
     }
   }
+}
+
+for (const repoPath of collectMisplacedTestFiles(sourceFiles)) {
+  violations.push({
+    repoPath,
+    line: 1,
+    specifier: repoPath,
+    rule: TEST_PLACEMENT_RULE,
+  });
 }
 
 for (const feature of collectOverNestedFeatures()) {

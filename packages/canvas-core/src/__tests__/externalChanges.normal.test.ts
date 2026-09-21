@@ -1,12 +1,12 @@
 import { expect, test } from "vitest";
-import { Document } from "./domains/document";
-import { History } from "./domains/history";
-import { ChangeTitleCommand } from "./domains/history/document-command";
-import { Result } from "./domains/result";
-import { StickyId } from "./domains/sticky";
-import { ConnectionId } from "./domains/connection";
-import { ExternalChanges } from "./externalChanges";
-import { Serialize } from "./serialize";
+import { Document } from "../domains/document";
+import { History } from "../domains/history";
+import { ChangeTitleCommand } from "../domains/history/document-command";
+import { Result } from "../domains/result";
+import { StickyId } from "../domains/sticky";
+import { ConnectionId } from "../domains/connection";
+import { ExternalChanges } from "../externalChanges";
+import { Serialize } from "../serialize";
 
 const emptyDocumentJson = (title: string): string =>
   JSON.stringify({

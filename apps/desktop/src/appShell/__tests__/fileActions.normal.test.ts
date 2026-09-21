@@ -8,7 +8,7 @@ import {
   type OpenDocumentError,
   type OpenDocumentOperations,
   type SavePathSelection,
-} from "./fileActions";
+} from "../fileActions";
 
 type OperationCall =
   | Readonly<{ type: "selectSavePath"; documentType: "canvas" | "model" }>

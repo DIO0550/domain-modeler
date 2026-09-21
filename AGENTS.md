@@ -57,7 +57,7 @@ pnpm run test             # Vitest（watch モード）
 pnpm run test:run         # Vitest 全テスト実行（CI 向け）
 pnpm run lint             # oxlint 実行
 pnpm run lint:fix         # oxlint 自動修正
-pnpm run check:boundaries # モジュール境界の検査(deep import / 循環 / ネスト深さ / domains -> libs)
+pnpm run check:boundaries # モジュール境界の検査(deep import / 循環 / ネスト深さ / domains -> libs / テスト配置)
 pnpm run storybook        # Storybook 起動（ポート 6006）
 pnpm run tauri dev        # Tauri アプリ起動
 ```

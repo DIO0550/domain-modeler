@@ -139,6 +139,7 @@ pnpm run check:boundaries
 - feature 間の循環参照を落とす(ネストした親子も同じ扱い)
 - `features/<親>/features/<子>/` より深いネストを落とす
 - `features/<x>/domains/` から `libs/` への import を落とす(I/O の呼び出し口の固定)
+- `__tests__/` の外に置かれた `*.test.ts(x)` / `*.test-support.ts(x)` を落とす(`rules/testing.md`「配置と命名」)
 - feature を追加・ネストしても設定変更は要らない(`features/` フォルダを実行時に辿る)
 - CI(`.github/workflows/frontend.yml`)と push 前フック(`.claude/hooks/pre-push-boundaries.sh`)から実行する
 

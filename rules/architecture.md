@@ -203,4 +203,4 @@ main/App -> appShell -> features/<x> -> packages/@domain-modeler/*
 - `libs/` は外部ライブラリ(`@tauri-apps/*`)・DOM API と `src/types/` のみ import 可
 - 循環依存は全面禁止
 
-境界は `pnpm run check:boundaries` で機械的に検査する(CI の frontend ワークフローと push 前フックで実行)。
+境界と、テスト関連ファイルの配置(`rules/testing.md`)は `pnpm run check:boundaries` で機械的に検査する(CI の frontend ワークフローと push 前フックで実行)。
