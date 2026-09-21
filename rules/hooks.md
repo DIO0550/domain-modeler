@@ -156,6 +156,7 @@ return <button onClick={handleClick} disabled={isSubmitting}>送信</button>;
 - **UIを認識しない**: カスタムフックは JSX、コンポーネント、className、文言、アイコン、レイアウト都合を返さない。UI表現はコンポーネント側の責務とし、hook は state、派生値、イベントハンドラ、必要最小限のアクセシビリティ属性や DOM props だけを返す
 - 配置: `src/hooks/` は汎用のみ。feature 固有のものは `features/<x>/hooks/`(ドメインロジック禁止は前セクションの通り)
 - 戻り値は使う側が必要とする最小限に絞る
+- 引数と戻り値の型名は `rules/naming.md`「フックの入出力の型名」に従う(`Use<フック名>Params` / `Use<フック名>Result`)
 
 ## 共通
 

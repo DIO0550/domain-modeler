@@ -16,7 +16,7 @@
 
 - @rules/architecture.md — ワークスペース構成・依存方向・ロジックの帰属先・libs / utils の責務
 - @rules/coding.md — コンパニオンオブジェクトパターン・イミュータブル・Result / Option・型による境界・禁止事項
-- @rules/naming.md — 命名(名前と実体の一致・汎用語の禁止・ファイル名)
+- @rules/naming.md — 命名(名前と実体の一致・汎用語の禁止・フックの入出力の型名・ファイル名)
 - @rules/testing.md — テスト配置・テストの書き方(ネスト禁止)
 - @rules/hooks.md — useEffect / useState / useReducer / カスタムフックの使い方
 - @rules/components.md — コンポーネント設計(Composition パターン)

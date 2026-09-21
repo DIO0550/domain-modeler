@@ -20,7 +20,7 @@ type TextEditingSession =
     }>
   | Readonly<{ status: "discarding-composition-input" }>;
 
-type UseTextEditingProps = Readonly<{
+type UseTextEditingParams = Readonly<{
   value: string;
   onChange: (text: string) => void;
 }>;
@@ -48,7 +48,7 @@ export type TextEditing = Readonly<{
  * @param props 親が保持する全文と変更通知。
  * @returns textareaへ渡す全文・参照・入力イベントハンドラ。
  */
-export function useTextEditing({ value, onChange }: UseTextEditingProps): TextEditing {
+export function useTextEditing({ value, onChange }: UseTextEditingParams): TextEditing {
   const [session, setSession] = useState<TextEditingSession>({
     status: "idle",
   });
