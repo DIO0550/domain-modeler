@@ -1586,6 +1586,84 @@ test("ドラッグ中の一時位置は自動保存せず確定後の位置だ�
   expect(writes).toHaveLength(1);
 });
 
+test("ドラッグ中の外部変更は確定まで取り込まず競合として保留する", async () => {
+  vi.useFakeTimers();
+  const autoSaveOperations: AutoSaveOperations = {
+    writeFile: async () => ({ type: "ok" }),
+    now: Date.now,
+  };
+  let notify: (event: FileWatchEvent) => void = () => {};
+  const watchOperations: FileWatchOperations = {
+    watch: async (_path, onEvent) => {
+      notify = onEvent;
+      return { type: "ok", stop: async () => {} };
+    },
+    readFile: async () => ({
+      type: "ok",
+      value: Serialize.stringify(Document.empty("external")),
+    }),
+  };
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
+    path: "/documents/order.dcanvas",
+    documentType: "canvas",
+  });
+  const { host } = renderWorkspace(
+    tabsState,
+    autoSaveOperations,
+    watchOperations,
+    () => {},
+  );
+
+  act(() => buttonNamed(host, "Domain Event").click());
+  act(() => {
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 }),
+    );
+    host.querySelector<HTMLTextAreaElement>("textarea")?.blur();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+
+  const article = host.querySelector<HTMLElement>("article");
+  const originalLeft = article?.style.left;
+  act(() => {
+    article?.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        pointerId: 1,
+        isPrimary: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+    article?.dispatchEvent(
+      new PointerEvent("pointermove", {
+        bubbles: true,
+        pointerId: 1,
+        isPrimary: true,
+        clientX: 160,
+        clientY: 150,
+      }),
+    );
+  });
+
+  expect(article?.style.left).not.toBe(originalLeft);
+
+  await act(async () => {
+    notify({ type: "changed", path: "/documents/order.dcanvas" });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  expect(host.querySelector<HTMLElement>("article")?.style.left).not.toBe(
+    originalLeft,
+  );
+  expect(host.textContent).toContain("競合");
+});
+
 test("キャンバス文書を切り替えると種別の選択は文書ごとに初期状態に戻る", () => {
   const first = TabsState.reducer(TabsState.create(), {
     type: "openTab",
