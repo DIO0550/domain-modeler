@@ -61,7 +61,7 @@ export type StateMachineDeclCreateParams = Readonly<{
   range: SourceRange;
 }>;
 
-/** state-machine AST を生成・判定する関数群。 */
+/** 状態 AST を生成する関数群。 */
 export const StateDecl = {
   /**
    * 状態名・フラグ・位置から状態を生成する。
