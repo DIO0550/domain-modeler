@@ -1,10 +1,15 @@
 import type { DataDecl } from "../data-decl";
 import type { ErrorDecl } from "../error-decl";
 import type { SourceRange } from "../source-range";
+import type { StateMachineDecl } from "../state-machine-decl";
 import type { WorkflowDecl } from "../workflow-decl";
 
-/** 文書内の1宣言(data / workflow / エラー宣言)。 */
-export type Declaration = DataDecl | WorkflowDecl | ErrorDecl;
+/** 文書内の1宣言(data / workflow / state-machine / エラー宣言)。 */
+export type Declaration =
+  | DataDecl
+  | WorkflowDecl
+  | StateMachineDecl
+  | ErrorDecl;
 
 /** `.dmodel` 文書の AST ルート。宣言は出現順。 */
 export type Document = Readonly<{
@@ -28,6 +33,14 @@ export const Declaration = {
    */
   isWorkflow: (declaration: Declaration): declaration is WorkflowDecl =>
     declaration.kind === "workflow",
+  /**
+   * state-machine 宣言か判定する。
+   * @param declaration 判定する宣言。
+   * @returns state-machine 宣言の場合は `true`。
+   */
+  isStateMachine: (
+    declaration: Declaration,
+  ): declaration is StateMachineDecl => declaration.kind === "state-machine",
   /**
    * エラー宣言か判定する。
    * @param declaration 判定する宣言。

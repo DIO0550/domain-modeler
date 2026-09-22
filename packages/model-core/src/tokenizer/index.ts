@@ -78,6 +78,12 @@ const tokenizeLineContent = (
       continue;
     }
 
+    if (rest.startsWith("->")) {
+      tokens.push(Token.create(TOKEN_KINDS.arrow, "->", lineNumber, column));
+      column += 2;
+      continue;
+    }
+
     if (rest.startsWith("..")) {
       tokens.push(
         Token.create(TOKEN_KINDS.rangeDots, "..", lineNumber, column),

@@ -104,6 +104,56 @@ test("予約語は identifier ではなく reserved になる", () => {
   ).toBe(false);
 });
 
+test("state-machine の予約語と遷移矢印をトークン化する", () => {
+  const tokens = Tokenizer.tokenize(`state-machine 注文 =
+  initial: 未検証
+  state: 完了 terminal
+  transition: 未検証 ->
+    完了 on 確定する`);
+
+  const meaningfulTokens = tokens.filter(
+    (token) => token.kind !== TOKEN_KINDS.indent,
+  );
+
+  expect(meaningfulTokens.map((token) => token.text)).toEqual([
+    "state-machine",
+    "注文",
+    "=",
+    "initial:",
+    "未検証",
+    "state:",
+    "完了",
+    "terminal",
+    "transition:",
+    "未検証",
+    "->",
+    "完了",
+    "on",
+    "確定する",
+  ]);
+  expect(
+    meaningfulTokens
+      .filter((token) => token.kind === TOKEN_KINDS.reserved)
+      .map((token) => token.text),
+  ).toEqual([
+    "state-machine",
+    "initial:",
+    "state:",
+    "terminal",
+    "transition:",
+    "on",
+  ]);
+  expect(meaningfulTokens.find((token) => token.text === "->")).toMatchObject({
+    kind: TOKEN_KINDS.arrow,
+    range: {
+      startLine: 4,
+      startColumn: 19,
+      endLine: 4,
+      endColumn: 21,
+    },
+  });
+});
+
 test("仕様例の文書全体を例外なくトークン列に分解する", () => {
   const source = `// 注文ドメインのモデル
 

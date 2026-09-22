@@ -9,6 +9,7 @@ export const TOKEN_KINDS = {
   reserved: "reserved",
   identifier: "identifier",
   equals: "equals",
+  arrow: "arrow",
   rangeDots: "rangeDots",
   number: "number",
 } as const;

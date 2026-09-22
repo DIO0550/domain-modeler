@@ -1,8 +1,8 @@
 import { expectTypeOf, test } from "vitest";
 import type { Declaration } from "..";
 
-test("Declaration は data / workflow / error の 3 kind のみ", () => {
+test("Declaration は data / workflow / state-machine / error の kind を持つ", () => {
   expectTypeOf<Declaration["kind"]>().toEqualTypeOf<
-    "data" | "workflow" | "error"
+    "data" | "workflow" | "state-machine" | "error"
   >();
 });

@@ -13,6 +13,7 @@ export * from "./constraint";
 export * from "./type-expr";
 export * from "./data-decl";
 export * from "./workflow-decl";
+export * from "./state-machine-decl";
 export * from "./error-decl";
 export * from "./document";
 export * from "./diagnostic";
