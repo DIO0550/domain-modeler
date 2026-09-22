@@ -115,12 +115,13 @@ test("書き込み失敗中の編集は failed のまま再試行間隔を維持
   ]);
 });
 
-test("writeFile が例外でも saveIfDue は reject せず failed になる", async () => {
+test("writeFile が失敗結果を返すと saveIfDue は failed になる", async () => {
   vi.useFakeTimers();
   const operations: AutoSaveOperations = {
-    writeFile: async () => {
-      throw new Error("disk full");
-    },
+    writeFile: async (path) => ({
+      type: "err",
+      error: { kind: "writeFailed", path, message: "disk full" },
+    }),
     now: () => Date.now(),
   };
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");

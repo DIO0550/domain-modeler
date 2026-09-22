@@ -16,6 +16,7 @@ Claude Code で `rules/` 配下の実装規約を**強制**するためのフッ
 | `pre-push-typecheck.sh`  | `PreToolUse` (Bash)       | **push 前の型チェック**。`pnpm run typecheck`(tsc -b)でエラーがあれば push をブロック    |
 | `pre-push-lint.sh`       | `PreToolUse` (Bash)       | **push 前の全体 lint**。oxlint / Biome のエラーがあれば push をブロック                   |
 | `pre-push-test-rules.sh` | `PreToolUse` (Bash)       | **push 前の全体テスト規約検査**。全 `*.test.ts(x)` を検査し違反があれば push をブロック   |
+| `pre-push-boundaries.sh` | `PreToolUse` (Bash)       | **push 前のモジュール境界検査**。feature の deep import / 循環 / ネスト深さ / `domains` -> `libs` / テスト配置の違反があれば push をブロック |
 
 ## 移植元から見送ったもの
 

@@ -14,20 +14,22 @@
 
 ## 規約一覧
 
-- @rules/architecture.md — フォルダ構造・依存方向・ロジックの帰属先・services / utils の責務
+- @rules/architecture.md — ワークスペース構成・依存方向・ロジックの帰属先・libs / utils の責務
 - @rules/coding.md — コンパニオンオブジェクトパターン・イミュータブル・Result / Option・型による境界・禁止事項
-- @rules/naming.md — 命名(名前と実体の一致・汎用語の禁止・ファイル名)
+- @rules/naming.md — 命名(名前と実体の一致・汎用語の禁止・フックの入出力の型名・ファイル名)
 - @rules/testing.md — テスト配置・テストの書き方(ネスト禁止)
 - @rules/hooks.md — useEffect / useState / useReducer / カスタムフックの使い方
 - @rules/components.md — コンポーネント設計(Composition パターン)
 - @rules/ui-verification.md — UIの表示確認手順(playwright-cli)
+- @rules/consistency.md — 整合性境界(同時に正しくある範囲)・更新の入口・導出優先・feature の構成とネスト
 
 ## 実装を始める前に
 
 過去のレビューで繰り返し指摘された観点。実装前および PR を出す前に自己チェックすること。
 
-- そのロジックは**帰属先のドメインオブジェクト**に置いたか(`services/` や呼び出し側のヘルパー関数のままになっていないか)
-- `services/` に置いたロジックについて、**帰属先のドメインオブジェクトが無いかを確認**したか
+- そのロジックは**帰属先のドメインオブジェクト**に置いたか(`appShell/` や呼び出し側のヘルパー関数のままになっていないか)
+- 共有の置き場(`packages/@domain-modeler/*`)へ出したロジックについて、**帰属先のドメインオブジェクトが無いかを確認**したか
+- 他 feature を公開API(`index.ts`)経由で参照しているか(内部への deep import・循環は禁止)。`features/<x>/domains/` から `libs/` を import していないか(`pnpm run check:boundaries`)
 - 失敗を `throw` ではなく `Result`、不在を `undefined` ではなく `Option` で表現したか
 - 関数名は**戻り値と一致**しているか(エラー配列を返すのに `validate*` になっていないか)
 - 引数は3つ以内か。汎用の判定・変換をローカル関数として書いていないか(`utils/` の `<型名>Ex` にあるべきではないか)
@@ -55,6 +57,7 @@ pnpm run test             # Vitest（watch モード）
 pnpm run test:run         # Vitest 全テスト実行（CI 向け）
 pnpm run lint             # oxlint 実行
 pnpm run lint:fix         # oxlint 自動修正
+pnpm run check:boundaries # モジュール境界の検査(deep import / 循環 / ネスト深さ / domains -> libs / テスト配置)
 pnpm run storybook        # Storybook 起動（ポート 6006）
 pnpm run tauri dev        # Tauri アプリ起動
 ```

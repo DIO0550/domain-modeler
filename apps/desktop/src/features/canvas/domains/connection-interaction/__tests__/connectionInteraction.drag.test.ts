@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   ANCHORS,
+  Result,
   Serialize,
   Document,
   Sticky,
@@ -129,14 +130,10 @@ test("保存して読み直しても接続の始点の辺を維持する", () =>
     }),
     { x: 270, y: 50 },
   );
-  const parsed = Serialize.parse(
-    Serialize.stringify(created.board.workingDocument),
+  const parsed = Result.unwrap(
+    Serialize.parse(Serialize.stringify(created.board.workingDocument)),
   );
-  expect(parsed.ok).toBe(true);
-  if (!parsed.ok) {
-    throw new Error(parsed.error.message);
-  }
-  expect(parsed.value.connections[0]?.fromAnchor).toBe("right");
+  expect(parsed.connections[0]?.fromAnchor).toBe("right");
 });
 
 for (const anchor of Object.values(ANCHORS)) {
@@ -162,13 +159,10 @@ for (const anchor of Object.values(ANCHORS)) {
       to: target.id,
       toAnchor: "left",
     });
-    const parsed = Serialize.parse(
-      Serialize.stringify(finished.board.workingDocument),
+    const parsed = Result.unwrap(
+      Serialize.parse(Serialize.stringify(finished.board.workingDocument)),
     );
-    if (!parsed.ok) {
-      throw new Error(parsed.error.message);
-    }
-    expect(parsed.value.connections[0]?.toAnchor).toBe("left");
+    expect(parsed.connections[0]?.toAnchor).toBe("left");
   });
 }
 

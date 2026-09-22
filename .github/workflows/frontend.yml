@@ -45,6 +45,9 @@ jobs:
       - name: oxlint
         run: pnpm exec oxlint
 
+      - name: Module boundaries
+        run: pnpm run check:boundaries
+
       # json レポーターでテスト実行時間(ファイル別 / テスト別)も計測する。
       # monorepo では desktop の vitest が packages 配下のテストも拾う。
       # coverage は apps/desktop/vite.config.ts でルートの coverage/ へ出す。

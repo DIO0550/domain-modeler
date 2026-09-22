@@ -24,6 +24,11 @@
             "type": "command",
             "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-push-test-rules.sh\"",
             "statusMessage": "Checking test rules before push"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-push-boundaries.sh\"",
+            "statusMessage": "Checking module boundaries before push"
           }
         ]
       },

@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
-import { Serialize } from "./serialize";
-import { ConnectionId } from "./domains/connection";
-import type { Document } from "./domains/document";
-import { Result } from "./domains/result";
-import { StickyId } from "./domains/sticky";
+import { Serialize } from "../serialize";
+import { ConnectionId } from "../domains/connection";
+import type { Document } from "../domains/document";
+import { Result } from "../domains/result";
+import { StickyId } from "../domains/sticky";
 
 const baseDocument = (): Record<string, unknown> => ({
   version: "1.0",

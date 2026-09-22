@@ -21,6 +21,7 @@
     "build-storybook": "storybook build",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
+    "check:boundaries": "node ./scripts/check-module-boundaries.mjs",
     "visual:capture": "node ./scripts/storybook-visual-regression.mjs capture",
     "visual:compare": "node ./scripts/storybook-visual-regression.mjs compare"
   },

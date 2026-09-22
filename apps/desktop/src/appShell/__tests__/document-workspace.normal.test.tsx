@@ -11,8 +11,13 @@ import type {
   FileWatchEvent,
   FileWatchOperations,
 } from "@/libs/file-watch";
-import { DocumentWorkspace } from "./document-workspace";
-import { TabsState } from "./tabs";
+import { DocumentWorkspace } from "../document-workspace";
+import {
+  autoSaveBlockingFirstWrite,
+  fileWatchDeferringFirstRead,
+  undoCanvas,
+} from "./document-workspace.test-support";
+import { TabsState } from "../tabs";
 
 type RenderedWorkspace = Readonly<{
   host: HTMLDivElement;
@@ -384,29 +389,13 @@ test("外部変更の読込中は保留中のモデル編集を上書き保存�
 });
 
 test("外部変更の読込中に始めたキャンバス下書きを競合判定へ含める", async () => {
-  let notify: (event: FileWatchEvent) => void = () => {};
-  let finishRead: ((contents: string) => void) | undefined;
-  let readCount = 0;
   const externalContents = Serialize.stringify(Document.empty("external"));
+  const watch = fileWatchDeferringFirstRead(externalContents);
+  const watchOperations = watch.operations;
   let flush: () => Promise<boolean> = async () => false;
   const autoSaveOperations: AutoSaveOperations = {
     writeFile: async () => ({ type: "ok" }),
     now: Date.now,
-  };
-  const watchOperations: FileWatchOperations = {
-    watch: async (_path, onEvent) => {
-      notify = onEvent;
-      return { type: "ok", stop: async () => {} };
-    },
-    readFile: async () => {
-      readCount += 1;
-      if (readCount > 1) {
-        return { type: "ok", value: externalContents };
-      }
-      return await new Promise((resolve) => {
-        finishRead = (contents) => resolve({ type: "ok", value: contents });
-      });
-    },
   };
   const tabsState = TabsState.reducer(TabsState.create(), {
     type: "openTab",
@@ -437,11 +426,11 @@ test("外部変更の読込中に始めたキャンバス下書きを競合判�
   });
 
   await act(async () => {
-    notify({ type: "changed", path: "/documents/order.dcanvas" });
+    watch.notify({ type: "changed", path: "/documents/order.dcanvas" });
     await Promise.resolve();
   });
   await vi.waitFor(() => {
-    expect(finishRead).toBeTypeOf("function");
+    expect(watch.isFirstReadPending()).toBe(true);
   });
   act(() => {
     host.querySelector(".canvas-surface")?.dispatchEvent(
@@ -462,7 +451,7 @@ test("外部変更の読込中に始めたキャンバス下書きを競合判�
   });
 
   await act(async () => {
-    finishRead?.(externalContents);
+    watch.finishFirstRead(externalContents);
     await Promise.resolve();
     await Promise.resolve();
   });
@@ -1234,21 +1223,11 @@ test("終了flushはキャンバスの編集中下書きを確定して保存す
 });
 
 test("終了flushの書込中に始まったキャンバス下書きも再flushする", async () => {
-  let finishFirstWrite: () => void = () => {};
   const writes: string[] = [];
+  const blocking = autoSaveBlockingFirstWrite(writes);
+  const autoSaveOperations = blocking.operations;
+  const finishFirstWrite = blocking.finishFirstWrite;
   let flush: () => Promise<boolean> = async () => false;
-  const autoSaveOperations: AutoSaveOperations = {
-    writeFile: async (_path, contents) => {
-      writes.push(contents);
-      if (writes.length > 1) {
-        return { type: "ok" };
-      }
-      return await new Promise((resolve) => {
-        finishFirstWrite = () => resolve({ type: "ok" });
-      });
-    },
-    now: Date.now,
-  };
   const tabsState = TabsState.reducer(TabsState.create(), {
     type: "openTab",
     path: "/documents/order.dcanvas",
@@ -1638,10 +1617,3 @@ test("キャンバス文書を切り替えると種別の選択は文書ごと�
     "false",
   );
 });
-
-/** アクティブキャンバスへundoショートカットを送る。 */
-const undoCanvas = (host: HTMLDivElement): void => {
-  const surface = host.querySelector(".canvas-surface");
-  if (!surface) { throw new Error("キャンバスがありません"); }
-  act(() => surface.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
-};

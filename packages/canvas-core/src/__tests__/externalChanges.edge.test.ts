@@ -1,8 +1,8 @@
 import { expect, test } from "vitest";
-import { Document } from "./domains/document";
-import { History } from "./domains/history";
-import { Result } from "./domains/result";
-import { ExternalChanges } from "./externalChanges";
+import { Document } from "../domains/document";
+import { History } from "../domains/history";
+import { Result } from "../domains/result";
+import { ExternalChanges } from "../externalChanges";
 
 test("不正な JSON は取り込みを拒否し History を変えない", () => {
   const history = History.create(Document.empty("初期"));

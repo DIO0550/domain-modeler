@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { TabsState } from "./tabs";
+import { TabsState } from "../tabs";
 
 test("最初の文書を開くとそのタブが追加されてアクティブになる", () => {
   const state = TabsState.reducer(TabsState.create(), {
