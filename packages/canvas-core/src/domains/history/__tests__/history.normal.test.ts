@@ -5,10 +5,12 @@ import {
   AddConnectionCommand,
   ChangeTitleCommand,
   History,
+  RemoveConnectionCommand,
+  ReplaceDocumentCommand,
 } from "..";
 import { Sticky, StickyId } from "../../sticky";
 
-test("接続追加コマンドを実行するとundoで接続を削除する", () => {
+test("接続追加コマンドは実行→undo→redoで同じ文書へ戻る", () => {
   const fromId = StickyId.create("stk_from");
   const toId = StickyId.create("stk_to");
   const initial = {
@@ -43,35 +45,69 @@ test("接続追加コマンドを実行するとundoで接続を削除する", (
   );
 
   const undone = History.undo(executed);
+  const redone = undone.some ? History.redo(undone.value) : undone;
 
   expect(executed.current.connections).toEqual([connection]);
   expect(undone.some && undone.value.current.connections).toEqual([]);
+  expect(redone.some && redone.value.current).toEqual(executed.current);
 });
 
-test("文書コマンドを実行するとコマンド実行前の文書へ戻せる", () => {
-  const initial = DocumentValue.empty("初期");
-  const history = History.execute(
-    History.create(initial),
-    ChangeTitleCommand.create({ previous: "初期", next: "編集後" }),
-  );
-
-  const result = History.undo(history);
-
-  expect(history.current.title).toBe("編集後");
-  expect(result.some && result.value.current).toEqual(initial);
-});
-
-test("文書コマンドを取り消した後は同じコマンドを再実行できる", () => {
+test("タイトル変更コマンドは実行→undo→redoで同じ文書へ戻る", () => {
   const initial = DocumentValue.empty("初期");
   const executed = History.execute(
     History.create(initial),
     ChangeTitleCommand.create({ previous: "初期", next: "編集後" }),
   );
-  const undone = History.undo(executed);
 
+  const undone = History.undo(executed);
   const redone = undone.some ? History.redo(undone.value) : undone;
 
-  expect(redone.some && redone.value.current.title).toBe("編集後");
+  expect(executed.current.title).toBe("編集後");
+  expect(undone.some && undone.value.current).toEqual(initial);
+  expect(redone.some && redone.value.current).toEqual(executed.current);
+});
+
+test("接続削除コマンドは実行→undo→redoで同じ文書へ戻る", () => {
+  const fromId = StickyId.create("stk_from");
+  const toId = StickyId.create("stk_to");
+  const connection = Connection.create(
+    ConnectionId.create("con_1"),
+    fromId,
+    toId,
+    "",
+    "",
+  );
+  const initial = {
+    ...DocumentValue.empty(),
+    connections: [connection],
+  };
+  const executed = History.execute(
+    History.create(initial),
+    RemoveConnectionCommand.create(connection),
+  );
+
+  const undone = History.undo(executed);
+  const redone = undone.some ? History.redo(undone.value) : undone;
+
+  expect(executed.current.connections).toEqual([]);
+  expect(undone.some && undone.value.current).toEqual(initial);
+  expect(redone.some && redone.value.current).toEqual(executed.current);
+});
+
+test("文書置換コマンドは実行→undo→redoで同じ文書へ戻る", () => {
+  const previous = DocumentValue.empty("変更前");
+  const next = { ...previous, title: "変更後" };
+  const executed = History.execute(
+    History.create(previous),
+    ReplaceDocumentCommand.create({ previous, next }),
+  );
+
+  const undone = History.undo(executed);
+  const redone = undone.some ? History.redo(undone.value) : undone;
+
+  expect(executed.current).toEqual(next);
+  expect(undone.some && undone.value.current).toEqual(previous);
+  expect(redone.some && redone.value.current).toEqual(executed.current);
 });
 
 test("複数の文書コマンドは新しいものから順に取り消せる", () => {
