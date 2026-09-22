@@ -7,6 +7,10 @@ import {
   StickyId,
   STICKY_TYPES,
 } from "@domain-modeler/canvas-core";
+import {
+  STICKY_RESIZE_CORNERS,
+  StickyInteraction,
+} from "../../sticky-interaction";
 import { ConnectionInteraction } from "..";
 
 const sourceId = StickyId.create("stk_source00000");
@@ -186,6 +190,49 @@ test("編集中の接続ラベルを終了保存用の履歴として取得す�
       : undefined,
   ).toBe("終了時に保存");
   expect(drafted.board.workingDocument.connections[0]?.label).toBe("操作");
+});
+
+test.each([
+  {
+    name: "ドラッグ",
+    begin: (interaction: ReturnType<typeof StickyInteraction.create>) =>
+      StickyInteraction.beginDrag(interaction, sourceId, { x: 20, y: 20 }),
+    move: (interaction: ReturnType<typeof StickyInteraction.create>) =>
+      StickyInteraction.movePointer(interaction, { x: 80, y: 90 }),
+    expectedPosition: { x: 80, y: 90 },
+  },
+  {
+    name: "リサイズ",
+    begin: (interaction: ReturnType<typeof StickyInteraction.create>) =>
+      StickyInteraction.beginResize(
+        StickyInteraction.select(interaction, sourceId),
+        STICKY_RESIZE_CORNERS.southEast,
+        { x: 20, y: 20 },
+      ),
+    move: (interaction: ReturnType<typeof StickyInteraction.create>) =>
+      StickyInteraction.movePointer(interaction, { x: 80, y: 90 }),
+    expectedPosition: { x: 20, y: 20 },
+  },
+])("付箋の$name中は確定候補だけを1履歴として公開する", (scenario) => {
+  const board = StickyInteraction.create(documentWithStickies);
+  const moved = scenario.move(scenario.begin(board));
+  const interaction = {
+    ...ConnectionInteraction.create(documentWithStickies),
+    board: moved,
+  };
+
+  const draftHistory = ConnectionInteraction.draftHistory(interaction);
+
+  expect(draftHistory.some).toBe(true);
+  expect(
+    draftHistory.some
+      ? draftHistory.value.current.stickies.find(
+          (sticky) => sticky.id === sourceId,
+        )?.position
+      : undefined,
+  ).toEqual(scenario.expectedPosition);
+  expect(draftHistory.some ? draftHistory.value.undoStack : []).toHaveLength(1);
+  expect(moved.history.undoStack).toHaveLength(0);
 });
 
 test("選択中の接続をDelete操作で削除してundoできる", () => {

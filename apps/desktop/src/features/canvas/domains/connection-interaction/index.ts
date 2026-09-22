@@ -388,14 +388,16 @@ export const ConnectionInteraction = {
   },
 
   /**
-   * 付箋本文または接続ラベルの編集中下書きを文書履歴へ確定する。
+   * 付箋本文、接続ラベル、付箋操作の下書きを文書履歴へ確定する。
    *
    * @param interaction 確定前の操作状態。
-   * @returns 全ての編集中下書きを確定した操作状態。
+   * @returns 全ての進行中操作を確定した操作状態。
    */
   commitDrafts(interaction: ConnectionInteraction): ConnectionInteraction {
     const connectionCommitted = ConnectionInteraction.commitEdit(interaction);
-    const board = StickyInteractionValue.commitEdit(connectionCommitted.board);
+    const board = StickyInteractionValue.commitManipulation(
+      StickyInteractionValue.commitEdit(connectionCommitted.board),
+    );
     return board === connectionCommitted.board
       ? connectionCommitted
       : { ...connectionCommitted, board };
