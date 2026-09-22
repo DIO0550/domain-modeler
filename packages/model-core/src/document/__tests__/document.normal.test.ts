@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { DataDecl } from "../../data-decl";
 import { ErrorDecl } from "../../error-decl";
 import { SourceRange } from "../../source-range";
+import { StateMachineDecl, StateDecl } from "../../state-machine-decl";
 import { TypeExpr } from "../../type-expr";
 import { TypeTerm } from "../../type-term";
 import {
@@ -51,4 +52,29 @@ test("空の宣言列でも Document を生成できる", () => {
     declarations: [],
     range,
   });
+});
+
+test("state-machine 宣言を data・workflow と同じ文書に保持する", () => {
+  const stateMachine = StateMachineDecl.create({
+    name: "注文",
+    nameRange: SourceRange.onLine(1, 15, 17),
+    states: [
+      StateDecl.create({
+        name: "未検証",
+        nameRange: SourceRange.onLine(2, 12, 16),
+        initial: true,
+        terminal: false,
+        range: SourceRange.onLine(2, 3, 16),
+      }),
+    ],
+    transitions: [],
+    range: SourceRange.onLine(1, 1, 17),
+  });
+  const document = Document.create(
+    [stateMachine],
+    SourceRange.onLine(1, 1, 17),
+  );
+
+  expect(document.declarations).toEqual([stateMachine]);
+  expect(Declaration.isStateMachine(document.declarations[0]!)).toBe(true);
 });

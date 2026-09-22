@@ -34,6 +34,7 @@ test.each([
   TOKEN_KINDS.reserved,
   TOKEN_KINDS.identifier,
   TOKEN_KINDS.equals,
+  TOKEN_KINDS.arrow,
   TOKEN_KINDS.rangeDots,
   TOKEN_KINDS.number,
 ])("TOKEN_KINDS の %s を kind に持てる", (kind) => {

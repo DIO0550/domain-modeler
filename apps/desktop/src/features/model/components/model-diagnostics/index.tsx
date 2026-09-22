@@ -187,6 +187,9 @@ function PreviewDeclItem({
       />
     );
   }
+  if (Declaration.isStateMachine(decl)) {
+    return null;
+  }
   const handleRename = (nextName: string) => {
     onRename({ decl, nextName });
   };
