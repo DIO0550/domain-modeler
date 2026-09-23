@@ -23,6 +23,16 @@ const isSyncToken = (token: Token): boolean =>
     token.text === RESERVED_WORDS["state-machine"]) &&
   token.range.startColumn === 1;
 
+const declarationKindOf = (token: Token | undefined): DeclChunk["kind"] => {
+  if (token?.text === RESERVED_WORDS.workflow) {
+    return "workflow";
+  }
+  if (token?.text === RESERVED_WORDS["state-machine"]) {
+    return "state-machine";
+  }
+  return "data";
+};
+
 /**
  * 先頭の同期ポイントまでに残った意味トークンを孤立チャンクにする。
  * @param tokens 全文のトークン列。
@@ -81,14 +91,8 @@ export const DeclChunk = {
       const endIndex = nextSync === undefined ? tokens.length : nextSync;
       const chunkTokens = tokens.slice(startIndex, endIndex);
       const start = tokens[startIndex];
-      const kind: DeclChunk["kind"] =
-        start?.text === RESERVED_WORDS.workflow
-          ? "workflow"
-          : start?.text === RESERVED_WORDS["state-machine"]
-            ? "state-machine"
-            : "data";
       return {
-        kind,
+        kind: declarationKindOf(start),
         tokens: chunkTokens,
         range: DeclChunk.rangeOf(chunkTokens),
       };

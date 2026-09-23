@@ -222,16 +222,21 @@ export const StateMachineDeclParse = {
     const keyword = header[0];
     const name = identifierAt(header, 1, "state-machine 名");
     const equals = header[2];
-    const headerError =
-      keyword?.text !== RESERVED_WORDS["state-machine"]
-        ? failure(header, 0, "state-machine が必要です")
-        : Result.isErr(name)
-          ? name.error
-          : equals?.kind !== TOKEN_KINDS.equals
-            ? failure(header, 2, "= が必要です")
-            : header[3] !== undefined
-              ? failure(header, 3, "ヘッダーの後に余分なトークンがあります")
-              : undefined;
+    const headerError = (() => {
+      if (keyword?.text !== RESERVED_WORDS["state-machine"]) {
+        return failure(header, 0, "state-machine が必要です");
+      }
+      if (Result.isErr(name)) {
+        return name.error;
+      }
+      if (equals?.kind !== TOKEN_KINDS.equals) {
+        return failure(header, 2, "= が必要です");
+      }
+      if (header[3] !== undefined) {
+        return failure(header, 3, "ヘッダーの後に余分なトークンがあります");
+      }
+      return undefined;
+    })();
     if (
       headerError !== undefined ||
       Result.isErr(name) ||
