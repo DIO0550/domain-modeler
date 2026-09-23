@@ -49,7 +49,9 @@ const referenceTableOf = (machine: StateMachineDecl): StateReferenceTable =>
     (references, occurrence) => ({
       ...references,
       [occurrence.name]: [
-        ...(references[occurrence.name] ?? []),
+        ...(Object.prototype.hasOwnProperty.call(references, occurrence.name)
+          ? references[occurrence.name] ?? []
+          : []),
         occurrence.range,
       ],
     }),
