@@ -138,3 +138,23 @@ test("AST上の空イベント名も意味診断に残す", () => {
     { severity: "error", message: "イベント名が必要です", range: transition.eventRange },
   ]);
 });
+
+test("Object.prototype と同名の状態も参照表へ安全に登録する", () => {
+  const parsed = Parse.parse(`state-machine Example =
+  initial: toString
+  state: toString
+  state: constructor
+  transition: toString -> constructor on go
+  transition: constructor -> valueOf on next`);
+  const resolved = Resolve.resolve(parsed.document);
+  const machine = resolved.stateMachines[0];
+
+  expect(parsed.diagnostics).toEqual([]);
+  expect(Object.keys(machine?.references ?? {})).toEqual(["toString", "constructor", "valueOf"]);
+  expect(machine?.references["toString"]).toHaveLength(3);
+  expect(machine?.references["constructor"]).toHaveLength(3);
+  expect(machine?.references["valueOf"]).toHaveLength(1);
+  expect(resolved.diagnostics).toMatchObject([
+    { severity: "error", message: "状態「valueOf」は未定義です" },
+  ]);
+});
