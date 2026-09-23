@@ -1,6 +1,6 @@
 import { DefinitionTable } from "../definition-table";
 import { DIAGNOSTIC_SEVERITIES, Diagnostic } from "../diagnostic";
-import type { Document } from "../document";
+import { Declaration, type Document } from "../document";
 import { NamedDecl } from "../named-decl";
 import { ReferenceTable } from "../reference-table";
 import { ResolveResult } from "../resolve-result";
@@ -45,7 +45,7 @@ export const Resolve = {
     const topLevelDeclarations = document.declarations.filter(TopLevelDecl.is);
     const definitions = DefinitionTable.create(topLevelDeclarations);
     const stateMachines = document.declarations
-      .filter((decl) => decl.kind === "state-machine")
+      .filter(Declaration.isStateMachine)
       .map(StateMachineResolution.create);
     return ResolveResult.create({
       definitions,

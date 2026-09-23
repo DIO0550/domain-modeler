@@ -18,7 +18,7 @@ export const DefinitionTable = {
   /**
    * 出現順の data・workflow・state-machine 宣言から定義表を生成する。
    * 同名が複数ある場合は先頭の定義を残す。
-   * @param declarations 出現順の名前付き宣言。
+   * @param declarations 出現順のトップレベル宣言。
    * @returns 定義表。
    */
   create: (declarations: readonly TopLevelDecl[]): DefinitionTable =>
@@ -36,7 +36,7 @@ export const DefinitionTable = {
   has: hasName,
   /**
    * 同名の再宣言をエラー診断として集める。
-   * @param declarations 出現順の名前付き宣言。
+   * @param declarations 出現順のトップレベル宣言。
    * @returns 再宣言のエラー診断。
    */
   collectRedeclarationErrors: (

@@ -56,7 +56,7 @@ const referenceTableOf = (machine: StateMachineDecl): StateReferenceTable =>
     {},
   );
 
-const duplicateStatesOf = (machine: StateMachineDecl): readonly Diagnostic[] =>
+const duplicateStateDiagnosticsOf = (machine: StateMachineDecl): readonly Diagnostic[] =>
   machine.states.flatMap((state, index) =>
     machine.states.slice(0, index).some((prior) => prior.name === state.name)
       ? [
@@ -136,7 +136,7 @@ export const StateMachineResolution = {
         ...(machine.states.length === 0
           ? [Diagnostic.create(DIAGNOSTIC_SEVERITIES.error, "状態が必要です", machine.nameRange)]
           : []),
-        ...duplicateStatesOf(machine),
+        ...duplicateStateDiagnosticsOf(machine),
         ...initialDiagnosticsOf(machine, definitions),
         ...transitionDiagnosticsOf(machine, definitions),
       ],
