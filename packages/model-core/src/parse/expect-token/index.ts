@@ -95,13 +95,17 @@ export const ExpectToken = {
       const advanced = ChunkCursor.advance(cursor);
       return Result.ok({ cursor: advanced.cursor, value: token });
     }
+    const message = (() => {
+      if (declarationKind === "data") {
+        return "データ名の識別子が必要です";
+      }
+      if (declarationKind === "state-machine") {
+        return "state-machine 名の識別子が必要です";
+      }
+      return "workflow 名の識別子が必要です";
+    })();
     return Result.err(
-      ExpectToken.errorAt(
-        declarationKind === "data"
-          ? "データ名の識別子が必要です"
-          : "workflow 名の識別子が必要です",
-        ExpectToken.fallbackRange(cursor, chunk),
-      ),
+      ExpectToken.errorAt(message, ExpectToken.fallbackRange(cursor, chunk)),
     );
   },
 } as const;

@@ -79,6 +79,7 @@ test("state-machine 宣言は状態・遷移を出現順とソース範囲付き
   const decl = StateMachineDecl.create({
     name: "注文",
     nameRange: SourceRange.onLine(1, 15, 17),
+    initials: [],
     states: [initial, terminal],
     transitions: [transition],
     range: SourceRange.span(
@@ -91,6 +92,7 @@ test("state-machine 宣言は状態・遷移を出現順とソース範囲付き
     kind: "state-machine",
     name: "注文",
     nameRange: SourceRange.onLine(1, 15, 17),
+    initials: [],
     states: [initial, terminal],
     transitions: [transition],
     range: SourceRange.span(

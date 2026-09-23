@@ -2,9 +2,9 @@ import { RESERVED_WORDS } from "../../reserved-word";
 import { SourceRange, type SourceRange as Range } from "../../source-range";
 import { TOKEN_KINDS, type Token } from "../../token";
 
-/** 宣言単位のトークンチャンク(data / workflow / 孤立)。 */
+/** 宣言単位のトークンチャンク。 */
 export type DeclChunk = Readonly<{
-  kind: "data" | "workflow" | "orphan";
+  kind: "data" | "workflow" | "state-machine" | "orphan";
   tokens: readonly Token[];
   range: Range;
 }>;
@@ -19,8 +19,19 @@ const isTrivia = (token: Token): boolean =>
 const isSyncToken = (token: Token): boolean =>
   token.kind === TOKEN_KINDS.reserved &&
   (token.text === RESERVED_WORDS.data ||
-    token.text === RESERVED_WORDS.workflow) &&
+    token.text === RESERVED_WORDS.workflow ||
+    token.text === RESERVED_WORDS["state-machine"]) &&
   token.range.startColumn === 1;
+
+const declarationKindOf = (token: Token | undefined): DeclChunk["kind"] => {
+  if (token?.text === RESERVED_WORDS.workflow) {
+    return "workflow";
+  }
+  if (token?.text === RESERVED_WORDS["state-machine"]) {
+    return "state-machine";
+  }
+  return "data";
+};
 
 /**
  * 先頭の同期ポイントまでに残った意味トークンを孤立チャンクにする。
@@ -66,7 +77,7 @@ export const DeclChunk = {
   },
   /**
    * トークン列を宣言チャンクに分割する。
-   * 非インデントの data / workflow を同期ポイントとする。
+   * 非インデントの data / workflow / state-machine を同期ポイントとする。
    * 同期ポイントより前の意味トークンは孤立チャンクにする。
    * @param tokens 全文のトークン列。
    * @returns 宣言チャンク列。
@@ -81,10 +92,7 @@ export const DeclChunk = {
       const chunkTokens = tokens.slice(startIndex, endIndex);
       const start = tokens[startIndex];
       return {
-        kind:
-          start?.text === RESERVED_WORDS.workflow
-            ? ("workflow" as const)
-            : ("data" as const),
+        kind: declarationKindOf(start),
         tokens: chunkTokens,
         range: DeclChunk.rangeOf(chunkTokens),
       };

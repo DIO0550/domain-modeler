@@ -77,6 +77,31 @@ export function CanvasView({
   const appearances = StickyAppearance.all();
   const saveIndicator = SaveIndicator.create(saveStatus);
   const zoomLabel = ZoomLabel.toPercent(viewport.zoom);
+  const paletteSelection = (() => {
+    if (dragType.some) {
+      return dragType.value;
+    }
+    if (placementTool !== undefined && !placementTool.active) {
+      return undefined;
+    }
+    return selectedType;
+  })();
+  const placement: CanvasSurfaceProps["placement"] = (() => {
+    if (dragType.some) {
+      return {
+        status: "dragging",
+        type: dragType.value,
+        onDrop: (point: Point) => {
+          onPaletteDrop?.({ type: dragType.value, point });
+          setDragType(Option.none());
+        },
+      };
+    }
+    if (placementTool?.active) {
+      return { status: "placing", type: selectedType };
+    }
+    return { status: "inactive" };
+  })();
 
   const selectType = (type: StickyType): void => {
     if (selectedTypeProp === undefined) {
@@ -143,13 +168,7 @@ export function CanvasView({
           <Palette
             helpId={paletteHelpId}
             appearances={appearances}
-            selectedType={
-              dragType.some
-                ? dragType.value
-                : placementTool !== undefined && !placementTool.active
-                  ? undefined
-                  : selectedType
-            }
+            selectedType={paletteSelection}
             onSelectType={selectType}
             dragEvents={{
               onStart: (type) => {
@@ -166,20 +185,7 @@ export function CanvasView({
           onClick={onSurfaceClick}
           onDoubleClick={onSurfaceDoubleClick}
           onKeyDown={onSurfaceKeyDown}
-          placement={
-            dragType.some
-              ? {
-                  status: "dragging",
-                  type: dragType.value,
-                  onDrop: (point) => {
-                    onPaletteDrop?.({ type: dragType.value, point });
-                    setDragType(Option.none());
-                  },
-                }
-              : placementTool?.active
-                ? { status: "placing", type: selectedType }
-                : { status: "inactive" }
-          }
+          placement={placement}
         >
           {children}
         </CanvasSurface>

@@ -17,10 +17,7 @@ import {
 } from "../../hooks";
 import { Sticky, StickyChrome } from "../sticky";
 import { CanvasView } from "../canvas-view";
-import {
-  HistoryButton,
-  type HistoryControlsValue,
-} from "../history-controls";
+import { HistoryButton, type HistoryControlsValue } from "../history-controls";
 import { StickyInspector } from "../sticky-inspector";
 import { ConnectionHandles } from "../connection-handles";
 import { ConnectionLayer } from "../connection-layer";
@@ -255,6 +252,13 @@ export function CanvasEditor({
             board.connectionSession,
             sticky.id,
           );
+          const sourceEndpoint = ConnectionSession.isSource(
+            board.connectionSession,
+            sticky.id,
+          )
+            ? "source"
+            : undefined;
+          const targetEndpoint = target.some ? "target" : undefined;
           return (
             <Sticky
               key={sticky.id}
@@ -271,13 +275,7 @@ export function CanvasEditor({
                   onCommit: board.commitEdit,
                 },
               )}
-              connectionEndpoint={
-                ConnectionSession.isSource(board.connectionSession, sticky.id)
-                  ? "source"
-                  : target.some
-                    ? "target"
-                    : undefined
-              }
+              connectionEndpoint={sourceEndpoint ?? targetEndpoint}
               onActivate={
                 connectionModeActive
                   ? undefined

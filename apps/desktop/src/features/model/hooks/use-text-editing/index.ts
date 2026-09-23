@@ -48,12 +48,16 @@ export type TextEditing = Readonly<{
  * @param props 親が保持する全文と変更通知。
  * @returns textareaへ渡す全文・参照・入力イベントハンドラ。
  */
-export function useTextEditing({ value, onChange }: UseTextEditingParams): TextEditing {
+export function useTextEditing({
+  value,
+  onChange,
+}: UseTextEditingParams): TextEditing {
   const [session, setSession] = useState<TextEditingSession>({
     status: "idle",
   });
   const editorValue = TextInput.toApiValue(value);
-  const displayedText = session.status === "composing" ? session.text : editorValue;
+  const displayedText =
+    session.status === "composing" ? session.text : editorValue;
   const selection = useTextSelection(displayedText);
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -124,15 +128,13 @@ export function useTextEditing({ value, onChange }: UseTextEditingParams): TextE
       start: input.selectionStart,
       end: input.selectionEnd,
     };
+    if (event.key !== "Tab" && event.key !== "Enter") {
+      return;
+    }
     const edit =
       event.key === "Tab"
         ? TextEdit.insertTab(source)
-        : event.key === "Enter"
-          ? TextEdit.insertLineBreak(source)
-          : null;
-    if (edit === null) {
-      return;
-    }
+        : TextEdit.insertLineBreak(source);
     event.preventDefault();
     TextInput.applyEdit(input, edit);
   };

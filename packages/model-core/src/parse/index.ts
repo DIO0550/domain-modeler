@@ -7,6 +7,7 @@ import { DataDeclParse } from "./data-decl";
 import { DeclChunk } from "./decl-chunk";
 import { ExpectToken } from "./expect-token";
 import type { MaterializedDecl } from "./materialized-decl";
+import { StateMachineDeclParse } from "./state-machine-decl";
 import { WorkflowDeclParse } from "./workflow-decl";
 
 /** パース結果(AST + トークン列 + 診断)。例外では失敗しない。 */
@@ -29,11 +30,14 @@ const materializeChunk = (chunk: DeclChunk): MaterializedDecl => {
   if (chunk.kind === "workflow") {
     return WorkflowDeclParse.materialize(chunk);
   }
+  if (chunk.kind === "state-machine") {
+    return StateMachineDeclParse.materialize(chunk);
+  }
   return {
     declaration: ErrorDecl.create(chunk.range),
     diagnostics: [
       ExpectToken.errorAt(
-        "data または workflow で始まる宣言が必要です",
+        "data、workflow または state-machine で始まる宣言が必要です",
         chunk.range,
       ),
     ],
@@ -44,7 +48,7 @@ const materializeChunk = (chunk: DeclChunk): MaterializedDecl => {
 export const Parse = {
   /**
    * ソース全文を解析する。どんな入力でも例外を投げず結果を返す。
-   * data / workflow を出現順に解析し、壊れた宣言の次からも継続する。
+   * data / workflow / state-machine を出現順に解析する。
    * @param source `.dmodel` テキスト。
    * @returns AST + トークン列 + 診断リスト。
    */

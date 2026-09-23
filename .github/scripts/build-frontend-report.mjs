@@ -18,7 +18,15 @@ const readJson = (path) => {
   }
 };
 
-const statusFor = (pct) => (pct >= 80 ? "🟢" : pct >= 50 ? "🟡" : "🔴");
+const statusFor = (pct) => {
+  if (pct >= 80) {
+    return "🟢";
+  }
+  if (pct >= 50) {
+    return "🟡";
+  }
+  return "🔴";
+};
 const pctStr = (pct) => `${pct.toFixed(2)}%`;
 // 実行環境の絶対パスをリポジトリ相対に落とす。
 // monorepo では apps/ / packages/ を残し、単一 src/ 構成では src/ 以降を残す。
@@ -126,7 +134,9 @@ if (summary) {
     }
     if (files.length > LIMIT) {
       out.push("");
-      out.push(`※ 他 ${files.length - LIMIT} ファイル(coverage アーティファクト参照)`);
+      out.push(
+        `※ 他 ${files.length - LIMIT} ファイル(coverage アーティファクト参照)`,
+      );
     }
   }
 }
