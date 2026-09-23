@@ -95,7 +95,7 @@ data 注文ID = string`;
   expect(result.diagnostics).toEqual([
     expect.objectContaining({
       severity: "error",
-      message: "data または workflow で始まる宣言が必要です",
+      message: "data、workflow または state-machine で始まる宣言が必要です",
     }),
   ]);
 });
@@ -117,7 +117,7 @@ test("同期ポイントの無い意味トークンだけの入力も ErrorDecl 
   expect(result.diagnostics).toEqual([
     expect.objectContaining({
       severity: "error",
-      message: "data または workflow で始まる宣言が必要です",
+      message: "data、workflow または state-machine で始まる宣言が必要です",
     }),
   ]);
 });

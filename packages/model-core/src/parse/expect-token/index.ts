@@ -99,7 +99,9 @@ export const ExpectToken = {
       ExpectToken.errorAt(
         declarationKind === "data"
           ? "データ名の識別子が必要です"
-          : "workflow 名の識別子が必要です",
+          : declarationKind === "state-machine"
+            ? "state-machine 名の識別子が必要です"
+            : "workflow 名の識別子が必要です",
         ExpectToken.fallbackRange(cursor, chunk),
       ),
     );

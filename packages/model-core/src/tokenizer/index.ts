@@ -30,12 +30,12 @@ const numberLength = (text: string): number => {
 };
 
 /**
- * 識別子候補の長さを返す。空白・`=`・`.`・`/` で区切る。
+ * 識別子候補の長さを返す。空白・`=`・`.`・`/`・`->` で区切る。
  * @param text 走査開始位置からの部分文字列。
  * @returns 識別子候補の文字数。
  */
 const wordLength = (text: string): number => {
-  const matched = /^[^\s=./]+/u.exec(text);
+  const matched = /^[^\s=./]+?(?=->|[\s=./]|$)/u.exec(text);
   return matched === null ? 0 : matched[0].length;
 };
 

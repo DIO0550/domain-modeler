@@ -58,6 +58,7 @@ test("state-machine 宣言を data・workflow と同じ文書に保持する", (
   const stateMachine = StateMachineDecl.create({
     name: "注文",
     nameRange: SourceRange.onLine(1, 15, 17),
+    initials: [],
     states: [
       StateDecl.create({
         name: "未検証",

@@ -1,5 +1,16 @@
 import type { SourceRange } from "../source-range";
 
+/** initial: 行の状態参照。構文上有効な行をすべて保持する。 */
+export type InitialStateRef = Readonly<{
+  name: string;
+  nameRange: SourceRange;
+  range: SourceRange;
+}>;
+
+export const InitialStateRef = {
+  create: (ref: InitialStateRef): InitialStateRef => ({ ...ref }),
+} as const;
+
 /** state-machine 内の状態。 */
 export type StateDecl = Readonly<{
   kind: "state";
@@ -47,6 +58,7 @@ export type StateMachineDecl = Readonly<{
   kind: "state-machine";
   name: string;
   nameRange: SourceRange;
+  initials: readonly InitialStateRef[];
   states: readonly StateDecl[];
   transitions: readonly TransitionDecl[];
   range: SourceRange;
@@ -56,6 +68,7 @@ export type StateMachineDecl = Readonly<{
 export type StateMachineDeclCreateParams = Readonly<{
   name: string;
   nameRange: SourceRange;
+  initials: readonly InitialStateRef[];
   states: readonly StateDecl[];
   transitions: readonly TransitionDecl[];
   range: SourceRange;
@@ -108,6 +121,7 @@ export const StateMachineDecl = {
     kind: "state-machine",
     name: params.name,
     nameRange: params.nameRange,
+    initials: params.initials,
     states: params.states,
     transitions: params.transitions,
     range: params.range,
