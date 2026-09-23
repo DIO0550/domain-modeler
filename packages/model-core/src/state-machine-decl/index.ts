@@ -8,6 +8,11 @@ export type InitialStateRef = Readonly<{
 }>;
 
 export const InitialStateRef = {
+  /**
+   * 初期状態の参照名と位置から参照を生成する。
+   * @param ref 初期状態の参照情報。
+   * @returns 初期状態の参照。
+   */
   create: (ref: InitialStateRef): InitialStateRef => ({ ...ref }),
 } as const;
 
