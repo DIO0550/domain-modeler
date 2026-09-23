@@ -1,5 +1,5 @@
 {
-  "reportVersion": "c87f5eefa0c72af0e553c998c3df29fd8e67deef",
+  "reportVersion": "3cca2e9b94d9a8677e75cfdea58b24b81e7332a7",
   "maxDiffRatio": 0.002,
   "changed": 0,
   "new": 0,
@@ -182,12 +182,12 @@
       "title": "features/canvas/components/canvas-editor/CanvasEditor",
       "name": "All Props",
       "status": "passed",
-      "reason": "match",
-      "diffPixels": 0,
+      "reason": "within-threshold",
+      "diffPixels": 20,
       "diffRatio": 0,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": false
+      "hasDiff": true
     },
     {
       "story": "features-canvas-components-canvas-editor-canvaseditor--creating-connection",
@@ -221,12 +221,12 @@
       "title": "features/canvas/components/canvas-editor/CanvasEditor",
       "name": "Edge Cases",
       "status": "passed",
-      "reason": "match",
-      "diffPixels": 0,
+      "reason": "within-threshold",
+      "diffPixels": 20,
       "diffRatio": 0,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": false
+      "hasDiff": true
     },
     {
       "story": "features-canvas-components-canvas-editor-canvaseditor--editing",
@@ -234,12 +234,12 @@
       "title": "features/canvas/components/canvas-editor/CanvasEditor",
       "name": "Editing",
       "status": "passed",
-      "reason": "match",
-      "diffPixels": 0,
+      "reason": "within-threshold",
+      "diffPixels": 20,
       "diffRatio": 0,
       "hasExpected": true,
       "hasActual": true,
-      "hasDiff": false
+      "hasDiff": true
     },
     {
       "story": "features-canvas-components-canvas-view-canvasview--all-props",
