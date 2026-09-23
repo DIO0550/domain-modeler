@@ -4,6 +4,8 @@ import type { Document } from "../document";
 import { NamedDecl } from "../named-decl";
 import { ReferenceTable } from "../reference-table";
 import { ResolveResult } from "../resolve-result";
+import { StateMachineResolution } from "../state-machine-resolution";
+import { TopLevelDecl } from "../top-level-decl";
 import { TypeTerm } from "../type-term";
 
 /**
@@ -40,13 +42,19 @@ export const Resolve = {
    */
   resolve: (document: Document): ResolveResult => {
     const namedDeclarations = document.declarations.filter(NamedDecl.is);
-    const definitions = DefinitionTable.create(namedDeclarations);
+    const topLevelDeclarations = document.declarations.filter(TopLevelDecl.is);
+    const definitions = DefinitionTable.create(topLevelDeclarations);
+    const stateMachines = document.declarations
+      .filter((decl) => decl.kind === "state-machine")
+      .map(StateMachineResolution.create);
     return ResolveResult.create({
       definitions,
-      references: ReferenceTable.create(namedDeclarations),
+      references: ReferenceTable.create(topLevelDeclarations),
+      stateMachines,
       diagnostics: [
-        ...DefinitionTable.collectRedeclarationErrors(namedDeclarations),
+        ...DefinitionTable.collectRedeclarationErrors(topLevelDeclarations),
         ...collectUndefinedReferenceWarnings(namedDeclarations, definitions),
+        ...stateMachines.flatMap((machine) => machine.diagnostics),
       ],
     });
   },

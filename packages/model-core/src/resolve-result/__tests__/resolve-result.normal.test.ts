@@ -3,6 +3,7 @@ import { DataDecl } from "../../data-decl";
 import { DefinitionTable } from "../../definition-table";
 import { DIAGNOSTIC_SEVERITIES, Diagnostic } from "../../diagnostic";
 import { SourceRange } from "../../source-range";
+import type { StateMachineResolution } from "../../state-machine-resolution";
 import { TypeExpr } from "../../type-expr";
 import { TypeTerm } from "../../type-term";
 import { ResolveResult } from "..";
@@ -31,8 +32,9 @@ test("定義表・参照表・診断から参照解決結果を生成する", ()
       SourceRange.onLine(1, 11, 15),
     ),
   ];
+  const stateMachines: readonly StateMachineResolution[] = [];
 
   expect(
-    ResolveResult.create({ definitions, references, diagnostics }),
-  ).toEqual({ definitions, references, diagnostics });
+    ResolveResult.create({ definitions, references, stateMachines, diagnostics }),
+  ).toEqual({ definitions, references, stateMachines, diagnostics });
 });

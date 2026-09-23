@@ -1,8 +1,8 @@
 import { DIAGNOSTIC_SEVERITIES, Diagnostic } from "../diagnostic";
-import type { NamedDecl } from "../named-decl";
+import type { TopLevelDecl } from "../top-level-decl";
 
-/** 識別子 → 宣言(先頭の定義を保持)。 */
-export type DefinitionTable = Readonly<Record<string, NamedDecl>>;
+/** トップレベルの識別子 → 宣言(先頭の定義を保持)。 */
+export type DefinitionTable = Readonly<Record<string, TopLevelDecl>>;
 
 /**
  * 定義表に名前が載っているか判定する。
@@ -16,12 +16,12 @@ const hasName = (table: DefinitionTable, name: string): boolean =>
 /** 定義表を生成・判定する関数群。 */
 export const DefinitionTable = {
   /**
-   * 出現順の名前付き宣言から定義表を生成する。
+   * 出現順の data・workflow・state-machine 宣言から定義表を生成する。
    * 同名が複数ある場合は先頭の定義を残す。
    * @param declarations 出現順の名前付き宣言。
    * @returns 定義表。
    */
-  create: (declarations: readonly NamedDecl[]): DefinitionTable =>
+  create: (declarations: readonly TopLevelDecl[]): DefinitionTable =>
     declarations.reduce<DefinitionTable>(
       (table, decl) =>
         hasName(table, decl.name) ? table : { ...table, [decl.name]: decl },
@@ -40,7 +40,7 @@ export const DefinitionTable = {
    * @returns 再宣言のエラー診断。
    */
   collectRedeclarationErrors: (
-    declarations: readonly NamedDecl[],
+    declarations: readonly TopLevelDecl[],
   ): readonly Diagnostic[] =>
     declarations.reduce<
       Readonly<{ names: readonly string[]; errors: readonly Diagnostic[] }>

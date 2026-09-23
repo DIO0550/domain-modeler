@@ -110,3 +110,23 @@ workflow 通知する =
     }),
   );
 });
+
+test("マシン内の状態参照と意味診断を解析済み文書から取得できる", () => {
+  const analyzed = AnalyzedModel.create(`data ID = string
+state-machine 注文 =
+  initial: 開始
+  state: 開始
+  transition: 開始 -> 不明 on 確定`);
+
+  expect(analyzed.definitions["注文"]?.kind).toBe("state-machine");
+  expect(analyzed.stateMachines[0]?.definitions["開始"]?.nameRange.startLine).toBe(4);
+  expect(analyzed.stateMachines[0]?.references["開始"]?.map((range) => range.startLine)).toEqual([3, 4, 5]);
+  expect(analyzed.diagnostics).toEqual([
+    expect.objectContaining({
+      severity: "error",
+      message: "状態「不明」は未定義です",
+      range: expect.objectContaining({ startLine: 5 }),
+    }),
+  ]);
+  expect(analyzed.undefinedTypeNames).toEqual(new Set());
+});

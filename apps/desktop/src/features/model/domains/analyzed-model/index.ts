@@ -6,6 +6,7 @@ import {
   Resolve,
   Result,
   SourceRange,
+  TopLevelDecl,
   TypeTerm,
   type DefinitionTable as DefinitionTableValue,
   type Diagnostic,
@@ -14,6 +15,7 @@ import {
   type ReferenceTable as ReferenceTableValue,
   type Result as ResultType,
   type SourceRange as SourceRangeValue,
+  type StateMachineResolution,
   type Token,
   type ValueOf,
 } from "@domain-modeler/model-core";
@@ -33,6 +35,7 @@ export type AnalyzedModel = Readonly<{
   diagnostics: readonly Diagnostic[];
   definitions: DefinitionTableValue;
   references: ReferenceTableValue;
+  stateMachines: readonly StateMachineResolution[];
   undefinedTypeNames: ReadonlySet<string>;
 }>;
 
@@ -79,7 +82,7 @@ const otherDuplicateNameRanges = (
   target: NamedDeclValue,
 ): readonly SourceRangeValue[] =>
   model.document.declarations
-    .filter(NamedDecl.is)
+    .filter(TopLevelDecl.is)
     .filter((decl) => decl.name === target.name)
     .filter((decl) => !SourceRange.equals(decl.nameRange, target.nameRange))
     .map((decl) => decl.nameRange);
@@ -122,8 +125,7 @@ export const AnalyzedModel = {
     const parsed = Parse.parse(source);
     const resolved = Resolve.resolve(parsed.document);
     const diagnostics = [...parsed.diagnostics, ...resolved.diagnostics];
-    const namedDeclarations = parsed.document.declarations.filter(NamedDecl.is);
-    const definitions = DefinitionTable.create(namedDeclarations);
+    const definitions = resolved.definitions;
     return {
       source,
       document: parsed.document,
@@ -131,6 +133,7 @@ export const AnalyzedModel = {
       diagnostics,
       definitions,
       references: resolved.references,
+      stateMachines: resolved.stateMachines,
       undefinedTypeNames: collectUndefinedTypeNames(
         parsed.document,
         definitions,
