@@ -1,9 +1,11 @@
 import { DefinitionTable } from "../definition-table";
 import { DIAGNOSTIC_SEVERITIES, Diagnostic } from "../diagnostic";
-import type { Document } from "../document";
+import { DocumentDeclaration } from "../document-declaration";
+import { Declaration, type Document } from "../document";
 import { NamedDecl } from "../named-decl";
 import { ReferenceTable } from "../reference-table";
 import { ResolveResult } from "../resolve-result";
+import { StateMachineResolution } from "../state-machine-resolution";
 import { TypeTerm } from "../type-term";
 
 /**
@@ -40,13 +42,19 @@ export const Resolve = {
    */
   resolve: (document: Document): ResolveResult => {
     const namedDeclarations = document.declarations.filter(NamedDecl.is);
-    const definitions = DefinitionTable.create(namedDeclarations);
+    const documentDeclarations = document.declarations.filter(DocumentDeclaration.is);
+    const definitions = DefinitionTable.create(documentDeclarations);
+    const stateMachines = document.declarations
+      .filter(Declaration.isStateMachine)
+      .map(StateMachineResolution.create);
     return ResolveResult.create({
       definitions,
-      references: ReferenceTable.create(namedDeclarations),
+      references: ReferenceTable.create(documentDeclarations),
+      stateMachines,
       diagnostics: [
-        ...DefinitionTable.collectRedeclarationErrors(namedDeclarations),
+        ...DefinitionTable.collectRedeclarationErrors(documentDeclarations),
         ...collectUndefinedReferenceWarnings(namedDeclarations, definitions),
+        ...stateMachines.flatMap((machine) => machine.diagnostics),
       ],
     });
   },

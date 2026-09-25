@@ -1,8 +1,9 @@
 import { NamedDecl } from "../named-decl";
 import type { SourceRange } from "../source-range";
+import type { DocumentDeclaration } from "../document-declaration";
 import { TypeTerm } from "../type-term";
 
-/** 識別子 → 宣言名・型参照の全出現位置。 */
+/** 文書直下の宣言名 → 宣言名・型参照の全出現位置。状態参照は含めない。 */
 export type ReferenceTable = Readonly<Record<string, readonly SourceRange[]>>;
 
 /**
@@ -33,14 +34,17 @@ const hasName = (table: ReferenceTable, name: string): boolean =>
 /** 参照表を生成する関数群。 */
 export const ReferenceTable = {
   /**
-   * 宣言名・型参照の出現位置から参照表を生成する。
+   * 文書直下の宣言名・型参照の出現位置から参照表を生成する。
    * プリミティブ型への参照は含めない。
-   * @param declarations 出現順の名前付き宣言。
+   * @param declarations 出現順の文書直下の宣言。
    * @returns 参照表。
    */
-  create: (declarations: readonly NamedDecl[]): ReferenceTable =>
+  create: (declarations: readonly DocumentDeclaration[]): ReferenceTable =>
     declarations.reduce<ReferenceTable>((table, decl) => {
       const withDefinition = append(table, decl.name, decl.nameRange);
+      if (!NamedDecl.is(decl)) {
+        return withDefinition;
+      }
       return NamedDecl.referencedTerms(decl).reduce(
         (next, term) =>
           TypeTerm.isResolvable(term)

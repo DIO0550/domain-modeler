@@ -1,11 +1,13 @@
 import type { DefinitionTable } from "../definition-table";
 import type { Diagnostic } from "../diagnostic";
 import type { ReferenceTable } from "../reference-table";
+import type { StateMachineResolution } from "../state-machine-resolution";
 
-/** 参照解決の結果。 */
+/** トップレベルの解決表、マシンごとの状態解決表と意味診断。 */
 export type ResolveResult = Readonly<{
   definitions: DefinitionTable;
   references: ReferenceTable;
+  stateMachines: readonly StateMachineResolution[];
   diagnostics: readonly Diagnostic[];
 }>;
 
@@ -13,6 +15,7 @@ export type ResolveResult = Readonly<{
 export type ResolveResultCreateParams = Readonly<{
   definitions: DefinitionTable;
   references: ReferenceTable;
+  stateMachines: readonly StateMachineResolution[];
   diagnostics: readonly Diagnostic[];
 }>;
 
@@ -26,6 +29,7 @@ export const ResolveResult = {
   create: (params: ResolveResultCreateParams): ResolveResult => ({
     definitions: params.definitions,
     references: params.references,
+    stateMachines: params.stateMachines,
     diagnostics: params.diagnostics,
   }),
 } as const;
