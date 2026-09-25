@@ -20,7 +20,7 @@ export * from "./diagnostic";
 export * from "./result";
 export * from "./parse";
 export * from "./named-decl";
-export * from "./top-level-decl";
+export * from "./document-declaration";
 export * from "./definition-table";
 export * from "./reference-table";
 export * from "./state-machine-resolution";

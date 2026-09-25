@@ -1,11 +1,11 @@
 import { DefinitionTable } from "../definition-table";
 import { DIAGNOSTIC_SEVERITIES, Diagnostic } from "../diagnostic";
+import { DocumentDeclaration } from "../document-declaration";
 import { Declaration, type Document } from "../document";
 import { NamedDecl } from "../named-decl";
 import { ReferenceTable } from "../reference-table";
 import { ResolveResult } from "../resolve-result";
 import { StateMachineResolution } from "../state-machine-resolution";
-import { TopLevelDecl } from "../top-level-decl";
 import { TypeTerm } from "../type-term";
 
 /**
@@ -42,17 +42,17 @@ export const Resolve = {
    */
   resolve: (document: Document): ResolveResult => {
     const namedDeclarations = document.declarations.filter(NamedDecl.is);
-    const topLevelDeclarations = document.declarations.filter(TopLevelDecl.is);
-    const definitions = DefinitionTable.create(topLevelDeclarations);
+    const documentDeclarations = document.declarations.filter(DocumentDeclaration.is);
+    const definitions = DefinitionTable.create(documentDeclarations);
     const stateMachines = document.declarations
       .filter(Declaration.isStateMachine)
       .map(StateMachineResolution.create);
     return ResolveResult.create({
       definitions,
-      references: ReferenceTable.create(topLevelDeclarations),
+      references: ReferenceTable.create(documentDeclarations),
       stateMachines,
       diagnostics: [
-        ...DefinitionTable.collectRedeclarationErrors(topLevelDeclarations),
+        ...DefinitionTable.collectRedeclarationErrors(documentDeclarations),
         ...collectUndefinedReferenceWarnings(namedDeclarations, definitions),
         ...stateMachines.flatMap((machine) => machine.diagnostics),
       ],

@@ -1,12 +1,12 @@
 import {
   DefinitionTable,
+  DocumentDeclaration,
   NamedDecl,
   Parse,
   ReferenceTable,
   Resolve,
   Result,
   SourceRange,
-  TopLevelDecl,
   TypeTerm,
   type DefinitionTable as DefinitionTableValue,
   type Diagnostic,
@@ -82,7 +82,7 @@ const otherDuplicateNameRanges = (
   target: NamedDeclValue,
 ): readonly SourceRangeValue[] =>
   model.document.declarations
-    .filter(TopLevelDecl.is)
+    .filter(DocumentDeclaration.is)
     .filter((decl) => decl.name === target.name)
     .filter((decl) => !SourceRange.equals(decl.nameRange, target.nameRange))
     .map((decl) => decl.nameRange);
