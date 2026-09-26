@@ -7,7 +7,11 @@ import { StateMachineLayout } from "../../domains/state-machine-layout";
 import { useStateMachineContext } from "./context";
 
 export function StateMachineGraphPanel() {
-  const { view } = useStateMachineContext();
+  const context = useStateMachineContext();
+  if (!context.some) {
+    return null;
+  }
+  const { view } = context.value;
   return (
     <section className="state-machine-screen__center" aria-label="ステートマシンのグラフ">
       <header className="state-machine-screen__toolbar">
@@ -34,8 +38,12 @@ export function StateMachineGraphPanel() {
 }
 
 function StateMachineGraphContent() {
-  const { view } = useStateMachineContext();
+  const context = useStateMachineContext();
   const arrowId = useId();
+  if (!context.some) {
+    return null;
+  }
+  const { view } = context.value;
   const { graph, layout } = view;
   const selectOnKeyDown = (keyboard: KeyboardEvent<SVGGElement>, selection: StateMachineGraphSelection) => {
     if (keyboard.key !== "Enter" && keyboard.key !== " ") {

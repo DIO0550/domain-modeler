@@ -3,7 +3,11 @@ import { useStateMachineContext } from "./context";
 import { PART_LABELS } from "./part-labels";
 
 export function StateMachinePalette() {
-  const { view } = useStateMachineContext();
+  const context = useStateMachineContext();
+  if (!context.some) {
+    return null;
+  }
+  const { view } = context.value;
   const parts = Object.entries(PART_LABELS) as [StateMachinePart, string][];
   return (
     <aside className="state-machine-screen__palette" aria-label="ステートマシンのパレット">

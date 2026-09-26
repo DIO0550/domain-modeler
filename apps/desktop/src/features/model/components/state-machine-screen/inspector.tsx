@@ -5,7 +5,11 @@ import { StateMachineEntryForm } from "./entry-form";
 import { PART_LABELS } from "./part-labels";
 
 export function StateMachineInspector() {
-  const { view, onEditSource } = useStateMachineContext();
+  const context = useStateMachineContext();
+  if (!context.some) {
+    return null;
+  }
+  const { view, onEditSource } = context.value;
   let heading = "インスペクター";
   if (view.target.kind === "part") {
     heading = `${PART_LABELS[view.target.part]}を追加`;
@@ -20,7 +24,11 @@ export function StateMachineInspector() {
 }
 
 function StateMachineInspectorContent() {
-  const { view, value, onChange } = useStateMachineContext();
+  const context = useStateMachineContext();
+  if (!context.some) {
+    return null;
+  }
+  const { view, value, onChange } = context.value;
   if (view.graph === null) {
     return <StateMachineEntryForm key="machine" value={value} onChange={onChange} target={{ kind: "machine" }} />;
   }

@@ -1,4 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
+import { Option, type Option as Optional } from "@/utils/Option";
 import {
   useStateMachineView,
   type UseStateMachineViewResult,
@@ -18,14 +19,10 @@ type StateMachineContextValue = Readonly<{
   onEditSource: () => void;
 }>;
 
-const StateMachineContext = createContext<StateMachineContextValue | null>(null);
+const StateMachineContext = createContext<Optional<StateMachineContextValue>>(Option.none());
 
-export function useStateMachineContext(): StateMachineContextValue {
-  const context = useContext(StateMachineContext);
-  if (context === null) {
-    throw new Error("StateMachine の子コンポーネントは StateMachine.Root の内側で使用してください");
-  }
-  return context;
+export function useStateMachineContext(): Optional<StateMachineContextValue> {
+  return useContext(StateMachineContext);
 }
 
 /**
@@ -37,7 +34,7 @@ export function useStateMachineContext(): StateMachineContextValue {
 export function StateMachineRoot({ value, onChange, onEditSource, children }: StateMachineRootProps) {
   const view = useStateMachineView(value);
   return (
-    <StateMachineContext.Provider value={{ view, value, onChange, onEditSource }}>
+    <StateMachineContext.Provider value={Option.some({ view, value, onChange, onEditSource })}>
       <div className="state-machine-screen">{children}</div>
     </StateMachineContext.Provider>
   );

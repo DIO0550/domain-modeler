@@ -40,3 +40,21 @@ test("構成要素を並べ替えても選択と画面遷移を共有できる",
     host.remove();
   }
 });
+
+test("Root の外では構成要素を描画しない", () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+
+  try {
+    act(() => root.render(<>
+      <StateMachine.Palette />
+      <StateMachine.Graph />
+      <StateMachine.Inspector />
+    </>));
+    expect(host.childElementCount).toBe(0);
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+  }
+});
