@@ -1,0 +1,52 @@
+.state-machine-screen {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) 250px;
+  width: 100%; height: 100%; min-height: 0; min-width: 0;
+  color: var(--shell-text); background: var(--shell-bg);
+  border: 1px solid var(--model-editor-border);
+}
+.state-machine-screen__palette, .state-machine-screen__inspector {
+  display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+  padding: 16px; min-width: 0; overflow: auto;
+  background: var(--canvas-toolbar-bg);
+}
+.state-machine-screen__palette { border-right: 1px solid var(--model-editor-border); }
+.state-machine-screen__inspector { border-left: 1px solid var(--model-editor-border); }
+.state-machine-screen h2 { margin: 0 0 10px; font-size: 14px; }
+.state-machine-screen p { font-size: 12px; line-height: 1.5; color: var(--shell-muted); }
+.state-machine-screen button, .state-machine-screen select, .state-machine-screen input {
+  border: 1px solid var(--model-editor-border); border-radius: 6px;
+  background: var(--shell-bg); color: var(--shell-text); font: inherit;
+  padding: 7px 9px;
+}
+.state-machine-screen button { cursor: pointer; }
+.state-machine-screen button:hover:not(:disabled), .state-machine-screen button[aria-pressed="true"] { background: var(--tab-item-hover-bg); }
+.state-machine-screen button:disabled { opacity: .5; cursor: default; }
+.state-machine-screen :is(button, input, select, [role="button"]):focus-visible { outline: 2px solid var(--model-editor-focus); outline-offset: 2px; }
+.state-machine-screen__center { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.state-machine-screen__toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--model-editor-border); }
+.state-machine-screen__toolbar label { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.state-machine-screen__zoom { display: flex; gap: 4px; }
+.state-machine-screen__viewport { flex: 1; min-height: 0; overflow: hidden; background-image: radial-gradient(var(--model-editor-border) 1px, transparent 1px); background-size: 20px 20px; }
+.state-machine-screen__graph { display: block; width: 100%; height: 100%; min-height: 240px; }
+.state-machine-screen__empty { margin: auto; padding: 20px; text-align: center; color: var(--shell-muted); }
+.state-machine-screen__node, .state-machine-screen__edge { cursor: pointer; color: var(--shell-text); }
+.state-machine-screen__node rect { fill: var(--shell-bg); stroke: var(--shell-muted); stroke-width: 2; }
+.state-machine-screen__node[data-appearance*="initial"] rect { stroke: var(--model-editor-focus); stroke-width: 3; }
+.state-machine-screen__node[data-appearance*="terminal"] rect { stroke-width: 4; }
+.state-machine-screen__node[data-appearance="unresolved"] rect { stroke-dasharray: 5 4; }
+.state-machine-screen__node[data-status="error"] rect, .state-machine-screen__edge[data-status="error"] .state-machine-screen__edge-line { stroke: var(--model-editor-error); }
+.state-machine-screen__node[data-selected="true"] rect, .state-machine-screen__edge[data-selected="true"] .state-machine-screen__edge-line { stroke: var(--model-editor-focus); stroke-width: 4; }
+.state-machine-screen__graph text { fill: var(--shell-text); font-size: 14px; font-weight: 600; pointer-events: none; }
+.state-machine-screen__graph .state-machine-screen__badge { fill: var(--model-editor-focus); }
+.state-machine-screen__edge-line { fill: none; stroke: var(--shell-muted); stroke-width: 2; }
+.state-machine-screen__edge-hit { fill: none; stroke: transparent; stroke-width: 18; }
+.state-machine-screen__edge text { paint-order: stroke; stroke: var(--shell-bg); stroke-width: 6; }
+.state-machine-screen__inspector form, .state-machine-screen__inspector label { display: flex; flex-direction: column; gap: 8px; }
+.state-machine-screen__inspector form { gap: 12px; font-size: 12px; }
+.state-machine-screen__source { margin-top: auto; }
+.state-machine-screen__diagnostic { color: var(--model-editor-error) !important; }
+@media (max-width: 750px) {
+  .state-machine-screen { grid-template-columns: 130px minmax(0, 1fr); grid-template-rows: minmax(250px, 1fr) auto; }
+  .state-machine-screen__inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--model-editor-border); max-height: 220px; }
+}

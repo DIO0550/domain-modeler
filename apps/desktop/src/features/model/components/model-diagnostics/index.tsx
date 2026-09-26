@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   Declaration,
   Result,
@@ -18,6 +18,7 @@ import { ModelEditorDisplay } from "../model-editor";
 import { PreviewDataCard } from "../preview-data-card";
 import { PreviewErrorPlaceholder } from "../preview-error-placeholder";
 import { PreviewWorkflowCard } from "../preview-workflow-card";
+import { StateMachine } from "../state-machine-screen";
 import "./ModelDiagnostics.css";
 
 type ModelDiagnosticsProps = Readonly<{
@@ -33,6 +34,7 @@ type ModelDiagnosticsProps = Readonly<{
  * @returns 左右分割の診断付きモデル編集画面。
  */
 export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
+  const [mode, setMode] = useState<"model" | "state-machine">("model");
   const editing = useTextEditing({ value, onChange });
   const analyzed = AnalyzedModel.create(editing.value);
   const previewRef = useRef<HTMLElement>(null);
@@ -110,7 +112,16 @@ export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
   };
 
   return (
-    <div className="model-diagnostics">
+    <div className="model-diagnostics-workspace">
+      <nav className="model-diagnostics-workspace__modes" aria-label="表示モード">
+        <button type="button" aria-current={mode === "model" ? "page" : undefined} onClick={() => setMode("model")}>モデル</button>
+        <button type="button" aria-current={mode === "state-machine" ? "page" : undefined} onClick={() => setMode("state-machine")}>ステートマシン</button>
+      </nav>
+      {mode === "state-machine" ? <StateMachine.Root value={value} onChange={onChange} onEditSource={() => setMode("model")}>
+        <StateMachine.Palette />
+        <StateMachine.Graph />
+        <StateMachine.Inspector />
+      </StateMachine.Root> : <div className="model-diagnostics">
       <div className="model-diagnostics__editor-heading">モデル定義</div>
       <div
         className="model-diagnostics__toolbar"
@@ -154,6 +165,7 @@ export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
           />
         ))}
       </section>
+    </div>}
     </div>
   );
 }
