@@ -105,3 +105,19 @@ test("初期状態の入力欄は可視ラベルとアクセシブルネーム�
   click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "初期") ?? null);
   expect(host.querySelector('input[aria-label="既存の状態名"]')).not.toBeNull();
 });
+
+test("追加対象の切替で前のフォーム入力とエラーを引き継がない", () => {
+  const host = diagnostics.render(machine);
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "状態") ?? null);
+  const stateName = host.querySelector('input[aria-label="状態名"]') as HTMLInputElement;
+  type(stateName, "with space");
+  act(() => stateName.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe("有効な状態名を入力してください");
+
+  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "終端") ?? null);
+  expect((host.querySelector('input[aria-label="状態名"]') as HTMLInputElement).value).toBe("");
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "状態") ?? null);
+  expect((host.querySelector('input[aria-label="状態名"]') as HTMLInputElement).value).toBe("");
+});
