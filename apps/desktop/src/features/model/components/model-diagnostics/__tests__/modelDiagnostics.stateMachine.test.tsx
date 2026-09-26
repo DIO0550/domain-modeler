@@ -81,3 +81,27 @@ test("空白クリックでは追加せず、キーボードで遷移を選択�
   click(host.querySelector(".state-machine-screen__viewport"));
   expect(latest).toBe(machine);
 });
+
+test("マシン切替時に選択と倍率を一緒に戻す", () => {
+  const source = `${machine}\nstate-machine 返金 =\n  initial: 申請\n  state: 申請`;
+  const host = diagnostics.render(source);
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  const graph = host.querySelector(".state-machine-screen__graph") as SVGSVGElement;
+  click(host.querySelector(".state-machine-screen__node"));
+  click(host.querySelector('button[aria-label="拡大"]'));
+  const picker = host.querySelector(".state-machine-screen__toolbar select") as HTMLSelectElement;
+  act(() => {
+    picker.value = "1";
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(host.querySelector(".state-machine-screen__graph")?.getAttribute("aria-label")).toBe("返金 の状態遷移図");
+  expect(host.querySelector(".state-machine-screen__node[data-selected='true']")).toBeNull();
+  expect(graph.getAttribute("viewBox")?.startsWith("0 0 ")).toBe(true);
+});
+
+test("初期状態の入力欄は可視ラベルとアクセシブルネームが一致する", () => {
+  const host = diagnostics.render("state-machine 注文 =\n  state: 待機");
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "初期") ?? null);
+  expect(host.querySelector('input[aria-label="既存の状態名"]')).not.toBeNull();
+});

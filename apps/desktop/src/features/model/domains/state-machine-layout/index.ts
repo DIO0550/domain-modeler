@@ -8,14 +8,19 @@ export type StateMachineLayout = Readonly<{
   edges: readonly Readonly<{ id: string; path: string; label: GraphPoint }>[];
 }>;
 
-const NODE_WIDTH = 160;
-const NODE_HEIGHT = 64;
+const NODE_SIZE = { width: 160, height: 64 } as const;
 const COLUMN = 260;
 const ROW = 150;
 const MARGIN = 100;
 
-/** Stable left-to-right layering, including cycles and disconnected states. */
+/** 状態遷移の自動配置とノード寸法。 */
 export const StateMachineLayout = {
+  nodeSize: NODE_SIZE,
+  /**
+   * 初期状態から左→右へ配置する。循環・自己ループ・孤立状態も表示する。
+   * @param graph 描画用の状態と遷移。
+   * @returns ノード座標、遷移の経路とラベル位置、描画領域。
+   */
   create(graph: StateMachineGraph): StateMachineLayout {
     const ids = graph.nodes.map((node) => node.id);
     const levels = new Map(ids.map((id) => [id, 0]));
@@ -58,8 +63,8 @@ export const StateMachineLayout = {
       }
       const parallel = graph.edges.slice(0, index).filter((item) => item.from === edge.from && item.to === edge.to).length;
       if (edge.from === edge.to) {
-        const x = from.x + NODE_WIDTH / 2;
-        const y = from.y - NODE_HEIGHT / 2;
+        const x = from.x + NODE_SIZE.width / 2;
+        const y = from.y - NODE_SIZE.height / 2;
         const lift = 55 + parallel * 28;
         return {
           id: edge.id,
@@ -68,8 +73,8 @@ export const StateMachineLayout = {
         };
       }
       const direction = to.x >= from.x ? 1 : -1;
-      const startX = from.x + direction * NODE_WIDTH / 2;
-      const endX = to.x - direction * NODE_WIDTH / 2;
+      const startX = from.x + direction * NODE_SIZE.width / 2;
+      const endX = to.x - direction * NODE_SIZE.width / 2;
       const shift = parallel * 24;
       const startY = from.y + shift;
       const endY = to.y + shift;
@@ -81,8 +86,8 @@ export const StateMachineLayout = {
       };
     });
     return {
-      width: MARGIN * 2 + maxLevel * COLUMN + NODE_WIDTH,
-      height: MARGIN * 2 + (maxRows - 1) * ROW + NODE_HEIGHT,
+      width: MARGIN * 2 + maxLevel * COLUMN + NODE_SIZE.width,
+      height: MARGIN * 2 + (maxRows - 1) * ROW + NODE_SIZE.height,
       nodes,
       edges,
     };
