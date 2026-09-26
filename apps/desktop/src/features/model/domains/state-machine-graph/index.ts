@@ -6,6 +6,30 @@ import {
   type TransitionDecl,
 } from "@domain-modeler/model-core";
 
+type GraphDiagnosticState = "valid" | "warning" | "error";
+
+/** 状態宣言または未解決参照の描画情報。 */
+type StateMachineGraphNode = Readonly<{
+  id: string;
+  name: string;
+  appearance: "normal" | "initial" | "terminal" | "initial-terminal" | "unresolved";
+  range: SourceRangeValue;
+  status: GraphDiagnosticState;
+  diagnostics: readonly Diagnostic[];
+}>;
+
+/** 遷移宣言の描画情報。 */
+type StateMachineGraphEdge = Readonly<{
+  id: string;
+  from: string;
+  to: string;
+  event: string;
+  range: SourceRangeValue;
+  eventRange: SourceRangeValue;
+  status: GraphDiagnosticState;
+  diagnostics: readonly Diagnostic[];
+}>;
+
 /** 描画方法に依存しない、1つの state-machine のレイアウト入力。 */
 export type StateMachineGraph = Readonly<{
   name: string;
@@ -13,27 +37,9 @@ export type StateMachineGraph = Readonly<{
   nameRange: SourceRangeValue;
   status: GraphDiagnosticState;
   diagnostics: readonly Diagnostic[];
-  nodes: readonly Readonly<{
-    id: string;
-    name: string;
-    appearance: "normal" | "initial" | "terminal" | "initial-terminal" | "unresolved";
-    range: SourceRangeValue;
-    status: GraphDiagnosticState;
-    diagnostics: readonly Diagnostic[];
-  }>[];
-  edges: readonly Readonly<{
-    id: string;
-    from: string;
-    to: string;
-    event: string;
-    range: SourceRangeValue;
-    eventRange: SourceRangeValue;
-    status: GraphDiagnosticState;
-    diagnostics: readonly Diagnostic[];
-  }>[];
+  nodes: readonly StateMachineGraphNode[];
+  edges: readonly StateMachineGraphEdge[];
 }>;
-
-type GraphDiagnosticState = "valid" | "warning" | "error";
 
 const statusOf = (diagnostics: readonly Diagnostic[]): GraphDiagnosticState => {
   if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
@@ -77,7 +83,7 @@ const sortedDiagnostics = (diagnostics: readonly Diagnostic[]): readonly Diagnos
     compareRange(left.range, right.range) || compareText(left.message, right.message),
   );
 
-const appearanceOf = (initial: boolean, terminal: boolean): StateMachineGraph["nodes"][number]["appearance"] => {
+const appearanceOf = (initial: boolean, terminal: boolean): StateMachineGraphNode["appearance"] => {
   if (initial && terminal) {
     return "initial-terminal";
   }
