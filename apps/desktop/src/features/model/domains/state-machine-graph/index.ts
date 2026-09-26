@@ -41,6 +41,21 @@ export type StateMachineGraph = Readonly<{
   edges: readonly StateMachineGraphEdge[];
 }>;
 
+/** グラフ内で選択された状態または遷移。 */
+export type StateMachineGraphSelection = Readonly<{ kind: "node" | "edge"; id: string }>;
+
+/** 選択対象が消えた場合はマシン全体に戻る検査結果。 */
+export type StateMachineGraphInspection =
+  | Readonly<{ kind: "machine"; name: string; diagnostics: readonly Diagnostic[] }>
+  | Readonly<{ kind: "node"; node: StateMachineGraphNode; diagnostics: readonly Diagnostic[] }>
+  | Readonly<{
+      kind: "edge";
+      edge: StateMachineGraphEdge;
+      fromName: string;
+      toName: string;
+      diagnostics: readonly Diagnostic[];
+    }>;
+
 const statusOf = (diagnostics: readonly Diagnostic[]): GraphDiagnosticState => {
   if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
     return "error";
@@ -187,5 +202,39 @@ export const StateMachineGraph = {
       nodes: StateMachineGraphNode.createAll(resolution, machineDiagnostics),
       edges: StateMachineGraphEdge.createAll(machine.transitions, machineDiagnostics),
     };
+  },
+  /**
+   * 遷移端点の表示名を、未解決参照を含むノード一覧から得る。
+   * @param graph 描画用グラフ。
+   * @param edge 遷移。
+   * @returns 遷移元・遷移先の名前。
+   */
+  endpoints(graph: StateMachineGraph, edge: StateMachineGraphEdge): Readonly<{ from: string; to: string }> {
+    return {
+      from: graph.nodes.find((node) => node.id === edge.from)?.name ?? "?",
+      to: graph.nodes.find((node) => node.id === edge.to)?.name ?? "?",
+    };
+  },
+  /**
+   * 選択中の状態・遷移を解決する。対象がなくなった場合はマシン全体を返す。
+   * @param graph 描画用グラフ。
+   * @param selection 選択中の識別子。未選択なら省略。
+   * @returns 対象の名前と診断を含む検査結果。
+   */
+  inspect(graph: StateMachineGraph, selection?: StateMachineGraphSelection): StateMachineGraphInspection {
+    if (selection?.kind === "node") {
+      const node = graph.nodes.find((item) => item.id === selection.id);
+      if (node !== undefined) {
+        return { kind: "node", node, diagnostics: node.diagnostics };
+      }
+    }
+    if (selection?.kind === "edge") {
+      const edge = graph.edges.find((item) => item.id === selection.id);
+      if (edge !== undefined) {
+        const names = StateMachineGraph.endpoints(graph, edge);
+        return { kind: "edge", edge, fromName: names.from, toName: names.to, diagnostics: edge.diagnostics };
+      }
+    }
+    return { kind: "machine", name: graph.name, diagnostics: graph.diagnostics };
   },
 } as const;

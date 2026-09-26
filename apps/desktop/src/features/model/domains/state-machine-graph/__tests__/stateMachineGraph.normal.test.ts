@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { StateMachineGraph } from "..";
 import { graphOf } from "./stateMachineGraph.test-support";
 
 test("状態と遷移をノード・有向辺に投影し、初期と終端を区別する", () => {
@@ -58,4 +59,27 @@ test("初期かつ終端の状態を一つの視覚状態で表現する", () =>
   state: 申請 terminal`);
 
   expect(graph.nodes[0]?.appearance).toBe("initial-terminal");
+});
+
+test("選択対象を一つの検査結果へ解決し、DSL更新で消えた対象は全体表示へ戻す", () => {
+  const graph = graphOf(`state-machine 注文 =
+  initial: 待機
+  state: 待機
+  state: 完了 terminal
+  transition: 待機 -> 完了 on 確定`);
+  const node = graph.nodes.find((item) => item.name === "待機");
+  const edge = graph.edges[0];
+  expect(node).toBeDefined();
+  expect(edge).toBeDefined();
+  if (node === undefined || edge === undefined) { return; }
+
+  expect(StateMachineGraph.inspect(graph, { kind: "node", id: node.id })).toMatchObject({
+    kind: "node", node: { name: "待機", appearance: "initial" },
+  });
+  expect(StateMachineGraph.inspect(graph, { kind: "edge", id: edge.id })).toMatchObject({
+    kind: "edge", edge: { event: "確定" }, fromName: "待機", toName: "完了",
+  });
+  expect(StateMachineGraph.inspect(graph, { kind: "edge", id: "deleted" })).toMatchObject({
+    kind: "machine", name: "注文",
+  });
 });

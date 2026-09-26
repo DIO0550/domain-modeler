@@ -1,15 +1,20 @@
 import { useReducer } from "react";
 import { AnalyzedModel } from "../../domains/analyzed-model";
-import { StateMachineGraph } from "../../domains/state-machine-graph";
+import {
+  StateMachineGraph,
+  type StateMachineGraphInspection,
+  type StateMachineGraphSelection,
+} from "../../domains/state-machine-graph";
 import { StateMachineLayout } from "../../domains/state-machine-layout";
+import type { StateMachineResolution } from "@domain-modeler/model-core";
 import type { StateMachinePart } from "../../domains/state-machine-source";
 
-export type StateMachineSelection = Readonly<{ kind: "node" | "edge"; id: string }>;
+
 
 type ViewTarget =
   | Readonly<{ kind: "none" }>
   | Readonly<{ kind: "part"; part: StateMachinePart }>
-  | Readonly<{ kind: "element"; selection: StateMachineSelection }>;
+  | Readonly<{ kind: "element"; selection: StateMachineGraphSelection }>;
 
 type ViewState = Readonly<{
   machineIndex: number;
@@ -20,7 +25,7 @@ type ViewState = Readonly<{
 type ViewAction =
   | Readonly<{ type: "machineSelected"; index: number }>
   | Readonly<{ type: "partSelected"; part: StateMachinePart }>
-  | Readonly<{ type: "elementSelected"; selection: StateMachineSelection }>
+  | Readonly<{ type: "elementSelected"; selection: StateMachineGraphSelection }>
   | Readonly<{ type: "zoomed"; factor: number }>
   | Readonly<{ type: "fitted" }>;
 
@@ -50,11 +55,13 @@ export type UseStateMachineViewResult = Readonly<{
   selectedMachineIndex: number;
   graph: StateMachineGraph | null;
   layout: StateMachineLayout | null;
+  resolution: StateMachineResolution | null;
+  inspection: StateMachineGraphInspection | null;
   target: ViewTarget;
   zoom: number;
   selectMachine: (index: number) => void;
   selectPart: (part: StateMachinePart) => void;
-  selectElement: (selection: StateMachineSelection) => void;
+  selectElement: (selection: StateMachineGraphSelection) => void;
   zoomBy: (factor: number) => void;
   fit: () => void;
 }>;
@@ -73,12 +80,19 @@ export function useStateMachineView(source: string): UseStateMachineViewResult {
   const resolution = analyzed.stateMachines[selectedMachineIndex];
   const graph = resolution === undefined ? null : StateMachineGraph.create(resolution, analyzed.diagnostics);
   const layout = graph === null ? null : StateMachineLayout.create(graph);
+  let inspection: StateMachineGraphInspection | null = null;
+  if (graph !== null) {
+    const selection = view.target.kind === "element" ? view.target.selection : undefined;
+    inspection = StateMachineGraph.inspect(graph, selection);
+  }
 
   return {
     analyzed,
     selectedMachineIndex,
     graph,
     layout,
+    resolution: resolution ?? null,
+    inspection,
     target: view.target,
     zoom: view.zoom,
     selectMachine: (index) => dispatch({ type: "machineSelected", index }),
