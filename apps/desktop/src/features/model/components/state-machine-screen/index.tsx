@@ -1,4 +1,4 @@
-import { useId, type KeyboardEvent, type ReactNode } from "react";
+import { createContext, useContext, useId, type KeyboardEvent, type ReactNode } from "react";
 import {
   StateMachineGraph,
   type StateMachineGraphInspection,
@@ -17,11 +17,29 @@ import {
 } from "../../hooks/use-state-machine-view";
 import "./StateMachineScreen.css";
 
-type StateMachineScreenProps = Readonly<{
+type StateMachineRootProps = Readonly<{
+  value: string;
+  onChange: (text: string) => void;
+  onEditSource: () => void;
+  children: ReactNode;
+}>;
+
+type StateMachineContextValue = Readonly<{
+  view: UseStateMachineViewResult;
   value: string;
   onChange: (text: string) => void;
   onEditSource: () => void;
 }>;
+
+const StateMachineContext = createContext<StateMachineContextValue | null>(null);
+
+function useStateMachineContext(): StateMachineContextValue {
+  const context = useContext(StateMachineContext);
+  if (context === null) {
+    throw new Error("StateMachine の子コンポーネントは StateMachine.Root の内側で使用してください");
+  }
+  return context;
+}
 
 const PART_LABELS: Readonly<Record<StateMachinePart, string>> = {
   state: "状態",
@@ -33,21 +51,20 @@ const PART_LABELS: Readonly<Record<StateMachinePart, string>> = {
 /**
  * `.dmodel` のステートマシンをパレット・グラフ・インスペクターで表示する。
  *
- * @param props 文書全文、変更通知、モデル定義画面への切替操作。
+ * @param props 文書全文、変更通知、モデル定義画面への切替操作、配置する子要素。
  * @returns ステートマシン全体の編集画面。
  */
-export function StateMachineScreen({ value, onChange, onEditSource }: StateMachineScreenProps) {
+function StateMachineRoot({ value, onChange, onEditSource, children }: StateMachineRootProps) {
   const view = useStateMachineView(value);
   return (
-    <div className="state-machine-screen">
-      <StateMachinePalette view={view} />
-      <StateMachineGraphPanel view={view} />
-      <StateMachineInspector view={view} value={value} onChange={onChange} onEditSource={onEditSource} />
-    </div>
+    <StateMachineContext.Provider value={{ view, value, onChange, onEditSource }}>
+      <div className="state-machine-screen">{children}</div>
+    </StateMachineContext.Provider>
   );
 }
 
-function StateMachinePalette({ view }: Readonly<{ view: UseStateMachineViewResult }>) {
+function StateMachinePalette() {
+  const { view } = useStateMachineContext();
   const parts = Object.entries(PART_LABELS) as [StateMachinePart, string][];
   return (
     <aside className="state-machine-screen__palette" aria-label="ステートマシンのパレット">
@@ -62,7 +79,8 @@ function StateMachinePalette({ view }: Readonly<{ view: UseStateMachineViewResul
   );
 }
 
-function StateMachineGraphPanel({ view }: Readonly<{ view: UseStateMachineViewResult }>) {
+function StateMachineGraphPanel() {
+  const { view } = useStateMachineContext();
   return (
     <section className="state-machine-screen__center" aria-label="ステートマシンのグラフ">
       <header className="state-machine-screen__toolbar">
@@ -83,12 +101,13 @@ function StateMachineGraphPanel({ view }: Readonly<{ view: UseStateMachineViewRe
           <button type="button" aria-label="拡大" disabled={view.graph === null} onClick={() => view.zoomBy(1.25)}>＋</button>
         </div>
       </header>
-      <StateMachineGraphContent view={view} />
+      <StateMachineGraphContent />
     </section>
   );
 }
 
-function StateMachineGraphContent({ view }: Readonly<{ view: UseStateMachineViewResult }>) {
+function StateMachineGraphContent() {
+  const { view } = useStateMachineContext();
   const arrowId = useId();
   const { graph, layout } = view;
   const selectOnKeyDown = (keyboard: KeyboardEvent<SVGGElement>, selection: StateMachineGraphSelection) => {
@@ -148,9 +167,8 @@ function StateMachineGraphContent({ view }: Readonly<{ view: UseStateMachineView
   );
 }
 
-type StateMachineInspectorProps = StateMachineScreenProps & Readonly<{ view: UseStateMachineViewResult }>;
-
-function StateMachineInspector({ view, value, onChange, onEditSource }: StateMachineInspectorProps) {
+function StateMachineInspector() {
+  const { view, onEditSource } = useStateMachineContext();
   let heading = "インスペクター";
   if (view.target.kind === "part") {
     heading = `${PART_LABELS[view.target.part]}を追加`;
@@ -158,13 +176,14 @@ function StateMachineInspector({ view, value, onChange, onEditSource }: StateMac
   return (
     <aside className="state-machine-screen__inspector" aria-label="ステートマシンのインスペクター">
       <h2>{heading}</h2>
-      <StateMachineInspectorContent view={view} value={value} onChange={onChange} />
+      <StateMachineInspectorContent />
       <button type="button" className="state-machine-screen__source" onClick={onEditSource}>モデル定義で編集</button>
     </aside>
   );
 }
 
-function StateMachineInspectorContent({ view, value, onChange }: Omit<StateMachineInspectorProps, "onEditSource">) {
+function StateMachineInspectorContent() {
+  const { view, value, onChange } = useStateMachineContext();
   if (view.graph === null) {
     return <StateMachineEntryForm key="machine" value={value} onChange={onChange} target={{ kind: "machine" }} />;
   }
@@ -243,3 +262,11 @@ function StateMachineEntryFields({ target, draft }: Readonly<{
   return <label>{label}<input aria-label={label} value={draft.fields.name}
     onChange={(change) => draft.changeField("name", change.target.value)} /></label>;
 }
+
+/** 画面状態を共有するステートマシンの構成要素。 */
+export const StateMachine = {
+  Root: StateMachineRoot,
+  Palette: StateMachinePalette,
+  Graph: StateMachineGraphPanel,
+  Inspector: StateMachineInspector,
+} as const;

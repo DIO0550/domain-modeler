@@ -18,7 +18,7 @@ import { ModelEditorDisplay } from "../model-editor";
 import { PreviewDataCard } from "../preview-data-card";
 import { PreviewErrorPlaceholder } from "../preview-error-placeholder";
 import { PreviewWorkflowCard } from "../preview-workflow-card";
-import { StateMachineScreen } from "../state-machine-screen";
+import { StateMachine } from "../state-machine-screen";
 import "./ModelDiagnostics.css";
 
 type ModelDiagnosticsProps = Readonly<{
@@ -117,7 +117,11 @@ export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
         <button type="button" aria-current={mode === "model" ? "page" : undefined} onClick={() => setMode("model")}>モデル</button>
         <button type="button" aria-current={mode === "state-machine" ? "page" : undefined} onClick={() => setMode("state-machine")}>ステートマシン</button>
       </nav>
-      {mode === "state-machine" ? <StateMachineScreen value={value} onChange={onChange} onEditSource={() => setMode("model")} /> : <div className="model-diagnostics">
+      {mode === "state-machine" ? <StateMachine.Root value={value} onChange={onChange} onEditSource={() => setMode("model")}>
+        <StateMachine.Palette />
+        <StateMachine.Graph />
+        <StateMachine.Inspector />
+      </StateMachine.Root> : <div className="model-diagnostics">
       <div className="model-diagnostics__editor-heading">モデル定義</div>
       <div
         className="model-diagnostics__toolbar"
