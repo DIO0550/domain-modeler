@@ -77,4 +77,24 @@ export const StateMachineEditing: Story = {
   transition: 処理中 -> 完了 on 確定
 `,
   },
+  play: async ({ canvasElement }) => {
+    const mode = [...canvasElement.querySelectorAll<HTMLButtonElement>("nav button")]
+      .find((button) => button.textContent === "ステートマシン");
+    mode?.click();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    canvasElement.querySelector('.state-machine-screen__node[aria-label^="待機"]')
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  },
+};
+
+export const StateMachineTransitionEditing: Story = {
+  args: StateMachineEditing.args,
+  play: async ({ canvasElement }) => {
+    const mode = [...canvasElement.querySelectorAll<HTMLButtonElement>("nav button")]
+      .find((button) => button.textContent === "ステートマシン");
+    mode?.click();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    canvasElement.querySelector(".state-machine-screen__edge")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  },
 };
