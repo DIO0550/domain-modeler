@@ -1,8 +1,8 @@
 {
-  "reportVersion": "8a2f32b3a0acdad2ccbf890ef9924609216850d0",
+  "reportVersion": "8cfdb85a7b9d9c808867451f16f3a71b53c848ea",
   "maxDiffRatio": 0.002,
   "changed": 0,
-  "new": 2,
+  "new": 3,
   "deleted": 0,
   "passed": 57,
   "failed": 0,
@@ -680,6 +680,19 @@
       "diffPixels": 0,
       "diffRatio": 0,
       "hasExpected": true,
+      "hasActual": true,
+      "hasDiff": false
+    },
+    {
+      "story": "model-modeldiagnostics--state-machine-after-edit",
+      "id": "model-modeldiagnostics--state-machine-after-edit",
+      "title": "Model/ModelDiagnostics",
+      "name": "State Machine After Edit",
+      "status": "new",
+      "reason": "no-baseline",
+      "diffPixels": 0,
+      "diffRatio": 0,
+      "hasExpected": false,
       "hasActual": true,
       "hasDiff": false
     },
