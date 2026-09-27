@@ -65,3 +65,16 @@ export const Empty: Story = {
     value: "",
   },
 };
+
+export const StateMachineEditing: Story = {
+  args: {
+    value: `state-machine 注文 =
+  initial: 待機
+  state: 待機
+  state: 処理中
+  state: 完了 terminal
+  transition: 待機 -> 処理中 on 開始
+  transition: 処理中 -> 完了 on 確定
+`,
+  },
+};

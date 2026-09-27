@@ -26,6 +26,7 @@ type ViewAction =
   | Readonly<{ type: "machineSelected"; index: number }>
   | Readonly<{ type: "partSelected"; part: StateMachinePart }>
   | Readonly<{ type: "elementSelected"; selection: StateMachineGraphSelection }>
+  | Readonly<{ type: "selectionCleared" }>
   | Readonly<{ type: "zoomed"; factor: number }>
   | Readonly<{ type: "fitted" }>;
 
@@ -43,6 +44,8 @@ const reduceView = (view: ViewState, action: ViewAction): ViewState => {
       return { ...view, target: { kind: "part", part: action.part } };
     case "elementSelected":
       return { ...view, target: { kind: "element", selection: action.selection } };
+    case "selectionCleared":
+      return { ...view, target: { kind: "none" } };
     case "zoomed":
       return { ...view, zoom: Math.max(0.5, Math.min(3, view.zoom * action.factor)) };
     case "fitted":
@@ -62,6 +65,7 @@ export type UseStateMachineViewResult = Readonly<{
   selectMachine: (index: number) => void;
   selectPart: (part: StateMachinePart) => void;
   selectElement: (selection: StateMachineGraphSelection) => void;
+  clearSelection: () => void;
   zoomBy: (factor: number) => void;
   fit: () => void;
 }>;
@@ -98,6 +102,7 @@ export function useStateMachineView(source: string): UseStateMachineViewResult {
     selectMachine: (index) => dispatch({ type: "machineSelected", index }),
     selectPart: (part) => dispatch({ type: "partSelected", part }),
     selectElement: (selection) => dispatch({ type: "elementSelected", selection }),
+    clearSelection: () => dispatch({ type: "selectionCleared" }),
     zoomBy: (factor) => dispatch({ type: "zoomed", factor }),
     fit: () => dispatch({ type: "fitted" }),
   };

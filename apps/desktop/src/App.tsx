@@ -14,7 +14,7 @@ import "./App.css";
 function App() {
   const manualSaves = useRef(new Map<string, () => Promise<boolean>>());
   const saveSessions = useRef(new Map<string, () => Promise<boolean>>());
-  const [canvasHistory, setCanvasHistory] = useState<
+  const [documentHistory, setDocumentHistory] = useState<
     Readonly<{ path: string; controls: HistoryControlsValue }> | undefined
   >();
   const {
@@ -29,12 +29,12 @@ function App() {
     flushDocument: async (path) =>
       await flushStableSaveSession(saveSessions.current, path),
   });
-  const updateCanvasHistory = useCallback(
+  const updateDocumentHistory = useCallback(
     (path: string, controls: HistoryControlsValue | undefined): void => {
       if (tabsState.status !== "active" || tabsState.activePath !== path) {
         return;
       }
-      setCanvasHistory(
+      setDocumentHistory(
         controls === undefined ? undefined : { path, controls },
       );
     },
@@ -93,8 +93,8 @@ function App() {
         onActivate={activate}
         historyControls={
           tabsState.status === "active" &&
-          canvasHistory?.path === tabsState.activePath
-            ? canvasHistory.controls
+          documentHistory?.path === tabsState.activePath
+            ? documentHistory.controls
             : undefined
         }
       />
@@ -106,7 +106,7 @@ function App() {
           import.meta.env.MODE === "test" ? undefined : FILE_WATCH_OPERATIONS
         }
         dispatchExternalFileAction={dispatchExternalFileAction}
-        onHistoryControlsChange={updateCanvasHistory}
+        onHistoryControlsChange={updateDocumentHistory}
       />
     </div>
   );

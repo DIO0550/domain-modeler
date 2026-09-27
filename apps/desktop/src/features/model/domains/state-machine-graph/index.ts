@@ -182,6 +182,12 @@ const StateMachineGraphEdge = {
 
 /** state-machine の AST・参照解決結果を、安定順のノードと有向辺へ投影する。 */
 export const StateMachineGraph = {
+  stateSelection(name: string): StateMachineGraphSelection {
+    return { kind: "node", id: StateMachineGraphNode.id(name) };
+  },
+  transitionSelection(input: Readonly<{ from: string; to: string; event: string }>): StateMachineGraphSelection {
+    return { kind: "edge", id: `transition:${encodeURIComponent(input.from)}/${encodeURIComponent(input.to)}/${encodeURIComponent(input.event)}:0` };
+  },
   /**
    * 解析結果から描画モデルを作る。構文診断も含む全文の診断を渡す。
    * @param resolution 対象マシンの参照解決結果。

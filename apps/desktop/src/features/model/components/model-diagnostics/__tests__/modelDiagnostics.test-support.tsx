@@ -8,7 +8,8 @@ type RenderedDiagnostics = Readonly<{
 }>;
 
 type DiagnosticsRenderer = Readonly<{
-  render: (value: string, onChange?: (text: string) => void) => HTMLDivElement;
+  render: (value: string, onChange?: (text: string) => void,
+    onHistoryControlsChange?: (controls: Readonly<{ undo?: () => void; redo?: () => void }>) => void) => HTMLDivElement;
   unmountAll: () => void;
 }>;
 
@@ -19,7 +20,7 @@ type DiagnosticsRenderer = Readonly<{
 export const createDiagnosticsRenderer = (): DiagnosticsRenderer => {
   const rendered: RenderedDiagnostics[] = [];
   return {
-    render: (value, onChange = () => undefined) => {
+    render: (value, onChange = () => undefined, onHistoryControlsChange) => {
       const host = document.createElement("div");
       document.body.append(host);
       const root: Root = createRoot(host);
@@ -29,13 +30,13 @@ export const createDiagnosticsRenderer = (): DiagnosticsRenderer => {
         onChange(next);
         act(() => {
           root.render(
-            <ModelDiagnostics value={text} onChange={handleChange} />,
+            <ModelDiagnostics value={text} onChange={handleChange} onHistoryControlsChange={onHistoryControlsChange} />,
           );
         });
       };
       act(() => {
         root.render(
-          <ModelDiagnostics value={text} onChange={handleChange} />,
+          <ModelDiagnostics value={text} onChange={handleChange} onHistoryControlsChange={onHistoryControlsChange} />,
         );
       });
       rendered.push({
