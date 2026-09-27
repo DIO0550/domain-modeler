@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import type { StateMachineGraphInspection } from "../../domains/state-machine-graph";
+import { StateMachineGraph, type StateMachineGraphInspection } from "../../domains/state-machine-graph";
+import type { SourceRange } from "@domain-modeler/model-core";
 import { useStateMachineContext } from "./context";
 import { StateMachineEntryForm } from "./entry-form";
 import { PART_LABELS } from "./part-labels";
@@ -11,6 +12,7 @@ export function StateMachineInspector() {
     return null;
   }
   const { view, onEditSource } = context.value;
+  const { graph, inspection } = view;
   let heading = "インスペクター";
   if (view.target.kind === "part") {
     heading = `${PART_LABELS[view.target.part]}を追加`;
@@ -19,9 +21,33 @@ export function StateMachineInspector() {
     <aside className="state-machine-screen__inspector" aria-label="ステートマシンのインスペクター">
       <h2>{heading}</h2>
       <StateMachineInspectorContent />
-      <button type="button" className="state-machine-screen__source" onClick={onEditSource}>モデル定義で編集</button>
+      <div className="state-machine-screen__navigation">
+        <button type="button" className="state-machine-screen__source" onClick={() => onEditSource(graph?.nameRange)}>
+          {graph === null ? "モデルに戻る" : "モデルで開く"}
+        </button>
+        <StateMachineSourceJump graph={graph} inspection={inspection} onEditSource={onEditSource} />
+      </div>
     </aside>
   );
+}
+
+function StateMachineSourceJump({ graph, inspection, onEditSource }: Readonly<{
+  graph: StateMachineGraph | null;
+  inspection: StateMachineGraphInspection | null;
+  onEditSource: (range?: SourceRange) => void;
+}>) {
+  if (graph === null) {
+    return null;
+  }
+  if (inspection === null) {
+    return null;
+  }
+  if (inspection.kind === "machine") {
+    return null;
+  }
+  return <button type="button" onClick={() => onEditSource(StateMachineGraph.sourceRange(graph, inspection))}>
+    選択要素の DSL へ移動
+  </button>;
 }
 
 function StateMachineInspectorContent() {

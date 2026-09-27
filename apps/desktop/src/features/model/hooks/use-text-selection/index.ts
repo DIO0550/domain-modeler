@@ -27,6 +27,18 @@ export function useTextSelection(value: string) {
     };
   };
 
+  const rememberCurrentSelection = () => {
+    const input = inputRef.current;
+    if (input === null) {
+      return;
+    }
+    selection.current = {
+      start: input.selectionStart,
+      end: input.selectionEnd,
+      direction: input.selectionDirection,
+    };
+  };
+
   const select = (range: Readonly<{ start: number; end: number; line: number }>) => {
     selection.current = {
       start: range.start,
@@ -46,6 +58,11 @@ export function useTextSelection(value: string) {
       end: caret.offset,
       line: caret.line,
     });
+  };
+
+  const restore = () => {
+    const saved = selection.current;
+    select({ start: saved.start, end: saved.end, line: 1 });
   };
 
   useLayoutEffect(() => {
@@ -72,8 +89,10 @@ export function useTextSelection(value: string) {
   return {
     inputRef,
     rememberSelection,
+    rememberCurrentSelection,
     moveTo,
     select,
+    restore,
     onCompositionStart: () => {
       composing.current = true;
     },

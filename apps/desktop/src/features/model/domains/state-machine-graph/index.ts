@@ -263,4 +263,14 @@ export const StateMachineGraph = {
     }
     return { kind: "machine", name: graph.name, diagnostics: graph.diagnostics };
   },
+  /** 選択要素が指す DSL の範囲。未選択なら宣言名を返す。 */
+  sourceRange(graph: StateMachineGraph, inspection: StateMachineGraphInspection): SourceRangeValue {
+    if (inspection.kind === "node") {
+      return inspection.node.range;
+    }
+    if (inspection.kind === "edge") {
+      return inspection.edge.range;
+    }
+    return graph.nameRange;
+  },
 } as const;

@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useEffectEvent, useRef, type KeyboardEvent } from "react";
 import {
   Declaration,
   Result,
@@ -15,6 +15,7 @@ import {
 import { StubInsertion } from "../../domains/stub-insertion";
 import { useTextEditing } from "../../hooks/use-text-editing";
 import { useModelTextHistory } from "../../hooks/use-model-text-history";
+import { useModelModeNavigation } from "../../hooks/use-model-mode-navigation";
 import { ModelEditorDisplay } from "../model-editor";
 import { PreviewDataCard } from "../preview-data-card";
 import { PreviewErrorPlaceholder } from "../preview-error-placeholder";
@@ -37,11 +38,11 @@ type ModelDiagnosticsProps = Readonly<{
  * @returns 左右分割の診断付きモデル編集画面。
  */
 export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryControlsChange }: ModelDiagnosticsProps) {
-  const [mode, setMode] = useState<"model" | "state-machine">("model");
   const history = useModelTextHistory({ value, onChange });
   const editing = useTextEditing({ value, onChange: history.change });
+  const navigation = useModelModeNavigation({ editing });
+  const { mode, selectedMachineIndex, previewRef, openModel, openStateMachine } = navigation;
   const analyzed = AnalyzedModel.create(editing.value);
-  const previewRef = useRef<HTMLElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const notifyHistoryControlsChange = useEffectEvent(() => {
     onHistoryControlsChange?.({
@@ -169,11 +170,12 @@ export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryCo
   return (
     <div ref={workspaceRef} className="model-diagnostics-workspace" onKeyDownCapture={onHistoryKeyDown}>
       <nav className="model-diagnostics-workspace__modes" aria-label="表示モード">
-        <button type="button" aria-current={mode === "model" ? "page" : undefined} onClick={() => setMode("model")}>モデル</button>
-        <button type="button" aria-current={mode === "state-machine" ? "page" : undefined} onClick={() => setMode("state-machine")}>ステートマシン</button>
+        <button type="button" aria-current={mode === "model" ? "page" : undefined} onClick={() => openModel()}>モデル</button>
+        <button type="button" aria-current={mode === "state-machine" ? "page" : undefined} onClick={() => openStateMachine()}>ステートマシン</button>
       </nav>
       {mode === "state-machine" ? <StateMachine.Root value={value} onChange={history.change}
-        onEditSource={() => setMode("model")}>
+        initialMachineIndex={selectedMachineIndex} onMachineSelected={navigation.selectMachine}
+        onEditSource={openModel}>
         <StateMachine.Palette />
         <StateMachine.Graph />
         <StateMachine.Inspector />
@@ -218,6 +220,7 @@ export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryCo
             onTypeRefClick={handleTypeRefClick}
             onUndefinedBadgeClick={handleUndefinedBadgeClick}
             onRename={renameDeclaration}
+            onOpenStateMachine={(index) => openStateMachine(index)}
           />
         ))}
       </section>
@@ -232,6 +235,7 @@ type PreviewDeclItemProps = Readonly<{
   onTypeRefClick: (typeRef: PreviewTypeRefValue) => void;
   onUndefinedBadgeClick: (typeRef: PreviewTypeRefValue) => void;
   onRename: (params: Readonly<{ decl: NamedDeclValue; nextName: string }>) => void;
+  onOpenStateMachine: (index: number) => void;
 }>;
 
 /**
@@ -246,6 +250,7 @@ function PreviewDeclItem({
   onTypeRefClick,
   onUndefinedBadgeClick,
   onRename,
+  onOpenStateMachine,
 }: PreviewDeclItemProps) {
   if (Declaration.isError(decl)) {
     return (
@@ -256,7 +261,16 @@ function PreviewDeclItem({
     );
   }
   if (Declaration.isStateMachine(decl)) {
-    return null;
+    const index = AnalyzedModel.stateMachineIndex(analyzed, decl);
+    return <article className="model-diagnostics__machine-card" data-decl-name={decl.name}>
+      <strong>state-machine {decl.name}</strong>
+      <button type="button" disabled={Option.isNone(index)} onClick={() => {
+        if (Option.isNone(index)) {
+          return;
+        }
+        onOpenStateMachine(index.value);
+      }}>ステートマシンで開く</button>
+    </article>;
   }
   const handleRename = (nextName: string) => {
     onRename({ decl, nextName });

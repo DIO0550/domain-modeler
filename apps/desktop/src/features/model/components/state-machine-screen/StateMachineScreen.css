@@ -46,7 +46,7 @@
 .state-machine-screen__inspector form { gap: 12px; font-size: 12px; }
 .state-machine-screen__inspector label.state-machine-screen__checkbox { flex-direction: row; align-items: center; }
 .state-machine-screen__checkbox input { width: auto; }
-.state-machine-screen__source { margin-top: auto; }
+.state-machine-screen__navigation { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
 .state-machine-screen__diagnostic { color: var(--model-editor-error) !important; }
 @media (max-width: 750px) {
   .state-machine-screen { grid-template-columns: 130px minmax(0, 1fr); grid-template-rows: minmax(250px, 1fr) auto; }
