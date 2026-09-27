@@ -121,3 +121,75 @@ test("追加対象の切替で前のフォーム入力とエラーを引き継�
   click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "状態") ?? null);
   expect((host.querySelector('input[aria-label="状態名"]') as HTMLInputElement).value).toBe("");
 });
+
+test("状態のプロパティを変更するとDSLとグラフが同期し、一度のUndoで戻る", () => {
+  let latest = machine;
+  const host = diagnostics.render(machine, (value) => { latest = value; });
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  click(host.querySelector('.state-machine-screen__node[aria-label^="待機"]'));
+  const name = host.querySelector('input[aria-label="状態名"]') as HTMLInputElement;
+  type(name, "保留");
+  act(() => name.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(latest).toContain("initial: 保留\n  state: 保留");
+  expect(latest).toContain("transition: 保留 -> 完了 on 確定");
+  expect(host.querySelector('.state-machine-screen__node[aria-label^="保留"][data-selected="true"]')).not.toBeNull();
+  act(() => host.querySelector('.state-machine-screen__node[data-selected="true"]')
+    ?.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+  expect(latest).toBe(machine);
+  act(() => host.querySelector(".state-machine-screen__toolbar select")
+    ?.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true })));
+  expect(latest).toContain("state: 保留");
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "モデル") ?? null);
+  expect((host.querySelector("textarea") as HTMLTextAreaElement).value).toContain("state: 保留");
+});
+
+test("不正な編集は入力を保ち、診断を表示して文書を変更しない", () => {
+  let latest = machine;
+  const host = diagnostics.render(machine, (value) => { latest = value; });
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  click(host.querySelector('.state-machine-screen__node[aria-label^="待機"]'));
+  const name = host.querySelector('input[aria-label="状態名"]') as HTMLInputElement;
+  type(name, "with space");
+  act(() => name.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(latest).toBe(machine);
+  expect(name.value).toBe("with space");
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain("有効な状態名");
+});
+
+test("文書タイトル行へUndoとRedoの可用性を通知する", () => {
+  let latest = machine;
+  let controls: Readonly<{ undo?: () => void; redo?: () => void }> = {};
+  const host = diagnostics.render(machine, (value) => { latest = value; }, (value) => { controls = value; });
+  expect(controls.undo).toBeUndefined();
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "状態") ?? null);
+  const name = host.querySelector('input[aria-label="状態名"]') as HTMLInputElement;
+  type(name, "保留");
+  act(() => name.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(controls.undo).toBeDefined();
+  act(() => controls.undo?.());
+  expect(latest).toBe(machine);
+  expect(controls.redo).toBeDefined();
+  act(() => controls.redo?.());
+  expect(latest).toContain("state: 保留");
+});
+
+test("遷移の接続先変更と削除後もフォーカスを保ち、キーボードでUndoできる", async () => {
+  let latest = machine;
+  const host = diagnostics.render(machine, (value) => { latest = value; });
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  const edge = host.querySelector(".state-machine-screen__edge");
+  act(() => edge?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+  const target = host.querySelector('select[aria-label="遷移先"]') as HTMLSelectElement;
+  act(() => { target.value = "待機"; target.dispatchEvent(new Event("change", { bubbles: true })); });
+  act(() => target.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(latest).toContain("transition: 待機 -> 待機 on 確定");
+  const deleteButton = [...host.querySelectorAll("button")].find((button) => button.textContent === "削除");
+  click(deleteButton ?? null);
+  expect(latest).not.toContain("transition:");
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  const focused = document.activeElement;
+  expect(focused).toBe(host.querySelector(".state-machine-screen__toolbar select"));
+  act(() => focused?.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+  expect(latest).toContain("transition: 待機 -> 待機 on 確定");
+});

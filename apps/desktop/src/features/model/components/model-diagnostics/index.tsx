@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent } from "react";
 import {
   Declaration,
   Result,
@@ -14,6 +14,7 @@ import {
 } from "../../domains/preview-type-ref";
 import { StubInsertion } from "../../domains/stub-insertion";
 import { useTextEditing } from "../../hooks/use-text-editing";
+import { useModelTextHistory } from "../../hooks/use-model-text-history";
 import { ModelEditorDisplay } from "../model-editor";
 import { PreviewDataCard } from "../preview-data-card";
 import { PreviewErrorPlaceholder } from "../preview-error-placeholder";
@@ -24,6 +25,8 @@ import "./ModelDiagnostics.css";
 type ModelDiagnosticsProps = Readonly<{
   value: string;
   onChange: (text: string) => void;
+  isActive?: boolean;
+  onHistoryControlsChange?: (controls: Readonly<{ undo?: () => void; redo?: () => void }>) => void;
 }>;
 
 /**
@@ -33,11 +36,24 @@ type ModelDiagnosticsProps = Readonly<{
  * @param props 全文と変更通知。
  * @returns 左右分割の診断付きモデル編集画面。
  */
-export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
+export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryControlsChange }: ModelDiagnosticsProps) {
   const [mode, setMode] = useState<"model" | "state-machine">("model");
-  const editing = useTextEditing({ value, onChange });
+  const history = useModelTextHistory({ value, onChange });
+  const editing = useTextEditing({ value, onChange: history.change });
   const analyzed = AnalyzedModel.create(editing.value);
   const previewRef = useRef<HTMLElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const notifyHistoryControlsChange = useEffectEvent(() => {
+    onHistoryControlsChange?.({
+      undo: history.canUndo ? history.undo : undefined,
+      redo: history.canRedo ? history.redo : undefined,
+    });
+  });
+  useEffect(() => {
+    if (isActive) {
+      notifyHistoryControlsChange();
+    }
+  }, [isActive, value, history.canUndo, history.canRedo]);
 
   const scrollPreviewTo = (name: string) => {
     const scroll = () => {
@@ -111,13 +127,53 @@ export function ModelDiagnostics({ value, onChange }: ModelDiagnosticsProps) {
     });
   };
 
+  const onHistoryKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!event.metaKey && !event.ctrlKey) {
+      return;
+    }
+    if (event.altKey) {
+      return;
+    }
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+    if (event.target instanceof HTMLInputElement) {
+      return;
+    }
+    const key = event.key.toLowerCase();
+    if (key !== "z" && key !== "y") {
+      return;
+    }
+    event.preventDefault();
+    const restoreFocus = () => {
+      if (mode !== "state-machine") {
+        return;
+      }
+      requestAnimationFrame(() => {
+        if (document.activeElement !== document.body) {
+          return;
+        }
+        workspaceRef.current?.querySelector<HTMLSelectElement>(".state-machine-screen__toolbar select")?.focus();
+      });
+    };
+    const redoRequested = key === "y" || event.shiftKey;
+    if (redoRequested) {
+      history.redo();
+      restoreFocus();
+      return;
+    }
+    history.undo();
+    restoreFocus();
+  };
+
   return (
-    <div className="model-diagnostics-workspace">
+    <div ref={workspaceRef} className="model-diagnostics-workspace" onKeyDownCapture={onHistoryKeyDown}>
       <nav className="model-diagnostics-workspace__modes" aria-label="表示モード">
         <button type="button" aria-current={mode === "model" ? "page" : undefined} onClick={() => setMode("model")}>モデル</button>
         <button type="button" aria-current={mode === "state-machine" ? "page" : undefined} onClick={() => setMode("state-machine")}>ステートマシン</button>
       </nav>
-      {mode === "state-machine" ? <StateMachine.Root value={value} onChange={onChange} onEditSource={() => setMode("model")}>
+      {mode === "state-machine" ? <StateMachine.Root value={value} onChange={history.change}
+        onEditSource={() => setMode("model")}>
         <StateMachine.Palette />
         <StateMachine.Graph />
         <StateMachine.Inspector />

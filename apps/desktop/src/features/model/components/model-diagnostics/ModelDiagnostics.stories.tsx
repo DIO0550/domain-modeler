@@ -65,3 +65,57 @@ export const Empty: Story = {
     value: "",
   },
 };
+
+export const StateMachineEditing: Story = {
+  args: {
+    value: `state-machine 注文 =
+  initial: 待機
+  state: 待機
+  state: 処理中
+  state: 完了 terminal
+  transition: 待機 -> 処理中 on 開始
+  transition: 処理中 -> 完了 on 確定
+`,
+  },
+  play: async ({ canvasElement }) => {
+    const mode = [...canvasElement.querySelectorAll<HTMLButtonElement>("nav button")]
+      .find((button) => button.textContent === "ステートマシン");
+    mode?.click();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    canvasElement.querySelector('.state-machine-screen__node[aria-label^="待機"]')
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  },
+};
+
+export const StateMachineTransitionEditing: Story = {
+  args: StateMachineEditing.args,
+  play: async ({ canvasElement }) => {
+    const mode = [...canvasElement.querySelectorAll<HTMLButtonElement>("nav button")]
+      .find((button) => button.textContent === "ステートマシン");
+    mode?.click();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    canvasElement.querySelector(".state-machine-screen__edge")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  },
+};
+
+export const StateMachineAfterEdit: Story = {
+  args: StateMachineEditing.args,
+  play: async ({ canvasElement }) => {
+    const mode = [...canvasElement.querySelectorAll<HTMLButtonElement>("nav button")]
+      .find((button) => button.textContent === "ステートマシン");
+    mode?.click();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    canvasElement.querySelector('.state-machine-screen__node[aria-label^="待機"]')
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    const name = canvasElement.querySelector<HTMLInputElement>('input[aria-label="状態名"]');
+    if (name === null) {
+      return;
+    }
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(name, "保留");
+    name.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    name.form?.requestSubmit();
+  },
+};

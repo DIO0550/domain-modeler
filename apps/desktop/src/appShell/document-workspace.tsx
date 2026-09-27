@@ -15,6 +15,7 @@ import {
 import { ModelDiagnostics } from "@/features/model";
 import {
   CanvasEditor,
+  HistoryButton,
   type HistoryControlsValue,
   type SaveIndicatorStatus,
 } from "@/features/canvas";
@@ -805,6 +806,11 @@ function DocumentEditor({
       {conflictBanner}
       <ModelDiagnostics
         value={text}
+        isActive={isActive}
+        onHistoryControlsChange={(controls) => onHistoryControlsChange?.(tab.path, {
+          undo: controls.undo === undefined ? HistoryButton.disabled() : HistoryButton.enabled(controls.undo),
+          redo: controls.redo === undefined ? HistoryButton.disabled() : HistoryButton.enabled(controls.redo),
+        })}
         onChange={(nextText) => {
           setText(nextText);
           autoSave.notifyContentsChanged(nextText);

@@ -29,7 +29,7 @@ test("構成要素を並べ替えても選択と画面遷移を共有できる",
 
     act(() => host.querySelector(".state-machine-screen__node")
       ?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
-    expect(host.querySelector('input[aria-label="状態名"]')).toBeNull();
+    expect((host.querySelector('input[aria-label="状態名"]') as HTMLInputElement).value).toBe("待機");
     expect(host.querySelector(".state-machine-screen__details")?.textContent).toContain("待機");
 
     act(() => host.querySelector(".state-machine-screen__source")

@@ -44,6 +44,8 @@
 .state-machine-screen__edge text { paint-order: stroke; stroke: var(--shell-bg); stroke-width: 6; }
 .state-machine-screen__inspector form, .state-machine-screen__inspector label { display: flex; flex-direction: column; gap: 8px; }
 .state-machine-screen__inspector form { gap: 12px; font-size: 12px; }
+.state-machine-screen__inspector label.state-machine-screen__checkbox { flex-direction: row; align-items: center; }
+.state-machine-screen__checkbox input { width: auto; }
 .state-machine-screen__source { margin-top: auto; }
 .state-machine-screen__diagnostic { color: var(--model-editor-error) !important; }
 @media (max-width: 750px) {

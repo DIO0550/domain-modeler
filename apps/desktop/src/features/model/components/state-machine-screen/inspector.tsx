@@ -3,6 +3,7 @@ import type { StateMachineGraphInspection } from "../../domains/state-machine-gr
 import { useStateMachineContext } from "./context";
 import { StateMachineEntryForm } from "./entry-form";
 import { PART_LABELS } from "./part-labels";
+import { StateMachineSelectionForm } from "./selection-form";
 
 export function StateMachineInspector() {
   const context = useStateMachineContext();
@@ -40,7 +41,13 @@ function StateMachineInspectorContent() {
   if (view.inspection === null) {
     return null;
   }
-  return <StateMachineInspectionDetails inspection={view.inspection} />;
+  return <>
+    {view.inspection.kind !== "machine" && view.resolution !== null &&
+      <StateMachineSelectionForm key={`${view.selectedMachineIndex}-${view.target.kind === "element" ? view.target.selection.id : "none"}-${value}`}
+        inspection={view.inspection} resolution={view.resolution} value={value} onChange={onChange}
+        onSelect={view.selectElement} onClear={view.clearSelection} />}
+    <StateMachineInspectionDetails inspection={view.inspection} />
+  </>;
 }
 
 function StateMachineInspectionDetails({ inspection }: Readonly<{ inspection: StateMachineGraphInspection }>) {

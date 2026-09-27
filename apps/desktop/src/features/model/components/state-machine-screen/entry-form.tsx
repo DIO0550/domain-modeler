@@ -3,6 +3,7 @@ import {
   type StateMachineDraftTarget,
   type UseStateMachineDraftResult,
 } from "../../hooks/use-state-machine-draft";
+import { StateMachineForm } from "./form-fields";
 
 type StateMachineEntryFormProps = Readonly<{
   value: string;
@@ -25,20 +26,20 @@ function StateMachineEntryFields({ target, draft }: Readonly<{
   draft: UseStateMachineDraftResult;
 }>) {
   if (target.kind === "machine") {
-    return <label>マシン名<input aria-label="マシン名" value={draft.fields.name}
-      onChange={(change) => draft.changeField("name", change.target.value)} /></label>;
+    return <StateMachineForm.Input label="マシン名" value={draft.fields.name}
+      onChange={(value) => draft.changeField("name", value)} />;
   }
   if (target.part === "transition") {
     return <>
-      <label>遷移元<input aria-label="遷移元" value={draft.fields.from}
-        onChange={(change) => draft.changeField("from", change.target.value)} /></label>
-      <label>遷移先<input aria-label="遷移先" value={draft.fields.to}
-        onChange={(change) => draft.changeField("to", change.target.value)} /></label>
-      <label>イベント名<input aria-label="イベント名" value={draft.fields.event}
-        onChange={(change) => draft.changeField("event", change.target.value)} /></label>
+      <StateMachineForm.Input label="遷移元" value={draft.fields.from}
+        onChange={(value) => draft.changeField("from", value)} />
+      <StateMachineForm.Input label="遷移先" value={draft.fields.to}
+        onChange={(value) => draft.changeField("to", value)} />
+      <StateMachineForm.Input label="イベント名" value={draft.fields.event}
+        onChange={(value) => draft.changeField("event", value)} />
     </>;
   }
   const label = target.part === "initial" ? "既存の状態名" : "状態名";
-  return <label>{label}<input aria-label={label} value={draft.fields.name}
-    onChange={(change) => draft.changeField("name", change.target.value)} /></label>;
+  return <StateMachineForm.Input label={label} value={draft.fields.name}
+    onChange={(value) => draft.changeField("name", value)} />;
 }
