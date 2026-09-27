@@ -49,8 +49,8 @@ export function StateMachineSelectionForm({ inspection, resolution, value, onCha
     event.preventDefault();
     if (!editable) { return; }
     const result = inspection.kind === "node"
-      ? StateMachineSource.updateState(value, resolution, inspection.node.name, draft)
-      : StateMachineSource.updateTransition(value, resolution, inspection.edge.range, draft);
+      ? StateMachineSource.updateState(value, resolution, { ...draft, oldName: inspection.node.name })
+      : StateMachineSource.updateTransition(value, resolution, { ...draft, range: inspection.edge.range });
     if (Result.isErr(result)) { dispatch({ type: "error", message: result.error }); return; }
     onChange(result.value);
     onSelect(inspection.kind === "node" ? StateMachineGraph.stateSelection(draft.name) : StateMachineGraph.transitionSelection(draft));

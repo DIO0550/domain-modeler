@@ -11,6 +11,8 @@ export type StateMachineSourceInput = Readonly<{
 
 export type StateMachineStateInput = Readonly<{ name: string; initial: boolean; terminal: boolean }>;
 export type StateMachineTransitionInput = Readonly<{ from: string; to: string; event: string }>;
+export type StateMachineStateEdit = Readonly<StateMachineStateInput & { oldName: string }>;
+export type StateMachineTransitionEdit = Readonly<StateMachineTransitionInput & { range: SourceRange }>;
 
 type SourceReplacement = Readonly<{ start: number; end: number; text: string }>;
 
@@ -38,8 +40,7 @@ const removeLine = (source: string, line: number): SourceReplacement | null => {
   if (start === null) { return null; }
   const endOfLine = source.indexOf("\n", start);
   if (endOfLine >= 0) { return { start, end: endOfLine + 1, text: "" }; }
-  const precedingNewline = source.slice(Math.max(0, start - 2), start) === "\r\n" ? 2 : 1;
-  return { start: Math.max(0, start - precedingNewline), end: source.length, text: "" };
+  return { start, end: source.length, text: "" };
 };
 
 const applyReplacements = (source: string, replacements: readonly (SourceReplacement | null)[]): ResultValue<string, string> => {
@@ -135,8 +136,9 @@ export const StateMachineSource = {
     return Result.ok(lines.join("\n"));
   },
   /** 状態名の全参照と初期・終端属性を1回の文書更新で変更する。 */
-  updateState(source: string, resolution: StateMachineResolution, oldName: string, input: StateMachineStateInput): ResultValue<string, string> {
+  updateState(source: string, resolution: StateMachineResolution, input: StateMachineStateEdit): ResultValue<string, string> {
     const { machine } = resolution;
+    const { oldName } = input;
     const states = machine.states.filter((state) => state.name === oldName);
     const state = states[0];
     if (state === undefined || states.length !== 1) { return Result.err("編集する状態を一意に特定できません"); }
@@ -180,9 +182,9 @@ export const StateMachineSource = {
     return applyReplacements(source, replacements);
   },
   /** 遷移の3属性を、コメントと周囲の宣言を残して更新する。 */
-  updateTransition(source: string, resolution: StateMachineResolution, oldRange: SourceRange, input: StateMachineTransitionInput): ResultValue<string, string> {
+  updateTransition(source: string, resolution: StateMachineResolution, input: StateMachineTransitionEdit): ResultValue<string, string> {
     const { machine } = resolution;
-    const transition = machine.transitions.find((item) => item.range.startLine === oldRange.startLine);
+    const transition = machine.transitions.find((item) => item.range.startLine === input.range.startLine);
     if (transition === undefined) { return Result.err("編集する遷移を特定できません"); }
     if (![input.from, input.to, input.event].every(Identifier.isAcceptable)) { return Result.err("遷移元・遷移先・イベント名を入力してください"); }
     if (![input.from, input.to].every((name) => machine.states.some((state) => state.name === name))) {

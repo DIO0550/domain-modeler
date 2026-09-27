@@ -147,7 +147,7 @@ const StateMachineGraphNode = {
 } as const;
 
 const StateMachineGraphEdge = {
-  key(transition: TransitionDecl): string {
+  key(transition: Pick<TransitionDecl, "from" | "to" | "event">): string {
     return `transition:${encodeURIComponent(transition.from)}/${encodeURIComponent(transition.to)}/${encodeURIComponent(transition.event)}`;
   },
   createAll(transitions: readonly TransitionDecl[], diagnostics: readonly Diagnostic[]): readonly StateMachineGraphEdge[] {
@@ -186,7 +186,7 @@ export const StateMachineGraph = {
     return { kind: "node", id: StateMachineGraphNode.id(name) };
   },
   transitionSelection(input: Readonly<{ from: string; to: string; event: string }>): StateMachineGraphSelection {
-    return { kind: "edge", id: `transition:${encodeURIComponent(input.from)}/${encodeURIComponent(input.to)}/${encodeURIComponent(input.event)}:0` };
+    return { kind: "edge", id: `${StateMachineGraphEdge.key(input)}:0` };
   },
   /**
    * 解析結果から描画モデルを作る。構文診断も含む全文の診断を渡す。
