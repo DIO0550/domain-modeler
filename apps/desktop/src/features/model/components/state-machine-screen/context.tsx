@@ -31,7 +31,7 @@ export function useStateMachineContext(): Optional<StateMachineContextValue> {
 /**
  * `.dmodel` のステートマシンをパレット・グラフ・インスペクターで表示する。
  *
- * @param props 文書全文、変更通知、モデル定義画面への切替操作、配置する子要素。
+ * @param props 文書全文、変更通知、モデル定義画面への切替操作、初期マシン位置、マシン選択通知、配置する子要素。
  * @returns ステートマシン全体の編集画面。
  */
 export function StateMachineRoot({ value, onChange, onEditSource,
