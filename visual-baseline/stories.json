@@ -260,6 +260,21 @@
     "name": "Empty"
   },
   {
+    "id": "model-modeldiagnostics--state-machine-after-edit",
+    "title": "Model/ModelDiagnostics",
+    "name": "State Machine After Edit"
+  },
+  {
+    "id": "model-modeldiagnostics--state-machine-editing",
+    "title": "Model/ModelDiagnostics",
+    "name": "State Machine Editing"
+  },
+  {
+    "id": "model-modeldiagnostics--state-machine-transition-editing",
+    "title": "Model/ModelDiagnostics",
+    "name": "State Machine Transition Editing"
+  },
+  {
     "id": "model-modeleditor--default",
     "title": "Model/ModelEditor",
     "name": "Default"
