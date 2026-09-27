@@ -50,7 +50,9 @@ export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryCo
     });
   });
   useEffect(() => {
-    if (isActive) { notifyHistoryControlsChange(); }
+    if (isActive) {
+      notifyHistoryControlsChange();
+    }
   }, [isActive, value, history.canUndo, history.canRedo]);
 
   const scrollPreviewTo = (name: string) => {
@@ -126,19 +128,40 @@ export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryCo
   };
 
   const onHistoryKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (!(event.metaKey || event.ctrlKey) || event.altKey || event.nativeEvent.isComposing) { return; }
-    if (event.target instanceof HTMLInputElement) { return; }
+    if (!event.metaKey && !event.ctrlKey) {
+      return;
+    }
+    if (event.altKey) {
+      return;
+    }
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+    if (event.target instanceof HTMLInputElement) {
+      return;
+    }
     const key = event.key.toLowerCase();
-    if (key !== "z" && key !== "y") { return; }
+    if (key !== "z" && key !== "y") {
+      return;
+    }
     event.preventDefault();
     const restoreFocus = () => {
-      if (mode !== "state-machine") { return; }
+      if (mode !== "state-machine") {
+        return;
+      }
       requestAnimationFrame(() => {
-        if (document.activeElement !== document.body) { return; }
+        if (document.activeElement !== document.body) {
+          return;
+        }
         workspaceRef.current?.querySelector<HTMLSelectElement>(".state-machine-screen__toolbar select")?.focus();
       });
     };
-    if (key === "y" || event.shiftKey) { history.redo(); restoreFocus(); return; }
+    const redoRequested = key === "y" || event.shiftKey;
+    if (redoRequested) {
+      history.redo();
+      restoreFocus();
+      return;
+    }
     history.undo();
     restoreFocus();
   };

@@ -18,33 +18,52 @@ type SourceReplacement = Readonly<{ start: number; end: number; text: string }>;
 
 const offsetOf = (source: string, line: number, column: number): number | null => {
   const lines = source.split("\n");
-  if (line < 1 || line > lines.length) { return null; }
+  if (line < 1) {
+    return null;
+  }
+  if (line > lines.length) {
+    return null;
+  }
   return lines.slice(0, line - 1).reduce((offset, item) => offset + item.length + 1, 0) + column - 1;
 };
 
 const replacementOf = (source: string, range: SourceRange, text: string): SourceReplacement | null => {
   const start = offsetOf(source, range.startLine, range.startColumn);
   const end = offsetOf(source, range.endLine, range.endColumn);
-  return start === null || end === null ? null : { start, end, text };
+  if (start === null) {
+    return null;
+  }
+  if (end === null) {
+    return null;
+  }
+  return { start, end, text };
 };
 
 const lineReplacement = (source: string, line: number, text: string): SourceReplacement | null => {
   const start = offsetOf(source, line, 1);
-  if (start === null) { return null; }
+  if (start === null) {
+    return null;
+  }
   const endOfLine = source.indexOf("\n", start);
   return { start, end: endOfLine < 0 ? source.length : endOfLine, text };
 };
 
 const removeLine = (source: string, line: number): SourceReplacement | null => {
   const start = offsetOf(source, line, 1);
-  if (start === null) { return null; }
+  if (start === null) {
+    return null;
+  }
   const endOfLine = source.indexOf("\n", start);
-  if (endOfLine >= 0) { return { start, end: endOfLine + 1, text: "" }; }
+  if (endOfLine >= 0) {
+    return { start, end: endOfLine + 1, text: "" };
+  }
   return { start, end: source.length, text: "" };
 };
 
 const applyReplacements = (source: string, replacements: readonly (SourceReplacement | null)[]): ResultValue<string, string> => {
-  if (replacements.some((replacement) => replacement === null)) { return Result.err("編集対象の位置を特定できません"); }
+  if (replacements.some((replacement) => replacement === null)) {
+    return Result.err("編集対象の位置を特定できません");
+  }
   const ordered = (replacements.filter((replacement) => replacement !== null) as SourceReplacement[])
     .sort((left, right) => right.start - left.start);
   if (ordered.some((replacement, index) => index > 0 && replacement.end > (ordered[index - 1]?.start ?? source.length))) {
@@ -56,7 +75,9 @@ const applyReplacements = (source: string, replacements: readonly (SourceReplace
 
 const stateLine = (source: string, line: number, terminal: boolean): SourceReplacement | null => {
   const replacement = lineReplacement(source, line, "");
-  if (replacement === null) { return null; }
+  if (replacement === null) {
+    return null;
+  }
   const original = source.slice(replacement.start, replacement.end);
   const commentAt = original.indexOf("//");
   const body = commentAt < 0 ? original : original.slice(0, commentAt);
@@ -102,7 +123,7 @@ export const StateMachineSource = {
         return Result.err("遷移元・遷移先・イベント名を入力してください");
       }
       const names = new Set(machine.states.map((state) => state.name));
-      if (!names.has(input.from) || !names.has(input.to)) {
+      if (![input.from, input.to].every((name) => names.has(name))) {
         return Result.err("マシン内の状態を遷移元と遷移先に指定してください");
       }
       if (machine.states.some((state) => state.name === input.from && state.terminal)) {
@@ -140,9 +161,13 @@ export const StateMachineSource = {
     const { machine } = resolution;
     const { oldName } = input;
     const states = machine.states.filter((state) => state.name === oldName);
-    const state = states[0];
-    if (state === undefined || states.length !== 1) { return Result.err("編集する状態を一意に特定できません"); }
-    if (!Identifier.isAcceptable(input.name)) { return Result.err("有効な状態名を入力してください"); }
+    if (states.length !== 1) {
+      return Result.err("編集する状態を一意に特定できません");
+    }
+    const state = states[0]!;
+    if (!Identifier.isAcceptable(input.name)) {
+      return Result.err("有効な状態名を入力してください");
+    }
     if (input.name !== oldName && machine.states.some((item) => item.name === input.name)) {
       return Result.err("同じ名前の状態が既にあります");
     }
@@ -152,20 +177,34 @@ export const StateMachineSource = {
     const initials = machine.initials.filter((initial) => initial.name === oldName);
     if (input.initial && machine.initials.some((initial) => initial.name !== oldName)) {
       // 既存の初期行を置き換える。重複行がある場合は構造化編集で曖昧さを隠さない。
-      if (machine.initials.length !== 1) { return Result.err("初期状態の重複をモデル定義で修正してください"); }
+      if (machine.initials.length !== 1) {
+        return Result.err("初期状態の重複をモデル定義で修正してください");
+      }
     }
     const replacements: (SourceReplacement | null)[] = [];
     if (input.name !== oldName) {
       replacements.push(...(resolution.references[oldName] ?? [])
-        .filter((range) => input.initial || !initials.some((initial) => initial.range.startLine === range.startLine))
+        .filter((range) => {
+          if (input.initial) {
+            return true;
+          }
+          return !initials.some((initial) => initial.range.startLine === range.startLine);
+        })
         .map((range) => replacementOf(source, range, input.name)));
     }
     if (input.terminal !== state.terminal) {
       // 名前の置換と同じ行を編集するため、先に状態行を名前ごと置き換える。
       const line = stateLine(source, state.range.startLine, input.terminal);
-      if (line === null) { return Result.err("状態の行を特定できません"); }
-      replacements.splice(0, replacements.length, ...replacements.filter((item) =>
-        item === null || item.start < line.start || item.end > line.end));
+      if (line === null) {
+        return Result.err("状態の行を特定できません");
+      }
+      replacements.splice(0, replacements.length, ...replacements.filter((item) => {
+        if (item === null) {
+          return true;
+        }
+        const withinStateLine = item.start >= line.start && item.end <= line.end;
+        return !withinStateLine;
+      }));
       const renamedLine = line.text.replace(/(\bstate:\s*)[^\s/]+/, (_match, prefix: string) => `${prefix}${input.name}`);
       replacements.push({ ...line, text: `${input.initial && machine.initials.length === 0 ? `  initial: ${input.name}${source.includes("\r\n") ? "\r\n" : "\n"}` : ""}${renamedLine}` });
     }
@@ -185,13 +224,21 @@ export const StateMachineSource = {
   updateTransition(source: string, resolution: StateMachineResolution, input: StateMachineTransitionEdit): ResultValue<string, string> {
     const { machine } = resolution;
     const transition = machine.transitions.find((item) => item.range.startLine === input.range.startLine);
-    if (transition === undefined) { return Result.err("編集する遷移を特定できません"); }
-    if (![input.from, input.to, input.event].every(Identifier.isAcceptable)) { return Result.err("遷移元・遷移先・イベント名を入力してください"); }
+    if (transition === undefined) {
+      return Result.err("編集する遷移を特定できません");
+    }
+    if (![input.from, input.to, input.event].every(Identifier.isAcceptable)) {
+      return Result.err("遷移元・遷移先・イベント名を入力してください");
+    }
     if (![input.from, input.to].every((name) => machine.states.some((state) => state.name === name))) {
       return Result.err("マシン内の状態を遷移元と遷移先に指定してください");
     }
-    if (machine.states.some((state) => state.name === input.from && state.terminal)) { return Result.err("終端状態からは遷移できません"); }
-    if (machine.transitions.some((item) => item !== transition && transitionMatches(item, input))) { return Result.err("同じ遷移が既にあります"); }
+    if (machine.states.some((state) => state.name === input.from && state.terminal)) {
+      return Result.err("終端状態からは遷移できません");
+    }
+    if (machine.transitions.some((item) => item !== transition && transitionMatches(item, input))) {
+      return Result.err("同じ遷移が既にあります");
+    }
     return applyReplacements(source, [
       replacementOf(source, transition.fromRange, input.from),
       replacementOf(source, transition.toRange, input.to),
@@ -203,13 +250,18 @@ export const StateMachineSource = {
     const { machine } = resolution;
     if (target.kind === "transition") {
       const edge = machine.transitions.find((item) => item.range.startLine === target.range.startLine);
-      return edge === undefined ? Result.err("遷移を特定できません") : applyReplacements(source, [removeLine(source, edge.range.startLine)]);
+      if (edge === undefined) {
+        return Result.err("遷移を特定できません");
+      }
+      return applyReplacements(source, [removeLine(source, edge.range.startLine)]);
     }
     const states = machine.states.filter((state) => state.name === target.name);
-    if (states.length !== 1) { return Result.err("削除する状態を一意に特定できません"); }
+    if (states.length !== 1) {
+      return Result.err("削除する状態を一意に特定できません");
+    }
     const lines = [states[0]!.range.startLine,
       ...machine.initials.filter((initial) => initial.name === target.name).map((initial) => initial.range.startLine),
-      ...machine.transitions.filter((edge) => edge.from === target.name || edge.to === target.name).map((edge) => edge.range.startLine)];
+      ...machine.transitions.filter((edge) => [edge.from, edge.to].includes(target.name)).map((edge) => edge.range.startLine)];
     return applyReplacements(source, [...new Set(lines)].map((line) => removeLine(source, line)));
   },
 } as const;

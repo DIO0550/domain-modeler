@@ -12,19 +12,25 @@ export function useModelTextHistory({ value, onChange }: UseModelTextHistoryPara
   }
   const active = history.current === value ? history : ModelTextHistory.create(value);
   const change = (next: string) => {
-    if (next === value) { return; }
+    if (next === value) {
+      return;
+    }
     setHistory(ModelTextHistory.record(active, next));
     onChange(next);
   };
   const undo = () => {
     const next = ModelTextHistory.undo(active);
-    if (next === active) { return; }
+    if (next === active) {
+      return;
+    }
     setHistory(next);
     onChange(next.current);
   };
   const redo = () => {
     const next = ModelTextHistory.redo(active);
-    if (next === active) { return; }
+    if (next === active) {
+      return;
+    }
     setHistory(next);
     onChange(next.current);
   };

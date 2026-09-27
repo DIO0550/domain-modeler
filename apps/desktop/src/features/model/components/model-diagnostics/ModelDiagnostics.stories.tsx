@@ -110,7 +110,9 @@ export const StateMachineAfterEdit: Story = {
       ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     const name = canvasElement.querySelector<HTMLInputElement>('input[aria-label="状態名"]');
-    if (name === null) { return; }
+    if (name === null) {
+      return;
+    }
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(name, "保留");
     name.dispatchEvent(new Event("input", { bubbles: true }));
     await new Promise<void>((resolve) => setTimeout(resolve, 0));

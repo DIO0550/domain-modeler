@@ -28,11 +28,15 @@ export function StateMachineSelectionForm({ inspection, resolution, value, onCha
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
-    if (editor.submit()) { focusGraph(form, true); }
+    if (editor.submit()) {
+      focusGraph(form, true);
+    }
   };
   const remove = (event: MouseEvent<HTMLButtonElement>) => {
     const form = event.currentTarget.form;
-    if (editor.remove() && form !== null) { focusGraph(form, false); }
+    if (editor.remove() && form !== null) {
+      focusGraph(form, false);
+    }
   };
   const fields = inspection.kind === "node"
     ? <StateMachineSelectionFields.Node {...editor} />

@@ -69,23 +69,34 @@ const statusOf = (diagnostics: readonly Diagnostic[]): GraphDiagnosticState => {
 const compareText = (left: string, right: string): number =>
   left < right ? -1 : Number(left > right);
 
-const compareRange = (left: SourceRangeValue, right: SourceRangeValue): number =>
-  left.startLine - right.startLine ||
-  left.startColumn - right.startColumn ||
-  left.endLine - right.endLine ||
-  left.endColumn - right.endColumn;
+const compareRange = (left: SourceRangeValue, right: SourceRangeValue): number => {
+  const startOrder = comparePosition(left.startLine, left.startColumn, right.startLine, right.startColumn);
+  if (startOrder !== 0) {
+    return startOrder;
+  }
+  return comparePosition(left.endLine, left.endColumn, right.endLine, right.endColumn);
+};
 
 const within = (inner: SourceRangeValue, outer: SourceRangeValue): boolean =>
   comparePosition(inner.startLine, inner.startColumn, outer.startLine, outer.startColumn) >= 0 &&
   comparePosition(inner.endLine, inner.endColumn, outer.endLine, outer.endColumn) <= 0;
 
-const comparePosition = (leftLine: number, leftColumn: number, rightLine: number, rightColumn: number): number =>
-  leftLine - rightLine || leftColumn - rightColumn;
+const comparePosition = (leftLine: number, leftColumn: number, rightLine: number, rightColumn: number): number => {
+  const lineOrder = leftLine - rightLine;
+  if (lineOrder !== 0) {
+    return lineOrder;
+  }
+  return leftColumn - rightColumn;
+};
 
 const sortedDiagnostics = (diagnostics: readonly Diagnostic[]): readonly Diagnostic[] =>
-  [...diagnostics].sort((left, right) =>
-    compareRange(left.range, right.range) || compareText(left.message, right.message),
-  );
+  [...diagnostics].sort((left, right) => {
+    const rangeOrder = compareRange(left.range, right.range);
+    if (rangeOrder !== 0) {
+      return rangeOrder;
+    }
+    return compareText(left.message, right.message);
+  });
 
 const StateMachineGraphNode = {
   id(name: string): string {
@@ -160,10 +171,19 @@ const StateMachineGraphEdge = {
     });
   },
   compare(left: TransitionDecl, right: TransitionDecl): number {
-    return compareText(left.from, right.from) ||
-      compareText(left.to, right.to) ||
-      compareText(left.event, right.event) ||
-      compareRange(left.range, right.range);
+    const fromOrder = compareText(left.from, right.from);
+    if (fromOrder !== 0) {
+      return fromOrder;
+    }
+    const toOrder = compareText(left.to, right.to);
+    if (toOrder !== 0) {
+      return toOrder;
+    }
+    const eventOrder = compareText(left.event, right.event);
+    if (eventOrder !== 0) {
+      return eventOrder;
+    }
+    return compareRange(left.range, right.range);
   },
   create(transition: TransitionDecl, duplicateIndex: number, diagnostics: readonly Diagnostic[]): StateMachineGraphEdge {
     const edgeDiagnostics = diagnostics.filter((diagnostic) => within(diagnostic.range, transition.range));

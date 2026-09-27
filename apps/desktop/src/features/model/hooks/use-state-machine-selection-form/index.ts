@@ -9,7 +9,9 @@ type Draft = Readonly<{ fields: SelectionFields; error: string }>;
 type Action = Readonly<{ type: "field"; field: keyof SelectionFields; value: string | boolean }> | Readonly<{ type: "error"; message: string }>;
 
 const reduceDraft = (draft: Draft, action: Action): Draft => {
-  if (action.type === "error") { return { ...draft, error: action.message }; }
+  if (action.type === "error") {
+    return { ...draft, error: action.message };
+  }
   return { fields: { ...draft.fields, [action.field]: action.value }, error: "" };
 };
 
@@ -47,24 +49,36 @@ export type UseStateMachineSelectionFormResult = Readonly<{
 /** 選択中の状態・遷移の下書きと、DSLの更新結果を管理する。 */
 export function useStateMachineSelectionForm({ inspection, resolution, source, onChange, onSelect, onClear }: UseStateMachineSelectionFormParams): UseStateMachineSelectionFormResult {
   const [draft, dispatch] = useReducer(reduceDraft, inspection, initialDraft);
-  const editable = inspection.kind === "edge" || inspection.node.appearance !== "unresolved";
+  const editable = inspection.kind === "node"
+    ? inspection.node.appearance !== "unresolved"
+    : true;
   const submit = (): boolean => {
-    if (!editable) { return false; }
+    if (!editable) {
+      return false;
+    }
     const result = inspection.kind === "node"
       ? StateMachineSource.updateState(source, resolution, { ...draft.fields, oldName: inspection.node.name })
       : StateMachineSource.updateTransition(source, resolution, { ...draft.fields, range: inspection.edge.range });
-    if (Result.isErr(result)) { dispatch({ type: "error", message: result.error }); return false; }
+    if (Result.isErr(result)) {
+      dispatch({ type: "error", message: result.error });
+      return false;
+    }
     onChange(result.value);
     onSelect(inspection.kind === "node" ? StateMachineGraph.stateSelection(draft.fields.name) : StateMachineGraph.transitionSelection(draft.fields));
     return true;
   };
   const remove = (): boolean => {
-    if (!editable) { return false; }
+    if (!editable) {
+      return false;
+    }
     const target = inspection.kind === "node"
       ? { kind: "state" as const, name: inspection.node.name }
       : { kind: "transition" as const, range: inspection.edge.range };
     const result = StateMachineSource.remove(source, resolution, target);
-    if (Result.isErr(result)) { dispatch({ type: "error", message: result.error }); return false; }
+    if (Result.isErr(result)) {
+      dispatch({ type: "error", message: result.error });
+      return false;
+    }
     onChange(result.value);
     onClear();
     return true;
