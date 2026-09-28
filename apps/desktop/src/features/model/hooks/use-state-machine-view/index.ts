@@ -77,8 +77,12 @@ export type UseStateMachineViewResult = Readonly<{
  * @param source `.dmodel` 全文。
  * @returns 表示するグラフと切替・選択・倍率操作。
  */
-export function useStateMachineView(source: string): UseStateMachineViewResult {
-  const [view, dispatch] = useReducer(reduceView, initialView);
+export function useStateMachineView(
+  source: string,
+  initialMachineIndex = 0,
+  onMachineSelected?: (index: number) => void,
+): UseStateMachineViewResult {
+  const [view, dispatch] = useReducer(reduceView, initialMachineIndex, (index) => ({ ...initialView, machineIndex: index }));
   const analyzed = AnalyzedModel.create(source);
   const selectedMachineIndex = Math.min(view.machineIndex, analyzed.stateMachines.length - 1);
   const resolution = analyzed.stateMachines[selectedMachineIndex];
@@ -99,7 +103,10 @@ export function useStateMachineView(source: string): UseStateMachineViewResult {
     inspection,
     target: view.target,
     zoom: view.zoom,
-    selectMachine: (index) => dispatch({ type: "machineSelected", index }),
+    selectMachine: (index) => {
+      dispatch({ type: "machineSelected", index });
+      onMachineSelected?.(index);
+    },
     selectPart: (part) => dispatch({ type: "partSelected", part }),
     selectElement: (selection) => dispatch({ type: "elementSelected", selection }),
     clearSelection: () => dispatch({ type: "selectionCleared" }),

@@ -11,6 +11,7 @@ import {
   type DefinitionTable as DefinitionTableValue,
   type Diagnostic,
   type Document,
+  type StateMachineDecl,
   type NamedDecl as NamedDeclValue,
   type ReferenceTable as ReferenceTableValue,
   type Result as ResultType,
@@ -139,6 +140,14 @@ export const AnalyzedModel = {
         definitions,
       ),
     };
+  },
+  /** 同名宣言が複数あっても source range で対応するマシンを特定する。 */
+  stateMachineIndex(model: AnalyzedModel, decl: StateMachineDecl): OptionType<number> {
+    const index = model.stateMachines.findIndex((item) => SourceRange.equals(item.machine.nameRange, decl.nameRange));
+    if (index < 0) {
+      return Option.none();
+    }
+    return Option.some(index);
   },
   /**
    * 型名の定義宣言先頭へジャンプするキャレットを返す。

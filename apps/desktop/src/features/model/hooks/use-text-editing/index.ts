@@ -8,6 +8,9 @@ import {
 } from "react";
 import { TextInput } from "@/libs/text-input";
 import type { CaretPosition } from "../../domains/caret-position";
+import { CaretPosition as Position } from "../../domains/caret-position";
+import type { SourceRange } from "@domain-modeler/model-core";
+import { Option } from "@/utils/Option";
 import { TextEdit } from "../../domains/text-edit";
 import { useTextSelection } from "../use-text-selection";
 
@@ -35,6 +38,9 @@ export type TextEditing = Readonly<{
   onCompositionStart: (event: CompositionEvent<HTMLTextAreaElement>) => void;
   onCompositionEnd: (event: CompositionEvent<HTMLTextAreaElement>) => void;
   moveCaret: (caret: CaretPosition) => void;
+  selectRange: (range: SourceRange) => void;
+  restoreSelection: () => void;
+  rememberCurrentSelection: () => void;
   applyEdit: (edit: TextEdit, caret: CaretPosition) => void;
   applyEditSelecting: (
     edit: TextEdit,
@@ -143,6 +149,14 @@ export function useTextEditing({
     selection.moveTo(caret);
   };
 
+  const selectRange = (range: SourceRange) => {
+    const selected = Position.selectionFromRange(displayedText, range);
+    if (Option.isNone(selected)) {
+      return;
+    }
+    selection.select(selected.value);
+  };
+
   const applyEditSelecting = (
     edit: TextEdit,
     range: Readonly<{ start: number; end: number; line: number }>,
@@ -172,6 +186,9 @@ export function useTextEditing({
     onCompositionStart: handleCompositionStart,
     onCompositionEnd: handleCompositionEnd,
     moveCaret,
+    selectRange,
+    restoreSelection: selection.restore,
+    rememberCurrentSelection: selection.rememberCurrentSelection,
     applyEdit,
     applyEditSelecting,
   };

@@ -51,3 +51,15 @@ test("範囲が文書外なら値なしになる", () => {
     CaretPosition.fromRange("data 注文 = string", SourceRange.onLine(3, 1, 1)),
   ).toEqual(Option.none());
 });
+
+test("複数行にまたがる範囲は開始行と両端の桁を選択範囲へ変換する", () => {
+  const source = "abc\ndef";
+  const range = SourceRange.span(
+    SourceRange.onLine(1, 2, 2),
+    SourceRange.onLine(2, 2, 4),
+  );
+
+  expect(CaretPosition.selectionFromRange(source, range)).toEqual(
+    Option.some({ start: 1, end: 7, line: 1 }),
+  );
+});

@@ -7,6 +7,9 @@ export type CaretPosition = Readonly<{
   line: number;
 }>;
 
+/** テキスト入力欄の選択範囲。 */
+export type SourceSelection = Readonly<{ start: number; end: number; line: number }>;
+
 /**
  * 各行の先頭オフセットを出現順に返す。
  *
@@ -60,6 +63,18 @@ export const CaretPosition = {
       range.startLine,
       range.startColumn,
     );
+  },
+  /** DSL の範囲を textarea の選択範囲へ変換する。 */
+  selectionFromRange(source: string, range: SourceRange): OptionType<SourceSelection> {
+    const start = CaretPosition.fromRange(source, range);
+    const end = CaretPosition.fromLineColumn(source, range.endLine, range.endColumn);
+    if (Option.isNone(start) || Option.isNone(end)) {
+      return Option.none();
+    }
+    if (start.value.offset > end.value.offset || end.value.offset > source.length) {
+      return Option.none();
+    }
+    return Option.some({ start: start.value.offset, end: end.value.offset, line: start.value.line });
   },
   /**
    * 文字オフセットから行番号付きのキャレット位置を作る。
