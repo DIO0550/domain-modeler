@@ -128,6 +128,32 @@ test("undo 後の redo で取り込み後 Document に戻る", () => {
   expect(redone.some && redone.value.current.title).toBe("取り込み後");
 });
 
+test("外部取り込み後にパン・ズームを変えてもundo・redoで表示範囲は戻らない", () => {
+  const history = History.create(Document.empty("初期"));
+  const applied = Result.unwrap(
+    ExternalChanges.apply(history, documentWithStickiesJson()),
+  );
+  const panned = {
+    ...applied,
+    current: {
+      ...applied.current,
+      viewport: { x: -20, y: 35, zoom: 1.25 },
+    },
+  };
+  const undone = History.undo(panned);
+  const redone = undone.some ? History.redo(undone.value) : undone;
+
+  expect(applied.current.viewport).toEqual({ x: 40, y: 80, zoom: 2 });
+  expect(undone.some && undone.value.current.title).toBe("初期");
+  expect(undone.some && undone.value.current.viewport).toEqual(
+    panned.current.viewport,
+  );
+  expect(redone.some && redone.value.current.title).toBe("外部編集後");
+  expect(redone.some && redone.value.current.viewport).toEqual(
+    panned.current.viewport,
+  );
+});
+
 test("取り込み成功時に redo スタックが破棄される", () => {
   const initial = Document.empty("初期");
   const edited = History.execute(

@@ -6,6 +6,7 @@ import {
   ChangeTitleCommand,
   History,
   RemoveConnectionCommand,
+  ReplaceDocumentCommand,
 } from "..";
 import { Sticky, StickyId } from "../../sticky";
 
@@ -30,6 +31,37 @@ test("文書コマンドのundo後も別途変更したviewportは巻き戻ら�
     x: 40,
     y: -20,
     zoom: 1.5,
+  });
+});
+
+test("文書内容の一括置換をundo・redoしても現在のviewportを維持する", () => {
+  const previous = DocumentValue.empty("変更前");
+  const next = {
+    ...DocumentValue.empty("変更後"),
+    viewport: { x: 100, y: 80, zoom: 2 },
+  };
+  const executed = History.execute(
+    History.create(previous),
+    ReplaceDocumentCommand.create({ previous, next }),
+  );
+  const panned = {
+    ...executed,
+    current: {
+      ...executed.current,
+      viewport: { x: -30, y: 45, zoom: 1.5 },
+    },
+  };
+  const undone = History.undo(panned);
+  const redone = undone.some ? History.redo(undone.value) : undone;
+
+  expect(executed.current.viewport).toEqual(previous.viewport);
+  expect(undone.some && undone.value.current).toEqual({
+    ...previous,
+    viewport: panned.current.viewport,
+  });
+  expect(redone.some && redone.value.current).toEqual({
+    ...next,
+    viewport: panned.current.viewport,
   });
 });
 

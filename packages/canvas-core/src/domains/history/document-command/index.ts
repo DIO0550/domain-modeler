@@ -94,34 +94,51 @@ export const RemoveConnectionCommand = {
   }),
 } as const;
 
-/** 文書全体を置換するコマンド。 */
+/** viewport を除く文書内容。 */
+type DocumentContent = Omit<Document, "viewport">;
+
+/** 文書から履歴に保存する内容を取り出す。 */
+const DocumentContent = {
+  from: (document: DocumentContent): DocumentContent => ({
+    version: document.version,
+    title: document.title,
+    stickies: document.stickies,
+    connections: document.connections,
+  }),
+} as const;
+
+/** viewport を除く文書内容を置換するコマンド。 */
 export interface ReplaceDocumentCommand {
   readonly type: "replace_document";
-  readonly previous: Document;
-  readonly next: Document;
+  readonly previous: DocumentContent;
+  readonly next: DocumentContent;
 }
 
-/** 文書全体置換コマンドを生成、実行する関数群。 */
+/** viewport を除く文書内容の置換コマンドを生成、実行する関数群。 */
 export const ReplaceDocumentCommand = {
   /**
-   * 置換前後の文書からコマンドを生成する。
-   * @param documents 置換前後の文書。
-   * @returns 文書全体置換コマンド。
+   * 置換前後の文書内容から viewport を除いてコマンドを生成する。
+   * @param documents 置換前後の文書内容。
+   * @returns 文書内容置換コマンド。
    */
   create: (documents: {
-    readonly previous: Document;
-    readonly next: Document;
-  }): ReplaceDocumentCommand => ({ type: "replace_document", ...documents }),
+    readonly previous: DocumentContent;
+    readonly next: DocumentContent;
+  }): ReplaceDocumentCommand => ({
+    type: "replace_document",
+    previous: DocumentContent.from(documents.previous),
+    next: DocumentContent.from(documents.next),
+  }),
   /**
-   * 文書全体を next で置き換える。
-   * @param command 実行する文書全体置換コマンド。
-   * @param _document 変更前の文書（next で置換するため未使用）。
-   * @returns 置換後の文書。
+   * 文書内容を next で置き換え、現在の viewport を維持する。
+   * @param command 実行する文書内容置換コマンド。
+   * @param document 変更前の文書。
+   * @returns 現在の viewport を維持した置換後の文書。
    */
   execute: (
     command: ReplaceDocumentCommand,
-    _document: Document,
-  ): Document => command.next,
+    document: Document,
+  ): Document => ({ ...command.next, viewport: document.viewport }),
 } as const;
 
 /** 履歴へ保存できる文書コマンド。 */
