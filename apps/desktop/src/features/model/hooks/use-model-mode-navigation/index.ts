@@ -39,14 +39,16 @@ export function useModelModeNavigation({ editing }: UseModelModeNavigationParams
   const pendingSourceRange = useRef<SourceRange | null>(null);
 
   const openStateMachine = (index?: number) => {
-    const input = editing.inputRef.current;
-    editing.rememberCurrentSelection();
-    modelScroll.current = {
-      editorTop: input?.scrollTop ?? 0,
-      editorLeft: input?.scrollLeft ?? 0,
-      previewTop: previewRef.current?.scrollTop ?? 0,
-    };
-    hasModelSnapshot.current = true;
+    if (navigation.mode === "model") {
+      const input = editing.inputRef.current;
+      editing.rememberCurrentSelection();
+      modelScroll.current = {
+        editorTop: input?.scrollTop ?? 0,
+        editorLeft: input?.scrollLeft ?? 0,
+        previewTop: previewRef.current?.scrollTop ?? 0,
+      };
+      hasModelSnapshot.current = true;
+    }
     dispatch({ type: "stateMachineOpened", index });
   };
 

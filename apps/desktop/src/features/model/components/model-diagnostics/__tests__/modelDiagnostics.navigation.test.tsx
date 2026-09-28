@@ -72,6 +72,29 @@ test("通常のモード往復では caret と両ペインのスクロールを�
   expect((host.querySelector(".model-diagnostics__preview") as HTMLElement).scrollTop).toBe(38);
 });
 
+test("ステートマシン画面のタブを再度押してもモデル画面の位置を復元する", () => {
+  const host = diagnostics.render(source);
+  const input = host.querySelector("textarea") as HTMLTextAreaElement;
+  const preview = host.querySelector(".model-diagnostics__preview") as HTMLElement;
+  act(() => {
+    input.setSelectionRange(7, 7);
+    input.scrollTop = 52;
+    input.scrollLeft = 12;
+    input.dispatchEvent(new Event("select", { bubbles: true }));
+    preview.scrollTop = 38;
+  });
+  const stateMachineTab = () => [...host.querySelectorAll("nav button")]
+    .find((button) => button.textContent === "ステートマシン") ?? null;
+  click(stateMachineTab());
+  click(stateMachineTab());
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "モデル") ?? null);
+  const restored = host.querySelector("textarea") as HTMLTextAreaElement;
+  expect(restored.selectionStart).toBe(7);
+  expect(restored.scrollTop).toBe(52);
+  expect(restored.scrollLeft).toBe(12);
+  expect((host.querySelector(".model-diagnostics__preview") as HTMLElement).scrollTop).toBe(38);
+});
+
 test("未保存の診断付き宣言でも現在のテキストからジャンプする", () => {
   const current = "state-machine 作業 =\n  state: 保留";
   const host = diagnostics.render(current);
