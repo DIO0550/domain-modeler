@@ -47,6 +47,14 @@ Tauri の設定・Rust ソースは `apps/desktop/src-tauri/` に同梱済みで
 pnpm --filter @domain-modeler/desktop exec vitest run integration
 ```
 
+モデル／ステートマシン切替の文書シナリオだけを確認する場合:
+
+```bash
+pnpm --filter @domain-modeler/desktop exec vitest run src/appShell/__tests__/model-modes
+```
+
+新規・既存 `.dmodel` の表示、DSL とグラフ／インスペクターの同期、保存・再読込、Undo/Redo、診断表示を確認します。PR の frontend CI では同じテストが全体の Vitest 実行に含まれ、`pnpm typecheck`、`pnpm exec biome check`、`pnpm exec oxlint`、`pnpm build` と合わせて検証できます。
+
 Vitest の設定は `apps/desktop/vite.config.ts` にあり、`packages/` のテストも収集します。結合テストではファイルI/Oをメモリ上の実装に差し替え、パーサー・履歴・タブ状態は実物を通します。OSのダイアログ・実ファイル監視・WebViewの通し動作は Tauri で別途確認してください。
 
 ## 仕様と実装規約
