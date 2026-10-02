@@ -37,6 +37,12 @@
 .state-machine-screen__node[data-appearance="unresolved"] rect { stroke-dasharray: 5 4; }
 .state-machine-screen__node[data-status="error"] rect, .state-machine-screen__edge[data-status="error"] .state-machine-screen__edge-line { stroke: var(--model-editor-error); }
 .state-machine-screen__node[data-selected="true"] rect, .state-machine-screen__edge[data-selected="true"] .state-machine-screen__edge-line { stroke: var(--model-editor-focus); stroke-width: 4; }
+.state-machine-screen__handle { fill: var(--shell-bg); stroke: var(--model-editor-focus); stroke-width: 2; cursor: crosshair; opacity: 0; transition: opacity 120ms; }
+.state-machine-screen__node:hover .state-machine-screen__handle, .state-machine-screen__node:focus-visible .state-machine-screen__handle,
+.state-machine-screen__node[data-selected="true"] .state-machine-screen__handle, .state-machine-screen__graph[data-connecting="true"] .state-machine-screen__handle { opacity: 1; }
+.state-machine-screen__node[data-drop-target="true"] rect { stroke: var(--model-editor-focus); stroke-width: 4; fill: color-mix(in srgb, var(--model-editor-focus) 12%, var(--shell-bg)); }
+.state-machine-screen__connection { stroke: var(--model-editor-focus); stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
+.state-machine-screen__graph[data-connecting="true"] { cursor: crosshair; }
 .state-machine-screen__graph text { fill: var(--shell-text); font-size: 14px; font-weight: 600; pointer-events: none; }
 .state-machine-screen__graph .state-machine-screen__badge { fill: var(--model-editor-focus); }
 .state-machine-screen__edge-line { fill: none; stroke: var(--shell-muted); stroke-width: 2; }

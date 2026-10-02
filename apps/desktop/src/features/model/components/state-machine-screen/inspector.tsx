@@ -73,10 +73,11 @@ function StateMachineInspectorContent() {
   if (view.target.kind === "part" && view.resolution !== null) {
     const { part } = view.target;
     const target: StateMachineDraftTarget = part === "transition"
-      ? { kind: "part", part, resolution: view.resolution, origin: view.origin }
+      ? { kind: "part", part, resolution: view.resolution, origin: view.origin, destination: view.destination }
       : { kind: "part", part, resolution: view.resolution };
     const origin = view.origin.some ? view.origin.value : "";
-    return <StateMachineEntryForm key={`${view.selectedMachineIndex}-${part}-${origin}`}
+    const destination = view.destination.some ? view.destination.value : "";
+    return <StateMachineEntryForm key={`${view.selectedMachineIndex}-${part}-${origin}-${destination}`}
       value={value} onChange={onChange} target={target} onCreated={selectCreated} />;
   }
   if (view.inspection === null) {

@@ -3,6 +3,7 @@ type InputProps = Readonly<{
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  autoFocus?: boolean;
 }>;
 
 type CheckboxProps = Readonly<{
@@ -12,10 +13,10 @@ type CheckboxProps = Readonly<{
   disabled?: boolean;
 }>;
 
-type SelectProps = Readonly<InputProps & { options: readonly string[] }>;
+type SelectProps = Readonly<Omit<InputProps, "autoFocus"> & { options: readonly string[] }>;
 
-function Input({ label, value, onChange, disabled }: InputProps) {
-  return <label>{label}<input aria-label={label} value={value} disabled={disabled}
+function Input({ label, value, onChange, disabled, autoFocus }: InputProps) {
+  return <label>{label}<input aria-label={label} value={value} disabled={disabled} autoFocus={autoFocus}
     onChange={(event) => onChange(event.target.value)} /></label>;
 }
 

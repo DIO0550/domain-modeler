@@ -19,12 +19,14 @@ type ViewState = Readonly<{
   machineIndex: number;
   target: ViewTarget;
   origin: Optional<string>;
+  destination: Optional<string>;
   zoom: number;
 }>;
 
 type ViewAction =
   | Readonly<{ type: "machineSelected"; index: number }>
   | Readonly<{ type: "partSelected"; part: StateMachinePart; origin: Optional<string> }>
+  | Readonly<{ type: "transitionDrawn"; from: string; to: string }>
   | Readonly<{ type: "elementSelected"; selection: StateMachineGraphSelection }>
   | Readonly<{ type: "selectionCleared" }>
   | Readonly<{ type: "zoomed"; factor: number }>
@@ -34,6 +36,7 @@ const initialView: ViewState = {
   machineIndex: 0,
   target: { kind: "none" },
   origin: Option.none(),
+  destination: Option.none(),
   zoom: 1,
 };
 
@@ -42,11 +45,23 @@ const reduceView = (view: ViewState, action: ViewAction): ViewState => {
     case "machineSelected":
       return { ...initialView, machineIndex: action.index };
     case "partSelected":
-      return { ...view, target: { kind: "part", part: action.part }, origin: action.origin };
+      return { ...view, target: { kind: "part", part: action.part }, origin: action.origin, destination: Option.none() };
+    case "transitionDrawn":
+      return {
+        ...view,
+        target: { kind: "part", part: "transition" },
+        origin: Option.some(action.from),
+        destination: Option.some(action.to),
+      };
     case "elementSelected":
-      return { ...view, target: { kind: "element", selection: action.selection }, origin: Option.none() };
+      return {
+        ...view,
+        target: { kind: "element", selection: action.selection },
+        origin: Option.none(),
+        destination: Option.none(),
+      };
     case "selectionCleared":
-      return { ...view, target: { kind: "none" }, origin: Option.none() };
+      return { ...view, target: { kind: "none" }, origin: Option.none(), destination: Option.none() };
     case "zoomed":
       return { ...view, zoom: Math.max(0.5, Math.min(3, view.zoom * action.factor)) };
     case "fitted":
@@ -64,9 +79,13 @@ export type UseStateMachineViewResult = Readonly<{
   target: ViewTarget;
   /** パーツ選択の直前に選んでいた状態名。遷移の追加で遷移元の初期値にする。 */
   origin: Optional<string>;
+  /** グラフ上で線を引いて決めた遷移先の状態名。 */
+  destination: Optional<string>;
   zoom: number;
   selectMachine: (index: number) => void;
   selectPart: (part: StateMachinePart) => void;
+  /** 遷移元・遷移先を指定した遷移の追加フォームを開く。 */
+  drawTransition: (from: string, to: string) => void;
   selectElement: (selection: StateMachineGraphSelection) => void;
   clearSelection: () => void;
   zoomBy: (factor: number) => void;
@@ -106,6 +125,7 @@ export function useStateMachineView(
     inspection,
     target: view.target,
     origin: view.origin,
+    destination: view.destination,
     zoom: view.zoom,
     selectMachine: (index) => {
       dispatch({ type: "machineSelected", index });
@@ -116,6 +136,7 @@ export function useStateMachineView(
       part,
       origin: inspection?.kind === "node" ? Option.some(inspection.node.name) : Option.none(),
     }),
+    drawTransition: (from, to) => dispatch({ type: "transitionDrawn", from, to }),
     selectElement: (selection) => dispatch({ type: "elementSelected", selection }),
     clearSelection: () => dispatch({ type: "selectionCleared" }),
     zoomBy: (factor) => dispatch({ type: "zoomed", factor }),

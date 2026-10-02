@@ -274,3 +274,61 @@ test("状態のインスペクターから出入りする遷移を選び、そ�
   act(() => event.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(latest).toContain("  transition: 待機 -> 完了 on 保留");
 });
+
+const pointer = (type: string, target: Element | null, x: number, y: number) => {
+  act(() => target?.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: x, clientY: y })));
+};
+
+test("接続ハンドルから状態へドラッグすると遷移元・遷移先を入力済みの追加フォームを開く", () => {
+  let latest = machine;
+  const host = diagnostics.render(machine, (value) => { latest = value; });
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  expect(host.querySelector('.state-machine-screen__node[aria-label^="完了"] .state-machine-screen__handle')).toBeNull();
+  const waiting = host.querySelector('.state-machine-screen__node[aria-label^="待機"]');
+  const handle = waiting?.querySelector(".state-machine-screen__handle") ?? null;
+  const done = host.querySelector('.state-machine-screen__node[aria-label^="完了"] rect');
+  pointer("pointerdown", handle, 0, 0);
+  pointer("pointermove", done, 300, 0);
+  expect(host.querySelector(".state-machine-screen__connection")).not.toBeNull();
+  expect(host.querySelector('.state-machine-screen__node[data-drop-target="true"]')?.getAttribute("aria-label")).toMatch(/^完了/);
+  pointer("pointerup", done, 300, 0);
+  click(host.querySelector(".state-machine-screen__graph"));
+  expect(host.querySelector(".state-machine-screen__connection")).toBeNull();
+  expect(host.querySelector(".state-machine-screen__inspector h2")?.textContent).toBe("遷移を追加");
+  expect((host.querySelector('select[aria-label="遷移元"]') as HTMLSelectElement).value).toBe("待機");
+  expect((host.querySelector('select[aria-label="遷移先"]') as HTMLSelectElement).value).toBe("完了");
+  const event = host.querySelector('input[aria-label="イベント名"]') as HTMLInputElement;
+  expect(document.activeElement).toBe(event);
+  type(event, "保留");
+  act(() => event.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(latest).toContain("  transition: 待機 -> 完了 on 保留");
+});
+
+test("自分自身へのドロップで自己ループを指定し、状態以外へのドロップと Escape ではキャンセルする", () => {
+  const host = diagnostics.render(machine);
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  const waiting = host.querySelector('.state-machine-screen__node[aria-label^="待機"]');
+  const handle = waiting?.querySelector(".state-machine-screen__handle") ?? null;
+  const graph = host.querySelector(".state-machine-screen__graph");
+
+  pointer("pointerdown", handle, 0, 0);
+  pointer("pointermove", graph, 300, 300);
+  pointer("pointerup", graph, 300, 300);
+  expect(host.querySelector(".state-machine-screen__connection")).toBeNull();
+  expect(host.querySelector(".state-machine-screen__inspector h2")?.textContent).toBe("インスペクター");
+
+  pointer("pointerdown", handle, 0, 0);
+  pointer("pointermove", graph, 300, 300);
+  act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  expect(host.querySelector(".state-machine-screen__connection")).toBeNull();
+  pointer("pointerup", waiting, 0, 0);
+  expect(host.querySelector(".state-machine-screen__inspector h2")?.textContent).toBe("インスペクター");
+
+  pointer("pointerdown", handle, 0, 0);
+  pointer("pointermove", waiting, 40, 40);
+  pointer("pointerup", waiting?.querySelector("rect") ?? null, 40, 40);
+  click(waiting);
+  expect(host.querySelector(".state-machine-screen__inspector h2")?.textContent).toBe("遷移を追加");
+  expect((host.querySelector('select[aria-label="遷移元"]') as HTMLSelectElement).value).toBe("待機");
+  expect((host.querySelector('select[aria-label="遷移先"]') as HTMLSelectElement).value).toBe("待機");
+});

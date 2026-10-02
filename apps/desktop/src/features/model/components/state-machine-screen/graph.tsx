@@ -4,6 +4,7 @@ import {
   type StateMachineGraphSelection,
 } from "../../domains/state-machine-graph";
 import { StateMachineLayout } from "../../domains/state-machine-layout";
+import { useStateMachineConnection } from "../../hooks/use-state-machine-connection";
 import { useStateMachineContext } from "./context";
 
 export function StateMachineGraphPanel() {
@@ -40,10 +41,25 @@ export function StateMachineGraphPanel() {
 function StateMachineGraphContent() {
   const context = useStateMachineContext();
   const arrowId = useId();
+  const connection = useStateMachineConnection({
+    onConnect: (fromId, toId) => {
+      if (!context.some) {
+        return;
+      }
+      const { view } = context.value;
+      const from = view.graph?.nodes.find((node) => node.id === fromId);
+      const to = view.graph?.nodes.find((node) => node.id === toId);
+      if (from === undefined || to === undefined || to.appearance === "unresolved") {
+        return;
+      }
+      view.drawTransition(from.name, to.name);
+    },
+  });
   if (!context.some) {
     return null;
   }
   const { view } = context.value;
+  const drag = connection.drag.some ? connection.drag.value : undefined;
   const { graph, layout } = view;
   const selectOnKeyDown = (keyboard: KeyboardEvent<SVGGElement>, selection: StateMachineGraphSelection) => {
     if (keyboard.key !== "Enter" && keyboard.key !== " ") {
@@ -62,6 +78,7 @@ function StateMachineGraphContent() {
   return (
     <div className="state-machine-screen__viewport">
       <svg className="state-machine-screen__graph" role="group" aria-label={`${graph.name} の状態遷移図`}
+        data-connecting={drag !== undefined}
         viewBox={`${layout.width * (1 - 1 / view.zoom) / 2} ${layout.height * (1 - 1 / view.zoom) / 2} ${layout.width / view.zoom} ${layout.height / view.zoom}`}>
         <defs><marker id={arrowId} markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M 0 0 L 9 4.5 L 0 9 Z" fill="var(--shell-muted)" /></marker></defs>
         {graph.edges.map((edge) => {
@@ -85,8 +102,11 @@ function StateMachineGraphContent() {
           if (point === undefined) {
             return null;
           }
-          return <g key={node.id} className="state-machine-screen__node" data-status={node.status}
+          const handle = { x: point.x + StateMachineLayout.nodeSize.width / 2, y: point.y };
+          const connectable = node.appearance !== "unresolved" && !node.appearance.includes("terminal");
+          return <g key={node.id} className="state-machine-screen__node" data-status={node.status} data-node-id={node.id}
             data-selected={view.target.kind === "element" && view.target.selection.id === node.id}
+            data-drop-target={drag?.over.some === true && drag.over.value === node.id && node.appearance !== "unresolved"}
             data-appearance={node.appearance} role="button" tabIndex={0} aria-label={`${node.name} ${node.appearance}`}
             onClick={() => view.selectElement({ kind: "node", id: node.id })}
             onKeyDown={(keyboard) => selectOnKeyDown(keyboard, { kind: "node", id: node.id })}>
@@ -95,8 +115,12 @@ function StateMachineGraphContent() {
             <text x={point.x} y={point.y + 5} textAnchor="middle">{node.name}</text>
             {node.appearance.includes("initial") && <text x={point.x - StateMachineLayout.nodeSize.width / 2 + 15} y={point.y - 17} className="state-machine-screen__badge">●</text>}
             {node.appearance.includes("terminal") && <circle cx={point.x + StateMachineLayout.nodeSize.width / 2 - 18} cy={point.y - 17} r="7" fill="none" stroke="currentColor" strokeWidth="2" />}
+            {connectable && <circle className="state-machine-screen__handle" cx={handle.x} cy={handle.y} r="7"
+              aria-hidden="true" onPointerDown={(event) => connection.start(event, node.id, handle)} />}
           </g>;
         })}
+        {drag !== undefined && <line className="state-machine-screen__connection" x1={drag.start.x} y1={drag.start.y}
+          x2={drag.pointer.x} y2={drag.pointer.y} markerEnd={`url(#${arrowId})`} />}
       </svg>
     </div>
   );

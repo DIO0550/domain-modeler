@@ -60,3 +60,13 @@ test("パーツを選ぶ直前に選んでいた状態を起点として保持�
   act(() => view.latest.current?.selectPart("transition"));
   expect(view.latest.current?.origin.some).toBe(false);
 });
+
+test("線を引いた遷移元・遷移先で遷移の追加を開き、パーツの選び直しで遷移先を外す", () => {
+  const view = views.render(source);
+  act(() => view.latest.current?.drawTransition("待機", "待機"));
+  expect(view.latest.current?.target).toEqual({ kind: "part", part: "transition" });
+  expect(view.latest.current?.origin).toEqual({ some: true, value: "待機" });
+  expect(view.latest.current?.destination).toEqual({ some: true, value: "待機" });
+  act(() => view.latest.current?.selectPart("transition"));
+  expect(view.latest.current?.destination.some).toBe(false);
+});

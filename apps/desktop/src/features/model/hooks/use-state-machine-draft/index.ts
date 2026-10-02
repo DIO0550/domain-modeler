@@ -13,7 +13,13 @@ import {
 export type StateMachineDraftTarget =
   | Readonly<{ kind: "machine" }>
   | Readonly<{ kind: "part"; part: "state"; resolution: StateMachineResolution }>
-  | Readonly<{ kind: "part"; part: "transition"; resolution: StateMachineResolution; origin: Option<string> }>;
+  | Readonly<{
+    kind: "part";
+    part: "transition";
+    resolution: StateMachineResolution;
+    origin: Option<string>;
+    destination: Option<string>;
+  }>;
 
 /** 追加に成功した対象。 */
 export type StateMachineDraftCreated =
@@ -56,7 +62,8 @@ const initialDraft = (target: StateMachineDraftTarget): DraftState => {
   const states = target.resolution.machine.states.map((state) => state.name);
   const origin = target.origin.some ? target.origin.value : "";
   const from = sources.includes(origin) ? origin : sources[0] ?? "";
-  const to = states.find((name) => name !== from) ?? from;
+  const destination = target.destination.some ? target.destination.value : "";
+  const to = states.includes(destination) ? destination : states.find((name) => name !== from) ?? from;
   return { ...emptyDraft, fields: { ...emptyDraft.fields, from, to } };
 };
 

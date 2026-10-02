@@ -52,7 +52,7 @@ function StateMachineEntryFields({ target, draft }: Readonly<{
         onChange={(value) => draft.changeField("from", value)} />
       <StateMachineForm.Select label="遷移先" value={draft.fields.to} options={draft.options.to}
         onChange={(value) => draft.changeField("to", value)} />
-      <StateMachineForm.Input label="イベント名" value={draft.fields.event}
+      <StateMachineForm.Input label="イベント名" value={draft.fields.event} autoFocus={target.destination.some}
         onChange={(value) => draft.changeField("event", value)} />
     </>;
   }

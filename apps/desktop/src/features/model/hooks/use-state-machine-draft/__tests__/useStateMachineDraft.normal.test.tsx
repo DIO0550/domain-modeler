@@ -53,7 +53,7 @@ test("遷移の追加は直前に選んだ状態を遷移元にし、終端状�
   const resolution = AnalyzedModel.create(machine).stateMachines[0];
   expect(resolution).toBeDefined();
   if (resolution === undefined) { return; }
-  const draft = drafts.render(machine, { kind: "part", part: "transition", resolution, origin: Option.some("処理中") });
+  const draft = drafts.render(machine, { kind: "part", part: "transition", resolution, origin: Option.some("処理中"), destination: Option.none() });
   expect(draft.latest.current?.options).toEqual({ from: ["待機", "処理中"], to: ["待機", "処理中", "完了"] });
   expect(draft.latest.current?.fields).toMatchObject({ from: "処理中", to: "待機" });
 
@@ -70,9 +70,9 @@ test("遷移元の指定がない、または終端状態なら先頭の非終�
   const resolution = AnalyzedModel.create(machine).stateMachines[0];
   expect(resolution).toBeDefined();
   if (resolution === undefined) { return; }
-  const unspecified = drafts.render(machine, { kind: "part", part: "transition", resolution, origin: Option.none() });
+  const unspecified = drafts.render(machine, { kind: "part", part: "transition", resolution, origin: Option.none(), destination: Option.none() });
   expect(unspecified.latest.current?.fields).toMatchObject({ from: "待機", to: "完了" });
-  const terminal = drafts.render(machine, { kind: "part", part: "transition", resolution, origin: Option.some("完了") });
+  const terminal = drafts.render(machine, { kind: "part", part: "transition", resolution, origin: Option.some("完了"), destination: Option.none() });
   expect(terminal.latest.current?.fields).toMatchObject({ from: "待機", to: "完了" });
 });
 
@@ -87,7 +87,7 @@ test("追加に成功したときだけ追加した要素を通知する", () =>
   act(() => state.latest.current?.submit());
   expect(state.created).toEqual([{ kind: "element", selection: StateMachineGraph.stateSelection("保留") }]);
 
-  const transition = drafts.render(source, { kind: "part", part: "transition", resolution, origin: Option.none() });
+  const transition = drafts.render(source, { kind: "part", part: "transition", resolution, origin: Option.none(), destination: Option.none() });
   act(() => transition.latest.current?.changeField("event", "再試行"));
   act(() => transition.latest.current?.submit());
   expect(transition.created).toEqual([{ kind: "element", selection: StateMachineGraph.transitionSelection({ from: "待機", to: "待機", event: "再試行" }) }]);
@@ -96,4 +96,17 @@ test("追加に成功したときだけ追加した要素を通知する", () =>
   act(() => machine.latest.current?.changeField("name", "注文"));
   act(() => machine.latest.current?.submit());
   expect(machine.created).toEqual([{ kind: "machine" }]);
+});
+
+test("遷移先を指定すると遷移先の初期値になり、自己ループも指定できる", () => {
+  const resolution = AnalyzedModel.create(source).stateMachines[0];
+  expect(resolution).toBeDefined();
+  if (resolution === undefined) { return; }
+  const draft = drafts.render(source, {
+    kind: "part", part: "transition", resolution, origin: Option.some("待機"), destination: Option.some("待機"),
+  });
+  expect(draft.latest.current?.fields).toMatchObject({ from: "待機", to: "待機" });
+  act(() => draft.latest.current?.changeField("event", "再試行"));
+  act(() => draft.latest.current?.submit());
+  expect(draft.source()).toContain("  transition: 待機 -> 待機 on 再試行");
 });
