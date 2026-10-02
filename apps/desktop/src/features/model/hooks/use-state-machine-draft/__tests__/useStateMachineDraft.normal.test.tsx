@@ -33,7 +33,7 @@ test("不正な状態名から修正すると対象マシンの DSL を1回更�
 });
 
 test("空の名前を拒否し、正しいマシン名では同じ文書へ新規宣言する", () => {
-  const draft = drafts.render("data ID = string", { kind: "machine" });
+  const draft = drafts.render("data ID = string", { kind: "machine", definitions: AnalyzedModel.create("data ID = string").definitions });
   act(() => draft.latest.current?.submit());
   expect(draft.latest.current?.error).toBe("有効なマシン名を入力してください");
   expect(draft.source()).toBe("data ID = string");
@@ -92,7 +92,7 @@ test("追加に成功したときだけ追加した要素を通知する", () =>
   act(() => transition.latest.current?.submit());
   expect(transition.created).toEqual([{ kind: "element", selection: StateMachineGraph.transitionSelection({ from: "待機", to: "待機", event: "再試行" }) }]);
 
-  const machine = drafts.render("data ID = string", { kind: "machine" });
+  const machine = drafts.render("data ID = string", { kind: "machine", definitions: AnalyzedModel.create("data ID = string").definitions });
   act(() => machine.latest.current?.changeField("name", "注文"));
   act(() => machine.latest.current?.submit());
   expect(machine.created).toEqual([{ kind: "machine" }]);

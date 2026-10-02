@@ -18,6 +18,8 @@ export function StateMachineInspector() {
   let heading = "インスペクター";
   if (view.target.kind === "part") {
     heading = `${PART_LABELS[view.target.part]}を追加`;
+  } else if (view.target.kind === "machine") {
+    heading = "新しいマシン";
   }
   return (
     <aside className="state-machine-screen__inspector" aria-label="ステートマシンのインスペクター">
@@ -66,9 +68,9 @@ function StateMachineInspectorContent() {
     }
     view.selectElement(created.selection);
   };
-  if (view.graph === null) {
-    return <StateMachineEntryForm key="machine" value={value} onChange={onChange} target={{ kind: "machine" }}
-      onCreated={selectCreated} />;
+  if (view.graph === null || view.target.kind === "machine") {
+    return <StateMachineEntryForm key="machine" value={value} onChange={onChange}
+      target={{ kind: "machine", definitions: view.analyzed.definitions }} onCreated={selectCreated} />;
   }
   if (view.target.kind === "part" && view.resolution !== null) {
     const { part } = view.target;

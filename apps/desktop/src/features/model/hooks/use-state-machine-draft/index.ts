@@ -1,5 +1,5 @@
 import { useReducer } from "react";
-import { Result, type Result as ResultValue, type StateMachineResolution } from "@domain-modeler/model-core";
+import { Result, type DefinitionTable, type Result as ResultValue, type StateMachineResolution } from "@domain-modeler/model-core";
 import type { Option } from "@/utils/Option";
 import { StateMachineGraph, type StateMachineGraphSelection } from "../../domains/state-machine-graph";
 import {
@@ -11,7 +11,7 @@ import {
 } from "../../domains/state-machine-source";
 
 export type StateMachineDraftTarget =
-  | Readonly<{ kind: "machine" }>
+  | Readonly<{ kind: "machine"; definitions: DefinitionTable }>
   | Readonly<{ kind: "part"; part: "state"; resolution: StateMachineResolution }>
   | Readonly<{
     kind: "part";
@@ -135,7 +135,7 @@ export function useStateMachineDraft({ source, onChange, target, onCreated }: Us
   };
   const submit = (): boolean => {
     if (target.kind === "machine") {
-      return commit(StateMachineSource.create(source, draft.fields.name), () => ({ kind: "machine" }));
+      return commit(StateMachineSource.create(source, draft.fields.name, target.definitions), () => ({ kind: "machine" }));
     }
     const input = sourceInput(target.part, draft.fields);
     return commit(StateMachineSource.add(source, target.resolution, input), () => createdOf(input));

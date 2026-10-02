@@ -13,6 +13,7 @@ import { Option, type Option as Optional } from "@/utils/Option";
 type ViewTarget =
   | Readonly<{ kind: "none" }>
   | Readonly<{ kind: "part"; part: StateMachinePart }>
+  | Readonly<{ kind: "machine" }>
   | Readonly<{ kind: "element"; selection: StateMachineGraphSelection }>;
 
 type ViewState = Readonly<{
@@ -30,6 +31,7 @@ type ViewAction =
   | Readonly<{ type: "transitionDrawn"; from: string; to: string }>
   | Readonly<{ type: "elementSelected"; selection: StateMachineGraphSelection }>
   | Readonly<{ type: "selectionCleared" }>
+  | Readonly<{ type: "machineCreationStarted" }>
   | Readonly<{ type: "zoomed"; factor: number; anchor: GraphPoint }>
   | Readonly<{ type: "panned"; delta: GraphPoint }>
   | Readonly<{ type: "fitted" }>;
@@ -82,6 +84,8 @@ const reduceView = (view: ViewState, action: ViewAction): ViewState => {
       };
     case "selectionCleared":
       return { ...view, target: { kind: "none" }, origin: Option.none(), destination: Option.none() };
+    case "machineCreationStarted":
+      return { ...view, target: { kind: "machine" }, origin: Option.none(), destination: Option.none() };
     case "zoomed":
       return zoomAround(view, action.factor, action.anchor);
     case "panned":
@@ -112,6 +116,8 @@ export type UseStateMachineViewResult = Readonly<{
   drawTransition: (from: string, to: string) => void;
   selectElement: (selection: StateMachineGraphSelection) => void;
   clearSelection: () => void;
+  /** インスペクターに新しいマシンの作成フォームを開く。 */
+  startMachineCreation: () => void;
   /**
    * 倍率を変える。
    *
@@ -171,6 +177,7 @@ export function useStateMachineView(
     drawTransition: (from, to) => dispatch({ type: "transitionDrawn", from, to }),
     selectElement: (selection) => dispatch({ type: "elementSelected", selection }),
     clearSelection: () => dispatch({ type: "selectionCleared" }),
+    startMachineCreation: () => dispatch({ type: "machineCreationStarted" }),
     zoomBy: (factor, anchor = view.pan) => dispatch({ type: "zoomed", factor, anchor }),
     panBy: (delta) => dispatch({ type: "panned", delta }),
     fit: () => dispatch({ type: "fitted" }),

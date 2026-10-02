@@ -73,3 +73,16 @@ test("初期状態が重複している場合は初期状態として追加し�
   expect(StateMachineSource.add(source, resolution, { part: "state", name: "受付", initial: true, terminal: false }))
     .toEqual(Result.err("初期状態の重複をモデル定義で修正してください"));
 });
+
+test("文書直下の宣言と同名のマシンは作成せず、新しい名前なら末尾に追加する", () => {
+  const source = `data 注文ID = string
+state-machine 注文 =
+  initial: 待機
+  state: 待機`;
+  const { definitions } = AnalyzedModel.create(source);
+  expect(StateMachineSource.create(source, "注文", definitions)).toEqual(Result.err("「注文」は既に宣言されています"));
+  expect(StateMachineSource.create(source, "注文ID", definitions)).toEqual(Result.err("「注文ID」は既に宣言されています"));
+  const created = StateMachineSource.create(source, "返金", definitions);
+  expect(Result.isOk(created) && AnalyzedModel.create(created.value).stateMachines.map((resolution) => resolution.machine.name))
+    .toEqual(["注文", "返金"]);
+});

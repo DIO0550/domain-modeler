@@ -19,17 +19,22 @@ export function StateMachineGraphPanel() {
   return (
     <section className="state-machine-screen__center" aria-label="ステートマシンのグラフ">
       <header className="state-machine-screen__toolbar">
-        <label>ステートマシン
-          <select value={view.selectedMachineIndex} disabled={view.analyzed.stateMachines.length === 0}
-            onChange={(change) => view.selectMachine(Number(change.target.value))}>
-            {view.analyzed.stateMachines.length === 0 && <option value={-1}>未作成</option>}
-            {view.analyzed.stateMachines.map((machine, index) => (
-              <option key={`${machine.machine.name}-${machine.machine.range.startLine}`} value={index}>
-                {machine.machine.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="state-machine-screen__machine">
+          <label>ステートマシン
+            <select value={view.selectedMachineIndex} disabled={view.analyzed.stateMachines.length === 0}
+              onChange={(change) => view.selectMachine(Number(change.target.value))}>
+              {view.analyzed.stateMachines.length === 0 && <option value={-1}>未作成</option>}
+              {view.analyzed.stateMachines.map((machine, index) => (
+                <option key={`${machine.machine.name}-${machine.machine.range.startLine}`} value={index}>
+                  {machine.machine.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" aria-pressed={view.target.kind === "machine"} onClick={view.startMachineCreation}>
+            ＋ 新しいマシン
+          </button>
+        </div>
         <div className="state-machine-screen__zoom" role="group" aria-label="グラフの倍率">
           <button type="button" aria-label="縮小" disabled={view.graph === null} onClick={() => view.zoomBy(1 / 1.25)}>−</button>
           <output aria-label="現在の倍率">{Math.round(view.zoom * 100)}%</output>

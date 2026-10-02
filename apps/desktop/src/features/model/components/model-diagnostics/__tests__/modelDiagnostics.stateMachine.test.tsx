@@ -50,6 +50,35 @@ test("空状態からマシンを作成しても同じ文書を更新する", ()
   expect(host.querySelector('[aria-label="ステートマシンのグラフ"]')).not.toBeNull();
 });
 
+test("マシンがある文書でもツールバーから新しいマシンを作成し、重複名は作成前に拒否する", () => {
+  let latest = machine;
+  const host = diagnostics.render(machine, (value) => { latest = value; });
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  const start = [...host.querySelectorAll(".state-machine-screen__toolbar button")].find((button) => button.textContent?.includes("新しいマシン")) ?? null;
+  click(start);
+  expect(start?.getAttribute("aria-pressed")).toBe("true");
+  expect(host.querySelector(".state-machine-screen__inspector h2")?.textContent).toBe("新しいマシン");
+  const submit = () => {
+    const name = host.querySelector('input[aria-label="マシン名"]') as HTMLInputElement;
+    act(() => name.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  };
+  type(host.querySelector('input[aria-label="マシン名"]') as HTMLInputElement, "注文ID");
+  submit();
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe("「注文ID」は既に宣言されています");
+  expect(latest).toBe(machine);
+
+  type(host.querySelector('input[aria-label="マシン名"]') as HTMLInputElement, "返金");
+  submit();
+  expect(latest).toContain("state-machine 返金 =");
+  const select = host.querySelector(".state-machine-screen__toolbar select") as HTMLSelectElement;
+  expect(select.options[select.selectedIndex]?.textContent).toBe("返金");
+  expect(start?.getAttribute("aria-pressed")).toBe("false");
+
+  click(start);
+  act(() => host.querySelector(".state-machine-screen")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  expect(host.querySelector('input[aria-label="マシン名"]')).toBeNull();
+});
+
 test("ノード選択と診断表示、明示的な追加操作", () => {
   let latest = machine;
   const host = diagnostics.render(machine, (value) => { latest = value; });

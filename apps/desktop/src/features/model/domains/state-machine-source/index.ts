@@ -1,4 +1,4 @@
-import { Identifier, Result, type Result as ResultValue, type SourceRange, type StateMachineResolution, type TransitionDecl } from "@domain-modeler/model-core";
+import { DefinitionTable, Identifier, Result, type DefinitionTable as DefinitionTableValue, type Result as ResultValue, type SourceRange, type StateMachineResolution, type TransitionDecl } from "@domain-modeler/model-core";
 
 export type StateMachinePart = "state" | "transition";
 export type StateMachineStateInput = Readonly<{ name: string; initial: boolean; terminal: boolean }>;
@@ -91,11 +91,15 @@ export const StateMachineSource = {
    * 文書末尾にマシン宣言を作成する。
    * @param source 現在の `.dmodel` 全文。
    * @param name 新しいマシン名。
+   * @param definitions 現在の文書直下の宣言。同名の宣言があれば作成しない。
    * @returns 更新後の全文、または名前のエラー。
    */
-  create(source: string, name: string): ResultValue<string, string> {
+  create(source: string, name: string, definitions: DefinitionTableValue): ResultValue<string, string> {
     if (!Identifier.isAcceptable(name)) {
       return Result.err("有効なマシン名を入力してください");
+    }
+    if (DefinitionTable.has(definitions, name)) {
+      return Result.err(`「${name}」は既に宣言されています`);
     }
     if (source.length === 0) {
       return Result.ok(`state-machine ${name} =\n`);
