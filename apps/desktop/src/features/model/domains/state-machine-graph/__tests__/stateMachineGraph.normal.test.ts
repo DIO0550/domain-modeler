@@ -96,6 +96,6 @@ test("状態に出入りする遷移を辺と同じ順で返し、自己ルー�
   const { incoming, outgoing } = StateMachineGraph.transitionsOf(graph, waiting);
   expect(outgoing.map((edge) => edge.event)).toEqual(["確定", "再試行"]);
   expect(incoming.map((edge) => edge.event)).toEqual(graph.edges.filter((edge) => edge.to === waiting).map((edge) => edge.event));
-  expect([...incoming.map((edge) => edge.event)].sort()).toEqual(["再試行", "差戻し"].sort());
+  expect(incoming.map((edge) => edge.event).sort()).toEqual(["再試行", "差戻し"].sort());
   expect(StateMachineGraph.transitionsOf(graph, "state:不明")).toEqual({ incoming: [], outgoing: [] });
 });
