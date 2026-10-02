@@ -99,11 +99,23 @@ test("マシン切替時に選択と倍率を一緒に戻す", () => {
   expect(graph.getAttribute("viewBox")?.startsWith("0 0 ")).toBe(true);
 });
 
-test("初期状態の入力欄は可視ラベルとアクセシブルネームが一致する", () => {
-  const host = diagnostics.render("state-machine 注文 =\n  state: 待機");
+test("パレットは状態と遷移だけで、状態の追加時に初期・終端を指定できる", () => {
+  let latest = "state-machine 注文 =\n  state: 待機";
+  const host = diagnostics.render(latest, (value) => { latest = value; });
   click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
-  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "初期") ?? null);
-  expect(host.querySelector('input[aria-label="既存の状態名"]')).not.toBeNull();
+  expect([...host.querySelectorAll(".state-machine-screen__palette button")].map((button) => button.textContent))
+    .toEqual(["状態", "遷移"]);
+  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "状態") ?? null);
+  const name = host.querySelector('input[aria-label="状態名"]') as HTMLInputElement;
+  type(name, "受付");
+  const checkbox = (label: string) => [...host.querySelectorAll(".state-machine-screen__checkbox")]
+    .find((item) => item.textContent === label)?.querySelector("input") ?? null;
+  click(checkbox("初期状態"));
+  click(checkbox("終端状態"));
+  act(() => name.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(latest).toBe("state-machine 注文 =\n  state: 待機\n  initial: 受付\n  state: 受付 terminal");
+  expect(host.querySelector('.state-machine-screen__node[aria-label="受付 initial-terminal"]')).not.toBeNull();
+  expect((checkbox("初期状態") as HTMLInputElement).checked).toBe(false);
 });
 
 test("追加対象の切替で前のフォーム入力とエラーを引き継がない", () => {
@@ -115,8 +127,7 @@ test("追加対象の切替で前のフォーム入力とエラーを引き継�
   act(() => stateName.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(host.querySelector('[role="alert"]')?.textContent).toBe("有効な状態名を入力してください");
 
-  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "終端") ?? null);
-  expect((host.querySelector('input[aria-label="状態名"]') as HTMLInputElement).value).toBe("");
+  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "遷移") ?? null);
   expect(host.querySelector('[role="alert"]')).toBeNull();
   click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "状態") ?? null);
   expect((host.querySelector('input[aria-label="状態名"]') as HTMLInputElement).value).toBe("");

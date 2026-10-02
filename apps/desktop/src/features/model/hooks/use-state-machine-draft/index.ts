@@ -5,11 +5,13 @@ import {
   StateMachineSource,
   type StateMachinePart,
   type StateMachineSourceInput,
+  type StateMachineStateInput,
+  type StateMachineTransitionInput,
 } from "../../domains/state-machine-source";
 
 export type StateMachineDraftTarget =
   | Readonly<{ kind: "machine" }>
-  | Readonly<{ kind: "part"; part: Exclude<StateMachinePart, "transition">; resolution: StateMachineResolution }>
+  | Readonly<{ kind: "part"; part: "state"; resolution: StateMachineResolution }>
   | Readonly<{ kind: "part"; part: "transition"; resolution: StateMachineResolution; origin: Option<string> }>;
 
 type UseStateMachineDraftParams = Readonly<{
@@ -18,18 +20,20 @@ type UseStateMachineDraftParams = Readonly<{
   target: StateMachineDraftTarget;
 }>;
 
+type DraftFields = Readonly<StateMachineStateInput & StateMachineTransitionInput>;
+
 type DraftState = Readonly<{
-  fields: Readonly<Omit<StateMachineSourceInput, "part">>;
+  fields: DraftFields;
   error: string;
 }>;
 
 type DraftAction =
-  | Readonly<{ type: "changed"; field: keyof DraftState["fields"]; value: string }>
+  | Readonly<{ type: "changed"; field: keyof DraftFields; value: string | boolean }>
   | Readonly<{ type: "failed"; message: string }>
   | Readonly<{ type: "added" }>;
 
 const emptyDraft: DraftState = {
-  fields: { name: "", from: "", to: "", event: "" },
+  fields: { name: "", initial: false, terminal: false, from: "", to: "", event: "" },
   error: "",
 };
 
@@ -49,6 +53,13 @@ const initialDraft = (target: StateMachineDraftTarget): DraftState => {
   return { ...emptyDraft, fields: { ...emptyDraft.fields, from, to } };
 };
 
+const sourceInput = (part: StateMachinePart, fields: DraftFields): StateMachineSourceInput => {
+  if (part === "transition") {
+    return { part, from: fields.from, to: fields.to, event: fields.event };
+  }
+  return { part, name: fields.name, initial: fields.initial, terminal: fields.terminal };
+};
+
 const reduceDraft = (draft: DraftState, action: DraftAction): DraftState => {
   switch (action.type) {
     case "changed":
@@ -56,7 +67,7 @@ const reduceDraft = (draft: DraftState, action: DraftAction): DraftState => {
     case "failed":
       return { ...draft, error: action.message };
     case "added":
-      return { fields: { ...draft.fields, name: "", event: "" }, error: "" };
+      return { fields: { ...draft.fields, name: "", initial: false, terminal: false, event: "" }, error: "" };
   }
 };
 
@@ -73,11 +84,11 @@ const transitionOptions = (target: StateMachineDraftTarget): TransitionOptions =
 };
 
 export type UseStateMachineDraftResult = Readonly<{
-  fields: DraftState["fields"];
+  fields: DraftFields;
   /** 遷移の追加で遷移元・遷移先に選べる状態名。 */
   options: TransitionOptions;
   error: string;
-  changeField: (field: keyof DraftState["fields"], value: string) => void;
+  changeField: <K extends keyof DraftFields>(field: K, value: DraftFields[K]) => void;
   submit: () => void;
 }>;
 
@@ -93,7 +104,7 @@ export function useStateMachineDraft({ source, onChange, target }: UseStateMachi
   const submit = () => {
     const result = target.kind === "machine"
       ? StateMachineSource.create(source, draft.fields.name)
-      : StateMachineSource.add(source, target.resolution, { part: target.part, ...draft.fields });
+      : StateMachineSource.add(source, target.resolution, sourceInput(target.part, draft.fields));
     if (Result.isErr(result)) {
       dispatch({ type: "failed", message: result.error });
       return;
