@@ -64,3 +64,6 @@
   .state-machine-screen__inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--model-editor-border); max-height: 220px; }
 }
 .state-machine-screen__graph:focus { outline: none; }
+.state-machine-screen__graph { cursor: grab; touch-action: none; }
+.state-machine-screen__graph[data-panning="true"] { cursor: grabbing; }
+.state-machine-screen__zoom output { display: flex; align-items: center; justify-content: center; min-width: 48px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--shell-muted); }

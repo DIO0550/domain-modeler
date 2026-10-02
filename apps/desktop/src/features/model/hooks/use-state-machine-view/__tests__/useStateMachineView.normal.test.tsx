@@ -70,3 +70,23 @@ test("線を引いた遷移元・遷移先で遷移の追加を開き、パー�
   act(() => view.latest.current?.selectPart("transition"));
   expect(view.latest.current?.destination.some).toBe(false);
 });
+
+test("基準点を動かさずに拡大縮小し、パンとフィット・マシン切替で表示位置を扱う", () => {
+  const view = views.render(source);
+  act(() => view.latest.current?.zoomBy(2, { x: 100, y: 40 }));
+  expect(view.latest.current?.zoom).toBe(2);
+  expect(view.latest.current?.pan).toEqual({ x: 50, y: 20 });
+  act(() => view.latest.current?.zoomBy(10, { x: 100, y: 40 }));
+  expect(view.latest.current?.zoom).toBe(3);
+  expect(view.latest.current?.pan.x).toBeCloseTo(100 - 50 * 2 / 3);
+  act(() => view.latest.current?.zoomBy(0.5));
+  expect(view.latest.current?.pan.x).toBeCloseTo(100 - 50 * 2 / 3);
+  act(() => view.latest.current?.panBy({ x: 5, y: -5 }));
+  expect(view.latest.current?.pan.y).toBeCloseTo(40 - 20 * 2 / 3 - 5);
+  act(() => view.latest.current?.fit());
+  expect(view.latest.current?.zoom).toBe(1);
+  expect(view.latest.current?.pan).toEqual({ x: 0, y: 0 });
+  act(() => view.latest.current?.panBy({ x: 30, y: 0 }));
+  act(() => view.latest.current?.selectMachine(1));
+  expect(view.latest.current?.pan).toEqual({ x: 0, y: 0 });
+});

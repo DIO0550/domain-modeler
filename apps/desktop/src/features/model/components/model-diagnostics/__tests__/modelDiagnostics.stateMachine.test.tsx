@@ -387,3 +387,43 @@ test("グラフ上の Delete / Backspace で選択中の状態・遷移を削除
   key(graph(), "Delete");
   expect(host.querySelectorAll(".state-machine-screen__node")).toHaveLength(1);
 });
+
+const viewBoxOf = (host: HTMLElement) =>
+  (host.querySelector(".state-machine-screen__graph")?.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);
+
+test("空白のドラッグでパンし、ホイールでスクロール、Ctrl+ホイールで拡大縮小する", () => {
+  const host = diagnostics.render(machine);
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  const graph = host.querySelector(".state-machine-screen__graph");
+  const zoom = () => host.querySelector('output[aria-label="現在の倍率"]')?.textContent;
+  const node = host.querySelector('.state-machine-screen__node[aria-label^="待機"]');
+  click(node);
+  const [x, y, width] = viewBoxOf(host);
+  expect(zoom()).toBe("100%");
+
+  pointer("pointerdown", graph, 100, 100);
+  pointer("pointermove", graph, 60, 70);
+  expect(graph?.getAttribute("data-panning")).toBe("true");
+  pointer("pointerup", graph, 60, 70);
+  click(graph);
+  expect(viewBoxOf(host).slice(0, 2)).toEqual([(x ?? 0) + 40, (y ?? 0) + 30]);
+  expect(node?.getAttribute("data-selected")).toBe("true");
+
+  pointer("pointerdown", graph, 10, 10);
+  pointer("pointerup", graph, 10, 10);
+  click(graph);
+  expect(host.querySelector('[data-selected="true"]')).toBeNull();
+
+  act(() => graph?.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaX: 5, deltaY: 10 })));
+  expect(viewBoxOf(host).slice(0, 2)).toEqual([(x ?? 0) + 45, (y ?? 0) + 40]);
+  const zoomIn = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -200, ctrlKey: true });
+  Object.defineProperty(zoomIn, "ctrlKey", { value: true });
+  act(() => graph?.dispatchEvent(zoomIn));
+  expect(zoomIn.defaultPrevented).toBe(true);
+  expect(Number(zoom()?.replace("%", ""))).toBeGreaterThan(100);
+  expect(viewBoxOf(host)[2]).toBeLessThan(width ?? 0);
+
+  click([...host.querySelectorAll(".state-machine-screen__zoom button")].find((button) => button.textContent === "フィット") ?? null);
+  expect(zoom()).toBe("100%");
+  expect(viewBoxOf(host).slice(0, 3)).toEqual([x, y, width]);
+});

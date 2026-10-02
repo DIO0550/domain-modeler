@@ -1,5 +1,6 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Option, type Option as Optional } from "@/utils/Option";
+import { PointerDragEx } from "@/utils/PointerDragEx";
 import type { GraphPoint } from "../../domains/state-machine-layout";
 
 /** ドラッグ中の接続線。 */
@@ -31,25 +32,6 @@ const nodeIdAt = (target: EventTarget | null): Optional<string> => {
   return id === null || id === undefined ? Option.none() : Option.some(id);
 };
 
-const graphPointOf = (svg: SVGSVGElement, event: Readonly<{ clientX: number; clientY: number }>): GraphPoint => {
-  const matrix = typeof svg.getScreenCTM === "function" ? svg.getScreenCTM() : null;
-  if (matrix === null) {
-    return { x: event.clientX, y: event.clientY };
-  }
-  const { a, b, c, d, e, f } = matrix.inverse();
-  return { x: a * event.clientX + c * event.clientY + e, y: b * event.clientX + d * event.clientY + f };
-};
-
-/** ドラッグ後に発生するクリックで、ドロップ先の要素が選択されないようにする。 */
-const suppressNextClick = (): void => {
-  const suppress = (event: MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
-  };
-  window.addEventListener("click", suppress, { capture: true, once: true });
-  setTimeout(() => window.removeEventListener("click", suppress, { capture: true }), 0);
-};
-
 /**
  * 状態の接続ハンドルから別の状態へドラッグして遷移を指定する。
  * 状態以外でのドロップと Escape でキャンセルする。
@@ -66,7 +48,7 @@ export function useStateMachineConnection({ onConnect }: UseStateMachineConnecti
       return;
     }
     const move = (event: PointerEvent) => {
-      const pointer = graphPointOf(active.svg, event);
+      const pointer = PointerDragEx.toSvgPoint(active.svg, event);
       const moved = active.moved || Math.hypot(pointer.x - active.start.x, pointer.y - active.start.y) > DRAG_THRESHOLD;
       setDrag(Option.some({ ...active, pointer, moved, over: nodeIdAt(event.target) }));
     };
@@ -76,7 +58,7 @@ export function useStateMachineConnection({ onConnect }: UseStateMachineConnecti
       if (!active.moved) {
         return;
       }
-      suppressNextClick();
+      PointerDragEx.suppressNextClick();
       if (!over.some) {
         return;
       }

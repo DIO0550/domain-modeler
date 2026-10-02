@@ -5,7 +5,7 @@ import {
   type StateMachineGraphInspection,
   type StateMachineGraphSelection,
 } from "../../domains/state-machine-graph";
-import { StateMachineLayout } from "../../domains/state-machine-layout";
+import { StateMachineLayout, type GraphPoint } from "../../domains/state-machine-layout";
 import type { StateMachineResolution } from "@domain-modeler/model-core";
 import type { StateMachinePart } from "../../domains/state-machine-source";
 import { Option, type Option as Optional } from "@/utils/Option";
@@ -21,6 +21,7 @@ type ViewState = Readonly<{
   origin: Optional<string>;
   destination: Optional<string>;
   zoom: number;
+  pan: GraphPoint;
 }>;
 
 type ViewAction =
@@ -29,7 +30,8 @@ type ViewAction =
   | Readonly<{ type: "transitionDrawn"; from: string; to: string }>
   | Readonly<{ type: "elementSelected"; selection: StateMachineGraphSelection }>
   | Readonly<{ type: "selectionCleared" }>
-  | Readonly<{ type: "zoomed"; factor: number }>
+  | Readonly<{ type: "zoomed"; factor: number; anchor: GraphPoint }>
+  | Readonly<{ type: "panned"; delta: GraphPoint }>
   | Readonly<{ type: "fitted" }>;
 
 const initialView: ViewState = {
@@ -38,6 +40,24 @@ const initialView: ViewState = {
   origin: Option.none(),
   destination: Option.none(),
   zoom: 1,
+  pan: { x: 0, y: 0 },
+};
+
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 3;
+
+/** `anchor` の位置が画面上で動かないように倍率を変える。 */
+const zoomAround = (view: ViewState, factor: number, anchor: GraphPoint): ViewState => {
+  const zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, view.zoom * factor));
+  const ratio = view.zoom / zoom;
+  return {
+    ...view,
+    zoom,
+    pan: {
+      x: anchor.x - (anchor.x - view.pan.x) * ratio,
+      y: anchor.y - (anchor.y - view.pan.y) * ratio,
+    },
+  };
 };
 
 const reduceView = (view: ViewState, action: ViewAction): ViewState => {
@@ -63,9 +83,11 @@ const reduceView = (view: ViewState, action: ViewAction): ViewState => {
     case "selectionCleared":
       return { ...view, target: { kind: "none" }, origin: Option.none(), destination: Option.none() };
     case "zoomed":
-      return { ...view, zoom: Math.max(0.5, Math.min(3, view.zoom * action.factor)) };
+      return zoomAround(view, action.factor, action.anchor);
+    case "panned":
+      return { ...view, pan: { x: view.pan.x + action.delta.x, y: view.pan.y + action.delta.y } };
     case "fitted":
-      return { ...view, zoom: 1 };
+      return { ...view, zoom: 1, pan: { x: 0, y: 0 } };
   }
 };
 
@@ -82,18 +104,27 @@ export type UseStateMachineViewResult = Readonly<{
   /** グラフ上で線を引いて決めた遷移先の状態名。 */
   destination: Optional<string>;
   zoom: number;
+  /** 全体表示からの表示中心のずれ(グラフ座標)。 */
+  pan: GraphPoint;
   selectMachine: (index: number) => void;
   selectPart: (part: StateMachinePart) => void;
   /** 遷移元・遷移先を指定した遷移の追加フォームを開く。 */
   drawTransition: (from: string, to: string) => void;
   selectElement: (selection: StateMachineGraphSelection) => void;
   clearSelection: () => void;
-  zoomBy: (factor: number) => void;
+  /**
+   * 倍率を変える。
+   *
+   * @param factor 現在の倍率に掛ける値。
+   * @param anchor 画面上で動かさない点。グラフ全体の中心からの相対座標で、省略時は表示中心。
+   */
+  zoomBy: (factor: number, anchor?: GraphPoint) => void;
+  panBy: (delta: GraphPoint) => void;
   fit: () => void;
 }>;
 
 /**
- * 表示中のマシン、選択対象、倍率を管理する。
+ * 表示中のマシン、選択対象、倍率と表示位置を管理する。
  * グラフとレイアウトは入力された文書から毎回導出する。
  *
  * @param source `.dmodel` 全文。
@@ -127,6 +158,7 @@ export function useStateMachineView(
     origin: view.origin,
     destination: view.destination,
     zoom: view.zoom,
+    pan: view.pan,
     selectMachine: (index) => {
       dispatch({ type: "machineSelected", index });
       onMachineSelected?.(index);
@@ -139,7 +171,8 @@ export function useStateMachineView(
     drawTransition: (from, to) => dispatch({ type: "transitionDrawn", from, to }),
     selectElement: (selection) => dispatch({ type: "elementSelected", selection }),
     clearSelection: () => dispatch({ type: "selectionCleared" }),
-    zoomBy: (factor) => dispatch({ type: "zoomed", factor }),
+    zoomBy: (factor, anchor = view.pan) => dispatch({ type: "zoomed", factor, anchor }),
+    panBy: (delta) => dispatch({ type: "panned", delta }),
     fit: () => dispatch({ type: "fitted" }),
   };
 }

@@ -7,6 +7,7 @@ import {
 import { StateMachineLayout } from "../../domains/state-machine-layout";
 import { StateMachineSource } from "../../domains/state-machine-source";
 import { useStateMachineConnection } from "../../hooks/use-state-machine-connection";
+import { useStateMachineViewport } from "../../hooks/use-state-machine-viewport";
 import { useStateMachineContext } from "./context";
 
 export function StateMachineGraphPanel() {
@@ -31,6 +32,7 @@ export function StateMachineGraphPanel() {
         </label>
         <div className="state-machine-screen__zoom" role="group" aria-label="グラフの倍率">
           <button type="button" aria-label="縮小" disabled={view.graph === null} onClick={() => view.zoomBy(1 / 1.25)}>−</button>
+          <output aria-label="現在の倍率">{Math.round(view.zoom * 100)}%</output>
           <button type="button" disabled={view.graph === null} onClick={view.fit}>フィット</button>
           <button type="button" aria-label="拡大" disabled={view.graph === null} onClick={() => view.zoomBy(1.25)}>＋</button>
         </div>
@@ -55,6 +57,20 @@ function StateMachineGraphContent() {
         return;
       }
       view.drawTransition(from.name, to.name);
+    },
+  });
+  const layoutSize = context.some ? context.value.view.layout : null;
+  const viewport = useStateMachineViewport({
+    center: { x: (layoutSize?.width ?? 0) / 2, y: (layoutSize?.height ?? 0) / 2 },
+    onPan: (delta) => {
+      if (context.some) {
+        context.value.view.panBy(delta);
+      }
+    },
+    onZoom: (factor, anchor) => {
+      if (context.some) {
+        context.value.view.zoomBy(factor, anchor);
+      }
     },
   });
   if (!context.some) {
@@ -110,8 +126,9 @@ function StateMachineGraphContent() {
   return (
     <div className="state-machine-screen__viewport">
       <svg className="state-machine-screen__graph" role="group" aria-label={`${graph.name} の状態遷移図`}
-        data-connecting={drag !== undefined} tabIndex={-1} onClick={clearOnBlankClick} onKeyDown={removeOnKeyDown}
-        viewBox={`${layout.width * (1 - 1 / view.zoom) / 2} ${layout.height * (1 - 1 / view.zoom) / 2} ${layout.width / view.zoom} ${layout.height / view.zoom}`}>
+        ref={viewport.ref} data-connecting={drag !== undefined} data-panning={viewport.panning}
+        tabIndex={-1} onClick={clearOnBlankClick} onKeyDown={removeOnKeyDown} onPointerDown={viewport.startPan}
+        viewBox={`${layout.width * (1 - 1 / view.zoom) / 2 + view.pan.x} ${layout.height * (1 - 1 / view.zoom) / 2 + view.pan.y} ${layout.width / view.zoom} ${layout.height / view.zoom}`}>
         <defs><marker id={arrowId} markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M 0 0 L 9 4.5 L 0 9 Z" fill="var(--shell-muted)" /></marker></defs>
         {graph.edges.map((edge) => {
           const positioned = layout.edges.find((item) => item.id === edge.id);
