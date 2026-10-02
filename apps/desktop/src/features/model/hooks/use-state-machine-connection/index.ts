@@ -73,10 +73,13 @@ export function useStateMachineConnection({ onConnect }: UseStateMachineConnecti
     const end = (event: PointerEvent) => {
       setDrag(Option.none());
       const over = nodeIdAt(event.target);
-      if (!active.moved || !over.some) {
+      if (!active.moved) {
         return;
       }
       suppressNextClick();
+      if (!over.some) {
+        return;
+      }
       onConnect(active.from, over.value);
     };
     const cancel = (event: KeyboardEvent) => {

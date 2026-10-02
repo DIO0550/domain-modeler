@@ -332,3 +332,58 @@ test("自分自身へのドロップで自己ループを指定し、状態以�
   expect((host.querySelector('select[aria-label="遷移元"]') as HTMLSelectElement).value).toBe("待機");
   expect((host.querySelector('select[aria-label="遷移先"]') as HTMLSelectElement).value).toBe("待機");
 });
+
+const key = (target: Element | null, value: string, init: KeyboardEventInit = {}) => {
+  act(() => target?.dispatchEvent(new KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true, ...init })));
+};
+
+test("グラフの空白クリックと Escape で選択とパーツの追加を解除し、入力中の Escape は奪わない", () => {
+  const host = diagnostics.render(machine);
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  const heading = () => host.querySelector(".state-machine-screen__inspector h2")?.textContent;
+  const node = host.querySelector('.state-machine-screen__node[aria-label^="待機"]');
+  click(node);
+  expect(node?.getAttribute("data-selected")).toBe("true");
+  click(host.querySelector(".state-machine-screen__graph"));
+  expect(host.querySelector('[data-selected="true"]')).toBeNull();
+  expect(document.activeElement).toBe(host.querySelector(".state-machine-screen__graph"));
+
+  click(node);
+  key(node, "Escape");
+  expect(host.querySelector('[data-selected="true"]')).toBeNull();
+
+  const statePart = [...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "状態") ?? null;
+  click(statePart);
+  expect(heading()).toBe("状態を追加");
+  key(host.querySelector('input[aria-label="状態名"]'), "Escape");
+  expect(heading()).toBe("状態を追加");
+  key(statePart, "Escape");
+  expect(heading()).toBe("インスペクター");
+});
+
+test("グラフ上の Delete / Backspace で選択中の状態・遷移を削除し、Undo で戻せる", () => {
+  let latest = machine;
+  const host = diagnostics.render(machine, (value) => { latest = value; });
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  const graph = () => host.querySelector(".state-machine-screen__graph");
+
+  const edge = host.querySelector(".state-machine-screen__edge");
+  click(edge);
+  key(host.querySelector('input[aria-label="イベント名"]'), "Backspace");
+  expect(latest).toBe(machine);
+  key(edge, "Backspace");
+  expect(latest).not.toContain("transition: 待機 -> 完了 on 確定");
+  expect(host.querySelectorAll(".state-machine-screen__edge")).toHaveLength(0);
+  expect(document.activeElement).toBe(graph());
+  key(graph(), "z", { ctrlKey: true });
+  expect(latest).toBe(machine);
+
+  const done = host.querySelector('.state-machine-screen__node[aria-label^="完了"]');
+  click(done);
+  key(done, "Delete");
+  expect(latest).not.toContain("完了");
+  expect(host.querySelectorAll(".state-machine-screen__node")).toHaveLength(1);
+  expect(host.querySelector('[data-selected="true"]')).toBeNull();
+  key(graph(), "Delete");
+  expect(host.querySelectorAll(".state-machine-screen__node")).toHaveLength(1);
+});

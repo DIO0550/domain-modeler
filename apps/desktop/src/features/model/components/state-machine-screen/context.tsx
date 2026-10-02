@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, type KeyboardEvent, type ReactNode } from "react";
 import { Option, type Option as Optional } from "@/utils/Option";
 import type { SourceRange } from "@domain-modeler/model-core";
 import {
@@ -28,6 +28,9 @@ export function useStateMachineContext(): Optional<StateMachineContextValue> {
   return useContext(StateMachineContext);
 }
 
+const isTextEntry = (target: EventTarget): boolean =>
+  target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+
 /**
  * `.dmodel` のステートマシンをパレット・グラフ・インスペクターで表示する。
  *
@@ -37,9 +40,16 @@ export function useStateMachineContext(): Optional<StateMachineContextValue> {
 export function StateMachineRoot({ value, onChange, onEditSource,
   initialMachineIndex, onMachineSelected, children }: StateMachineRootProps) {
   const view = useStateMachineView(value, initialMachineIndex, onMachineSelected);
+  const clearOnEscape = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Escape" || view.target.kind === "none" || isTextEntry(event.target)) {
+      return;
+    }
+    event.preventDefault();
+    view.clearSelection();
+  };
   return (
     <StateMachineContext.Provider value={Option.some({ view, value, onChange, onEditSource })}>
-      <div className="state-machine-screen">{children}</div>
+      <div className="state-machine-screen" onKeyDown={clearOnEscape}>{children}</div>
     </StateMachineContext.Provider>
   );
 }

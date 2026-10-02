@@ -1,9 +1,11 @@
-import { useId, type KeyboardEvent } from "react";
+import { useId, type KeyboardEvent, type MouseEvent } from "react";
+import { Result } from "@domain-modeler/model-core";
 import {
   StateMachineGraph,
   type StateMachineGraphSelection,
 } from "../../domains/state-machine-graph";
 import { StateMachineLayout } from "../../domains/state-machine-layout";
+import { StateMachineSource } from "../../domains/state-machine-source";
 import { useStateMachineConnection } from "../../hooks/use-state-machine-connection";
 import { useStateMachineContext } from "./context";
 
@@ -58,7 +60,7 @@ function StateMachineGraphContent() {
   if (!context.some) {
     return null;
   }
-  const { view } = context.value;
+  const { view, value, onChange } = context.value;
   const drag = connection.drag.some ? connection.drag.value : undefined;
   const { graph, layout } = view;
   const selectOnKeyDown = (keyboard: KeyboardEvent<SVGGElement>, selection: StateMachineGraphSelection) => {
@@ -67,6 +69,36 @@ function StateMachineGraphContent() {
     }
     keyboard.preventDefault();
     view.selectElement(selection);
+  };
+  const removeOnKeyDown = (keyboard: KeyboardEvent<SVGSVGElement>) => {
+    if (keyboard.key !== "Delete" && keyboard.key !== "Backspace") {
+      return;
+    }
+    keyboard.preventDefault();
+    const { inspection, resolution } = view;
+    if (resolution === null || inspection === null || inspection.kind === "machine") {
+      return;
+    }
+    if (inspection.kind === "node" && inspection.node.appearance === "unresolved") {
+      return;
+    }
+    const target = inspection.kind === "node"
+      ? { kind: "state" as const, name: inspection.node.name }
+      : { kind: "transition" as const, range: inspection.edge.range };
+    const removed = StateMachineSource.remove(value, resolution, target);
+    if (Result.isErr(removed)) {
+      return;
+    }
+    onChange(removed.value);
+    view.clearSelection();
+    keyboard.currentTarget.focus();
+  };
+  const clearOnBlankClick = (click: MouseEvent<SVGSVGElement>) => {
+    if (click.target instanceof Element && click.target.closest('[role="button"]') !== null) {
+      return;
+    }
+    view.clearSelection();
+    click.currentTarget.focus();
   };
 
   if (graph === null) {
@@ -78,7 +110,7 @@ function StateMachineGraphContent() {
   return (
     <div className="state-machine-screen__viewport">
       <svg className="state-machine-screen__graph" role="group" aria-label={`${graph.name} の状態遷移図`}
-        data-connecting={drag !== undefined}
+        data-connecting={drag !== undefined} tabIndex={-1} onClick={clearOnBlankClick} onKeyDown={removeOnKeyDown}
         viewBox={`${layout.width * (1 - 1 / view.zoom) / 2} ${layout.height * (1 - 1 / view.zoom) / 2} ${layout.width / view.zoom} ${layout.height / view.zoom}`}>
         <defs><marker id={arrowId} markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M 0 0 L 9 4.5 L 0 9 Z" fill="var(--shell-muted)" /></marker></defs>
         {graph.edges.map((edge) => {
