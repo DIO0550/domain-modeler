@@ -115,7 +115,8 @@ test("パレットは状態と遷移だけで、状態の追加時に初期・�
   act(() => name.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(latest).toBe("state-machine 注文 =\n  state: 待機\n  initial: 受付\n  state: 受付 terminal");
   expect(host.querySelector('.state-machine-screen__node[aria-label="受付 initial-terminal"]')).not.toBeNull();
-  expect((checkbox("初期状態") as HTMLInputElement).checked).toBe(false);
+  expect(host.querySelector('.state-machine-screen__node[aria-label="受付 initial-terminal"]')?.getAttribute("data-selected")).toBe("true");
+  expect((checkbox("初期状態") as HTMLInputElement).checked).toBe(true);
 });
 
 test("追加対象の切替で前のフォーム入力とエラーを引き継がない", () => {
@@ -221,4 +222,30 @@ test("選択中の状態から遷移を追加すると遷移元が選ばれ、�
   type(event, "再試行");
   act(() => event.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   expect(latest).toContain("  transition: 待機 -> 待機 on 再試行");
+});
+
+test("追加した状態と遷移が選択され、インスペクターが編集フォームに切り替わる", async () => {
+  let latest = machine;
+  const host = diagnostics.render(machine, (value) => { latest = value; });
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "状態") ?? null);
+  const name = host.querySelector('input[aria-label="状態名"]') as HTMLInputElement;
+  type(name, "保留");
+  act(() => name.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(latest).toContain("  state: 保留");
+  const node = host.querySelector('.state-machine-screen__node[aria-label^="保留"]');
+  expect(node?.getAttribute("data-selected")).toBe("true");
+  expect(host.querySelector(".state-machine-screen__inspector h2")?.textContent).toBe("インスペクター");
+  expect((host.querySelector('input[aria-label="状態名"]') as HTMLInputElement).value).toBe("保留");
+  expect([...host.querySelectorAll("button")].some((button) => button.textContent === "削除")).toBe(true);
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  expect(document.activeElement).toBe(node);
+
+  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "遷移") ?? null);
+  const event = host.querySelector('input[aria-label="イベント名"]') as HTMLInputElement;
+  type(event, "保留");
+  act(() => event.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(latest).toContain("  transition: 保留 -> 待機 on 保留");
+  expect(host.querySelector(".state-machine-screen__edge[data-selected='true']")?.textContent).toContain("保留");
+  expect((host.querySelector('input[aria-label="イベント名"]') as HTMLInputElement).value).toBe("保留");
 });

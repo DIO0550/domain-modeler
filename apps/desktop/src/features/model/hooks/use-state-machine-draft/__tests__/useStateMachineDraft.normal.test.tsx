@@ -2,6 +2,7 @@ import { act } from "react";
 import { afterEach, expect, test } from "vitest";
 import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "../../../domains/analyzed-model";
+import { StateMachineGraph } from "../../../domains/state-machine-graph";
 import { createStateMachineDraftRenderer } from "./useStateMachineDraft.test-support";
 
 const drafts = createStateMachineDraftRenderer();
@@ -73,4 +74,26 @@ test("遷移元の指定がない、または終端状態なら先頭の非終�
   expect(unspecified.latest.current?.fields).toMatchObject({ from: "待機", to: "完了" });
   const terminal = drafts.render(machine, { kind: "part", part: "transition", resolution, origin: Option.some("完了") });
   expect(terminal.latest.current?.fields).toMatchObject({ from: "待機", to: "完了" });
+});
+
+test("追加に成功したときだけ追加した要素を通知する", () => {
+  const resolution = AnalyzedModel.create(source).stateMachines[0];
+  expect(resolution).toBeDefined();
+  if (resolution === undefined) { return; }
+  const state = drafts.render(source, { kind: "part", part: "state", resolution });
+  act(() => state.latest.current?.submit());
+  expect(state.created).toEqual([]);
+  act(() => state.latest.current?.changeField("name", "保留"));
+  act(() => state.latest.current?.submit());
+  expect(state.created).toEqual([{ kind: "element", selection: StateMachineGraph.stateSelection("保留") }]);
+
+  const transition = drafts.render(source, { kind: "part", part: "transition", resolution, origin: Option.none() });
+  act(() => transition.latest.current?.changeField("event", "再試行"));
+  act(() => transition.latest.current?.submit());
+  expect(transition.created).toEqual([{ kind: "element", selection: StateMachineGraph.transitionSelection({ from: "待機", to: "待機", event: "再試行" }) }]);
+
+  const machine = drafts.render("data ID = string", { kind: "machine" });
+  act(() => machine.latest.current?.changeField("name", "注文"));
+  act(() => machine.latest.current?.submit());
+  expect(machine.created).toEqual([{ kind: "machine" }]);
 });

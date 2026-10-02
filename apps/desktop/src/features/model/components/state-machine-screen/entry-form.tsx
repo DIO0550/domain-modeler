@@ -1,5 +1,7 @@
+import type { FormEvent } from "react";
 import {
   useStateMachineDraft,
+  type StateMachineDraftCreated,
   type StateMachineDraftTarget,
   type UseStateMachineDraftResult,
 } from "../../hooks/use-state-machine-draft";
@@ -9,12 +11,27 @@ type StateMachineEntryFormProps = Readonly<{
   value: string;
   onChange: (text: string) => void;
   target: StateMachineDraftTarget;
+  onCreated: (created: StateMachineDraftCreated) => void;
 }>;
 
-/** 選択したパーツまたは新しいマシンの入力フォーム。 */
-export function StateMachineEntryForm({ value, onChange, target }: StateMachineEntryFormProps) {
-  const draft = useStateMachineDraft({ source: value, onChange, target });
-  return <form onSubmit={(submit) => { submit.preventDefault(); draft.submit(); }}>
+const focusCreated = (form: HTMLFormElement): void => {
+  const screen = form.closest<HTMLElement>(".state-machine-screen");
+  requestAnimationFrame(() => {
+    screen?.querySelector<SVGElement>('[data-selected="true"]')?.focus();
+  });
+};
+
+/** 選択したパーツまたは新しいマシンの入力フォーム。追加に成功すると追加した要素を選択する。 */
+export function StateMachineEntryForm({ value, onChange, target, onCreated }: StateMachineEntryFormProps) {
+  const draft = useStateMachineDraft({ source: value, onChange, target, onCreated });
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (draft.submit()) {
+      focusCreated(form);
+    }
+  };
+  return <form onSubmit={submit}>
     <StateMachineEntryFields target={target} draft={draft} />
     <button type="submit">{target.kind === "machine" ? "マシンを作成" : "追加"}</button>
     {draft.error && <p role="alert" className="state-machine-screen__diagnostic">{draft.error}</p>}

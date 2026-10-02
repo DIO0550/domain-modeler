@@ -1,10 +1,16 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { useStateMachineDraft, type StateMachineDraftTarget, type UseStateMachineDraftResult } from "..";
+import {
+  useStateMachineDraft,
+  type StateMachineDraftCreated,
+  type StateMachineDraftTarget,
+  type UseStateMachineDraftResult,
+} from "..";
 
 type HookSession = Readonly<{
   latest: { current: UseStateMachineDraftResult | undefined };
   source: () => string;
+  created: readonly StateMachineDraftCreated[];
 }>;
 type RenderedHook = Readonly<{ root: Root; host: HTMLDivElement }>;
 
@@ -18,6 +24,7 @@ export const createStateMachineDraftRenderer = () => {
       const root = createRoot(host);
       const latest: HookSession["latest"] = { current: undefined };
       let source = initialSource;
+      const created: StateMachineDraftCreated[] = [];
       const Probe = ({ value }: Readonly<{ value: string }>) => {
         latest.current = useStateMachineDraft({
           source: value,
@@ -26,12 +33,13 @@ export const createStateMachineDraftRenderer = () => {
             source = next;
             root.render(<Probe value={source} />);
           },
+          onCreated: (entry) => created.push(entry),
         });
         return null;
       };
       act(() => root.render(<Probe value={source} />));
       rendered.push({ root, host });
-      return { latest, source: () => source };
+      return { latest, source: () => source, created };
     },
     unmountAll: () => {
       for (const entry of rendered.splice(0)) {

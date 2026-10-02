@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { StateMachineGraph, type StateMachineGraphInspection } from "../../domains/state-machine-graph";
 import type { SourceRange } from "@domain-modeler/model-core";
-import type { StateMachineDraftTarget } from "../../hooks/use-state-machine-draft";
+import type { StateMachineDraftCreated, StateMachineDraftTarget } from "../../hooks/use-state-machine-draft";
 import { useStateMachineContext } from "./context";
 import { StateMachineEntryForm } from "./entry-form";
 import { PART_LABELS } from "./part-labels";
@@ -57,8 +57,17 @@ function StateMachineInspectorContent() {
     return null;
   }
   const { view, value, onChange } = context.value;
+  const machineCount = view.analyzed.stateMachines.length;
+  const selectCreated = (created: StateMachineDraftCreated) => {
+    if (created.kind === "machine") {
+      view.selectMachine(machineCount);
+      return;
+    }
+    view.selectElement(created.selection);
+  };
   if (view.graph === null) {
-    return <StateMachineEntryForm key="machine" value={value} onChange={onChange} target={{ kind: "machine" }} />;
+    return <StateMachineEntryForm key="machine" value={value} onChange={onChange} target={{ kind: "machine" }}
+      onCreated={selectCreated} />;
   }
   if (view.target.kind === "part" && view.resolution !== null) {
     const { part } = view.target;
@@ -67,7 +76,7 @@ function StateMachineInspectorContent() {
       : { kind: "part", part, resolution: view.resolution };
     const origin = view.origin.some ? view.origin.value : "";
     return <StateMachineEntryForm key={`${view.selectedMachineIndex}-${part}-${origin}`}
-      value={value} onChange={onChange} target={target} />;
+      value={value} onChange={onChange} target={target} onCreated={selectCreated} />;
   }
   if (view.inspection === null) {
     return null;

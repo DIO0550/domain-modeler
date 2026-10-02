@@ -1,6 +1,7 @@
 import { useReducer } from "react";
-import { Result, type StateMachineResolution } from "@domain-modeler/model-core";
+import { Result, type Result as ResultValue, type StateMachineResolution } from "@domain-modeler/model-core";
 import type { Option } from "@/utils/Option";
+import { StateMachineGraph, type StateMachineGraphSelection } from "../../domains/state-machine-graph";
 import {
   StateMachineSource,
   type StateMachinePart,
@@ -14,10 +15,16 @@ export type StateMachineDraftTarget =
   | Readonly<{ kind: "part"; part: "state"; resolution: StateMachineResolution }>
   | Readonly<{ kind: "part"; part: "transition"; resolution: StateMachineResolution; origin: Option<string> }>;
 
+/** 追加に成功した対象。 */
+export type StateMachineDraftCreated =
+  | Readonly<{ kind: "machine" }>
+  | Readonly<{ kind: "element"; selection: StateMachineGraphSelection }>;
+
 type UseStateMachineDraftParams = Readonly<{
   source: string;
   onChange: (text: string) => void;
   target: StateMachineDraftTarget;
+  onCreated?: (created: StateMachineDraftCreated) => void;
 }>;
 
 type DraftFields = Readonly<StateMachineStateInput & StateMachineTransitionInput>;
@@ -60,6 +67,13 @@ const sourceInput = (part: StateMachinePart, fields: DraftFields): StateMachineS
   return { part, name: fields.name, initial: fields.initial, terminal: fields.terminal };
 };
 
+const createdOf = (input: StateMachineSourceInput): StateMachineDraftCreated => ({
+  kind: "element",
+  selection: input.part === "transition"
+    ? StateMachineGraph.transitionSelection(input)
+    : StateMachineGraph.stateSelection(input.name),
+});
+
 const reduceDraft = (draft: DraftState, action: DraftAction): DraftState => {
   switch (action.type) {
     case "changed":
@@ -89,28 +103,35 @@ export type UseStateMachineDraftResult = Readonly<{
   options: TransitionOptions;
   error: string;
   changeField: <K extends keyof DraftFields>(field: K, value: DraftFields[K]) => void;
-  submit: () => void;
+  /** 追加に成功したら `true`。 */
+  submit: () => boolean;
 }>;
 
 /**
  * 選択中の追加フォームの下書きと検証結果を管理する。
  * フォームの対象を切り替えるとコンポーネントごと再生成される。
  *
- * @param params 対象マシンまたはパーツ、文書全文、変更通知。
+ * @param params 対象マシンまたはパーツ、文書全文、変更通知、追加成功の通知。
  * @returns フォームの入力値・エラー・確定操作。
  */
-export function useStateMachineDraft({ source, onChange, target }: UseStateMachineDraftParams): UseStateMachineDraftResult {
+export function useStateMachineDraft({ source, onChange, target, onCreated }: UseStateMachineDraftParams): UseStateMachineDraftResult {
   const [draft, dispatch] = useReducer(reduceDraft, target, initialDraft);
-  const submit = () => {
-    const result = target.kind === "machine"
-      ? StateMachineSource.create(source, draft.fields.name)
-      : StateMachineSource.add(source, target.resolution, sourceInput(target.part, draft.fields));
+  const commit = (result: ResultValue<string, string>, created: () => StateMachineDraftCreated): boolean => {
     if (Result.isErr(result)) {
       dispatch({ type: "failed", message: result.error });
-      return;
+      return false;
     }
     onChange(result.value);
     dispatch({ type: "added" });
+    onCreated?.(created());
+    return true;
+  };
+  const submit = (): boolean => {
+    if (target.kind === "machine") {
+      return commit(StateMachineSource.create(source, draft.fields.name), () => ({ kind: "machine" }));
+    }
+    const input = sourceInput(target.part, draft.fields);
+    return commit(StateMachineSource.add(source, target.resolution, input), () => createdOf(input));
   };
 
   return {
