@@ -1,5 +1,6 @@
 import { act } from "react";
 import { afterEach, expect, test } from "vitest";
+import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "../../../domains/analyzed-model";
 import { createStateMachineDraftRenderer } from "./useStateMachineDraft.test-support";
 
@@ -40,4 +41,36 @@ test("空の名前を拒否し、正しいマシン名では同じ文書へ新�
   act(() => draft.latest.current?.submit());
   expect(draft.source()).toContain("state-machine 注文 =");
   expect(draft.latest.current?.fields.name).toBe("");
+});
+
+test("遷移の追加は直前に選んだ状態を遷移元にし、終端状態は遷移元の候補にしない", () => {
+  const machine = `state-machine 注文 =
+  initial: 待機
+  state: 待機
+  state: 処理中
+  state: 完了 terminal`;
+  const resolution = AnalyzedModel.create(machine).stateMachines[0];
+  expect(resolution).toBeDefined();
+  if (resolution === undefined) { return; }
+  const draft = drafts.render(machine, { kind: "part", part: "transition", resolution, origin: Option.some("処理中") });
+  expect(draft.latest.current?.options).toEqual({ from: ["待機", "処理中"], to: ["待機", "処理中", "完了"] });
+  expect(draft.latest.current?.fields).toMatchObject({ from: "処理中", to: "待機" });
+
+  act(() => draft.latest.current?.changeField("to", "完了"));
+  act(() => draft.latest.current?.changeField("event", "確定"));
+  act(() => draft.latest.current?.submit());
+  expect(draft.source()).toContain("  transition: 処理中 -> 完了 on 確定");
+});
+
+test("遷移元の指定がない、または終端状態なら先頭の非終端状態を遷移元にする", () => {
+  const machine = `state-machine 注文 =
+  state: 待機
+  state: 完了 terminal`;
+  const resolution = AnalyzedModel.create(machine).stateMachines[0];
+  expect(resolution).toBeDefined();
+  if (resolution === undefined) { return; }
+  const unspecified = drafts.render(machine, { kind: "part", part: "transition", resolution, origin: Option.none() });
+  expect(unspecified.latest.current?.fields).toMatchObject({ from: "待機", to: "完了" });
+  const terminal = drafts.render(machine, { kind: "part", part: "transition", resolution, origin: Option.some("完了") });
+  expect(terminal.latest.current?.fields).toMatchObject({ from: "待機", to: "完了" });
 });

@@ -31,9 +31,9 @@ function StateMachineEntryFields({ target, draft }: Readonly<{
   }
   if (target.part === "transition") {
     return <>
-      <StateMachineForm.Input label="遷移元" value={draft.fields.from}
+      <StateMachineForm.Select label="遷移元" value={draft.fields.from} options={draft.options.from}
         onChange={(value) => draft.changeField("from", value)} />
-      <StateMachineForm.Input label="遷移先" value={draft.fields.to}
+      <StateMachineForm.Select label="遷移先" value={draft.fields.to} options={draft.options.to}
         onChange={(value) => draft.changeField("to", value)} />
       <StateMachineForm.Input label="イベント名" value={draft.fields.event}
         onChange={(value) => draft.changeField("event", value)} />

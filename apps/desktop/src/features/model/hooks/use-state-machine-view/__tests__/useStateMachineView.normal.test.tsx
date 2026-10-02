@@ -45,3 +45,18 @@ test("パレットとグラフ選択は排他的で、全文更新からグラ�
   expect(view.latest.current?.graph?.nodes.map((item) => item.name)).toEqual(["申請", "終了"]);
   expect(view.latest.current?.layout?.nodes).toBeDefined();
 });
+
+test("パーツを選ぶ直前に選んでいた状態を起点として保持する", () => {
+  const view = views.render(source);
+  expect(view.latest.current?.origin.some).toBe(false);
+  const node = view.latest.current?.graph?.nodes[0];
+  expect(node).toBeDefined();
+  if (node === undefined) { return; }
+  act(() => view.latest.current?.selectElement({ kind: "node", id: node.id }));
+  act(() => view.latest.current?.selectPart("transition"));
+  expect(view.latest.current?.origin).toEqual({ some: true, value: "待機" });
+  act(() => view.latest.current?.clearSelection());
+  expect(view.latest.current?.origin.some).toBe(false);
+  act(() => view.latest.current?.selectPart("transition"));
+  expect(view.latest.current?.origin.some).toBe(false);
+});

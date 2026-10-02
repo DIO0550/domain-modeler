@@ -193,3 +193,21 @@ test("遷移の接続先変更と削除後もフォーカスを保ち、キー�
   act(() => focused?.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
   expect(latest).toContain("transition: 待機 -> 待機 on 確定");
 });
+
+test("選択中の状態から遷移を追加すると遷移元が選ばれ、状態名を入力せずに追加できる", () => {
+  let latest = machine;
+  const host = diagnostics.render(machine, (value) => { latest = value; });
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  click(host.querySelector('.state-machine-screen__node[aria-label^="待機"]'));
+  click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "遷移") ?? null);
+  const from = host.querySelector('select[aria-label="遷移元"]') as HTMLSelectElement;
+  const to = host.querySelector('select[aria-label="遷移先"]') as HTMLSelectElement;
+  expect(from.value).toBe("待機");
+  expect([...from.options].map((option) => option.value)).toEqual(["待機"]);
+  expect([...to.options].map((option) => option.value)).toEqual(["待機", "完了"]);
+  act(() => { to.value = "待機"; to.dispatchEvent(new Event("change", { bubbles: true })); });
+  const event = host.querySelector('input[aria-label="イベント名"]') as HTMLInputElement;
+  type(event, "再試行");
+  act(() => event.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(latest).toContain("  transition: 待機 -> 待機 on 再試行");
+});

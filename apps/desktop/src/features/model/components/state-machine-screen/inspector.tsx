@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { StateMachineGraph, type StateMachineGraphInspection } from "../../domains/state-machine-graph";
 import type { SourceRange } from "@domain-modeler/model-core";
+import type { StateMachineDraftTarget } from "../../hooks/use-state-machine-draft";
 import { useStateMachineContext } from "./context";
 import { StateMachineEntryForm } from "./entry-form";
 import { PART_LABELS } from "./part-labels";
@@ -60,9 +61,13 @@ function StateMachineInspectorContent() {
     return <StateMachineEntryForm key="machine" value={value} onChange={onChange} target={{ kind: "machine" }} />;
   }
   if (view.target.kind === "part" && view.resolution !== null) {
-    return <StateMachineEntryForm key={`${view.selectedMachineIndex}-${view.target.part}`}
-      value={value} onChange={onChange}
-      target={{ kind: "part", part: view.target.part, resolution: view.resolution }} />;
+    const { part } = view.target;
+    const target: StateMachineDraftTarget = part === "transition"
+      ? { kind: "part", part, resolution: view.resolution, origin: view.origin }
+      : { kind: "part", part, resolution: view.resolution };
+    const origin = view.origin.some ? view.origin.value : "";
+    return <StateMachineEntryForm key={`${view.selectedMachineIndex}-${part}-${origin}`}
+      value={value} onChange={onChange} target={target} />;
   }
   if (view.inspection === null) {
     return null;
