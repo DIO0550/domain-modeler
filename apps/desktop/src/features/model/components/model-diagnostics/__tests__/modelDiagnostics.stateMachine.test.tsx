@@ -249,3 +249,28 @@ test("追加した状態と遷移が選択され、インスペクターが編�
   expect(host.querySelector(".state-machine-screen__edge[data-selected='true']")?.textContent).toContain("保留");
   expect((host.querySelector('input[aria-label="イベント名"]') as HTMLInputElement).value).toBe("保留");
 });
+
+test("状態のインスペクターから出入りする遷移を選び、その状態を起点に遷移を追加できる", () => {
+  let latest = machine;
+  const host = diagnostics.render(machine, (value) => { latest = value; });
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  click(host.querySelector('.state-machine-screen__node[aria-label^="完了"]'));
+  const section = (title: string) => host.querySelector(`.state-machine-screen__transitions section[aria-label="${title}"]`);
+  expect(section("出ていく遷移")?.textContent).toContain("なし");
+  expect([...section("入ってくる遷移")?.querySelectorAll("button") ?? []].map((button) => button.textContent)).toEqual(["確定 ← 待機"]);
+  expect([...host.querySelectorAll("button")].some((button) => button.textContent === "この状態から遷移を追加")).toBe(false);
+
+  click(host.querySelector('.state-machine-screen__node[aria-label^="待機"]'));
+  click(section("出ていく遷移")?.querySelector("button") ?? null);
+  expect(host.querySelector(".state-machine-screen__edge[data-selected='true']")?.textContent).toContain("確定");
+  expect((host.querySelector('input[aria-label="イベント名"]') as HTMLInputElement).value).toBe("確定");
+
+  click(host.querySelector('.state-machine-screen__node[aria-label^="待機"]'));
+  click([...host.querySelectorAll("button")].find((button) => button.textContent === "この状態から遷移を追加") ?? null);
+  expect(host.querySelector(".state-machine-screen__inspector h2")?.textContent).toBe("遷移を追加");
+  expect((host.querySelector('select[aria-label="遷移元"]') as HTMLSelectElement).value).toBe("待機");
+  const event = host.querySelector('input[aria-label="イベント名"]') as HTMLInputElement;
+  type(event, "保留");
+  act(() => event.form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(latest).toContain("  transition: 待機 -> 完了 on 保留");
+});

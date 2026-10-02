@@ -242,6 +242,21 @@ export const StateMachineGraph = {
     };
   },
   /**
+   * 状態に出入りする遷移をグラフの辺と同じ安定順で得る。自己ループは両方に含む。
+   * @param graph 描画用グラフ。
+   * @param nodeId 状態ノードの識別子。
+   * @returns 状態へ入る遷移と状態から出る遷移。
+   */
+  transitionsOf(graph: StateMachineGraph, nodeId: string): Readonly<{
+    incoming: readonly StateMachineGraphEdge[];
+    outgoing: readonly StateMachineGraphEdge[];
+  }> {
+    return {
+      incoming: graph.edges.filter((edge) => edge.to === nodeId),
+      outgoing: graph.edges.filter((edge) => edge.from === nodeId),
+    };
+  },
+  /**
    * 選択中の状態・遷移を解決する。対象がなくなった場合はマシン全体を返す。
    * @param graph 描画用グラフ。
    * @param selection 選択中の識別子。未選択なら省略。

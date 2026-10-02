@@ -6,6 +6,7 @@ import { useStateMachineContext } from "./context";
 import { StateMachineEntryForm } from "./entry-form";
 import { PART_LABELS } from "./part-labels";
 import { StateMachineSelectionForm } from "./selection-form";
+import { StateMachineStateTransitions } from "./state-transitions";
 
 export function StateMachineInspector() {
   const context = useStateMachineContext();
@@ -86,6 +87,9 @@ function StateMachineInspectorContent() {
       <StateMachineSelectionForm key={`${view.selectedMachineIndex}-${view.target.kind === "element" ? view.target.selection.id : "none"}-${value}`}
         inspection={view.inspection} resolution={view.resolution} value={value} onChange={onChange}
         onSelect={view.selectElement} onClear={view.clearSelection} />}
+    {view.inspection.kind === "node" &&
+      <StateMachineStateTransitions graph={view.graph} node={view.inspection.node}
+        onSelect={view.selectElement} onAddTransition={() => view.selectPart("transition")} />}
     <StateMachineInspectionDetails inspection={view.inspection} />
   </>;
 }

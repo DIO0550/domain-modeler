@@ -83,3 +83,19 @@ test("選択対象を一つの検査結果へ解決し、DSL更新で消えた�
     kind: "machine", name: "注文",
   });
 });
+
+test("状態に出入りする遷移を辺と同じ順で返し、自己ループは両方に含める", () => {
+  const graph = graphOf(`state-machine 注文 =
+  initial: 待機
+  state: 待機
+  state: 完了 terminal
+  transition: 待機 -> 完了 on 確定
+  transition: 待機 -> 待機 on 再試行
+  transition: 完了 -> 待機 on 差戻し`);
+  const waiting = StateMachineGraph.stateSelection("待機").id;
+  const { incoming, outgoing } = StateMachineGraph.transitionsOf(graph, waiting);
+  expect(outgoing.map((edge) => edge.event)).toEqual(["確定", "再試行"]);
+  expect(incoming.map((edge) => edge.event)).toEqual(graph.edges.filter((edge) => edge.to === waiting).map((edge) => edge.event));
+  expect([...incoming.map((edge) => edge.event)].sort()).toEqual(["再試行", "差戻し"].sort());
+  expect(StateMachineGraph.transitionsOf(graph, "state:不明")).toEqual({ incoming: [], outgoing: [] });
+});
