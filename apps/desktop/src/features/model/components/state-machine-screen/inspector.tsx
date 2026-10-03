@@ -57,11 +57,13 @@ function StateMachineInspectorContent() {
   }
   const { view, value, onChange } = context.value;
   if (view.graph === null) {
-    return <StateMachineEntryForm key="machine" value={value} onChange={onChange} target={{ kind: "machine" }} />;
+    return <StateMachineEntryForm key="machine" value={value} onChange={onChange}
+      onSelect={view.selectElement} onMachineCreated={view.selectMachine} target={{ kind: "machine" }} />;
   }
   if (view.target.kind === "part" && view.resolution !== null) {
     return <StateMachineEntryForm key={`${view.selectedMachineIndex}-${view.target.part}`}
       value={value} onChange={onChange} initialFrom={view.target.initialFrom}
+      onSelect={view.selectElement} onMachineCreated={view.selectMachine}
       target={{ kind: "part", part: view.target.part, resolution: view.resolution }} />;
   }
   if (view.inspection === null) {

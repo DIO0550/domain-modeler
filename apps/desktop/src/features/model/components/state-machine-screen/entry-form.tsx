@@ -1,22 +1,34 @@
+import type { FormEvent } from "react";
 import type { Option } from "@/utils/Option";
+import type { StateMachineGraphSelection } from "../../domains/state-machine-graph";
 import {
   useStateMachineDraft,
   type StateMachineDraftTarget,
   type UseStateMachineDraftResult,
 } from "../../hooks/use-state-machine-draft";
 import { StateMachineForm } from "./form-fields";
+import { focusGraph } from "./focus";
 
 type StateMachineEntryFormProps = Readonly<{
   value: string;
   onChange: (text: string) => void;
+  onSelect: (selection: StateMachineGraphSelection) => void;
+  onMachineCreated: (index: number) => void;
   target: StateMachineDraftTarget;
   initialFrom?: Option<string>;
 }>;
 
 /** 選択したパーツまたは新しいマシンの入力フォーム。 */
-export function StateMachineEntryForm({ value, onChange, target, initialFrom }: StateMachineEntryFormProps) {
-  const draft = useStateMachineDraft({ source: value, onChange, target, initialFrom });
-  return <form onSubmit={(submit) => { submit.preventDefault(); draft.submit(); }}>
+export function StateMachineEntryForm({ value, onChange, onSelect, onMachineCreated, target, initialFrom }: StateMachineEntryFormProps) {
+  const draft = useStateMachineDraft({ source: value, onChange, onSelect, onMachineCreated, target, initialFrom });
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (draft.submit()) {
+      focusGraph(form, target.kind === "part");
+    }
+  };
+  return <form onSubmit={submit}>
     <StateMachineEntryFields target={target} draft={draft} />
     <button type="submit">{target.kind === "machine" ? "マシンを作成" : "追加"}</button>
     {draft.error && <p role="alert" className="state-machine-screen__diagnostic">{draft.error}</p>}
