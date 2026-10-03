@@ -19,6 +19,7 @@
 | [model-core.md](./model-core.md) | BE | DSLの字句・構文解析・AST・診断・参照解決 |
 | [canvas-ui.md](./canvas-ui.md) | FE | キャンバス画面(付箋・接続線の表示と操作) |
 | [model-editor.md](./model-editor.md) | FE | DSLエディタ画面(split-view・プレビューカード・編集支援) |
+| [モデル依存図](./model-dependency-view/index.md) | FE / コア | data・workflowの依存可視化、選択・近傍・文書同期（提案） |
 | [scaffold.md](./scaffold.md) | BE | キャンバス → `.dmodel` の変換規則 |
 | [app-shell.md](./app-shell.md) | FE | タブ・ファイルオープン・通知・例外状態 |
 | [technical.md](./technical.md) | BE | 技術スタック・パッケージ構成・保存・監視・IPC |
