@@ -3,6 +3,7 @@ import type { StateMachineResolution } from "@domain-modeler/model-core";
 import type { StateMachineGraphInspection, StateMachineGraphSelection } from "../../domains/state-machine-graph";
 import { useStateMachineSelectionForm } from "../../hooks/use-state-machine-selection-form";
 import { StateMachineSelectionFields } from "./selection-fields";
+import { focusGraph } from "./focus";
 
 type Selection = Extract<StateMachineGraphInspection, { kind: "node" | "edge" }>;
 type Props = Readonly<{
@@ -13,14 +14,6 @@ type Props = Readonly<{
   onSelect: (selection: StateMachineGraphSelection) => void;
   onClear: () => void;
 }>;
-
-const focusGraph = (form: HTMLFormElement, selected: boolean): void => {
-  const screen = form.closest<HTMLElement>(".state-machine-screen");
-  requestAnimationFrame(() => {
-    const target = selected ? screen?.querySelector<SVGElement>('[data-selected="true"]') : null;
-    (target ?? screen?.querySelector<HTMLSelectElement>(".state-machine-screen__toolbar select"))?.focus();
-  });
-};
 
 /** 選択した状態または遷移の入力欄と操作を組み立てる。 */
 export function StateMachineSelectionForm({ inspection, resolution, value, onChange, onSelect, onClear }: Props) {

@@ -22,6 +22,8 @@ export const createStateMachineDraftRenderer = () => {
         latest.current = useStateMachineDraft({
           source: value,
           target,
+          onSelect: () => undefined,
+          onMachineCreated: () => undefined,
           onChange: (next) => {
             source = next;
             root.render(<Probe value={source} />);
