@@ -33,7 +33,7 @@ test("マシン切替で要素選択と倍率を一緒に戻す", () => {
 test("パレットとグラフ選択は排他的で、全文更新からグラフを再導出する", () => {
   const view = views.render(source);
   act(() => view.latest.current?.selectPart("terminal"));
-  expect(view.latest.current?.target).toEqual({ kind: "part", part: "terminal" });
+  expect(view.latest.current?.target).toEqual({ kind: "part", part: "terminal", initialFrom: { some: false } });
   const node = view.latest.current?.graph?.nodes[0];
   expect(node).toBeDefined();
   if (node === undefined) { return; }

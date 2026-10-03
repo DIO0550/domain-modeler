@@ -1,3 +1,4 @@
+import type { Option } from "@/utils/Option";
 import {
   useStateMachineDraft,
   type StateMachineDraftTarget,
@@ -9,11 +10,12 @@ type StateMachineEntryFormProps = Readonly<{
   value: string;
   onChange: (text: string) => void;
   target: StateMachineDraftTarget;
+  initialFrom?: Option<string>;
 }>;
 
 /** 選択したパーツまたは新しいマシンの入力フォーム。 */
-export function StateMachineEntryForm({ value, onChange, target }: StateMachineEntryFormProps) {
-  const draft = useStateMachineDraft({ source: value, onChange, target });
+export function StateMachineEntryForm({ value, onChange, target, initialFrom }: StateMachineEntryFormProps) {
+  const draft = useStateMachineDraft({ source: value, onChange, target, initialFrom });
   return <form onSubmit={(submit) => { submit.preventDefault(); draft.submit(); }}>
     <StateMachineEntryFields target={target} draft={draft} />
     <button type="submit">{target.kind === "machine" ? "マシンを作成" : "追加"}</button>
@@ -31,9 +33,9 @@ function StateMachineEntryFields({ target, draft }: Readonly<{
   }
   if (target.part === "transition") {
     return <>
-      <StateMachineForm.Input label="遷移元" value={draft.fields.from}
+      <StateMachineForm.Select label="遷移元" value={draft.fields.from} options={draft.transitionChoices.from}
         onChange={(value) => draft.changeField("from", value)} />
-      <StateMachineForm.Input label="遷移先" value={draft.fields.to}
+      <StateMachineForm.Select label="遷移先" value={draft.fields.to} options={draft.transitionChoices.to}
         onChange={(value) => draft.changeField("to", value)} />
       <StateMachineForm.Input label="イベント名" value={draft.fields.event}
         onChange={(value) => draft.changeField("event", value)} />
