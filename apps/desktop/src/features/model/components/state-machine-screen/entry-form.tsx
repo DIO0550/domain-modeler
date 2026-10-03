@@ -41,7 +41,12 @@ function StateMachineEntryFields({ target, draft }: Readonly<{
         onChange={(value) => draft.changeField("event", value)} />
     </>;
   }
-  const label = target.part === "initial" ? "既存の状態名" : "状態名";
-  return <StateMachineForm.Input label={label} value={draft.fields.name}
-    onChange={(value) => draft.changeField("name", value)} />;
+  return <>
+    <StateMachineForm.Input label="状態名" value={draft.fields.name}
+      onChange={(value) => draft.changeField("name", value)} />
+    <StateMachineForm.Checkbox label="初期状態" checked={draft.fields.initial}
+      onChange={(checked) => draft.changeField("initial", checked)} />
+    <StateMachineForm.Checkbox label="終端状態" checked={draft.fields.terminal}
+      onChange={(checked) => draft.changeField("terminal", checked)} />
+  </>;
 }

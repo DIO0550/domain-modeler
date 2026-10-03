@@ -1,20 +1,28 @@
 import { Identifier, Result, type Result as ResultValue, type SourceRange, type StateMachineResolution, type TransitionDecl } from "@domain-modeler/model-core";
 
-export type StateMachinePart = "state" | "initial" | "terminal" | "transition";
-export type StateMachineSourceInput = Readonly<{
-  part: StateMachinePart;
-  name: string;
-  from: string;
-  to: string;
-  event: string;
-}>;
-
 export type StateMachineStateInput = Readonly<{ name: string; initial: boolean; terminal: boolean }>;
 export type StateMachineTransitionInput = Readonly<{ from: string; to: string; event: string }>;
+export type StateMachineSourceInput =
+  | Readonly<{ part: "state" } & StateMachineStateInput>
+  | Readonly<{ part: "transition" } & StateMachineTransitionInput>;
+export type StateMachinePart = StateMachineSourceInput["part"];
 export type StateMachineStateEdit = Readonly<StateMachineStateInput & { oldName: string }>;
 export type StateMachineTransitionEdit = Readonly<StateMachineTransitionInput & { range: SourceRange }>;
 
 type SourceReplacement = Readonly<{ start: number; end: number; text: string }>;
+
+const SourceReplacement = {
+  /** 対象マシンの末尾へ、文書の改行形式を保って宣言を挿入する。 */
+  appendToMachine(source: string, resolution: StateMachineResolution, lines: readonly string[]): SourceReplacement {
+    const newline = source.includes("\r\n") ? "\r\n" : "\n";
+    const at = offsetOf(source, resolution.machine.range.endLine + 1, 1);
+    const text = lines.join(newline);
+    if (at === null) {
+      return { start: source.length, end: source.length, text: `${newline}${text}` };
+    }
+    return { start: at, end: at, text: `${text}${newline}` };
+  },
+} as const;
 
 const offsetOf = (source: string, line: number, column: number): number | null => {
   const lines = source.split("\n");
@@ -109,7 +117,7 @@ export const StateMachineSource = {
     return Result.ok(`${source}${separator}state-machine ${name} =\n`);
   },
   /**
-   * 指定したマシンの末尾へパーツを1行追加する。
+   * 状態と初期・終端属性、または遷移を1回の文書更新で追加する。
    * @param source 現在の `.dmodel` 全文。
    * @param resolution 対象マシンの解析結果。
    * @param input パレットで選んだパーツと入力値。
@@ -117,7 +125,6 @@ export const StateMachineSource = {
    */
   add(source: string, resolution: StateMachineResolution, input: StateMachineSourceInput): ResultValue<string, string> {
     const machine = resolution.machine;
-    let line: string;
     if (input.part === "transition") {
       if (![input.from, input.to, input.event].every(Identifier.isAcceptable)) {
         return Result.err("遷移元・遷移先・イベント名を入力してください");
@@ -132,29 +139,28 @@ export const StateMachineSource = {
       if (machine.transitions.some((edge) => edge.from === input.from && edge.to === input.to && edge.event === input.event)) {
         return Result.err("同じ遷移が既にあります");
       }
-      line = `  transition: ${input.from} -> ${input.to} on ${input.event}`;
-    } else if (input.part === "initial") {
-      if (!machine.states.some((state) => state.name === input.name)) {
-        return Result.err("既存の状態名を入力してください");
-      }
-      if (machine.initials.length > 0) {
-        return Result.err("初期状態は既に設定されています。変更はモデル定義で行ってください");
-      }
-      line = `  initial: ${input.name}`;
-    } else {
-      if (!Identifier.isAcceptable(input.name)) {
-        return Result.err("有効な状態名を入力してください");
-      }
-      if (machine.states.some((state) => state.name === input.name)) {
-        return Result.err("同じ名前の状態が既にあります");
-      }
-      line = `  state: ${input.name}${input.part === "terminal" ? " terminal" : ""}`;
+      return applyReplacements(source, [SourceReplacement.appendToMachine(source, resolution, [
+        `  transition: ${input.from} -> ${input.to} on ${input.event}`,
+      ])]);
     }
-    const lines = source.split("\n");
-    // 次の非インデント宣言より前、対象マシンの最終行の直後に挿入する。
-    const lastLine = Math.min(machine.range.endLine, lines.length);
-    lines.splice(lastLine, 0, line);
-    return Result.ok(lines.join("\n"));
+    if (!Identifier.isAcceptable(input.name)) {
+      return Result.err("有効な状態名を入力してください");
+    }
+    if (machine.states.some((state) => state.name === input.name)) {
+      return Result.err("同じ名前の状態が既にあります");
+    }
+    if (input.initial && machine.initials.length > 1) {
+      return Result.err("初期状態の重複をモデル定義で修正してください");
+    }
+    const initialLines = input.initial && machine.initials.length === 0 ? [`  initial: ${input.name}`] : [];
+    const stateLine = `  state: ${input.name}${input.terminal ? " terminal" : ""}`;
+    const insertion = SourceReplacement.appendToMachine(source, resolution, [...initialLines, stateLine]);
+    const currentInitial = machine.initials[0];
+    if (input.initial && currentInitial !== undefined) {
+      // 名前の範囲だけを置き換え、初期行のコメントや空白を維持する。
+      return applyReplacements(source, [insertion, replacementOf(source, currentInitial.nameRange, input.name)]);
+    }
+    return applyReplacements(source, [insertion]);
   },
   /** 状態名の全参照と初期・終端属性を1回の文書更新で変更する。 */
   updateState(source: string, resolution: StateMachineResolution, input: StateMachineStateEdit): ResultValue<string, string> {
