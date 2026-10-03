@@ -19,14 +19,18 @@ test("不正な状態名から修正すると対象マシンの DSL を1回更�
   if (resolution === undefined) { return; }
   const draft = drafts.render(source, { kind: "part", part: "state", resolution });
   act(() => draft.latest.current?.changeField("name", "with space"));
+  act(() => draft.latest.current?.changeField("initial", true));
+  act(() => draft.latest.current?.changeField("terminal", true));
   act(() => draft.latest.current?.submit());
   expect(draft.latest.current?.error).toBe("有効な状態名を入力してください");
   expect(draft.source()).toBe(source);
+  expect(draft.latest.current?.fields).toMatchObject({ name: "with space", initial: true, terminal: true });
 
   act(() => draft.latest.current?.changeField("name", "保留"));
   act(() => draft.latest.current?.submit());
-  expect(draft.source()).toContain("  state: 保留\nstate-machine 返金");
-  expect(draft.latest.current?.fields.name).toBe("");
+  expect(draft.source()).toContain("  initial: 保留");
+  expect(draft.source()).toContain("  state: 保留 terminal\nstate-machine 返金");
+  expect(draft.latest.current?.fields).toMatchObject({ name: "", initial: false, terminal: false });
   expect(draft.latest.current?.error).toBe("");
 });
 

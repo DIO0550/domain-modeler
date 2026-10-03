@@ -5,7 +5,8 @@ import { Result, type StateMachineResolution } from "@domain-modeler/model-core"
 import {
   StateMachineSource,
   type StateMachinePart,
-  type StateMachineSourceInput,
+  type StateMachineStateInput,
+  type StateMachineTransitionInput,
 } from "../../domains/state-machine-source";
 
 export type StateMachineDraftTarget =
@@ -20,28 +21,28 @@ type UseStateMachineDraftParams = Readonly<{
 }>;
 
 type DraftState = Readonly<{
-  fields: Readonly<Omit<StateMachineSourceInput, "part">>;
+  fields: Readonly<StateMachineStateInput & StateMachineTransitionInput>;
   error: string;
 }>;
 
 type DraftAction =
-  | Readonly<{ type: "changed"; field: keyof DraftState["fields"]; value: string }>
+  | Readonly<{ type: "changed"; fields: Partial<DraftState["fields"]> }>
   | Readonly<{ type: "failed"; message: string }>
   | Readonly<{ type: "added" }>;
 
 const initialDraft: DraftState = {
-  fields: { name: "", from: "", to: "", event: "" },
+  fields: { name: "", initial: false, terminal: false, from: "", to: "", event: "" },
   error: "",
 };
 
 const reduceDraft = (draft: DraftState, action: DraftAction): DraftState => {
   switch (action.type) {
     case "changed":
-      return { ...draft, fields: { ...draft.fields, [action.field]: action.value } };
+      return { ...draft, fields: { ...draft.fields, ...action.fields } };
     case "failed":
       return { ...draft, error: action.message };
     case "added":
-      return { fields: { ...draft.fields, name: "", event: "" }, error: "" };
+      return { fields: { ...draft.fields, name: "", initial: false, terminal: false, event: "" }, error: "" };
   }
 };
 
@@ -49,7 +50,7 @@ export type UseStateMachineDraftResult = Readonly<{
   fields: DraftState["fields"];
   transitionChoices: StateMachineTransitionChoices;
   error: string;
-  changeField: (field: keyof DraftState["fields"], value: string) => void;
+  changeField: <K extends keyof DraftState["fields"]>(field: K, value: DraftState["fields"][K]) => void;
   submit: () => void;
 }>;
 
@@ -87,7 +88,7 @@ export function useStateMachineDraft({ source, onChange, target, initialFrom = O
     fields,
     transitionChoices,
     error: draft.error,
-    changeField: (field, value) => dispatch({ type: "changed", field, value }),
+    changeField: (field, value) => dispatch({ type: "changed", fields: { [field]: value } }),
     submit,
   };
 }
