@@ -28,13 +28,13 @@
 .state-machine-screen__toolbar label { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .state-machine-screen__machine { display: flex; align-items: center; gap: 8px; }
 .state-machine-screen__zoom { display: flex; gap: 4px; }
-.state-machine-screen__viewport { flex: 1; min-height: 0; overflow: hidden; background-image: radial-gradient(var(--model-editor-border) 1px, transparent 1px); background-size: 20px 20px; }
+.state-machine-screen__viewport { position: relative; flex: 1; min-height: 0; overflow: hidden; background-image: radial-gradient(var(--model-editor-border) 1px, transparent 1px); background-size: 20px 20px; }
 .state-machine-screen__graph { display: block; width: 100%; height: 100%; min-height: 240px; }
 .state-machine-screen__empty { margin: auto; padding: 20px; text-align: center; color: var(--shell-muted); }
 .state-machine-screen__node, .state-machine-screen__edge { cursor: pointer; color: var(--shell-text); }
 .state-machine-screen__node rect { fill: var(--shell-bg); stroke: var(--shell-muted); stroke-width: 2; }
-.state-machine-screen__node[data-appearance*="initial"] rect { stroke: var(--model-editor-focus); stroke-width: 3; }
-.state-machine-screen__node[data-appearance*="terminal"] rect { stroke-width: 4; }
+.state-machine-screen__initial circle { fill: currentColor; stroke: none; }
+.state-machine-screen__initial line { stroke: var(--shell-muted); stroke-width: 2; }
 .state-machine-screen__node[data-appearance="unresolved"] rect { stroke-dasharray: 5 4; }
 .state-machine-screen__node[data-status="error"] rect, .state-machine-screen__edge[data-status="error"] .state-machine-screen__edge-line { stroke: var(--model-editor-error); }
 .state-machine-screen__node[data-selected="true"] rect, .state-machine-screen__edge[data-selected="true"] .state-machine-screen__edge-line { stroke: var(--model-editor-focus); stroke-width: 4; }
@@ -45,7 +45,6 @@
 .state-machine-screen__connection { stroke: var(--model-editor-focus); stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
 .state-machine-screen__graph[data-connecting="true"] { cursor: crosshair; }
 .state-machine-screen__graph text { fill: var(--shell-text); font-size: 14px; font-weight: 600; pointer-events: none; }
-.state-machine-screen__graph .state-machine-screen__badge { fill: var(--model-editor-focus); }
 .state-machine-screen__edge-line { fill: none; stroke: var(--shell-muted); stroke-width: 2; }
 .state-machine-screen__edge-hit { fill: none; stroke: transparent; stroke-width: 18; }
 .state-machine-screen__edge text { paint-order: stroke; stroke: var(--shell-bg); stroke-width: 6; }
@@ -68,3 +67,10 @@
 .state-machine-screen__graph { cursor: grab; touch-action: none; user-select: none; }
 .state-machine-screen__graph[data-panning="true"] { cursor: grabbing; }
 .state-machine-screen__zoom output { display: flex; align-items: center; justify-content: center; min-width: 48px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--shell-muted); }
+.state-machine-screen__legend { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 12px; margin: 0; padding: 6px 10px; list-style: none; font-size: 11px; color: var(--shell-muted); background: var(--shell-bg); border: 1px solid var(--model-editor-border); border-radius: 6px; pointer-events: none; }
+.state-machine-screen__legend li { display: flex; align-items: center; gap: 4px; }
+.state-machine-screen__legend svg { fill: none; stroke: var(--shell-muted); stroke-width: 1.5; }
+.state-machine-screen__legend [data-legend="initial"] circle { fill: var(--shell-text); stroke: none; }
+.state-machine-screen__legend [data-legend="unresolved"] rect { stroke-dasharray: 3 2; }
+.state-machine-screen__legend [data-legend="error"] rect { stroke: var(--model-editor-error); }
+.state-machine-screen__node rect.state-machine-screen__terminal-ring { fill: none; stroke-width: 2; }

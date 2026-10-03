@@ -12,10 +12,13 @@ const NODE_SIZE = { width: 160, height: 64 } as const;
 const COLUMN = 260;
 const ROW = 150;
 const MARGIN = 100;
+/** 初期状態の左に置く開始点と矢印の幅。 */
+const INITIAL_LEAD = 48;
 
 /** 状態遷移の自動配置とノード寸法。 */
 export const StateMachineLayout = {
   nodeSize: NODE_SIZE,
+  initialLead: INITIAL_LEAD,
   /**
    * 初期状態から左→右へ配置する。循環・自己ループ・孤立状態も表示する。
    * @param graph 描画用の状態と遷移。
@@ -50,7 +53,7 @@ export const StateMachineLayout = {
     const nodes: Record<string, GraphPoint> = {};
     for (const [level, column] of columns) {
       column.forEach((id, index) => {
-        nodes[id] = { x: MARGIN + level * COLUMN, y: MARGIN + index * ROW };
+        nodes[id] = { x: MARGIN + INITIAL_LEAD + level * COLUMN, y: MARGIN + index * ROW };
       });
     }
     const maxLevel = Math.max(0, ...columns.keys());
@@ -86,7 +89,7 @@ export const StateMachineLayout = {
       };
     });
     return {
-      width: MARGIN * 2 + maxLevel * COLUMN + NODE_SIZE.width,
+      width: MARGIN * 2 + INITIAL_LEAD + maxLevel * COLUMN + NODE_SIZE.width,
       height: MARGIN * 2 + (maxRows - 1) * ROW + NODE_SIZE.height,
       nodes,
       edges,

@@ -39,6 +39,19 @@ test("モデル定義とプレビューを保ったまま画面全体を切り�
   expect(host.querySelector('[data-decl-name="注文ID"]')).not.toBeNull();
 });
 
+test("初期状態は開始点と矢印、終端状態は二重枠で表し、凡例を表示する", () => {
+  const host = diagnostics.render(machine);
+  click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
+  const initial = host.querySelector('.state-machine-screen__node[aria-label^="待機"]');
+  const terminal = host.querySelector('.state-machine-screen__node[aria-label^="完了"]');
+  expect(initial?.querySelector(".state-machine-screen__initial circle")).not.toBeNull();
+  expect(initial?.querySelector(".state-machine-screen__terminal-ring")).toBeNull();
+  expect(terminal?.querySelector(".state-machine-screen__terminal-ring")).not.toBeNull();
+  expect(terminal?.querySelector(".state-machine-screen__initial")).toBeNull();
+  expect([...host.querySelectorAll(".state-machine-screen__legend li")].map((item) => item.textContent))
+    .toEqual(["初期", "終端", "未解決", "エラー"]);
+});
+
 test("空状態からマシンを作成しても同じ文書を更新する", () => {
   let latest = "data 注文ID = string";
   const host = diagnostics.render(latest, (value) => { latest = value; });

@@ -156,7 +156,9 @@ function StateMachineGraphContent() {
           if (point === undefined) {
             return null;
           }
-          const handle = { x: point.x + StateMachineLayout.nodeSize.width / 2, y: point.y };
+          const { width, height } = StateMachineLayout.nodeSize;
+          const handle = { x: point.x + width / 2, y: point.y };
+          const start = { x: point.x - width / 2 - StateMachineLayout.initialLead + 8, y: point.y };
           const connectable = node.appearance !== "unresolved" && !node.appearance.includes("terminal");
           return <g key={node.id} className="state-machine-screen__node" data-status={node.status} data-node-id={node.id}
             data-selected={view.target.kind === "element" && view.target.selection.id === node.id}
@@ -164,11 +166,14 @@ function StateMachineGraphContent() {
             data-appearance={node.appearance} role="button" tabIndex={0} aria-label={`${node.name} ${node.appearance}`}
             onClick={() => view.selectElement({ kind: "node", id: node.id })}
             onKeyDown={(keyboard) => selectOnKeyDown(keyboard, { kind: "node", id: node.id })}>
-            <rect x={point.x - StateMachineLayout.nodeSize.width / 2} y={point.y - StateMachineLayout.nodeSize.height / 2}
-              width={StateMachineLayout.nodeSize.width} height={StateMachineLayout.nodeSize.height} rx="12" />
+            {node.appearance.includes("initial") && <g className="state-machine-screen__initial" aria-hidden="true">
+              <circle cx={start.x} cy={start.y} r="7" />
+              <line x1={start.x + 7} y1={start.y} x2={point.x - width / 2 - 2} y2={point.y} markerEnd={`url(#${arrowId})`} />
+            </g>}
+            <rect x={point.x - width / 2} y={point.y - height / 2} width={width} height={height} rx="12" />
+            {node.appearance.includes("terminal") && <rect className="state-machine-screen__terminal-ring" aria-hidden="true"
+              x={point.x - width / 2 + 5} y={point.y - height / 2 + 5} width={width - 10} height={height - 10} rx="8" />}
             <text x={point.x} y={point.y + 5} textAnchor="middle">{node.name}</text>
-            {node.appearance.includes("initial") && <text x={point.x - StateMachineLayout.nodeSize.width / 2 + 15} y={point.y - 17} className="state-machine-screen__badge">●</text>}
-            {node.appearance.includes("terminal") && <circle cx={point.x + StateMachineLayout.nodeSize.width / 2 - 18} cy={point.y - 17} r="7" fill="none" stroke="currentColor" strokeWidth="2" />}
             {connectable && <circle className="state-machine-screen__handle" cx={handle.x} cy={handle.y} r="7"
               aria-hidden="true" onPointerDown={(event) => connection.start(event, node.id, handle)} />}
           </g>;
@@ -176,6 +181,29 @@ function StateMachineGraphContent() {
         {drag !== undefined && <line className="state-machine-screen__connection" x1={drag.start.x} y1={drag.start.y}
           x2={drag.pointer.x} y2={drag.pointer.y} markerEnd={`url(#${arrowId})`} />}
       </svg>
+      <StateMachineLegend />
     </div>
   );
+}
+
+const LEGEND_ITEMS = [
+  { appearance: "initial", label: "初期" },
+  { appearance: "terminal", label: "終端" },
+  { appearance: "unresolved", label: "未解決" },
+  { appearance: "error", label: "エラー" },
+] as const;
+
+function StateMachineLegend() {
+  return <ul className="state-machine-screen__legend" aria-label="凡例">
+    {LEGEND_ITEMS.map(({ appearance, label }) =>
+      <li key={appearance} data-legend={appearance}>
+        <svg viewBox="0 0 36 20" width="36" height="20" aria-hidden="true">
+          {appearance === "initial"
+            ? <><circle cx="5" cy="10" r="4" /><line x1="9" y1="10" x2="20" y2="10" /><rect x="20" y="3" width="15" height="14" rx="3" /></>
+            : <rect x="2" y="3" width="32" height="14" rx="3" />}
+          {appearance === "terminal" && <rect className="state-machine-screen__legend-ring" x="5" y="6" width="26" height="8" rx="2" />}
+        </svg>
+        {label}
+      </li>)}
+  </ul>;
 }
