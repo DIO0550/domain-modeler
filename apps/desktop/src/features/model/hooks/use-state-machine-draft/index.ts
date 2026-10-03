@@ -62,7 +62,7 @@ export type UseStateMachineDraftResult = Readonly<{
  * 選択中の追加フォームの下書きと検証結果を管理する。
  * フォームの対象を切り替えるとコンポーネントごと再生成される。
  *
- * @param params 対象マシンまたはパーツ、文書全文、変更・選択通知、フォームを開いた時点の遷移元。
+ * @param params 対象マシンまたはパーツ、文書全文、文書変更・要素選択・マシン作成の通知、フォームを開いた時点の遷移元。
  * @returns フォームの入力値・エラー・確定操作。
  */
 export function useStateMachineDraft({ source, onChange, onSelect, onMachineCreated, target, initialFrom = Option.none() }: UseStateMachineDraftParams): UseStateMachineDraftResult {
