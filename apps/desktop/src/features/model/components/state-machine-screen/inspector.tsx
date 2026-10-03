@@ -61,7 +61,7 @@ function StateMachineInspectorContent() {
   }
   if (view.target.kind === "part" && view.resolution !== null) {
     return <StateMachineEntryForm key={`${view.selectedMachineIndex}-${view.target.part}`}
-      value={value} onChange={onChange}
+      value={value} onChange={onChange} initialFrom={view.target.initialFrom}
       target={{ kind: "part", part: view.target.part, resolution: view.resolution }} />;
   }
   if (view.inspection === null) {

@@ -1,4 +1,5 @@
 import { useReducer } from "react";
+import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "../../domains/analyzed-model";
 import {
   StateMachineGraph,
@@ -13,7 +14,7 @@ import type { StateMachinePart } from "../../domains/state-machine-source";
 
 type ViewTarget =
   | Readonly<{ kind: "none" }>
-  | Readonly<{ kind: "part"; part: StateMachinePart }>
+  | Readonly<{ kind: "part"; part: StateMachinePart; initialFrom: Option<string> }>
   | Readonly<{ kind: "element"; selection: StateMachineGraphSelection }>;
 
 type ViewState = Readonly<{
@@ -24,7 +25,7 @@ type ViewState = Readonly<{
 
 type ViewAction =
   | Readonly<{ type: "machineSelected"; index: number }>
-  | Readonly<{ type: "partSelected"; part: StateMachinePart }>
+  | Readonly<{ type: "partSelected"; part: StateMachinePart; initialFrom: Option<string> }>
   | Readonly<{ type: "elementSelected"; selection: StateMachineGraphSelection }>
   | Readonly<{ type: "selectionCleared" }>
   | Readonly<{ type: "zoomed"; factor: number }>
@@ -41,7 +42,7 @@ const reduceView = (view: ViewState, action: ViewAction): ViewState => {
     case "machineSelected":
       return { machineIndex: action.index, target: { kind: "none" }, zoom: 1 };
     case "partSelected":
-      return { ...view, target: { kind: "part", part: action.part } };
+      return { ...view, target: { kind: "part", part: action.part, initialFrom: action.initialFrom } };
     case "elementSelected":
       return { ...view, target: { kind: "element", selection: action.selection } };
     case "selectionCleared":
@@ -107,7 +108,11 @@ export function useStateMachineView(
       dispatch({ type: "machineSelected", index });
       onMachineSelected?.(index);
     },
-    selectPart: (part) => dispatch({ type: "partSelected", part }),
+    selectPart: (part) => dispatch({
+      type: "partSelected",
+      part,
+      initialFrom: inspection?.kind === "node" ? Option.some(inspection.node.name) : Option.none(),
+    }),
     selectElement: (selection) => dispatch({ type: "elementSelected", selection }),
     clearSelection: () => dispatch({ type: "selectionCleared" }),
     zoomBy: (factor) => dispatch({ type: "zoomed", factor }),

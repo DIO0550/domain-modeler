@@ -1,4 +1,6 @@
 import { useReducer } from "react";
+import { Option } from "@/utils/Option";
+import { StateMachineTransitionChoices } from "../../domains/state-machine-transition-choices";
 import { Result, type StateMachineResolution } from "@domain-modeler/model-core";
 import {
   StateMachineSource,
@@ -14,6 +16,7 @@ type UseStateMachineDraftParams = Readonly<{
   source: string;
   onChange: (text: string) => void;
   target: StateMachineDraftTarget;
+  initialFrom?: Option<string>;
 }>;
 
 type DraftState = Readonly<{
@@ -44,6 +47,7 @@ const reduceDraft = (draft: DraftState, action: DraftAction): DraftState => {
 
 export type UseStateMachineDraftResult = Readonly<{
   fields: DraftState["fields"];
+  transitionChoices: StateMachineTransitionChoices;
   error: string;
   changeField: (field: keyof DraftState["fields"], value: string) => void;
   submit: () => void;
@@ -53,15 +57,24 @@ export type UseStateMachineDraftResult = Readonly<{
  * 選択中の追加フォームの下書きと検証結果を管理する。
  * フォームの対象を切り替えるとコンポーネントごと再生成される。
  *
- * @param params 対象マシンまたはパーツ、文書全文、変更通知。
+ * @param params 対象マシンまたはパーツ、文書全文、変更通知、フォームを開いた時点の遷移元。
  * @returns フォームの入力値・エラー・確定操作。
  */
-export function useStateMachineDraft({ source, onChange, target }: UseStateMachineDraftParams): UseStateMachineDraftResult {
-  const [draft, dispatch] = useReducer(reduceDraft, initialDraft);
+export function useStateMachineDraft({ source, onChange, target, initialFrom = Option.none() }: UseStateMachineDraftParams): UseStateMachineDraftResult {
+  const [draft, dispatch] = useReducer(reduceDraft, initialFrom, (from) => ({
+    ...initialDraft,
+    fields: { ...initialDraft.fields, from: from.some ? from.value : "" },
+  }));
+  const transitionChoices = target.kind === "part"
+    ? StateMachineTransitionChoices.create(target.resolution.machine)
+    : { from: [], to: [] };
+  const fields = target.kind === "part" && target.part === "transition"
+    ? { ...draft.fields, ...StateMachineTransitionChoices.selection(transitionChoices, draft.fields) }
+    : draft.fields;
   const submit = () => {
     const result = target.kind === "machine"
-      ? StateMachineSource.create(source, draft.fields.name)
-      : StateMachineSource.add(source, target.resolution, { part: target.part, ...draft.fields });
+      ? StateMachineSource.create(source, fields.name)
+      : StateMachineSource.add(source, target.resolution, { part: target.part, ...fields });
     if (Result.isErr(result)) {
       dispatch({ type: "failed", message: result.error });
       return;
@@ -71,7 +84,8 @@ export function useStateMachineDraft({ source, onChange, target }: UseStateMachi
   };
 
   return {
-    fields: draft.fields,
+    fields,
+    transitionChoices,
     error: draft.error,
     changeField: (field, value) => dispatch({ type: "changed", field, value }),
     submit,
