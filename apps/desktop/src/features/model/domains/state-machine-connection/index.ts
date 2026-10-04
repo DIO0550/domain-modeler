@@ -3,6 +3,7 @@ import { Option } from "@/utils/Option";
 import type { StateMachineGraph } from "../state-machine-graph";
 import { StateMachineLayout } from "../state-machine-layout";
 import { StateMachineGesture } from "../state-machine-gesture";
+import { StateMachinePlacement } from "../state-machine-placement";
 import type { StateMachinePosition } from "../state-machine-position";
 
 export type StateMachineConnection = Readonly<{
@@ -26,8 +27,10 @@ export const StateMachineConnection = {
     return Option.some({ ...origin, kind: "connected", to: candidate.value.name, end: candidate.value.point });
   },
   canStart(resolution: StateMachineResolution, name: string): boolean {
-    const states = resolution.machine.states.filter((state) => state.name === name);
-    return states.length === 1 && !states[0]!.terminal;
+    if (!StateMachinePlacement.isMovable(resolution, name)) {
+      return false;
+    }
+    return !resolution.machine.states.some((state) => state.name === name && state.terminal);
   },
   handles(point: StateMachinePosition): Readonly<Record<"top" | "right" | "bottom" | "left", StateMachinePosition>> {
     const { width, height } = StateMachineLayout.nodeSize;
@@ -44,8 +47,10 @@ export const StateMachineConnection = {
     const { width, height } = StateMachineLayout.nodeSize;
     const node = [...context.graph.nodes].reverse().find((item) => {
       const center = context.layout.nodes[item.id];
-      return center !== undefined && context.resolution.machine.states.filter((state) => state.name === item.name).length === 1
-        && Math.abs(point.x - center.x) <= width / 2 && Math.abs(point.y - center.y) <= height / 2;
+      if (center === undefined || !StateMachinePlacement.isMovable(context.resolution, item.name)) {
+        return false;
+      }
+      return Math.abs(point.x - center.x) <= width / 2 && Math.abs(point.y - center.y) <= height / 2;
     });
     if (node === undefined) {
       return Option.none();
