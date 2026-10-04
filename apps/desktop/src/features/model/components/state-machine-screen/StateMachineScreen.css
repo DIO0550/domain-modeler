@@ -66,3 +66,13 @@
 .state-machine-screen__node { cursor: grab; }
 .state-machine-screen__node:active { cursor: grabbing; }
 .state-machine-screen__canvas-hint { position: absolute; inset: 16px 16px auto; text-align: center; pointer-events: none; }
+
+.state-machine-screen__connection-handle { fill: var(--shell-bg); stroke: var(--model-editor-focus); stroke-width: 3; cursor: crosshair; }
+.state-machine-screen__connection-preview { fill: none; stroke: var(--model-editor-focus); stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
+.state-machine-screen__node[data-connection-candidate="true"] rect { stroke: var(--model-editor-focus); stroke-width: 5; stroke-dasharray: 6 3; }
+.state-machine-screen__label-editor { overflow: visible; }
+.state-machine-screen__label-editor form { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--model-editor-focus); border-radius: 8px; background: var(--shell-bg); color: var(--shell-text); font-size: 13px; }
+.state-machine-screen__label-editor label { display: flex; flex-direction: column; gap: 6px; }
+.state-machine-screen__label-editor input { min-width: 0; }
+.state-machine-screen__label-editor form > div { display: flex; gap: 8px; }
+.state-machine-screen__label-editor p { margin: 0; color: var(--model-editor-error); }

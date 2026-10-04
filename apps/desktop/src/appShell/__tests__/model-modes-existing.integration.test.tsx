@@ -155,3 +155,37 @@ test("配置と移動が自動保存され、モード切替・Undo/Redo・文�
   expect(rect.getAttribute("x")).toBe("320");
   expect(rect.getAttribute("y")).toBe("268");
 });
+
+test("接続確定だけを自動保存し、連続Undo/Redoで遷移を復元できる", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+  const path = "/connection.dmodel";
+  const source = "state-machine 注文 =\n  state: 待機 // @canvas-position(v1, 200, 200)\n  state: 完了 terminal // @canvas-position(v1, 500, 200)";
+  const files = new Map([[path, source]]);
+  const workspace = open(path, files);
+  await workspace.changed(path);
+  await openMode(workspace.host, "ステートマシン");
+  const canvas = canvasPointer(workspace.host);
+  act(() => workspace.host.querySelector('[aria-label="待機 normal"]')!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  canvas.pointer("pointerdown", { x: 660, y: 440 }, workspace.host.querySelector('[aria-label="待機 から接続 right"]')!);
+  canvas.pointer("pointerup", { x: 1000, y: 440 });
+  const input = workspace.host.querySelector<HTMLInputElement>('input[aria-label="新しい遷移のイベント名"]')!;
+  act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "確定");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(source);
+  act(() => input.form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  const connected = files.get(path)!;
+  expect(connected).toContain("transition: 待機 -> 完了 on 確定");
+  expect(document.activeElement).toBe(canvas.svg);
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(source);
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(connected);
+  await openMode(workspace.host, "モデル");
+  expect(workspace.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(connected);
+});

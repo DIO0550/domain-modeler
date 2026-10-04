@@ -141,6 +141,21 @@ export const StateMachineSource = {
       ...layout.value.nodes, [StateMachineGraph.stateSelection(input.name).id]: input.point,
     });
   },
+  /** 接続追加で自動配置が変わらないよう、現在の配置と遷移を1回で保存する。 */
+  connect(source: string, resolution: StateMachineResolution, input: StateMachineTransitionInput): ResultValue<string, string> {
+    const layout = StateMachinePlacement.layout(source, resolution);
+    if (Result.isErr(layout)) {
+      return layout;
+    }
+    if (![input.from, input.to].every((name) => StateMachinePlacement.isMovable(resolution, name))) {
+      return Result.err("接続する状態を一意に特定できません");
+    }
+    const positioned = StateMachinePlacement.write(source, resolution, layout.value.nodes);
+    if (Result.isErr(positioned)) {
+      return positioned;
+    }
+    return StateMachineSource.add(positioned.value, resolution, { part: "transition", ...input });
+  },
   /** 全体の再配置はこの明示操作だけで行う。 */
   arrange(source: string, resolution: StateMachineResolution): ResultValue<string, string> {
     const layout = StateMachineLayout.create(StateMachineGraph.create(resolution, []));
