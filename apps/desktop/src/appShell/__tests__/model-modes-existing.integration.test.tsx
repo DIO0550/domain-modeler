@@ -1,3 +1,4 @@
+import { canvasPointer } from "@/libs/svg-canvas/__tests__/svgCanvas.test-support";
 import { act } from "react";
 import { afterEach, expect, test, vi } from "vitest";
 import { machineSource, openMode, addState } from "./model-modes.test-support";
@@ -113,4 +114,44 @@ test("構文エラーと未定義参照がある既存文書でも複数マシ�
   expect(
     workspace.host.querySelector<HTMLTextAreaElement>("textarea")?.value,
   ).toBe(source);
+});
+
+
+test("配置と移動が自動保存され、モード切替・Undo/Redo・文書再読込後も一致する", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+  const path = "/placement.dmodel";
+  const files = new Map([[path, machineSource]]);
+  const workspace = open(path, files);
+  await workspace.changed(path);
+  await openMode(workspace.host, "ステートマシン");
+  const canvas = canvasPointer(workspace.host);
+  act(() => [...workspace.host.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "状態")!.click());
+  canvas.click({ x: 700, y: 440 });
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  const placed = files.get(path)!;
+  expect(placed).toContain("state: 状態1 // @canvas-position(v1, 300, 200)");
+  canvas.pointer("pointerdown", { x: 700, y: 440 }, workspace.host.querySelector('[aria-label="状態1 normal"]')!);
+  canvas.pointer("pointermove", { x: 900, y: 640 });
+  canvas.pointer("pointerup", { x: 900, y: 640 });
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  const moved = files.get(path)!;
+  expect(moved).toContain("state: 状態1 // @canvas-position(v1, 400, 300)");
+  await openMode(workspace.host, "モデル");
+  expect(workspace.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(moved);
+  await openMode(workspace.host, "ステートマシン");
+  const graph = workspace.host.querySelector<SVGSVGElement>("svg.state-machine-screen__graph")!;
+  act(() => graph.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(placed);
+  act(() => graph.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(moved);
+  workspace.close();
+  opened.splice(opened.indexOf(workspace), 1);
+  const reopened = open(path, files);
+  await reopened.changed(path);
+  await openMode(reopened.host, "ステートマシン");
+  const rect = reopened.host.querySelector('[aria-label="状態1 normal"] rect')!;
+  expect(rect.getAttribute("x")).toBe("320");
+  expect(rect.getAttribute("y")).toBe("268");
 });

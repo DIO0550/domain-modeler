@@ -39,7 +39,11 @@ export function StateMachineRoot({ value, onChange, onEditSource,
   const view = useStateMachineView(value, initialMachineIndex, onMachineSelected);
   return (
     <StateMachineContext.Provider value={Option.some({ view, value, onChange, onEditSource })}>
-      <div className="state-machine-screen">{children}</div>
+      <div className="state-machine-screen" onKeyDown={(event) => {
+        if (event.key === "Escape" && !(event.target instanceof HTMLInputElement)) {
+          view.clearSelection();
+        }
+      }}>{children}</div>
     </StateMachineContext.Provider>
   );
 }

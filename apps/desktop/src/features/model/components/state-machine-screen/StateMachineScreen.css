@@ -59,3 +59,10 @@
   .state-machine-screen { grid-template-columns: 130px minmax(0, 1fr); grid-template-rows: minmax(250px, 1fr) auto; }
   .state-machine-screen__inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--model-editor-border); max-height: 220px; }
 }
+
+.state-machine-screen__viewport { position: relative; }
+.state-machine-screen__viewport[data-placing="true"] { cursor: crosshair; }
+.state-machine-screen__graph { touch-action: none; user-select: none; }
+.state-machine-screen__node { cursor: grab; }
+.state-machine-screen__node:active { cursor: grabbing; }
+.state-machine-screen__canvas-hint { position: absolute; inset: 16px 16px auto; text-align: center; pointer-events: none; }

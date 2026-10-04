@@ -86,7 +86,6 @@ test("マシン切替時に選択と倍率を一緒に戻す", () => {
   const source = `${machine}\nstate-machine 返金 =\n  initial: 申請\n  state: 申請`;
   const host = diagnostics.render(source);
   click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
-  const graph = host.querySelector(".state-machine-screen__graph") as SVGSVGElement;
   click(host.querySelector(".state-machine-screen__node"));
   click(host.querySelector('button[aria-label="拡大"]'));
   const picker = host.querySelector(".state-machine-screen__toolbar select") as HTMLSelectElement;
@@ -96,14 +95,14 @@ test("マシン切替時に選択と倍率を一緒に戻す", () => {
   });
   expect(host.querySelector(".state-machine-screen__graph")?.getAttribute("aria-label")).toBe("返金 の状態遷移図");
   expect(host.querySelector(".state-machine-screen__node[data-selected='true']")).toBeNull();
-  expect(graph.getAttribute("viewBox")?.startsWith("0 0 ")).toBe(true);
+  expect(host.querySelector(".state-machine-screen__graph")?.getAttribute("viewBox")?.startsWith("-100 -100 ")).toBe(true);
 });
 
 test("パレットは状態と遷移を表示し、状態追加では初期・終端を選べる", () => {
   const host = diagnostics.render("state-machine 注文 =\n  state: 待機");
   click([...host.querySelectorAll("nav button")].find((button) => button.textContent === "ステートマシン") ?? null);
   expect([...host.querySelectorAll(".state-machine-screen__palette button")].map((button) => button.textContent))
-    .toEqual(["状態", "遷移"]);
+    .toEqual(["選択", "状態", "遷移"]);
   click([...host.querySelectorAll(".state-machine-screen__palette button")].find((button) => button.textContent === "状態") ?? null);
   expect(host.querySelector('input[aria-label="状態名"]')).not.toBeNull();
   expect([...host.querySelectorAll(".state-machine-screen__checkbox")].map((label) => label.textContent))

@@ -1,11 +1,14 @@
 import type { StateMachineGraph } from "../state-machine-graph";
 
-export type GraphPoint = Readonly<{ x: number; y: number }>;
+import type { StateMachinePosition } from "../state-machine-position";
+
 export type StateMachineLayout = Readonly<{
+  left: number;
+  top: number;
   width: number;
   height: number;
-  nodes: Readonly<Record<string, GraphPoint>>;
-  edges: readonly Readonly<{ id: string; path: string; label: GraphPoint }>[];
+  nodes: Readonly<Record<string, StateMachinePosition>>;
+  edges: readonly Readonly<{ id: string; path: string; label: StateMachinePosition }>[];
 }>;
 
 const NODE_SIZE = { width: 160, height: 64 } as const;
@@ -16,6 +19,14 @@ const MARGIN = 100;
 /** 状態遷移の自動配置とノード寸法。 */
 export const StateMachineLayout = {
   nodeSize: NODE_SIZE,
+  frame(size: Pick<StateMachineLayout, "left" | "top" | "width" | "height">): Pick<StateMachineLayout, "left" | "top" | "width" | "height"> {
+    return { left: size.left, top: size.top, width: Math.max(960, size.width), height: Math.max(640, size.height) };
+  },
+  viewBox(frame: Pick<StateMachineLayout, "left" | "top" | "width" | "height">, zoom: number): string {
+    const x = frame.left + frame.width * (1 - 1 / zoom) / 2;
+    const y = frame.top + frame.height * (1 - 1 / zoom) / 2;
+    return `${x} ${y} ${frame.width / zoom} ${frame.height / zoom}`;
+  },
   /**
    * 初期状態から左→右へ配置する。循環・自己ループ・孤立状態も表示する。
    * @param graph 描画用の状態と遷移。
@@ -47,7 +58,7 @@ export const StateMachineLayout = {
       const level = levels.get(id) ?? 0;
       columns.set(level, [...(columns.get(level) ?? []), id]);
     }
-    const nodes: Record<string, GraphPoint> = {};
+    const nodes: Record<string, StateMachinePosition> = {};
     for (const [level, column] of columns) {
       column.forEach((id, index) => {
         nodes[id] = { x: MARGIN + level * COLUMN, y: MARGIN + index * ROW };
@@ -55,6 +66,27 @@ export const StateMachineLayout = {
     }
     const maxLevel = Math.max(0, ...columns.keys());
     const maxRows = Math.max(1, ...[...columns.values()].map((column) => column.length));
+    return StateMachineLayout.position(graph, nodes, {
+      width: MARGIN * 2 + maxLevel * COLUMN + NODE_SIZE.width,
+      height: MARGIN * 2 + (maxRows - 1) * ROW + NODE_SIZE.height,
+    });
+  },
+  /** 保存済み座標を優先し、座標のない新しい状態だけを空き領域へ置く。 */
+  restore(graph: StateMachineGraph, saved: Readonly<Record<string, StateMachinePosition>>): StateMachineLayout {
+    const automatic = StateMachineLayout.create(graph);
+    if (Object.keys(saved).length === 0) {
+      return automatic;
+    }
+    const right = Math.max(...Object.values(saved).map((point) => point.x));
+    const missing = graph.nodes.filter((node) => !Object.prototype.hasOwnProperty.call(saved, node.id));
+    const additions = Object.fromEntries(missing.map((node, index) => [node.id, {
+      x: right + COLUMN, y: MARGIN + index * ROW,
+    }]));
+    return StateMachineLayout.position(graph, { ...saved, ...additions });
+  },
+  /** 座標だけを入力にして、すべての遷移経路と描画範囲を作り直す。 */
+  position(graph: StateMachineGraph, nodes: Readonly<Record<string, StateMachinePosition>>,
+    minimum: Readonly<{ width: number; height: number }> = { width: 360, height: 264 }): StateMachineLayout {
     const edges = graph.edges.map((edge, index) => {
       const from = nodes[edge.from];
       const to = nodes[edge.to];
@@ -85,9 +117,14 @@ export const StateMachineLayout = {
         label: { x: middleX, y: (startY + endY) / 2 - 12 },
       };
     });
+    const points = Object.values(nodes);
+    const left = Math.min(-MARGIN, ...points.map((point) => point.x - MARGIN));
+    const top = Math.min(-MARGIN, ...points.map((point) => point.y - MARGIN), ...edges.map((edge) => edge.label.y - 24));
     return {
-      width: MARGIN * 2 + maxLevel * COLUMN + NODE_SIZE.width,
-      height: MARGIN * 2 + (maxRows - 1) * ROW + NODE_SIZE.height,
+      left,
+      top,
+      width: Math.max(minimum.width, ...points.map((point) => point.x + MARGIN + NODE_SIZE.width / 2 - left)),
+      height: Math.max(minimum.height, ...points.map((point) => point.y + MARGIN + NODE_SIZE.height / 2 - top)),
       nodes,
       edges,
     };

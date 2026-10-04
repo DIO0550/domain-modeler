@@ -12,12 +12,13 @@ export function StateMachinePalette() {
   return (
     <aside className="state-machine-screen__palette" aria-label="ステートマシンのパレット">
       <h2>パーツ</h2>
+      <button type="button" aria-pressed={view.target.kind !== "part"} onClick={view.clearSelection}>選択</button>
       {parts.map(([part, label]) => (
         <button key={part} type="button" disabled={view.graph === null}
           aria-pressed={view.target.kind === "part" && view.target.part === part}
           onClick={() => view.selectPart(part)}>{label}</button>
       ))}
-      <p>パーツを選び、右側で内容を入力して追加します。</p>
+      <p>「状態」を選んでキャンバスをクリックすると1個配置します。状態はドラッグで移動できます。右側のフォームからも追加できます。</p>
     </aside>
   );
 }

@@ -1,3 +1,5 @@
+import { Result } from "@domain-modeler/model-core";
+import { StateMachinePlacement } from "../../domains/state-machine-placement";
 import { useReducer } from "react";
 import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "../../domains/analyzed-model";
@@ -60,6 +62,7 @@ export type UseStateMachineViewResult = Readonly<{
   graph: StateMachineGraph | null;
   layout: StateMachineLayout | null;
   resolution: StateMachineResolution | null;
+  placementError: string;
   inspection: StateMachineGraphInspection | null;
   target: ViewTarget;
   zoom: number;
@@ -88,7 +91,8 @@ export function useStateMachineView(
   const selectedMachineIndex = Math.min(view.machineIndex, analyzed.stateMachines.length - 1);
   const resolution = analyzed.stateMachines[selectedMachineIndex];
   const graph = resolution === undefined ? null : StateMachineGraph.create(resolution, analyzed.diagnostics);
-  const layout = graph === null ? null : StateMachineLayout.create(graph);
+  const placement = resolution === undefined ? Result.ok({}) : StateMachinePlacement.read(source, resolution);
+  const layout = graph === null ? null : StateMachineLayout.restore(graph, Result.isOk(placement) ? placement.value : {});
   let inspection: StateMachineGraphInspection | null = null;
   if (graph !== null) {
     const selection = view.target.kind === "element" ? view.target.selection : undefined;
@@ -101,6 +105,7 @@ export function useStateMachineView(
     graph,
     layout,
     resolution: resolution ?? null,
+    placementError: Result.isErr(placement) ? placement.error : "",
     inspection,
     target: view.target,
     zoom: view.zoom,
