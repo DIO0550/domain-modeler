@@ -37,6 +37,16 @@ function renderStateMachine(initialSource: string, initialMachineIndex = 0) {
     source: () => source,
     selectedMachineIndex: () => selectedMachineIndex,
     enterText,
+    clickInspectorButton: (label: string) => act(() => {
+      const button = [...host.querySelectorAll<HTMLButtonElement>(".state-machine-screen__inspector button")]
+        .find((element) => element.textContent === label);
+      if (button === undefined) {
+        throw new Error(`インスペクターにボタンがありません: ${label}`);
+      }
+      button.click();
+    }),
+    transitionLabels: (heading: string) => [...host.querySelectorAll(`ul[aria-label="${heading}"] button`)]
+      .map((button) => button.textContent),
     openState: () => openPart("状態"),
     replaceSource: (next: string) => act(() => replaceSource(next)),
     selectNode: (name: string) => act(() => {
