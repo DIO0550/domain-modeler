@@ -39,6 +39,11 @@ function renderStateMachine(initialSource: string, initialMachineIndex = 0) {
     changes: () => [...changes],
     source: () => source,
     selectedMachineIndex: () => selectedMachineIndex,
+    key: (key: string, options: KeyboardEventInit = {}) => {
+      const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...options });
+      act(() => document.activeElement!.dispatchEvent(event));
+      return event;
+    },
     enterText,
     clickInspectorButton: (label: string) => act(() => {
       const button = [...host.querySelectorAll<HTMLButtonElement>(".state-machine-screen__inspector button")]

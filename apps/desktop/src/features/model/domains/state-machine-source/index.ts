@@ -343,6 +343,17 @@ export const StateMachineSource = {
       replacementOf(source, transition.eventRange, input.event),
     ]);
   },
+  /** 現在のグラフ選択を解決し、インスペクターとキーボードから同じ削除経路を使う。 */
+  removeSelection(source: string, resolution: StateMachineResolution, selection: StateMachineGraphSelection): ResultValue<string, string> {
+    const inspection = StateMachineGraph.inspect(StateMachineGraph.create(resolution, []), selection);
+    if (inspection.kind === "machine") {
+      return Result.err("削除する要素を特定できません");
+    }
+    if (inspection.kind === "node") {
+      return StateMachineSource.remove(source, resolution, { kind: "state", name: inspection.node.name });
+    }
+    return StateMachineSource.remove(source, resolution, { kind: "transition", range: inspection.edge.range });
+  },
   /** 状態とその参照遷移、または選択した遷移をまとめて削除する。 */
   remove(source: string, resolution: StateMachineResolution, target: Readonly<{ kind: "state"; name: string } | { kind: "transition"; range: SourceRange }>): ResultValue<string, string> {
     const { machine } = resolution;

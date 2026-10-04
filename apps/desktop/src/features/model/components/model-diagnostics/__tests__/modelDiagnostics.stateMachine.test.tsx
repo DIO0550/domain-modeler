@@ -221,7 +221,7 @@ test("遷移の接続先変更と削除後もフォーカスを保ち、キー�
   expect(latest).not.toContain("transition:");
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   const focused = document.activeElement;
-  expect(focused).toBe(host.querySelector(".state-machine-screen__toolbar select"));
+  expect(focused).toBe(host.querySelector("svg.state-machine-screen__graph"));
   act(() => focused?.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
   expect(latest).toContain("transition: 待機 -> 待機 on 確定");
 });
