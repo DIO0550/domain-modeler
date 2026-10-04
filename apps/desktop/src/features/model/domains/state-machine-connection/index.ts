@@ -70,8 +70,6 @@ export const StateMachineConnection = {
   label(connection: StateMachineConnection, viewport: Pick<StateMachineLayout, "left" | "top" | "width" | "height">): StateMachinePosition {
     const x = (connection.start.x + connection.end.x) / 2;
     const y = (connection.start.y + connection.end.y) / 2 - (connection.kind === "connected" && connection.from === connection.to ? 85 : 16);
-    // 入力欄(260×200)を表示範囲内に収め、端の状態でも確定・取消に到達できるようにする。
-    return { x: Math.max(viewport.left + 140, Math.min(viewport.left + viewport.width - 140, x)),
-      y: Math.max(viewport.top + 48, Math.min(viewport.top + viewport.height - 172, y)) };
+    return StateMachineLayout.labelInputPosition({ x, y }, viewport);
   },
 } as const;

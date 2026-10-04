@@ -44,7 +44,7 @@ export function GraphLabelInput({ point, label, initialValue = "", onSubmit, onC
         dispatch({ kind: "error", error: result.error });
       }
     }}>
-      <label>{label}<input autoFocus aria-label={label} value={draft.value}
+      <label>{label}<input autoFocus aria-label={label} value={draft.value} onFocus={(event) => event.currentTarget.select()}
         onChange={(event) => dispatch({ kind: "change", value: event.target.value })} /></label>
       <div><button type="submit">確定</button><button type="button" onClick={onCancel}>取消</button></div>
       {draft.error !== "" && <p role="alert">{draft.error}</p>}

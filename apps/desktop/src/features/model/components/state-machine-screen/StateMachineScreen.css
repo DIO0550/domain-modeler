@@ -41,7 +41,7 @@
 .state-machine-screen__graph .state-machine-screen__badge { fill: var(--model-editor-focus); }
 .state-machine-screen__edge-line { fill: none; stroke: var(--shell-muted); stroke-width: 2; }
 .state-machine-screen__edge-hit { fill: none; stroke: transparent; stroke-width: 18; }
-.state-machine-screen__edge text { paint-order: stroke; stroke: var(--shell-bg); stroke-width: 6; }
+.state-machine-screen__edge text { paint-order: stroke; stroke: var(--shell-bg); stroke-width: 6; pointer-events: auto; cursor: text; }
 .state-machine-screen__inspector form, .state-machine-screen__inspector label { display: flex; flex-direction: column; gap: 8px; }
 .state-machine-screen__inspector form { gap: 12px; font-size: 12px; }
 .state-machine-screen__inspector label.state-machine-screen__checkbox { flex-direction: row; align-items: center; }
