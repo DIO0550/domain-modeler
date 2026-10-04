@@ -48,6 +48,13 @@
 .state-machine-screen__checkbox input { width: auto; }
 .state-machine-screen__navigation { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
 .state-machine-screen__diagnostic { color: var(--model-editor-error) !important; }
+.state-machine-screen__node-transitions { display: flex; flex-direction: column; gap: 16px; font-size: 12px; }
+.state-machine-screen__transition-section { min-width: 0; }
+.state-machine-screen__transition-section h3 { margin: 0 0 8px; font-size: 12px; }
+.state-machine-screen__transition-section p { margin: 0; }
+.state-machine-screen__transition-section ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.state-machine-screen__transition-section button { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; overflow-wrap: anywhere; }
+.state-machine-screen__transition-partner { color: var(--shell-muted); }
 @media (max-width: 750px) {
   .state-machine-screen { grid-template-columns: 130px minmax(0, 1fr); grid-template-rows: minmax(250px, 1fr) auto; }
   .state-machine-screen__inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--model-editor-border); max-height: 220px; }

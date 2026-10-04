@@ -47,7 +47,14 @@ export type StateMachineGraphSelection = Readonly<{ kind: "node" | "edge"; id: s
 /** 選択対象が消えた場合はマシン全体に戻る検査結果。 */
 export type StateMachineGraphInspection =
   | Readonly<{ kind: "machine"; name: string; diagnostics: readonly Diagnostic[] }>
-  | Readonly<{ kind: "node"; node: StateMachineGraphNode; diagnostics: readonly Diagnostic[] }>
+  | Readonly<{
+      kind: "node";
+      node: StateMachineGraphNode;
+      outgoing: readonly StateMachineGraphEdge[];
+      incoming: readonly StateMachineGraphEdge[];
+      canAddTransition: boolean;
+      diagnostics: readonly Diagnostic[];
+    }>
   | Readonly<{
       kind: "edge";
       edge: StateMachineGraphEdge;
@@ -251,7 +258,14 @@ export const StateMachineGraph = {
     if (selection?.kind === "node") {
       const node = graph.nodes.find((item) => item.id === selection.id);
       if (node !== undefined) {
-        return { kind: "node", node, diagnostics: node.diagnostics };
+        return {
+          kind: "node",
+          node,
+          outgoing: graph.edges.filter((edge) => edge.from === node.id),
+          incoming: graph.edges.filter((edge) => edge.to === node.id),
+          canAddTransition: node.appearance === "normal" || node.appearance === "initial",
+          diagnostics: node.diagnostics,
+        };
       }
     }
     if (selection?.kind === "edge") {

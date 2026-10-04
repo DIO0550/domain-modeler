@@ -5,6 +5,7 @@ import { useStateMachineContext } from "./context";
 import { StateMachineEntryForm } from "./entry-form";
 import { PART_LABELS } from "./part-labels";
 import { StateMachineSelectionForm } from "./selection-form";
+import { StateMachineNodeTransitions } from "./node-transitions";
 
 export function StateMachineInspector() {
   const context = useStateMachineContext();
@@ -75,6 +76,7 @@ function StateMachineInspectorContent() {
         inspection={view.inspection} resolution={view.resolution} value={value} onChange={onChange}
         onSelect={view.selectElement} onClear={view.clearSelection} />}
     <StateMachineInspectionDetails inspection={view.inspection} />
+    <StateMachineNodeTransitions />
   </>;
 }
 
