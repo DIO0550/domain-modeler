@@ -50,6 +50,9 @@ test("選び直した遷移元と遷移先で追加し、同じ遷移の重複�
   expect(added).toContain("transition: 処理中 -> 待機 on やり直し");
   expect(screen.select("遷移元").value).toBe("処理中");
   expect(screen.select("遷移先").value).toBe("待機");
+  screen.openTransition();
+  screen.changeSelect(screen.select("遷移元"), "処理中");
+  screen.changeSelect(screen.select("遷移先"), "待機");
   screen.enterEvent("やり直し");
   screen.submit();
   expect(screen.host.querySelector('[role="alert"]')?.textContent).toBe("同じ遷移が既にあります");

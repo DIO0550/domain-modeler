@@ -177,7 +177,7 @@ test("文書タイトル行へUndoとRedoの可用性を通知する", () => {
   expect(latest).toContain("state: 保留");
 });
 
-test("初期かつ終端の状態追加は入力をリセットし、初期状態の置換ごとUndo・Redoできる", () => {
+test("初期かつ終端の状態追加は編集フォームへ切り替わり、初期状態の置換ごとUndo・Redoできる", () => {
   let latest = machine;
   let controls: Readonly<{ undo?: () => void; redo?: () => void }> = {};
   const host = diagnostics.render(machine, (value) => { latest = value; }, (value) => { controls = value; });
@@ -192,9 +192,11 @@ test("初期かつ終端の状態追加は入力をリセットし、初期状�
   const added = machine.replace("initial: 待機", "initial: 受付") + "\n  state: 受付 terminal";
   expect(latest).toBe(added);
   expect(host.querySelector('.state-machine-screen__node[aria-label="受付 initial-terminal"]')).not.toBeNull();
-  expect(name.value).toBe("");
-  expect(initial!.checked).toBe(false);
-  expect(terminal!.checked).toBe(false);
+  expect(host.querySelector<HTMLInputElement>('input[aria-label="状態名"]')!.value).toBe("受付");
+  const [selectedInitial, selectedTerminal] = host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+  expect(selectedInitial!.checked).toBe(true);
+  expect(selectedTerminal!.checked).toBe(true);
+  expect(host.querySelector('[data-selected="true"]')?.getAttribute("aria-label")).toBe("受付 initial-terminal");
 
   act(() => controls.undo?.());
   expect(latest).toBe(machine);
