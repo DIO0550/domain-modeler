@@ -31,6 +31,11 @@ export const StateMachineLayout = {
     const viewport = StateMachineLayout.viewport(frame, zoom);
     return `${viewport.left} ${viewport.top} ${viewport.width} ${viewport.height}`;
   },
+  /** 図上の入力欄(260×200)を表示範囲内へ収める。 */
+  labelInputPosition(point: StateMachinePosition, viewport: Pick<StateMachineLayout, "left" | "top" | "width" | "height">): StateMachinePosition {
+    return { x: Math.max(viewport.left + 140, Math.min(viewport.left + viewport.width - 140, point.x)),
+      y: Math.max(viewport.top + 48, Math.min(viewport.top + viewport.height - 172, point.y)) };
+  },
   /**
    * 初期状態から左→右へ配置する。循環・自己ループ・孤立状態も表示する。
    * @param graph 描画用の状態と遷移。

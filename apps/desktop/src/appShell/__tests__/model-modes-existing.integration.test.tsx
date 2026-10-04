@@ -1,7 +1,7 @@
 import { canvasPointer } from "@/libs/svg-canvas/__tests__/svgCanvas.test-support";
 import { act } from "react";
 import { afterEach, expect, test, vi } from "vitest";
-import { machineSource, openMode, addState } from "./model-modes.test-support";
+import { machineSource, openMode, addState, enterGraphName } from "./model-modes.test-support";
 import { openModelWorkspace } from "./model-modes-workspace.test-support";
 
 const opened: Array<ReturnType<typeof openModelWorkspace>> = [];
@@ -188,4 +188,43 @@ test("接続確定だけを自動保存し、連続Undo/Redoで遷移を復元�
   expect(files.get(path)).toBe(connected);
   await openMode(workspace.host, "モデル");
   expect(workspace.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(connected);
+});
+
+test.each(["state", "event"])("図上の%s名編集は1履歴で保存し、Undo/Redo・文書再読込で参照と座標が一致する", async (kind) => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+  const path = "/label.dmodel";
+  const source = "state-machine 注文 =\n  initial: 待機\n  state: 待機 // @canvas-position(v1, 200, 200)\n  state: 完了 terminal // @canvas-position(v1, 500, 200)\n  transition: 待機 -> 完了 on 確定";
+  const files = new Map([[path, source]]);
+  const workspace = open(path, files);
+  await workspace.changed(path);
+  await openMode(workspace.host, "ステートマシン");
+  const input = await enterGraphName(workspace.host, kind === "state" ? "待機" : "確定", kind === "state" ? "保留" : "承認");
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(source);
+  act(() => input.form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  const renamed = kind === "state" ? source.replace(/待機/g, "保留") : source.replace("on 確定", "on 承認");
+  expect(files.get(path)).toBe(renamed);
+  expect(document.activeElement).toBe(workspace.host.querySelector("svg.state-machine-screen__graph"));
+  await enterGraphName(workspace.host, kind === "state" ? "保留" : "承認", "未確定の下書き");
+  act(() => workspace.host.querySelector<SVGSVGElement>("svg.state-machine-screen__graph")!.focus());
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(source);
+  expect(workspace.host.querySelector(".state-machine-screen__label-editor")).toBeNull();
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(renamed);
+  expect(workspace.host.querySelector(".state-machine-screen__label-editor")).toBeNull();
+  workspace.close();
+  opened.splice(opened.indexOf(workspace), 1);
+  const reopened = open(path, files);
+  await reopened.changed(path);
+  await openMode(reopened.host, "ステートマシン");
+  const stateName = kind === "state" ? "保留" : "待機";
+  const rect = reopened.host.querySelector(`[aria-label="${stateName} initial"] rect`)!;
+  expect(rect.getAttribute("x")).toBe("120");
+  expect(rect.getAttribute("y")).toBe("168");
+  await openMode(reopened.host, "モデル");
+  expect(reopened.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(renamed);
 });

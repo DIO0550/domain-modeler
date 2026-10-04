@@ -1,6 +1,6 @@
 import { useId, type KeyboardEvent } from "react";
 import { StateMachineConnectionHandles } from "./connection-handles";
-import { GraphLabelInput } from "../graph-label-input";
+import { StateMachineGraphLabelEditor } from "./graph-label-editor";
 import { StateMachineConnection } from "../../domains/state-machine-connection";
 import { StateMachineGraph, type StateMachineGraphSelection } from "../../domains/state-machine-graph";
 import { StateMachineLayout } from "../../domains/state-machine-layout";
@@ -42,8 +42,9 @@ export function StateMachineGraphDrawing({ view, canvas }: Readonly<{
         return <g key={edge.id} className="state-machine-screen__edge" data-status={edge.status}
           data-selected={view.target.kind === "element" && view.target.selection.id === edge.id}
           tabIndex={0} role="button" aria-label={`${endpoints.from} から ${endpoints.to} へ、${edge.event}`}
-          onPointerDown={(event) => { event.stopPropagation(); view.selectElement({ kind: "edge", id: edge.id }); }}
-          onClick={() => view.selectElement({ kind: "edge", id: edge.id })}
+          onPointerDown={(event) => canvas.begin(event, { kind: "edge", id: edge.id })}
+          onClick={(event) => canvas.selectOnClick(event, { kind: "edge", id: edge.id })}
+          onDoubleClick={(event) => canvas.editLabel(event, { kind: "edge", id: edge.id })}
           onKeyDown={(event) => selectOnKeyDown(event, { kind: "edge", id: edge.id })}>
           <path d={positioned.path} className="state-machine-screen__edge-line" markerEnd={`url(#${arrowId})`} />
           <path d={positioned.path} className="state-machine-screen__edge-hit" />
@@ -60,7 +61,8 @@ export function StateMachineGraphDrawing({ view, canvas }: Readonly<{
           data-connection-candidate={canvas.connection.some && canvas.connection.value.kind === "connected" && canvas.connection.value.to === node.name}
           data-appearance={node.appearance} role="button" tabIndex={0} aria-label={`${node.name} ${node.appearance}`}
           onPointerDown={(event) => canvas.begin(event, { kind: "node", name: node.name })}
-          onClick={() => view.selectElement({ kind: "node", id: node.id })}
+          onClick={(event) => canvas.selectOnClick(event, { kind: "node", id: node.id })}
+          onDoubleClick={(event) => canvas.editLabel(event, { kind: "node", id: node.id })}
           onKeyDown={(event) => selectOnKeyDown(event, { kind: "node", id: node.id })}>
           <rect x={point.x - StateMachineLayout.nodeSize.width / 2} y={point.y - StateMachineLayout.nodeSize.height / 2}
             width={StateMachineLayout.nodeSize.width} height={StateMachineLayout.nodeSize.height} rx="12" />
@@ -71,9 +73,8 @@ export function StateMachineGraphDrawing({ view, canvas }: Readonly<{
       })}
       {canvas.connection.some && <path className="state-machine-screen__connection-preview"
         d={StateMachineConnection.path(canvas.connection.value)} markerEnd={`url(#${arrowId})`} />}
-      {!canvas.draft.some && <StateMachineConnectionHandles view={view} canvas={canvas} />}
-      {canvas.draft.some && <GraphLabelInput point={StateMachineConnection.label(canvas.draft.value, canvas.viewport)} label="新しい遷移のイベント名"
-        onSubmit={canvas.submitConnection} onCancel={canvas.cancelConnection} />}
+      {!canvas.draft.some && !canvas.labelEdit.some && <StateMachineConnectionHandles view={view} canvas={canvas} />}
+      <StateMachineGraphLabelEditor canvas={canvas} />
     </svg>
   </div>;
 }

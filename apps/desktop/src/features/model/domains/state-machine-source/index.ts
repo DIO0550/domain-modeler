@@ -1,5 +1,5 @@
 import { AnalyzedModel } from "../analyzed-model";
-import { StateMachineGraph } from "../state-machine-graph";
+import { StateMachineGraph, type StateMachineGraphSelection } from "../state-machine-graph";
 import { StateMachineLayout } from "../state-machine-layout";
 import { StateMachinePlacement } from "../state-machine-placement";
 import type { StateMachinePosition } from "../state-machine-position";
@@ -222,6 +222,37 @@ export const StateMachineSource = {
       return applyReplacements(source, [insertion, replacementOf(source, currentInitial.nameRange, input.name)]);
     }
     return applyReplacements(source, [insertion]);
+  },
+  /** 図上の名前だけを編集する。属性・参照と現在位置を同じ文書更新で維持する。 */
+  rename(source: string, resolution: StateMachineResolution,
+    input: Readonly<{ selection: StateMachineGraphSelection; name: string }>): ResultValue<string, string> {
+    const graph = StateMachineGraph.create(resolution, []);
+    const inspection = StateMachineGraph.inspect(graph, input.selection);
+    if (inspection.kind === "machine") {
+      return Result.err("編集する名前を特定できません");
+    }
+    const unchanged = inspection.kind === "node" ? inspection.node.name === input.name : inspection.edge.event === input.name;
+    if (unchanged) {
+      return Result.ok(source);
+    }
+    const layout = StateMachinePlacement.layout(source, resolution);
+    if (Result.isErr(layout)) {
+      return layout;
+    }
+    const positioned = StateMachinePlacement.write(source, resolution, layout.value.nodes);
+    if (Result.isErr(positioned)) {
+      return positioned;
+    }
+    if (inspection.kind === "node") {
+      return StateMachineSource.updateState(positioned.value, resolution, {
+        oldName: inspection.node.name, name: input.name,
+        initial: resolution.machine.initials.some((initial) => initial.name === inspection.node.name),
+        terminal: resolution.machine.states.some((state) => state.name === inspection.node.name && state.terminal),
+      });
+    }
+    return StateMachineSource.updateTransition(positioned.value, resolution, {
+      range: inspection.edge.range, from: inspection.fromName, to: inspection.toName, event: input.name,
+    });
   },
   /** 状態名の全参照と初期・終端属性を1回の文書更新で変更する。 */
   updateState(source: string, resolution: StateMachineResolution, input: StateMachineStateEdit): ResultValue<string, string> {
