@@ -75,6 +75,8 @@ function useEditor() {
 
 ## document / window へのイベントリスナー
 
+- キャンバスなどの親要素で Escape・削除等を処理するときは、`EventTargetEx.isTextEntry` で入力元を判定し、`input` / `select` / `textarea` / contenteditable 内の操作を奪わない。`HTMLInputElement` だけの判定では選択欄の Escape で編集下書きが消えるため、個別の要素判定を重複実装しない。
+
 **要素の props で済むイベントを document / window に張ることは禁止。** イベントは原則、対象要素の props(`onClick`, `onKeyDown`, `onChange` 等)で処理する。
 
 ```typescript
