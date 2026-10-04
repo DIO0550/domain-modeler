@@ -71,10 +71,10 @@ export function useStateMachineSelectionForm({ inspection, resolution, source, o
     if (!editable) {
       return false;
     }
-    const target = inspection.kind === "node"
-      ? { kind: "state" as const, name: inspection.node.name }
-      : { kind: "transition" as const, range: inspection.edge.range };
-    const result = StateMachineSource.remove(source, resolution, target);
+    const selection: StateMachineGraphSelection = inspection.kind === "node"
+      ? { kind: "node", id: inspection.node.id }
+      : { kind: "edge", id: inspection.edge.id };
+    const result = StateMachineSource.removeSelection(source, resolution, selection);
     if (Result.isErr(result)) {
       dispatch({ type: "error", message: result.error });
       return false;

@@ -41,7 +41,7 @@ export function StateMachineRoot({ value, onChange, onEditSource,
   return (
     <StateMachineContext.Provider value={Option.some({ view, value, onChange, onEditSource })}>
       <div className="state-machine-screen" onKeyDown={(event) => {
-        if (event.key !== "Escape") {
+        if (event.key !== "Escape" || event.nativeEvent.isComposing) {
           return;
         }
         if (EventTargetEx.isTextEntry(event.target)) {

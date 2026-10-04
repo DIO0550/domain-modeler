@@ -18,6 +18,71 @@ const open = (path: string, files: Map<string, string>) => {
   return workspace;
 };
 
+test.each([
+  { label: "待機 initial", key: "Delete", kind: "state" },
+  { label: "待機 から 完了 へ、確定", key: "Backspace", kind: "edge" },
+])("$kindを$keyで削除し、連続Undo/Redo・自動保存・再読込で参照と座標を復元できる", async ({ label, key, kind }) => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+  const path = "/deletion.dmodel";
+  const source = "state-machine 注文 =\n  initial: 待機\n  state: 待機 // @canvas-position(v1, 200, 200)\n  state: 完了 terminal // @canvas-position(v1, 500, 200)\n  transition: 待機 -> 完了 on 確定";
+  const files = new Map([[path, source]]);
+  const workspace = open(path, files);
+  await workspace.changed(path);
+  await openMode(workspace.host, "ステートマシン");
+  const element = workspace.host.querySelector<SVGGElement>(`.state-machine-screen__${kind === "state" ? "node" : "edge"}[aria-label="${label}"]`)!;
+  element.focus();
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  const deleted = files.get(path)!;
+  expect(deleted).not.toContain("transition:");
+  expect(deleted).toContain("state: 完了 terminal // @canvas-position(v1, 500, 200)");
+  expect(document.activeElement).toBe(workspace.host.querySelector("svg.state-machine-screen__graph"));
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(source);
+  expect(document.activeElement).toBe(workspace.host.querySelector("svg.state-machine-screen__graph"));
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(deleted);
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(source);
+  workspace.close();
+  opened.splice(opened.indexOf(workspace), 1);
+  const reopened = open(path, files);
+  await reopened.changed(path);
+  await openMode(reopened.host, "ステートマシン");
+  expect(reopened.host.querySelector('[aria-label="待機 initial"] rect')?.getAttribute("x")).toBe("120");
+  expect(reopened.host.querySelector('[aria-label="完了 terminal"] rect')?.getAttribute("x")).toBe("420");
+  expect(reopened.host.querySelectorAll(".state-machine-screen__edge")).toHaveLength(1);
+  await openMode(reopened.host, "モデル");
+  expect(reopened.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(source);
+});
+
+test("追加した状態にフォーカスしたままUndoしても、グラフからRedoと削除を続けられる", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance", "requestAnimationFrame", "cancelAnimationFrame"] });
+  const path = "/keyboard-focus.dmodel";
+  const files = new Map([[path, machineSource]]);
+  const workspace = open(path, files);
+  await workspace.changed(path);
+  await openMode(workspace.host, "ステートマシン");
+  await addState(workspace.host, "保留");
+  const node = workspace.host.querySelector<SVGGElement>('[aria-label="保留 normal"]')!;
+  node.focus();
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(machineSource);
+  expect(document.activeElement).toBe(workspace.host.querySelector("svg.state-machine-screen__graph"));
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toContain("state: 保留");
+  expect(document.activeElement).toBe(workspace.host.querySelector("svg.state-machine-screen__graph"));
+  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true, cancelable: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(files.get(path)).toBe(`${machineSource}\n`);
+});
+
 test("既存の data、workflow、state-machine を同じタブで読み込み各モードに表示する", async () => {
   const path = "/existing.dmodel";
   const workspace = open(path, new Map([[path, machineSource]]));

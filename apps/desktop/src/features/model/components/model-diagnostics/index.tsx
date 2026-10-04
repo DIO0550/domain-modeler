@@ -154,7 +154,8 @@ export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryCo
         if (document.activeElement !== document.body) {
           return;
         }
-        workspaceRef.current?.querySelector<HTMLSelectElement>(".state-machine-screen__toolbar select")?.focus();
+        const graph = workspaceRef.current?.querySelector<SVGSVGElement>("svg.state-machine-screen__graph");
+        (graph ?? workspaceRef.current?.querySelector<HTMLSelectElement>(".state-machine-screen__toolbar select"))?.focus();
       });
     };
     const redoRequested = key === "y" || event.shiftKey;

@@ -2,6 +2,7 @@ import { useReducer, useRef, type PointerEvent, type KeyboardEvent, type MouseEv
 import { Result } from "@domain-modeler/model-core";
 import { SvgCanvas } from "@/libs/svg-canvas";
 import { Option } from "@/utils/Option";
+import { EventTargetEx } from "@/utils/EventTargetEx";
 import { StateMachineActivation } from "../../domains/state-machine-activation";
 import { StateMachineLabelEdit } from "../../domains/state-machine-label-edit";
 import { StateMachineConnection } from "../../domains/state-machine-connection";
@@ -49,7 +50,7 @@ const reduceCanvas = (state: CanvasState, action: CanvasAction): CanvasState => 
 };
 
 /**
- * クリック配置・ドラッグの一時表示と確定を仲介する。文書への書き込みは確定時の1回だけ。
+ * 配置・移動・接続・名前編集・キーボード削除を仲介する。文書への書き込みは確定時の1回だけ。
  * @param params 現在のマシン、全文と変更通知。
  * @returns 描画用の配置、固定された表示範囲、ポインター操作と自動整列。
  */
@@ -276,11 +277,35 @@ export function useStateMachineCanvas({ view, source, onChange }: UseStateMachin
       }
     },
     keyDown: (event: KeyboardEvent<SVGSVGElement>) => {
+      if (event.nativeEvent.isComposing || EventTargetEx.isTextEntry(event.target)) {
+        return;
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
         cancel();
         view.clearSelection();
+        svgRef.current?.focus();
+        return;
+      }
+      if (event.key !== "Delete" && event.key !== "Backspace") {
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (active.current.some || draft.some || labelEdit.some) {
+        return;
+      }
+      if (view.target.kind !== "element" || view.resolution === null) {
+        return;
+      }
+      if (finish(StateMachineSource.removeSelection(source, view.resolution, view.target.selection))) {
+        view.clearSelection();
+        // 削除される要素がフォーカス中でも、次のUndo/Redoをグラフで受ける。
+        svgRef.current?.focus();
       }
     },
     arrange: () => {

@@ -18,6 +18,9 @@ export function StateMachineGraphDrawing({ view, canvas }: Readonly<{
     return null;
   }
   const selectOnKeyDown = (keyboard: KeyboardEvent<SVGGElement>, selection: StateMachineGraphSelection) => {
+    if (keyboard.nativeEvent.isComposing) {
+      return;
+    }
     if (keyboard.key !== "Enter" && keyboard.key !== " ") {
       return;
     }
