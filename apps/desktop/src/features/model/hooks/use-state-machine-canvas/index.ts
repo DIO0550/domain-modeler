@@ -2,6 +2,7 @@ import { useReducer, useRef, type PointerEvent, type KeyboardEvent } from "react
 import { Result } from "@domain-modeler/model-core";
 import { SvgCanvas } from "@/libs/svg-canvas";
 import { Option } from "@/utils/Option";
+import { StateMachineConnection } from "../../domains/state-machine-connection";
 import { StateMachineGesture } from "../../domains/state-machine-gesture";
 import { StateMachineGraph } from "../../domains/state-machine-graph";
 import { StateMachineLayout } from "../../domains/state-machine-layout";
@@ -16,23 +17,29 @@ type UseStateMachineCanvasParams = Readonly<{
 }>;
 
 type CanvasState = Readonly<{
-  gesture: Option<StateMachineGesture>;
+  interaction:
+    | Readonly<{ kind: "idle" }>
+    | Readonly<{ kind: "gesture"; gesture: StateMachineGesture }>
+    | Readonly<{ kind: "draft"; connection: Extract<StateMachineConnection, { kind: "connected" }>; source: string; target: UseStateMachineViewResult["target"] }>;
   error: string;
   frame: ReturnType<typeof StateMachineLayout.frame>;
 }>;
 type CanvasAction =
   | Readonly<{ type: "gesture"; gesture: Option<StateMachineGesture> }>
   | Readonly<{ type: "finished"; error: string }>
+  | Readonly<{ type: "draft"; interaction: Extract<CanvasState["interaction"], { kind: "draft" }> }>
   | Readonly<{ type: "fit"; frame: CanvasState["frame"] }>;
 
 const reduceCanvas = (state: CanvasState, action: CanvasAction): CanvasState => {
   switch (action.type) {
     case "gesture":
-      return { ...state, gesture: action.gesture, error: "" };
+      return { ...state, interaction: action.gesture.some ? { kind: "gesture", gesture: action.gesture.value } : { kind: "idle" }, error: "" };
     case "finished":
-      return { ...state, gesture: Option.none(), error: action.error };
+      return { ...state, interaction: { kind: "idle" }, error: action.error };
     case "fit":
-      return { ...state, frame: action.frame, gesture: Option.none() };
+      return { ...state, frame: action.frame, interaction: { kind: "idle" } };
+    case "draft":
+      return { ...state, interaction: action.interaction, error: "" };
   }
 };
 
@@ -46,10 +53,20 @@ export function useStateMachineCanvas({ view, source, onChange }: UseStateMachin
   // 捕捉解除イベントがReactの再描画より先に来ても、二重確定しないための操作ハンドル。
   const active = useRef<Option<StateMachineGesture>>(Option.none());
   const [state, dispatch] = useReducer(reduceCanvas, view.layout, (layout): CanvasState => ({
-    gesture: Option.none(), error: "",
+    interaction: { kind: "idle" }, error: "",
     frame: StateMachineLayout.frame(layout ?? { left: -100, top: -100, width: 0, height: 0 }),
   }));
-  const preview = StateMachineGesture.nodePosition(state.gesture, source);
+  const gesture: Option<StateMachineGesture> = state.interaction.kind === "gesture" ? Option.some(state.interaction.gesture) : Option.none();
+  const draft: Option<Extract<StateMachineConnection, { kind: "connected" }>> = state.interaction.kind === "draft" && state.interaction.source === source && state.interaction.target === view.target
+    ? Option.some(state.interaction.connection) : Option.none();
+  const connectionAt = (current: StateMachineGesture): Option<StateMachineConnection> => {
+    if (current.source !== source || current.target.kind !== "connection" || view.graph === null || view.layout === null || view.resolution === null) {
+      return Option.none();
+    }
+    return StateMachineConnection.preview({ graph: view.graph, layout: view.layout, resolution: view.resolution }, current);
+  };
+  const connection = gesture.some ? connectionAt(gesture.value) : draft;
+  const preview = StateMachineGesture.nodePosition(gesture, source);
   let layout = view.layout;
   if (preview.some && view.graph !== null && layout !== null) {
     layout = StateMachineLayout.position(view.graph, {
@@ -90,6 +107,12 @@ export function useStateMachineCanvas({ view, source, onChange }: UseStateMachin
       return;
     }
     let origin = point.value;
+    if (target.kind === "connection") {
+      if (!StateMachineConnection.canStart(view.resolution, target.name)) {
+        return;
+      }
+      view.selectElement(StateMachineGraph.stateSelection(target.name));
+    }
     if (target.kind === "node") {
       view.selectElement(StateMachineGraph.stateSelection(target.name));
       const positioned = view.layout?.nodes[StateMachineGraph.stateSelection(target.name).id];
@@ -125,6 +148,13 @@ export function useStateMachineCanvas({ view, source, onChange }: UseStateMachin
     if (next.source !== source || view.resolution === null) {
       return;
     }
+    if (next.target.kind === "connection") {
+      const connected = connectionAt(next);
+      if (!lost && next.moved && connected.some && connected.value.kind === "connected") {
+        dispatch({ type: "draft", interaction: { kind: "draft", connection: connected.value, source, target: view.target } });
+      }
+      return;
+    }
     if (next.target.kind === "node") {
       if (next.moved) {
         finish(StateMachineSource.move(source, view.resolution, { name: next.target.name, point: StateMachineGesture.position(next) }));
@@ -149,7 +179,26 @@ export function useStateMachineCanvas({ view, source, onChange }: UseStateMachin
     dispatch({ type: "fit", frame: StateMachineLayout.frame(view.layout ?? { left: -100, top: -100, width: 0, height: 0 }) });
   };
   return {
-    svgRef, layout,
+    svgRef, layout, connection, draft,
+    viewport: StateMachineLayout.viewport(state.frame, view.zoom),
+    cancelConnection: () => {
+      cancel();
+      svgRef.current?.focus();
+    },
+    submitConnection: (event: string): Result<boolean, string> => {
+      if (!draft.some || view.resolution === null) {
+        return Result.err("接続対象が変更されました。接続し直してください");
+      }
+      const input = { from: draft.value.from, to: draft.value.to, event };
+      const result = StateMachineSource.connect(source, view.resolution, input);
+      if (Result.isErr(result)) {
+        return result;
+      }
+      finish(result);
+      view.selectElement(StateMachineGraph.transitionSelection(input));
+      svgRef.current?.focus();
+      return Result.ok(true);
+    },
     error: state.error || view.placementError,
     viewBox: StateMachineLayout.viewBox(state.frame, view.zoom),
     placing: view.target.kind === "part" && view.target.part === "state",
@@ -162,6 +211,7 @@ export function useStateMachineCanvas({ view, source, onChange }: UseStateMachin
     keyDown: (event: KeyboardEvent<SVGSVGElement>) => {
       if (event.key === "Escape") {
         event.preventDefault();
+        event.stopPropagation();
         cancel();
         view.clearSelection();
       }

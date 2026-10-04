@@ -1,4 +1,7 @@
 import { useId, type KeyboardEvent } from "react";
+import { StateMachineConnectionHandles } from "./connection-handles";
+import { GraphLabelInput } from "../graph-label-input";
+import { StateMachineConnection } from "../../domains/state-machine-connection";
 import { StateMachineGraph, type StateMachineGraphSelection } from "../../domains/state-machine-graph";
 import { StateMachineLayout } from "../../domains/state-machine-layout";
 import type { useStateMachineCanvas } from "../../hooks/use-state-machine-canvas";
@@ -54,6 +57,7 @@ export function StateMachineGraphDrawing({ view, canvas }: Readonly<{
         }
         return <g key={node.id} className="state-machine-screen__node" data-status={node.status}
           data-selected={view.target.kind === "element" && view.target.selection.id === node.id}
+          data-connection-candidate={canvas.connection.some && canvas.connection.value.kind === "connected" && canvas.connection.value.to === node.name}
           data-appearance={node.appearance} role="button" tabIndex={0} aria-label={`${node.name} ${node.appearance}`}
           onPointerDown={(event) => canvas.begin(event, { kind: "node", name: node.name })}
           onClick={() => view.selectElement({ kind: "node", id: node.id })}
@@ -65,6 +69,11 @@ export function StateMachineGraphDrawing({ view, canvas }: Readonly<{
           {node.appearance.includes("terminal") && <circle cx={point.x + StateMachineLayout.nodeSize.width / 2 - 18} cy={point.y - 17} r="7" fill="none" stroke="currentColor" strokeWidth="2" />}
         </g>;
       })}
+      {canvas.connection.some && <path className="state-machine-screen__connection-preview"
+        d={StateMachineConnection.path(canvas.connection.value)} markerEnd={`url(#${arrowId})`} />}
+      {!canvas.draft.some && <StateMachineConnectionHandles view={view} canvas={canvas} />}
+      {canvas.draft.some && <GraphLabelInput point={StateMachineConnection.label(canvas.draft.value, canvas.viewport)} label="新しい遷移のイベント名"
+        onSubmit={canvas.submitConnection} onCancel={canvas.cancelConnection} />}
     </svg>
   </div>;
 }

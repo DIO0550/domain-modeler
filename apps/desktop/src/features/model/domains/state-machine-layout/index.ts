@@ -22,10 +22,14 @@ export const StateMachineLayout = {
   frame(size: Pick<StateMachineLayout, "left" | "top" | "width" | "height">): Pick<StateMachineLayout, "left" | "top" | "width" | "height"> {
     return { left: size.left, top: size.top, width: Math.max(960, size.width), height: Math.max(640, size.height) };
   },
-  viewBox(frame: Pick<StateMachineLayout, "left" | "top" | "width" | "height">, zoom: number): string {
+  viewport(frame: Pick<StateMachineLayout, "left" | "top" | "width" | "height">, zoom: number): Pick<StateMachineLayout, "left" | "top" | "width" | "height"> {
     const x = frame.left + frame.width * (1 - 1 / zoom) / 2;
     const y = frame.top + frame.height * (1 - 1 / zoom) / 2;
-    return `${x} ${y} ${frame.width / zoom} ${frame.height / zoom}`;
+    return { left: x, top: y, width: frame.width / zoom, height: frame.height / zoom };
+  },
+  viewBox(frame: Pick<StateMachineLayout, "left" | "top" | "width" | "height">, zoom: number): string {
+    const viewport = StateMachineLayout.viewport(frame, zoom);
+    return `${viewport.left} ${viewport.top} ${viewport.width} ${viewport.height}`;
   },
   /**
    * 初期状態から左→右へ配置する。循環・自己ループ・孤立状態も表示する。

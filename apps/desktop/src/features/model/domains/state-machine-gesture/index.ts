@@ -10,7 +10,7 @@ export type StateMachineGesture = Readonly<{
   origin: StateMachinePosition;
   scale: StateMachinePosition;
   moved: boolean;
-  target: Readonly<{ kind: "canvas" }> | Readonly<{ kind: "node"; name: string } >;
+  target: Readonly<{ kind: "canvas" }> | Readonly<{ kind: "node"; name: string }> | Readonly<{ kind: "connection"; name: string; anchor: StateMachinePosition }>;
 }>;
 
 export const StateMachineGesture = {
