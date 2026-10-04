@@ -8,6 +8,7 @@ function renderStateMachine(initialSource: string, initialMachineIndex = 0) {
   document.body.append(host);
   const root = createRoot(host);
   let source = initialSource;
+  const changes: string[] = [];
   let selectedMachineIndex = initialMachineIndex;
   const render = () => root.render(
     <StateMachine.Root value={source} onChange={replaceSource} onEditSource={() => undefined}
@@ -18,6 +19,7 @@ function renderStateMachine(initialSource: string, initialMachineIndex = 0) {
     </StateMachine.Root>,
   );
   function replaceSource(next: string) {
+    changes.push(next);
     source = next;
     render();
   }
@@ -34,6 +36,7 @@ function renderStateMachine(initialSource: string, initialMachineIndex = 0) {
   act(render);
   return {
     host,
+    changes: () => [...changes],
     source: () => source,
     selectedMachineIndex: () => selectedMachineIndex,
     enterText,
@@ -81,3 +84,5 @@ export function createStateMachineRenderer() {
     unmountAll: () => screens.splice(0).forEach((screen) => screen.unmount()),
   };
 }
+
+export { canvasPointer } from "@/libs/svg-canvas/__tests__/svgCanvas.test-support";

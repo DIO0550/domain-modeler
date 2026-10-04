@@ -1,3 +1,8 @@
+import { AnalyzedModel } from "../analyzed-model";
+import { StateMachineGraph } from "../state-machine-graph";
+import { StateMachineLayout } from "../state-machine-layout";
+import { StateMachinePlacement } from "../state-machine-placement";
+import type { StateMachinePosition } from "../state-machine-position";
 import { Identifier, Result, type Result as ResultValue, type SourceRange, type StateMachineResolution, type TransitionDecl } from "@domain-modeler/model-core";
 
 export type StateMachineStateInput = Readonly<{ name: string; initial: boolean; terminal: boolean }>;
@@ -100,6 +105,47 @@ const transitionMatches = (transition: TransitionDecl, input: StateMachineTransi
 
 /** グラフの明示的な操作を正規の `.dmodel` 全文へ反映する。 */
 export const StateMachineSource = {
+  /** 既存の配置と新しい状態を、1回の文書更新として確定する。 */
+  place(source: string, resolution: StateMachineResolution, point: StateMachinePosition): ResultValue<string, string> {
+    const layout = StateMachinePlacement.layout(source, resolution);
+    if (Result.isErr(layout)) {
+      return layout;
+    }
+    const name = StateMachinePlacement.nextName(resolution);
+    const added = StateMachineSource.add(source, resolution, {
+      part: "state", name, initial: resolution.machine.states.length === 0 && resolution.machine.initials.length === 0, terminal: false,
+    });
+    if (Result.isErr(added)) {
+      return added;
+    }
+    const next = AnalyzedModel.create(added.value).stateMachines.find((item) =>
+      item.machine.range.startLine === resolution.machine.range.startLine);
+    if (next === undefined) {
+      return Result.err("追加先のマシンを特定できません");
+    }
+    return StateMachinePlacement.write(added.value, next, {
+      ...layout.value.nodes, [StateMachineGraph.stateSelection(name).id]: point,
+    });
+  },
+  /** ドラッグ確定時に全状態の現在位置を保存し、後続の編集でも維持する。 */
+  move(source: string, resolution: StateMachineResolution,
+    input: Readonly<{ name: string; point: StateMachinePosition }>): ResultValue<string, string> {
+    if (!StateMachinePlacement.isMovable(resolution, input.name)) {
+      return Result.err("移動する状態を一意に特定できません");
+    }
+    const layout = StateMachinePlacement.layout(source, resolution);
+    if (Result.isErr(layout)) {
+      return layout;
+    }
+    return StateMachinePlacement.write(source, resolution, {
+      ...layout.value.nodes, [StateMachineGraph.stateSelection(input.name).id]: input.point,
+    });
+  },
+  /** 全体の再配置はこの明示操作だけで行う。 */
+  arrange(source: string, resolution: StateMachineResolution): ResultValue<string, string> {
+    const layout = StateMachineLayout.create(StateMachineGraph.create(resolution, []));
+    return StateMachinePlacement.write(source, resolution, layout.nodes);
+  },
   /**
    * 文書末尾にマシン宣言を作成する。
    * @param source 現在の `.dmodel` 全文。

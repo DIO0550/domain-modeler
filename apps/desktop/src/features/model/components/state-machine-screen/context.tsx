@@ -1,4 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
+import { EventTargetEx } from "@/utils/EventTargetEx";
 import { Option, type Option as Optional } from "@/utils/Option";
 import type { SourceRange } from "@domain-modeler/model-core";
 import {
@@ -39,7 +40,15 @@ export function StateMachineRoot({ value, onChange, onEditSource,
   const view = useStateMachineView(value, initialMachineIndex, onMachineSelected);
   return (
     <StateMachineContext.Provider value={Option.some({ view, value, onChange, onEditSource })}>
-      <div className="state-machine-screen">{children}</div>
+      <div className="state-machine-screen" onKeyDown={(event) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+        if (EventTargetEx.isTextEntry(event.target)) {
+          return;
+        }
+        view.clearSelection();
+      }}>{children}</div>
     </StateMachineContext.Provider>
   );
 }
