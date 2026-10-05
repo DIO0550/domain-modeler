@@ -101,6 +101,16 @@
   gap: 4px;
 }
 
+.state-machine-screen__zoom output {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--shell-muted);
+}
+
 .state-machine-screen__viewport {
   flex: 1;
   min-height: 0;
@@ -294,6 +304,16 @@
 .state-machine-screen__graph {
   touch-action: none;
   user-select: none;
+  cursor: grab;
+}
+
+.state-machine-screen__viewport[data-placing="true"]
+  .state-machine-screen__graph {
+  cursor: crosshair;
+}
+
+.state-machine-screen__graph[data-panning="true"] {
+  cursor: grabbing;
 }
 
 .state-machine-screen__node {

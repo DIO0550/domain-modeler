@@ -58,6 +58,7 @@ export function StateMachineGraphDrawing({
         tabIndex={0}
         aria-label={`${graph.name} の状態遷移図`}
         viewBox={canvas.viewBox}
+        data-panning={canvas.panning}
         onPointerDown={(event) => canvas.begin(event, { kind: "canvas" })}
         onPointerMove={canvas.move}
         onPointerUp={(event) => canvas.commit(event)}

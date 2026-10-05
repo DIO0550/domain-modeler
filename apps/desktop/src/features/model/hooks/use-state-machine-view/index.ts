@@ -11,6 +11,8 @@ import {
 import { StateMachineLayout } from "../../domains/state-machine-layout";
 import type { StateMachineResolution } from "@domain-modeler/model-core";
 import type { StateMachinePart } from "../../domains/state-machine-source";
+import { StateMachineViewport } from "../../domains/state-machine-viewport";
+import type { StateMachinePosition } from "../../domains/state-machine-position";
 
 type ViewTarget =
   | Readonly<{ kind: "none" }>
@@ -24,7 +26,7 @@ type ViewTarget =
 type ViewState = Readonly<{
   machineIndex: number;
   target: ViewTarget;
-  zoom: number;
+  viewport: StateMachineViewport;
 }>;
 
 type ViewAction =
@@ -36,19 +38,24 @@ type ViewAction =
     }>
   | Readonly<{ type: "elementSelected"; selection: StateMachineGraphSelection }>
   | Readonly<{ type: "selectionCleared" }>
-  | Readonly<{ type: "zoomed"; factor: number }>
+  | Readonly<{
+      type: "zoomed";
+      factor: number;
+      anchor: Option<StateMachinePosition>;
+    }>
+  | Readonly<{ type: "panned"; delta: StateMachinePosition }>
   | Readonly<{ type: "fitted" }>;
 
 const initialView: ViewState = {
   machineIndex: 0,
   target: { kind: "none" },
-  zoom: 1,
+  viewport: StateMachineViewport.create(),
 };
 
 const reduceView = (view: ViewState, action: ViewAction): ViewState => {
   switch (action.type) {
     case "machineSelected":
-      return { machineIndex: action.index, target: { kind: "none" }, zoom: 1 };
+      return { ...initialView, machineIndex: action.index };
 
     case "partSelected":
       return {
@@ -72,11 +79,21 @@ const reduceView = (view: ViewState, action: ViewAction): ViewState => {
     case "zoomed":
       return {
         ...view,
-        zoom: Math.max(0.5, Math.min(3, view.zoom * action.factor)),
+        viewport: StateMachineViewport.zoomBy(
+          view.viewport,
+          action.factor,
+          action.anchor.some ? action.anchor.value : view.viewport.pan,
+        ),
+      };
+
+    case "panned":
+      return {
+        ...view,
+        viewport: StateMachineViewport.panBy(view.viewport, action.delta),
       };
 
     case "fitted":
-      return { ...view, zoom: 1 };
+      return { ...view, viewport: StateMachineViewport.create() };
   }
 };
 
@@ -90,20 +107,22 @@ export type UseStateMachineViewResult = Readonly<{
   inspection: StateMachineGraphInspection | null;
   target: ViewTarget;
   zoom: number;
+  viewport: StateMachineViewport;
   selectMachine: (index: number) => void;
   selectPart: (part: StateMachinePart) => void;
   selectElement: (selection: StateMachineGraphSelection) => void;
   clearSelection: () => void;
-  zoomBy: (factor: number) => void;
+  zoomBy: (factor: number, anchor?: StateMachinePosition) => void;
+  panBy: (delta: StateMachinePosition) => void;
   fit: () => void;
 }>;
 
 /**
- * 表示中のマシン、選択対象、倍率を管理する。
+ * 表示中のマシン、選択対象、倍率と表示位置を管理する。
  * グラフとレイアウトは入力された文書から毎回導出する。
  *
  * @param source `.dmodel` 全文。
- * @returns 表示するグラフと切替・選択・倍率操作。
+ * @returns 表示するグラフと切替・選択・倍率・パン操作。
  */
 export function useStateMachineView(
   source: string,
@@ -157,7 +176,8 @@ export function useStateMachineView(
     placementError: Result.isErr(placement) ? placement.error : "",
     inspection,
     target: view.target,
-    zoom: view.zoom,
+    zoom: view.viewport.zoom,
+    viewport: view.viewport,
 
     selectMachine: (index) => {
       dispatch({ type: "machineSelected", index });
@@ -179,7 +199,14 @@ export function useStateMachineView(
 
     clearSelection: () => dispatch({ type: "selectionCleared" }),
 
-    zoomBy: (factor) => dispatch({ type: "zoomed", factor }),
+    zoomBy: (factor, anchor) =>
+      dispatch({
+        type: "zoomed",
+        factor,
+        anchor: anchor === undefined ? Option.none() : Option.some(anchor),
+      }),
+
+    panBy: (delta) => dispatch({ type: "panned", delta }),
 
     fit: () => dispatch({ type: "fitted" }),
   };

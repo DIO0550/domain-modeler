@@ -23,14 +23,46 @@ export const SvgCanvas = {
     });
   },
 
-  capture(svg: SVGSVGElement, pointerId: number): void {
-    svg.focus();
-    svg.setPointerCapture?.(pointerId);
+  /** 画面上の移動量をSVG座標の移動量へ変換する。 */
+  delta(svg: SVGSVGElement, pixels: Point): Option<Point> {
+    const origin = SvgCanvas.point(svg, { x: 0, y: 0 });
+    const point = SvgCanvas.point(svg, pixels);
+
+    if (!origin.some || !point.some) {
+      return Option.none();
+    }
+
+    return Option.some({
+      x: point.value.x - origin.value.x,
+      y: point.value.y - origin.value.y,
+    });
   },
 
-  release(svg: SVGSVGElement, pointerId: number): void {
-    if (svg.hasPointerCapture?.(pointerId)) {
-      svg.releasePointerCapture(pointerId);
+  /** Reactのpassiveなwheel購読ではpreventDefaultできないため、要素で購読する。 */
+  listenWheel(
+    svg: SVGSVGElement,
+    listener: (event: WheelEvent) => void,
+  ): () => void {
+    svg.addEventListener("wheel", listener, { passive: false });
+
+    return () => svg.removeEventListener("wheel", listener);
+  },
+
+  /** 押した要素で捕捉し、click/dblclickの送信先を維持する。 */
+  capture(
+    svg: SVGSVGElement,
+    pointerId: number,
+    target: Element = svg,
+  ): () => void {
+    svg.focus();
+    target.setPointerCapture?.(pointerId);
+
+    return () => SvgCanvas.release(target, pointerId);
+  },
+
+  release(target: Element, pointerId: number): void {
+    if (target.hasPointerCapture?.(pointerId)) {
+      target.releasePointerCapture(pointerId);
     }
   },
 } as const;

@@ -22,6 +22,31 @@ export type StateMachineGesture = Readonly<{
 }>;
 
 export const StateMachineGesture = {
+  /** 空白ドラッグではグラフがポインターに追従する向きへ表示中心を動かす。 */
+  pan(
+    gesture: Option<StateMachineGesture>,
+    source: string,
+  ): Option<StateMachinePosition> {
+    if (!gesture.some) {
+      return Option.none();
+    }
+
+    const current = gesture.value;
+
+    if (
+      current.source !== source ||
+      !current.moved ||
+      current.target.kind !== "canvas"
+    ) {
+      return Option.none();
+    }
+
+    return Option.some({
+      x: (current.start.x - current.current.x) * current.scale.x,
+      y: (current.start.y - current.current.y) * current.scale.y,
+    });
+  },
+
   nodePosition(
     gesture: Option<StateMachineGesture>,
     source: string,

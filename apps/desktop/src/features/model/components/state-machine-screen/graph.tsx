@@ -88,6 +88,9 @@ function StateMachineCanvasContents({
           >
             −
           </button>
+          <output aria-label="現在の倍率">
+            {Math.round(view.zoom * 100)}%
+          </output>
           <button
             type="button"
             disabled={view.graph === null}
