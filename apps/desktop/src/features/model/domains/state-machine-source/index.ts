@@ -7,6 +7,7 @@ import { StateMachineLayout } from "../state-machine-layout";
 import { StateMachinePlacement } from "../state-machine-placement";
 import type { StateMachinePosition } from "../state-machine-position";
 import {
+  DefinitionTable,
   Identifier,
   Result,
   type Result as ResultValue,
@@ -328,6 +329,12 @@ export const StateMachineSource = {
   create(source: string, name: string): ResultValue<string, string> {
     if (!Identifier.isAcceptable(name)) {
       return Result.err("有効なマシン名を入力してください");
+    }
+
+    const model = AnalyzedModel.create(source);
+
+    if (DefinitionTable.has(model.definitions, name)) {
+      return Result.err(`「${name}」は既に宣言されています`);
     }
 
     if (source.length === 0) {

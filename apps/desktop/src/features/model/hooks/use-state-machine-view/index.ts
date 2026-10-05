@@ -16,6 +16,7 @@ import type { StateMachinePosition } from "../../domains/state-machine-position"
 
 type ViewTarget =
   | Readonly<{ kind: "none" }>
+  | Readonly<{ kind: "machine" }>
   | Readonly<{
       kind: "part";
       part: StateMachinePart;
@@ -31,6 +32,7 @@ type ViewState = Readonly<{
 
 type ViewAction =
   | Readonly<{ type: "machineSelected"; index: number }>
+  | Readonly<{ type: "machineCreationStarted" }>
   | Readonly<{
       type: "partSelected";
       part: StateMachinePart;
@@ -56,6 +58,9 @@ const reduceView = (view: ViewState, action: ViewAction): ViewState => {
   switch (action.type) {
     case "machineSelected":
       return { ...initialView, machineIndex: action.index };
+
+    case "machineCreationStarted":
+      return { ...view, target: { kind: "machine" } };
 
     case "partSelected":
       return {
@@ -109,6 +114,7 @@ export type UseStateMachineViewResult = Readonly<{
   zoom: number;
   viewport: StateMachineViewport;
   selectMachine: (index: number) => void;
+  startMachineCreation: () => void;
   selectPart: (part: StateMachinePart) => void;
   selectElement: (selection: StateMachineGraphSelection) => void;
   clearSelection: () => void;
@@ -183,6 +189,8 @@ export function useStateMachineView(
       dispatch({ type: "machineSelected", index });
       onMachineSelected?.(index);
     },
+
+    startMachineCreation: () => dispatch({ type: "machineCreationStarted" }),
 
     selectPart: (part) =>
       dispatch({

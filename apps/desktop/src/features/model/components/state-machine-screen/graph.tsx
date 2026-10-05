@@ -46,28 +46,37 @@ function StateMachineCanvasContents({
       aria-label="ステートマシンのグラフ"
     >
       <header className="state-machine-screen__toolbar">
-        <label>
-          ステートマシン
-          <select
-            value={view.selectedMachineIndex}
-            disabled={view.analyzed.stateMachines.length === 0}
-            onChange={(change) =>
-              view.selectMachine(Number(change.target.value))
-            }
+        <div className="state-machine-screen__machines">
+          <label>
+            ステートマシン
+            <select
+              value={view.selectedMachineIndex}
+              disabled={view.analyzed.stateMachines.length === 0}
+              onChange={(change) =>
+                view.selectMachine(Number(change.target.value))
+              }
+            >
+              {view.analyzed.stateMachines.length === 0 && (
+                <option value={-1}>未作成</option>
+              )}
+              {view.analyzed.stateMachines.map((machine, index) => (
+                <option
+                  key={`${machine.machine.name}-${machine.machine.range.startLine}`}
+                  value={index}
+                >
+                  {machine.machine.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            aria-pressed={view.target.kind === "machine"}
+            onClick={view.startMachineCreation}
           >
-            {view.analyzed.stateMachines.length === 0 && (
-              <option value={-1}>未作成</option>
-            )}
-            {view.analyzed.stateMachines.map((machine, index) => (
-              <option
-                key={`${machine.machine.name}-${machine.machine.range.startLine}`}
-                value={index}
-              >
-                {machine.machine.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            ＋ 新しいマシン
+          </button>
+        </div>
         <div
           className="state-machine-screen__zoom"
           role="group"

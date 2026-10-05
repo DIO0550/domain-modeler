@@ -21,6 +21,10 @@ export function StateMachineInspector() {
   const { graph, inspection } = view;
   let heading = "インスペクター";
 
+  if (graph === null || view.target.kind === "machine") {
+    heading = "新しいマシン";
+  }
+
   if (view.target.kind === "part") {
     heading = `${PART_LABELS[view.target.part]}を追加`;
   }
@@ -92,7 +96,7 @@ function StateMachineInspectorContent() {
 
   const { view, value, onChange } = context.value;
 
-  if (view.graph === null) {
+  if (view.graph === null || view.target.kind === "machine") {
     return (
       <StateMachineEntryForm
         key="machine"
