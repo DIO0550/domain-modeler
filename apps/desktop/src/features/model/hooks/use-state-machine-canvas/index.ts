@@ -1,5 +1,6 @@
 import {
   useReducer,
+  useEffect,
   useRef,
   type PointerEvent,
   type KeyboardEvent,
@@ -21,6 +22,8 @@ import { StateMachineLayout } from "../../domains/state-machine-layout";
 import { StateMachinePlacement } from "../../domains/state-machine-placement";
 import { StateMachineSource } from "../../domains/state-machine-source";
 import type { UseStateMachineViewResult } from "../use-state-machine-view";
+import { useStateMachineWheel } from "../use-state-machine-wheel";
+import { StateMachineViewport } from "../../domains/state-machine-viewport";
 
 type UseStateMachineCanvasParams = Readonly<{
   view: UseStateMachineViewResult;
@@ -100,6 +103,7 @@ export function useStateMachineCanvas({
   const svgRef = useRef<SVGSVGElement>(null);
   // 捕捉解除イベントがReactの再描画より先に来ても、二重確定しないための操作ハンドル。
   const active = useRef<Option<StateMachineGesture>>(Option.none());
+  const releaseCapture = useRef<() => void>(() => undefined);
   // ポインター操作後に届くclick/dblclickの判定用。描画では参照しない。
   const activation = useRef<StateMachineActivation>("ready");
 
@@ -114,6 +118,20 @@ export function useStateMachineCanvas({
       ),
     }),
   );
+
+  useEffect(() => {
+    return () => {
+      const previous = active.current;
+
+      active.current = Option.none();
+      activation.current = StateMachineActivation.block();
+      dispatch({ type: "finished", error: "" });
+
+      if (previous.some) {
+        releaseCapture.current();
+      }
+    };
+  }, []);
 
   if (
     (state.interaction.kind === "label" ||
@@ -163,6 +181,18 @@ export function useStateMachineCanvas({
 
   const connection = gesture.some ? connectionAt(gesture.value) : draft;
   const preview = StateMachineGesture.nodePosition(gesture, source);
+  const pan = StateMachineGesture.pan(gesture, source);
+  const viewport = pan.some
+    ? StateMachineViewport.panBy(view.viewport, pan.value)
+    : view.viewport;
+
+  useStateMachineWheel({
+    svgRef,
+    frame: state.frame,
+    view,
+    isInteracting: () => active.current.some || draft.some || labelEdit.some,
+  });
+
   let layout = view.layout;
 
   if (preview.some && view.graph !== null && layout !== null) {
@@ -197,8 +227,8 @@ export function useStateMachineCanvas({
     active.current = Option.none();
     dispatch({ type: "finished", error: "" });
 
-    if (previous.some && svgRef.current !== null) {
-      SvgCanvas.release(svgRef.current, previous.value.pointerId);
+    if (previous.some) {
+      releaseCapture.current();
     }
   };
 
@@ -219,12 +249,9 @@ export function useStateMachineCanvas({
 
     const client = { x: event.clientX, y: event.clientY };
     const point = SvgCanvas.point(svgRef.current, client);
-    const adjacent = SvgCanvas.point(svgRef.current, {
-      x: client.x + 1,
-      y: client.y + 1,
-    });
+    const scale = SvgCanvas.delta(svgRef.current, { x: 1, y: 1 });
 
-    if (!point.some || !adjacent.some) {
+    if (!point.some || !scale.some) {
       return;
     }
 
@@ -265,17 +292,18 @@ export function useStateMachineCanvas({
       start: client,
       current: client,
       origin,
-      scale: {
-        x: adjacent.value.x - point.value.x,
-        y: adjacent.value.y - point.value.y,
-      },
+      scale: scale.value,
       moved: false,
       target,
     };
 
     active.current = Option.some(next);
     dispatch({ type: "gesture", gesture: active.current });
-    SvgCanvas.capture(svgRef.current, event.pointerId);
+    releaseCapture.current = SvgCanvas.capture(
+      svgRef.current,
+      event.pointerId,
+      event.currentTarget,
+    );
   };
 
   const move = (event: PointerEvent<SVGSVGElement>) => {
@@ -320,7 +348,7 @@ export function useStateMachineCanvas({
       );
     }
 
-    SvgCanvas.release(event.currentTarget, event.pointerId);
+    releaseCapture.current();
     dispatch({ type: "finished", error: "" });
 
     if (next.source !== source || view.resolution === null) {
@@ -365,6 +393,12 @@ export function useStateMachineCanvas({
       }
 
       return;
+    }
+
+    const committedPan = StateMachineGesture.pan(Option.some(next), source);
+
+    if (committedPan.some) {
+      view.panBy(committedPan.value);
     }
 
     if (next.moved || lost) {
@@ -485,7 +519,7 @@ export function useStateMachineCanvas({
       return Result.ok(true);
     },
 
-    viewport: StateMachineLayout.viewport(state.frame, view.zoom),
+    viewport: StateMachineViewport.frame(viewport, state.frame),
 
     cancelLabel: () => {
       cancel();
@@ -512,7 +546,8 @@ export function useStateMachineCanvas({
     },
 
     error: state.error || view.placementError,
-    viewBox: StateMachineLayout.viewBox(state.frame, view.zoom),
+    viewBox: StateMachineViewport.viewBox(viewport, state.frame),
+    panning: pan.some,
     placing: view.target.kind === "part" && view.target.part === "state",
     begin,
     move,
