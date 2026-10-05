@@ -78,20 +78,20 @@ test("指定したスクリーン座標を不動点としてズームする", ()
 test.each([
   { requested: 0.01, expected: 0.1 },
   { requested: 5, expected: 4 },
-])(
-  "ズーム倍率を許容範囲へクランプする",
-  ({ requested, expected }: { requested: number; expected: number }) => {
-    const viewport = { x: 0, y: 0, zoom: 1 };
-    const fixedPoint = { x: 40, y: 60 };
+])("ズーム倍率を許容範囲へクランプする", ({
+  requested,
+  expected,
+}: {
+  requested: number;
+  expected: number;
+}) => {
+  const viewport = { x: 0, y: 0, zoom: 1 };
+  const fixedPoint = { x: 40, y: 60 };
 
-    const next = Viewport.zoomAt(viewport, requested, fixedPoint);
+  const next = Viewport.zoomAt(viewport, requested, fixedPoint);
 
-    expect(next.zoom).toBe(expected);
-    expect(
-      Viewport.worldToScreen(
-        next,
-        Viewport.screenToWorld(viewport, fixedPoint),
-      ),
-    ).toEqual(fixedPoint);
-  },
-);
+  expect(next.zoom).toBe(expected);
+  expect(
+    Viewport.worldToScreen(next, Viewport.screenToWorld(viewport, fixedPoint)),
+  ).toEqual(fixedPoint);
+});

@@ -14,7 +14,9 @@ type ScaffoldSource = Readonly<{
 type ScaffoldOperations = Readonly<{
   confirm: (text: string) => Promise<"confirmed" | "cancelled">;
   selectSavePath: () => Promise<Option<string>>;
-  createFile: (target: Readonly<{ path: string; contents: string }>) => Promise<FileWriteResult>;
+  createFile: (
+    target: Readonly<{ path: string; contents: string }>,
+  ) => Promise<FileWriteResult>;
   openTab: (path: string, documentType: "model") => void;
 }>;
 
@@ -37,28 +39,37 @@ export const ScaffoldAction = {
     operations: ScaffoldOperations,
   ): Promise<ScaffoldResult> {
     const active = source.activeDocument;
+
     if (!active.some || active.value.kind !== "canvas") {
       return { status: "unavailable" };
     }
+
     const text = Generate.toDmodelText(
       active.value.document,
       source.generatedOn,
     );
+
     if ((await operations.confirm(text)) === "cancelled") {
       return { status: "cancelled" };
     }
+
     const selection = await operations.selectSavePath();
+
     if (!selection.some) {
       return { status: "cancelled" };
     }
+
     const result = await operations.createFile({
       path: selection.value,
       contents: text,
     });
+
     if (result.type === "err") {
       return { status: "writeFailed", error: result.error };
     }
+
     operations.openTab(selection.value, "model");
+
     return { status: "created", path: selection.value };
   },
 } as const;

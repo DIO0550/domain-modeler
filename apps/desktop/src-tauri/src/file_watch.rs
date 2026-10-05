@@ -162,14 +162,18 @@ impl FileWatchRegistry {
             .get(path)
             .is_some_and(|session| session.failed.load(Ordering::Acquire));
         let failed_session = failed.then(|| sessions.remove(path)).flatten();
+
         drop(sessions);
         drop(failed_session);
 
         let mut sessions = self.sessions();
+
         if let Some(session) = sessions.get_mut(path) {
             session.registrations += 1;
+
             return FileWatchResult::Ok;
         }
+
         drop(sessions);
 
         let target = match WatchTarget::resolve(path) {
@@ -182,13 +186,17 @@ impl FileWatchRegistry {
         };
 
         let mut sessions = self.sessions();
+
         if let Some(existing) = sessions.get_mut(path) {
             existing.registrations += 1;
             drop(sessions);
             drop(session);
+
             return FileWatchResult::Ok;
         }
+
         sessions.insert(path.to_string(), session);
+
         FileWatchResult::Ok
     }
 
@@ -201,15 +209,16 @@ impl FileWatchRegistry {
     /// * `path` - 監視を止めるファイルのパス。
     pub fn stop(&self, path: &str) -> FileWatchResult {
         let mut sessions = self.sessions();
-        let should_remove = sessions
-            .get_mut(path)
-            .is_some_and(|session| {
-                session.registrations = session.registrations.saturating_sub(1);
-                session.registrations == 0
-            });
+        let should_remove = sessions.get_mut(path).is_some_and(|session| {
+            session.registrations = session.registrations.saturating_sub(1);
+
+            session.registrations == 0
+        });
         let session = should_remove.then(|| sessions.remove(path)).flatten();
+
         drop(sessions);
         drop(session);
+
         FileWatchResult::Ok
     }
 
@@ -261,7 +270,9 @@ impl Drop for WatchSession {
         if let Some(stop_tx) = self.stop_tx.take() {
             let _ = stop_tx.send(WatchMsg::Stop);
         }
+
         drop(self.watcher.take());
+
         if let Some(thread) = self.thread.take() {
             let _ = thread.join();
         }
@@ -280,6 +291,7 @@ impl WatchTarget {
             _ => Path::new("."),
         };
         let canonical_parent = fs::canonicalize(parent).map_err(|err| err.to_string())?;
+
         Ok(Self {
             original_path: path.to_string(),
             parent: canonical_parent.clone(),
@@ -307,6 +319,7 @@ impl WatchTarget {
             return false;
         };
         let target_parent = self.file.parent();
+
         event
             .paths
             .iter()
@@ -324,11 +337,14 @@ impl WatchTarget {
         failed: Arc<AtomicBool>,
     ) {
         let mut deadline: Option<Instant> = None;
+
         loop {
             let now = Instant::now();
+
             if deadline.is_some_and(|due| due <= now) {
                 deadline = None;
                 on_event(self.settled_event());
+
                 continue;
             }
 
@@ -338,6 +354,7 @@ impl WatchTarget {
                     Err(RecvTimeoutError::Timeout) => {
                         deadline = None;
                         on_event(self.settled_event());
+
                         continue;
                     }
                     Err(RecvTimeoutError::Disconnected) => break,
@@ -360,6 +377,7 @@ impl WatchTarget {
                         path: self.original_path.clone(),
                         message: error.to_string(),
                     });
+
                     break;
                 }
             }

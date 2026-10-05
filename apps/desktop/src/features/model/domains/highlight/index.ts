@@ -31,20 +31,27 @@ export const Highlight = {
   ): readonly Highlight[] => {
     const syntax = tokens.flatMap((token): readonly Highlight[] => {
       const { kind, text, range } = token;
+
       if (kind === TOKEN_KINDS.comment) {
         return [{ kind: "comment", range }];
       }
+
       if (kind === TOKEN_KINDS.reserved) {
-        return [{ kind: TypeModifier.is(text) ? "primitive" : "keyword", range }];
+        return [
+          { kind: TypeModifier.is(text) ? "primitive" : "keyword", range },
+        ];
       }
+
       if (kind === TOKEN_KINDS.identifier && Primitive.is(text)) {
         return [{ kind: "primitive", range }];
       }
+
       return [];
     });
     const diagnosticRanges = diagnostics.map(
       (diagnostic): Highlight => ({ ...diagnostic, kind: "diagnostic" }),
     );
+
     return [...syntax, ...diagnosticRanges];
   },
 } as const;

@@ -97,12 +97,14 @@ export const AutoSave = {
       ...AutoSave.create(file.path, file.contents),
       transactionDepth: autoSave.transactionDepth,
     };
+
     return AutoSave.notifyContentsChanged(
       saved,
       pendingContentsOf(autoSave),
       now,
     );
   },
+
   /**
    * ファイルの内容または保存先のない下書きから、自動保存状態を生成する。
    *
@@ -122,6 +124,7 @@ export const AutoSave = {
         transactionDepth: 0,
       };
     }
+
     return {
       status: "idle",
       path,
@@ -146,15 +149,19 @@ export const AutoSave = {
     if (autoSave.status === "unsaved") {
       return { ...autoSave, pendingContents: contents };
     }
+
     if (contents === autoSave.lastSavedContents) {
       if (autoSave.status !== "saving") {
         return toIdle(autoSave, contents);
       }
+
       return withPendingContents(autoSave, contents, now);
     }
+
     if (autoSave.status === "idle") {
       return toPending(autoSave, contents, now, now);
     }
+
     return withPendingContents(autoSave, contents, now);
   },
 
@@ -178,6 +185,7 @@ export const AutoSave = {
     if (autoSave.transactionDepth === 0) {
       return autoSave;
     }
+
     return withTransactionDepth(autoSave, autoSave.transactionDepth - 1);
   },
 
@@ -192,12 +200,15 @@ export const AutoSave = {
     if (autoSave.status === "failed") {
       return failedRetryDue(autoSave, now);
     }
+
     if (autoSave.status !== "pending") {
       return { status: "notScheduled" };
     }
+
     if (autoSave.transactionDepth > 0) {
       return { status: "notScheduled" };
     }
+
     if (!AutoSave.isDirty(autoSave)) {
       return { status: "notScheduled" };
     }
@@ -205,6 +216,7 @@ export const AutoSave = {
     const debounceAt = autoSave.lastChangedAt + AUTO_SAVE_DEBOUNCE_MS;
     const maxIntervalAt = autoSave.firstDirtyAt + AUTO_SAVE_MAX_INTERVAL_MS;
     const dueAt = Math.min(debounceAt, maxIntervalAt);
+
     return { status: "scheduled", delayMs: Math.max(0, dueAt - now) };
   },
 
@@ -220,9 +232,11 @@ export const AutoSave = {
     operations: AutoSaveOperations,
   ): Promise<AutoSave> {
     const due = AutoSave.due(autoSave, operations.now());
+
     if (due.status === "notScheduled" || due.delayMs > 0) {
       return autoSave;
     }
+
     return save(autoSave, operations);
   },
 
@@ -240,6 +254,7 @@ export const AutoSave = {
     if (!AutoSave.isDirty(autoSave)) {
       return autoSave;
     }
+
     return save(autoSave, operations);
   },
 
@@ -253,12 +268,14 @@ export const AutoSave = {
     if (autoSave.status === "idle" || autoSave.status === "unsaved") {
       return autoSave;
     }
+
     if (
       autoSave.status === "saving" &&
       autoSave.pendingContents === autoSave.writingContents
     ) {
       return autoSave;
     }
+
     return toSaving(autoSave, pendingContentsOf(autoSave));
   },
 
@@ -273,6 +290,7 @@ export const AutoSave = {
     if (autoSave.status !== "saving") {
       return autoSave;
     }
+
     return applyWriteOutcome(autoSave, outcome);
   },
 
@@ -302,9 +320,11 @@ const save = async (
   operations: AutoSaveOperations,
 ): Promise<AutoSave> => {
   const saving = AutoSave.startSaving(autoSave);
+
   if (saving.status !== "saving") {
     return autoSave;
   }
+
   if (
     autoSave.status === "saving" &&
     autoSave.pendingContents === autoSave.writingContents
@@ -316,6 +336,7 @@ const save = async (
     saving.path,
     saving.writingContents,
   );
+
   return AutoSave.finishSaving(saving, {
     contents: saving.writingContents,
     result,
@@ -402,11 +423,13 @@ const failedRetryDue = (autoSave: FailedAutoSave, now: number): AutoSaveDue => {
   if (autoSave.transactionDepth > 0) {
     return { status: "notScheduled" };
   }
+
   if (!AutoSave.isDirty(autoSave)) {
     return { status: "notScheduled" };
   }
 
   const retryAt = autoSave.lastFailedAt + AUTO_SAVE_RETRY_MS;
+
   return { status: "scheduled", delayMs: Math.max(0, retryAt - now) };
 };
 
@@ -480,6 +503,7 @@ const withPendingContents = (
       firstDirtyAt: lastChangedAt,
     };
   }
+
   return { ...autoSave, pendingContents, lastChangedAt };
 };
 

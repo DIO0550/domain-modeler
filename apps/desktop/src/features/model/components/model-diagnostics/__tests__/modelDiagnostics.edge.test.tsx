@@ -13,7 +13,9 @@ afterEach(() => {
 test("空文書は診断装飾もプレビュー項目も出さない", () => {
   const host = diagnostics.render("");
 
-  expect(host.querySelector(".model-editor__diagnostics-line--error")).toBeNull();
+  expect(
+    host.querySelector(".model-editor__diagnostics-line--error"),
+  ).toBeNull();
   expect(host.querySelector(".preview-error-placeholder")).toBeNull();
   expect(host.querySelector(".preview-data-card")).toBeNull();
 });
@@ -23,7 +25,9 @@ test("workflow の未定義参照もプレビューに未定義バッジを出�
   input: 未検証の注文
   output: 確定イベント`);
 
-  expect(host.querySelector(".model-editor__diagnostics-line--error")).toBeNull();
+  expect(
+    host.querySelector(".model-editor__diagnostics-line--error"),
+  ).toBeNull();
   expect(
     Array.from(
       host.querySelectorAll(".preview-workflow-card__undefined-badge"),
@@ -46,6 +50,7 @@ test("後方の定義をクリックするとその宣言行へジャンプす�
   });
 
   const offset = "data 注文 = 注文ID\n".length;
+
   expect([input.selectionStart, input.selectionEnd]).toEqual([offset, offset]);
 });
 
@@ -71,9 +76,8 @@ test("未定義の型参照名をクリックしてもスタブを追記して�
   });
 
   const stubOffset = `${source}\n`.length;
-  expect(input.value).toBe(
-    `${source}\ndata 未定義型 = string // TODO 詳細化`,
-  );
+
+  expect(input.value).toBe(`${source}\ndata 未定義型 = string // TODO 詳細化`);
   expect(document.activeElement).toBe(input);
   expect([input.selectionStart, input.selectionEnd]).toEqual([
     stubOffset,
@@ -96,11 +100,13 @@ test("CRLF の文書でもリネーム位置がずれない", () => {
   act(() => {
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+
   const nameField = host.querySelector('input[aria-label="新しい名前"]');
   const nameInput =
     nameField instanceof HTMLInputElement
       ? nameField
       : document.createElement("input");
+
   act(() => {
     nameInput.focus();
     nameInput.value = "商品ID";
@@ -157,11 +163,13 @@ test("コメント内の同名文字列はリネームしない", () => {
   act(() => {
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+
   const nameField = host.querySelector('input[aria-label="新しい名前"]');
   const nameInput =
     nameField instanceof HTMLInputElement
       ? nameField
       : document.createElement("input");
+
   act(() => {
     nameInput.focus();
     nameInput.value = "商品ID";
@@ -191,11 +199,13 @@ data 注文 = 注文ID`;
   act(() => {
     buttons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+
   const nameField = host.querySelector('input[aria-label="新しい名前"]');
   const nameInput =
     nameField instanceof HTMLInputElement
       ? nameField
       : document.createElement("input");
+
   act(() => {
     nameInput.focus();
     nameInput.value = "商品ID";
@@ -225,11 +235,13 @@ test("既にある宣言名へリネームしても文書は変わらない", ()
   act(() => {
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+
   const nameField = host.querySelector('input[aria-label="新しい名前"]');
   const nameInput =
     nameField instanceof HTMLInputElement
       ? nameField
       : document.createElement("input");
+
   act(() => {
     nameInput.focus();
     nameInput.value = "注文";
@@ -241,7 +253,6 @@ test("既にある宣言名へリネームしても文書は変わらない", ()
 
   expect(input.value).toBe(source);
 });
-
 
 test("workflow雛形をカーソル位置へ挿入し名前部分を選択する", () => {
   const source = "data 注文ID = string\n";
@@ -274,8 +285,11 @@ test("workflow雛形をカーソル位置へ挿入し名前部分を選択する
 
 test("IME変換中に親の全文が変わってもプレビューは表示中のテキストに従う", () => {
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root = createRoot(host);
+
   const render = (value: string) => {
     act(() => {
       root.render(
@@ -285,11 +299,13 @@ test("IME変換中に親の全文が変わってもプレビューは表示中�
   };
 
   render("data 注文ID = string");
+
   const found = host.querySelector("textarea");
   const input =
     found instanceof HTMLTextAreaElement
       ? found
       : document.createElement("textarea");
+
   act(() => {
     input.dispatchEvent(
       new CompositionEvent("compositionstart", { bubbles: true }),

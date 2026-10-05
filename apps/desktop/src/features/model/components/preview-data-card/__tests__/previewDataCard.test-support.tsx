@@ -26,6 +26,7 @@ type CardRenderer = Readonly<{
  */
 export const createCardRenderer = (): CardRenderer => {
   const rendered: RenderedCard[] = [];
+
   return {
     render: (
       decl,
@@ -35,8 +36,11 @@ export const createCardRenderer = (): CardRenderer => {
       onRename,
     ) => {
       const host = document.createElement("div");
+
       document.body.append(host);
+
       const root: Root = createRoot(host);
+
       act(() => {
         root.render(
           <PreviewDataCard
@@ -50,6 +54,7 @@ export const createCardRenderer = (): CardRenderer => {
       });
       rendered.push({
         host,
+
         unmount: () => {
           act(() => {
             root.unmount();
@@ -57,8 +62,10 @@ export const createCardRenderer = (): CardRenderer => {
           host.remove();
         },
       });
+
       return host;
     },
+
     unmountAll: () => {
       for (const entry of rendered.splice(0)) {
         entry.unmount();

@@ -38,11 +38,15 @@ type ConnectionLayerProps = Readonly<{
  * @param props 描画する文書。
  * @returns 矢印、ラベル、警告表示を含むSVGレイヤー。
  */
-export function ConnectionLayer({ document, interaction }: ConnectionLayerProps) {
+export function ConnectionLayer({
+  document,
+  interaction,
+}: ConnectionLayerProps) {
   const stickyIndex = useMemo(
     () => StickyIndex.create(document.stickies),
     [document.stickies],
   );
+
   return (
     <svg
       className={
@@ -124,9 +128,11 @@ function RenderedConnection({
   interaction,
 }: RenderedConnectionProps) {
   const appearance = ConnectionAppearance.create(stickyIndex, connection);
+
   if (!appearance.some) {
     return null;
   }
+
   const marker =
     appearance.value.status === "warning"
       ? "url(#connection-warning-arrow)"
@@ -216,15 +222,19 @@ const handleConnectionKeyDown = (
   if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
     return;
   }
+
   if (event.key === " ") {
     event.preventDefault();
     event.stopPropagation();
     interaction?.onSelect(connectionId);
+
     return;
   }
+
   if (event.key !== "Enter") {
     return;
   }
+
   event.preventDefault();
   event.stopPropagation();
   interaction?.onEdit(connectionId);
@@ -265,6 +275,7 @@ function ConnectionLabelEditor({
   onCommit,
 }: ConnectionLabelEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
@@ -287,12 +298,17 @@ function ConnectionLabelEditor({
         }}
         onBlur={onCommit}
         onKeyDown={(event) => {
-          if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+          if (
+            event.nativeEvent.isComposing ||
+            event.nativeEvent.keyCode === 229
+          ) {
             return;
           }
+
           if (event.key !== "Enter" && event.key !== "Escape") {
             return;
           }
+
           event.preventDefault();
           event.stopPropagation();
           event.currentTarget.blur();
@@ -320,6 +336,7 @@ type ConnectionLabelProps = Readonly<{
 /** ラベルを実際のSVGテキスト幅に合わせた背景チップとともに描画する。 */
 function ConnectionLabel({ label }: ConnectionLabelProps) {
   const chipRef = useRef<SVGRectElement>(null);
+
   const resizeChip = (text: SVGTextElement | null): void => {
     if (
       text === null ||
@@ -328,11 +345,15 @@ function ConnectionLabel({ label }: ConnectionLabelProps) {
     ) {
       return;
     }
+
     const textWidth = text.getComputedTextLength();
+
     if (!Number.isFinite(textWidth)) {
       return;
     }
+
     const chipWidth = textWidth + LABEL_HORIZONTAL_PADDING;
+
     chipRef.current.setAttribute("x", String(-chipWidth / 2));
     chipRef.current.setAttribute("width", String(chipWidth));
   };
@@ -351,11 +372,7 @@ function ConnectionLabel({ label }: ConnectionLabelProps) {
         height="24"
         rx="6"
       />
-      <text
-        ref={resizeChip}
-        textAnchor="middle"
-        dominantBaseline="central"
-      >
+      <text ref={resizeChip} textAnchor="middle" dominantBaseline="central">
         {label.text}
       </text>
     </g>

@@ -18,7 +18,9 @@ export const HitTest = {
   stickyAt: (doc: Document, point: Point): Option<Sticky> =>
     doc.stickies.reduceRight<Option<Sticky>>(
       (hit, sticky) =>
-        hit.some || !StickyCompanion.contains(sticky, point) ? hit : OptionValue.some(sticky),
+        hit.some || !StickyCompanion.contains(sticky, point)
+          ? hit
+          : OptionValue.some(sticky),
       OptionValue.none(),
     ),
 
@@ -37,12 +39,15 @@ export const HitTest = {
     tolerance: number,
   ): Option<Connection> => {
     const stickyIndex = StickyIndex.create(doc.stickies);
+
     return doc.connections.reduceRight<Option<Connection>>(
       (hit, connection) => {
         if (hit.some) {
           return hit;
         }
+
         const segment = ConnectionSegment.create(stickyIndex, connection);
+
         return segment.some &&
           ConnectionSegment.contains(segment.value, point, tolerance)
           ? OptionValue.some(connection)
@@ -66,6 +71,9 @@ export const HitTest = {
   ): Option<number> => {
     const stickyIndex = StickyIndex.create(doc.stickies);
     const segment = ConnectionSegment.create(stickyIndex, connection);
-    return segment.some ? OptionValue.some(ConnectionSegment.distanceFrom(segment.value, point)) : OptionValue.none();
+
+    return segment.some
+      ? OptionValue.some(ConnectionSegment.distanceFrom(segment.value, point))
+      : OptionValue.none();
   },
 };

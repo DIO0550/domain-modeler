@@ -1,7 +1,5 @@
 import type { Diagnostic, ErrorDecl } from "@domain-modeler/model-core";
-import {
-  PreviewErrorPlaceholder as PreviewErrorPlaceholderModel,
-} from "../../domains/preview-error-placeholder";
+import { PreviewErrorPlaceholder as PreviewErrorPlaceholderModel } from "../../domains/preview-error-placeholder";
 import "./PreviewErrorPlaceholder.css";
 
 type PreviewErrorPlaceholderProps = Readonly<{
@@ -20,6 +18,7 @@ export function PreviewErrorPlaceholder({
   diagnostics,
 }: PreviewErrorPlaceholderProps) {
   const placeholder = PreviewErrorPlaceholderModel.create(decl, diagnostics);
+
   return (
     <article
       className="preview-error-placeholder"
@@ -48,6 +47,7 @@ function ErrorMessages({ messages }: ErrorMessagesProps) {
   if (messages.length === 0) {
     return null;
   }
+
   return (
     <div className="preview-error-placeholder__messages">
       {messages.map((message) => (

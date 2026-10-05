@@ -23,21 +23,27 @@ export const WorkflowPort = {
     if (port.terms.length === 0) {
       return `  ${port.direction}: ${port.fallback}`;
     }
+
     if (port.terms.every((event) => event.label.length === 0)) {
       const names = [...new Set(port.terms.map((event) => event.text))];
+
       return `  ${port.direction}: ${names.join(` ${port.operator} `)}`;
     }
+
     const terms = port.terms.map((event, index) => {
       const prefix =
         index === 0 ? `  ${port.direction}: ` : `    ${port.operator} `;
       const term = `${prefix}${event.text}`;
+
       if (event.label.length === 0) {
         return term;
       }
+
       return Comment.lines({ prefix: `${term} // `, text: event.label })
         .map((line, lineIndex) => (lineIndex === 0 ? line : `    ${line}`))
         .join("\n");
     });
+
     return terms.join("\n");
   },
 } as const;

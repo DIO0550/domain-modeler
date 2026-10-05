@@ -13,12 +13,7 @@ const textsOf = (tokens: readonly Token[]): readonly string[] =>
 test("日本語識別子を identifier トークンとして分解する", () => {
   const tokens = Tokenizer.tokenize("data 注文 = 未検証の注文");
 
-  expect(textsOf(tokens)).toEqual([
-    "data",
-    "注文",
-    "=",
-    "未検証の注文",
-  ]);
+  expect(textsOf(tokens)).toEqual(["data", "注文", "=", "未検証の注文"]);
   expect(kindsOf(tokens)).toEqual([
     TOKEN_KINDS.reserved,
     TOKEN_KINDS.identifier,
@@ -177,9 +172,7 @@ workflow 注文を確定する =
   const tokens = Tokenizer.tokenize(source);
 
   expect(tokens.length).toBeGreaterThan(0);
-  expect(tokens.some((token) => token.kind === TOKEN_KINDS.comment)).toBe(
-    true,
-  );
+  expect(tokens.some((token) => token.kind === TOKEN_KINDS.comment)).toBe(true);
   expect(tokens.some((token) => token.kind === TOKEN_KINDS.blankLine)).toBe(
     true,
   );

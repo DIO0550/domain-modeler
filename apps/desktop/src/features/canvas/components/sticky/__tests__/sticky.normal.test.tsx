@@ -7,11 +7,7 @@ import {
   type StickyType,
 } from "@domain-modeler/canvas-core";
 import { StickyAppearance } from "../../../domains/sticky-appearance";
-import {
-  Sticky,
-  type StickyChrome,
-  type StickyManipulation,
-} from "../index";
+import { Sticky, type StickyChrome, type StickyManipulation } from "../index";
 
 type RenderedSticky = Readonly<{
   host: HTMLDivElement;
@@ -40,7 +36,9 @@ const renderSticky = (
   onKeyActivate?: () => void,
 ): HTMLDivElement => {
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
 
   act(() => {
@@ -56,6 +54,7 @@ const renderSticky = (
 
   rendered.push({
     host,
+
     unmount: () => {
       act(() => {
         root.unmount();
@@ -63,6 +62,7 @@ const renderSticky = (
       host.remove();
     },
   });
+
   return host;
 };
 
@@ -73,11 +73,9 @@ const renderSticky = (
  * @param text 本文。
  * @returns 標準サイズの付箋。
  */
-const stickyOf = (
-  type: StickyType,
-  text: string,
-): StickyModel => {
+const stickyOf = (type: StickyType, text: string): StickyModel => {
   const appearance = StickyAppearance.of(type);
+
   return StickyModel.create(
     StickyId.create(`stk_${type}`),
     type,
@@ -87,30 +85,27 @@ const stickyOf = (
   );
 };
 
-test.each(StickyAppearance.all())(
-  "$caption は種別名キャプションと標準サイズで表示される",
-  (appearance) => {
-    const host = renderSticky(stickyOf(appearance.type, "本文"));
-    const note = host.querySelector("article");
+test.each(
+  StickyAppearance.all(),
+)("$caption は種別名キャプションと標準サイズで表示される", (appearance) => {
+  const host = renderSticky(stickyOf(appearance.type, "本文"));
+  const note = host.querySelector("article");
 
-    expect(note?.getAttribute("data-sticky-type")).toBe(appearance.type);
-    expect(note?.querySelector(".sticky__caption")?.textContent).toBe(
-      appearance.caption,
-    );
-    expect((note as HTMLElement | null)?.style.width).toBe(
-      `${appearance.defaultSize.width}px`,
-    );
-    expect((note as HTMLElement | null)?.style.height).toBe(
-      `${appearance.defaultSize.height}px`,
-    );
-    expect(host.querySelector(".sticky__text")?.textContent).toBe("本文");
-  },
-);
+  expect(note?.getAttribute("data-sticky-type")).toBe(appearance.type);
+  expect(note?.querySelector(".sticky__caption")?.textContent).toBe(
+    appearance.caption,
+  );
+  expect((note as HTMLElement | null)?.style.width).toBe(
+    `${appearance.defaultSize.width}px`,
+  );
+  expect((note as HTMLElement | null)?.style.height).toBe(
+    `${appearance.defaultSize.height}px`,
+  );
+  expect(host.querySelector(".sticky__text")?.textContent).toBe("本文");
+});
 
 test("本文は付箋の中央に改行を残して表示する", () => {
-  const host = renderSticky(
-    stickyOf("event", "注文が\n確定した"),
-  );
+  const host = renderSticky(stickyOf("event", "注文が\n確定した"));
 
   expect(host.querySelector(".sticky__text")?.textContent).toBe(
     "注文が\n確定した",
@@ -147,14 +142,14 @@ test("Hotspot の紙面だけ傾き修飾を持つ", () => {
   const event = renderSticky(stickyOf("event", "注文が確定した"));
 
   expect(
-    hotspot.querySelector(".sticky__face")?.classList.contains(
-      "sticky__face--tilted",
-    ),
+    hotspot
+      .querySelector(".sticky__face")
+      ?.classList.contains("sticky__face--tilted"),
   ).toBe(true);
   expect(
-    event.querySelector(".sticky__face")?.classList.contains(
-      "sticky__face--tilted",
-    ),
+    event
+      .querySelector(".sticky__face")
+      ?.classList.contains("sticky__face--tilted"),
   ).toBe(false);
 });
 
@@ -217,7 +212,9 @@ test.each(["Enter", " "])("%sでキーボード操作を実行する", (key) => 
   const article = host.querySelector("article");
 
   act(() => {
-    article?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    article?.dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true }),
+    );
   });
 
   expect(onKeyActivate).toHaveBeenCalledOnce();
@@ -240,7 +237,9 @@ test("編集中は下書き本文を textarea に出す", () => {
   const host = renderSticky(stickyOf("event", "注文が確定した"), {
     status: "editing",
     draftText: "下書き",
+
     onDraftChange: () => undefined,
+
     onCommit: () => undefined,
   });
 
@@ -252,20 +251,27 @@ test("編集中は下書き本文を textarea に出す", () => {
 
 test("背景から復帰した編集中の付箋はタブ操作中のフォーカスを奪わない", () => {
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
   const sticky = stickyOf("event", "注文が確定した");
   const chrome: StickyChrome = {
     status: "editing",
     draftText: "下書き",
+
     onDraftChange: () => undefined,
+
     onCommit: () => undefined,
   };
+
   const rerender = (mode: "visible" | "hidden"): void => {
     act(() => {
       root.render(
         <>
-          <button type="button" role="tab">別の文書</button>
+          <button type="button" role="tab">
+            別の文書
+          </button>
           <Activity mode={mode}>
             <Sticky sticky={sticky} chrome={chrome} />
           </Activity>
@@ -273,8 +279,10 @@ test("背景から復帰した編集中の付箋はタブ操作中のフォー�
       );
     });
   };
+
   rendered.push({
     host,
+
     unmount: () => {
       act(() => root.unmount());
       host.remove();
@@ -282,9 +290,13 @@ test("背景から復帰した編集中の付箋はタブ操作中のフォー�
   });
 
   rerender("visible");
+
   expect(document.activeElement).toBe(host.querySelector("textarea"));
+
   rerender("hidden");
+
   const tab = host.querySelector<HTMLButtonElement>('[role="tab"]');
+
   act(() => tab?.focus());
   rerender("visible");
 
@@ -294,9 +306,13 @@ test("背景から復帰した編集中の付箋はタブ操作中のフォー�
 test("選択中は四隅にリサイズハンドルを表示する", () => {
   const manipulation: StickyManipulation = {
     onDragStart: () => undefined,
+
     onResizeStart: () => undefined,
+
     onPointerMove: () => undefined,
+
     onPointerCommit: () => undefined,
+
     onPointerCancel: () => undefined,
   };
   const host = renderSticky(
@@ -315,9 +331,13 @@ test("選択中は四隅にリサイズハンドルを表示する", () => {
 test("通常表示と本文編集中はリサイズハンドルを表示しない", () => {
   const manipulation: StickyManipulation = {
     onDragStart: () => undefined,
+
     onResizeStart: () => undefined,
+
     onPointerMove: () => undefined,
+
     onPointerCommit: () => undefined,
+
     onPointerCancel: () => undefined,
   };
   const plain = renderSticky(
@@ -330,7 +350,9 @@ test("通常表示と本文編集中はリサイズハンドルを表示しな�
     {
       status: "editing",
       draftText: "注文を確定する",
+
       onDraftChange: () => undefined,
+
       onCommit: () => undefined,
     },
     manipulation,

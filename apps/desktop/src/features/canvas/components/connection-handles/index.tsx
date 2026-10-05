@@ -27,21 +27,28 @@ export function ConnectionHandles({
   onCancel,
 }: ConnectionHandlesProps) {
   const pointerId = useRef<number | null>(null);
+
   const cancel = (): void => {
     if (pointerId.current === null) {
       return;
     }
+
     pointerId.current = null;
     onCancel();
   };
+
   const cancelOnHide = useEffectEvent(cancel);
+
   useEffect(() => () => cancelOnHide(), []);
+
   const cancelPointer = (event: PointerEvent<HTMLButtonElement>): void => {
     event.stopPropagation();
+
     if (pointerId.current === event.pointerId) {
       cancel();
     }
   };
+
   return Object.values(ANCHORS).map((anchor) => (
     <button
       key={anchor}
@@ -52,6 +59,7 @@ export function ConnectionHandles({
       title={`${anchorLabels[anchor]}辺からドラッグして接続`}
       onPointerDown={(event) => {
         event.stopPropagation();
+
         if (
           event.button !== 0 ||
           !event.isPrimary ||
@@ -59,6 +67,7 @@ export function ConnectionHandles({
         ) {
           return;
         }
+
         event.preventDefault();
         event.currentTarget.focus();
         pointerId.current = event.pointerId;
@@ -67,16 +76,20 @@ export function ConnectionHandles({
       }}
       onPointerMove={(event) => {
         event.stopPropagation();
+
         if (pointerId.current !== event.pointerId) {
           return;
         }
+
         onMove({ x: event.clientX, y: event.clientY });
       }}
       onPointerUp={(event) => {
         event.stopPropagation();
+
         if (pointerId.current !== event.pointerId) {
           return;
         }
+
         pointerId.current = null;
         onFinish({ x: event.clientX, y: event.clientY });
         event.currentTarget.releasePointerCapture(event.pointerId);
@@ -87,6 +100,7 @@ export function ConnectionHandles({
         if (event.key !== "Escape") {
           return;
         }
+
         event.preventDefault();
         event.stopPropagation();
         cancel();

@@ -12,7 +12,10 @@ test("混在文書の状態、複数遷移、自己ループ、イベント、�
   expect(parsed.diagnostics).toEqual([]);
   expect(resolved.diagnostics).toEqual([]);
   expect(parsed.document.declarations.map((decl) => decl.kind)).toEqual([
-    "data", "workflow", "state-machine", "state-machine",
+    "data",
+    "workflow",
+    "state-machine",
+    "state-machine",
   ]);
   expect(parsed.document.declarations[2]).toMatchObject({
     kind: "state-machine",
@@ -56,11 +59,31 @@ state-machine 注文 =
   expect(parsed.diagnostics).toEqual([]);
   expect(resolved.definitions["注文"]?.kind).toBe("data");
   expect(resolved.diagnostics).toEqual([
-    { severity: "error", message: "「注文」は既に宣言されています", range: SourceRange.onLine(2, 15, 17) },
-    { severity: "error", message: "状態「開始」は既に宣言されています", range: SourceRange.onLine(6, 10, 12) },
-    { severity: "error", message: "状態「不明」は未定義です", range: SourceRange.onLine(3, 12, 14) },
-    { severity: "error", message: "初期状態は1つだけ指定できます", range: SourceRange.onLine(4, 3, 14) },
-    { severity: "error", message: "状態「欠落」は未定義です", range: SourceRange.onLine(7, 21, 23) },
+    {
+      severity: "error",
+      message: "「注文」は既に宣言されています",
+      range: SourceRange.onLine(2, 15, 17),
+    },
+    {
+      severity: "error",
+      message: "状態「開始」は既に宣言されています",
+      range: SourceRange.onLine(6, 10, 12),
+    },
+    {
+      severity: "error",
+      message: "状態「不明」は未定義です",
+      range: SourceRange.onLine(3, 12, 14),
+    },
+    {
+      severity: "error",
+      message: "初期状態は1つだけ指定できます",
+      range: SourceRange.onLine(4, 3, 14),
+    },
+    {
+      severity: "error",
+      message: "状態「欠落」は未定義です",
+      range: SourceRange.onLine(7, 21, 23),
+    },
   ]);
 });
 
@@ -80,14 +103,28 @@ workflow 通知 =
   const resolved = Resolve.resolve(parsed.document);
 
   expect(parsed.document.declarations.map((decl) => decl.kind)).toEqual([
-    "error", "data", "state-machine", "workflow",
+    "error",
+    "data",
+    "state-machine",
+    "workflow",
   ]);
   expect(parsed.diagnostics).toEqual([
-    { severity: "error", message: "= が必要です", range: SourceRange.onLine(1, 20, 20) },
-    { severity: "error", message: "遷移先の識別子が必要です", range: SourceRange.onLine(7, 20, 20) },
+    {
+      severity: "error",
+      message: "= が必要です",
+      range: SourceRange.onLine(1, 20, 20),
+    },
+    {
+      severity: "error",
+      message: "遷移先の識別子が必要です",
+      range: SourceRange.onLine(7, 20, 20),
+    },
   ]);
   expect(parsed.document.declarations[2]).toMatchObject({
-    states: [{ name: "待機", initial: true }, { name: "完了", terminal: true }],
+    states: [
+      { name: "待機", initial: true },
+      { name: "完了", terminal: true },
+    ],
     transitions: [{ from: "待機", to: "完了", event: "確定" }],
   });
   expect(resolved.diagnostics).toEqual([]);

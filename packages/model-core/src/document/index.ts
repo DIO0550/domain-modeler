@@ -26,6 +26,7 @@ export const Declaration = {
    */
   isData: (declaration: Declaration): declaration is DataDecl =>
     declaration.kind === "data",
+
   /**
    * workflow 宣言か判定する。
    * @param declaration 判定する宣言。
@@ -33,14 +34,15 @@ export const Declaration = {
    */
   isWorkflow: (declaration: Declaration): declaration is WorkflowDecl =>
     declaration.kind === "workflow",
+
   /**
    * state-machine 宣言か判定する。
    * @param declaration 判定する宣言。
    * @returns state-machine 宣言の場合は `true`。
    */
-  isStateMachine: (
-    declaration: Declaration,
-  ): declaration is StateMachineDecl => declaration.kind === "state-machine",
+  isStateMachine: (declaration: Declaration): declaration is StateMachineDecl =>
+    declaration.kind === "state-machine",
+
   /**
    * エラー宣言か判定する。
    * @param declaration 判定する宣言。

@@ -37,6 +37,7 @@ async fn run_blocking_file_write(
     write: impl FnOnce(&str) -> FileWriteResult + Send + 'static,
 ) -> FileWriteResult {
     let failure_path = path.clone();
+
     tauri::async_runtime::spawn_blocking(move || write(&path))
         .await
         .unwrap_or_else(|error| FileWriteResult::Err {

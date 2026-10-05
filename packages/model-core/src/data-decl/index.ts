@@ -45,6 +45,7 @@ export const DataDecl = {
     typeExpr: params.typeExpr,
     range: params.range,
   }),
+
   /**
    * 型式の form からプレビューカード種別を導出する。
    * @param decl data 宣言。
@@ -54,14 +55,18 @@ export const DataDecl = {
     switch (decl.typeExpr.form) {
       case "alias":
         return DATA_CARD_KINDS.ALIAS;
+
       case "record":
         return DATA_CARD_KINDS.RECORD;
+
       case "choice":
         return DATA_CARD_KINDS.CHOICE;
+
       case "value":
         return DATA_CARD_KINDS.VALUE;
     }
   },
+
   /**
    * data 宣言の型式に含まれる型参照項を列挙する。
    * @param decl data 宣言。

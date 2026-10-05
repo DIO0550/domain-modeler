@@ -143,6 +143,7 @@ const meta: Meta<typeof PreviewWorkflowCard> = {
     ),
   ],
 };
+
 export default meta;
 
 type Story = StoryObj<typeof PreviewWorkflowCard>;
@@ -161,6 +162,7 @@ export const AllProps: Story = {
       </div>
     ),
   ],
+
   render: (args) => (
     <>
       <PreviewWorkflowCard {...args} decl={withError} />
@@ -178,6 +180,7 @@ export const EdgeCases: Story = {
       </div>
     ),
   ],
+
   render: (args) => (
     <>
       <PreviewWorkflowCard

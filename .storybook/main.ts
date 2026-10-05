@@ -7,6 +7,7 @@ const config: StorybookConfig = {
   addons: ["@storybook/addon-a11y", "@storybook/addon-themes"],
   framework: { name: "@storybook/react-vite", options: {} },
   typescript: { reactDocgen: "react-docgen-typescript" },
+
   async viteFinal(baseConfig) {
     return mergeConfig(baseConfig, {
       resolve: {

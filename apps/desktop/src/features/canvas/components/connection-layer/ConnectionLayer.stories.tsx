@@ -94,6 +94,7 @@ export const Default: Story = {
   args: {
     document: sampleDocument,
   },
+
   render: (args) => (
     <div className="sticky-story">
       <ConnectionLayer {...args} />

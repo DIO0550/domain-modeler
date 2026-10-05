@@ -43,6 +43,7 @@ const setup = () => {
     "right",
     "left",
   );
+
   return { empty, edited, connected: anchored };
 };
 

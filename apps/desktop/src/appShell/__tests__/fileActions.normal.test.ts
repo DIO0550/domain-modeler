@@ -15,7 +15,11 @@ type OperationCall =
   | Readonly<{ type: "sameFilePath"; left: string; right: string }>
   | Readonly<{ type: "createFile"; path: string; contents: string }>
   | Readonly<{ type: "readFile"; path: string }>
-  | Readonly<{ type: "openTab"; path: string; documentType: "canvas" | "model" }>
+  | Readonly<{
+      type: "openTab";
+      path: string;
+      documentType: "canvas" | "model";
+    }>
   | Readonly<{ type: "notifyError"; error: OpenDocumentError }>;
 
 /**
@@ -33,16 +37,22 @@ const operationsRecording = (
 ): NewDocumentOperations => ({
   selectSavePath: async (documentType) => {
     calls.push({ type: "selectSavePath", documentType });
+
     return selection;
   },
+
   createFile: async (path, contents) => {
     calls.push({ type: "createFile", path, contents });
+
     return writeResult;
   },
+
   sameFilePath: async (left, right) => {
     calls.push({ type: "sameFilePath", left, right });
+
     return left === right;
   },
+
   openTab: (path, documentType) => {
     calls.push({ type: "openTab", path, documentType });
   },
@@ -61,11 +71,14 @@ const openOperationsRecording = (
 ): OpenDocumentOperations => ({
   readFile: async (path) => {
     calls.push({ type: "readFile", path });
+
     return readResult;
   },
+
   openTab: (path, documentType) => {
     calls.push({ type: "openTab", path, documentType });
   },
+
   notifyError: (error) => {
     calls.push({ type: "notifyError", error });
   },
@@ -140,9 +153,7 @@ test("保存先の選択をキャンセルすると状態を変更しない", as
   );
 
   expect(result).toEqual({ status: "cancelled" });
-  expect(calls).toEqual([
-    { type: "selectSavePath", documentType: "canvas" },
-  ]);
+  expect(calls).toEqual([{ type: "selectSavePath", documentType: "canvas" }]);
 });
 
 test("初期内容を書き込めないとタブを開かない", async () => {
@@ -180,8 +191,10 @@ test("ファイルシステム上で同一の編集中パスには新規作成�
     "model",
     {
       ...operations,
+
       sameFilePath: async (left, right) => {
         calls.push({ type: "sameFilePath", left, right });
+
         return left.toLowerCase() === right.toLowerCase();
       },
     },

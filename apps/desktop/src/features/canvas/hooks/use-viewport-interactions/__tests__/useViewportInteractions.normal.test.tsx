@@ -34,18 +34,18 @@ const renderHook = (
     current: undefined,
   };
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
 
   const Probe = () => {
     const [viewport, setViewport] = useState(initialViewport);
-    latest.current = useViewportInteractions(
-      viewport,
-      stickies,
-      (change) => {
-        setViewport(change);
-      },
-    );
+
+    latest.current = useViewportInteractions(viewport, stickies, (change) => {
+      setViewport(change);
+    });
+
     return null;
   };
 
@@ -55,6 +55,7 @@ const renderHook = (
 
   rendered.push({
     latest,
+
     unmount: () => {
       act(() => {
         root.unmount();
@@ -62,6 +63,7 @@ const renderHook = (
       host.remove();
     },
   });
+
   return latest;
 };
 
@@ -74,14 +76,17 @@ const surfaceWithRect = (
   }>,
 ): HTMLDivElement => {
   const surface = document.createElement("div");
+
   surface.getBoundingClientRect = () => ({
     ...rect,
     x: rect.left,
     y: rect.top,
     right: rect.left + rect.width,
     bottom: rect.top + rect.height,
+
     toJSON: () => ({}),
   });
+
   return surface;
 };
 
@@ -132,6 +137,7 @@ test("全体表示は全付箋が収まる viewport へ変更する", () => {
     width: 1000,
     height: 500,
   });
+
   act(() => {
     latest.current?.surfaceInteraction.bindSurface(surface);
   });
@@ -151,6 +157,7 @@ test("client 座標はキャンバス面を原点としてワールド座標へ�
     width: 800,
     height: 600,
   });
+
   act(() => {
     latest.current?.surfaceInteraction.bindSurface(surface);
   });

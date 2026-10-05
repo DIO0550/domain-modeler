@@ -42,9 +42,11 @@ export const ReferenceTable = {
   create: (declarations: readonly DocumentDeclaration[]): ReferenceTable =>
     declarations.reduce<ReferenceTable>((table, decl) => {
       const withDefinition = append(table, decl.name, decl.nameRange);
+
       if (!NamedDecl.is(decl)) {
         return withDefinition;
       }
+
       return NamedDecl.referencedTerms(decl).reduce(
         (next, term) =>
           TypeTerm.isResolvable(term)
@@ -53,6 +55,7 @@ export const ReferenceTable = {
         withDefinition,
       );
     }, {}),
+
   /**
    * 指定識別子の宣言名・型参照の出現位置を返す。
    * コメント内の文字列や、同名部分文字列を含む別識別子は含まない。
@@ -60,13 +63,11 @@ export const ReferenceTable = {
    * @param name 識別子。
    * @returns 出現順のソース範囲。名前が無い場合は空配列。
    */
-  rangesOf: (
-    table: ReferenceTable,
-    name: string,
-  ): readonly SourceRange[] => {
+  rangesOf: (table: ReferenceTable, name: string): readonly SourceRange[] => {
     if (!hasName(table, name)) {
       return [];
     }
+
     return table[name] ?? [];
   },
 } as const;

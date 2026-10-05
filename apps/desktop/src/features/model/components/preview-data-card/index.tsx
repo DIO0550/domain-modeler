@@ -1,7 +1,4 @@
-import {
-  DATA_CARD_KINDS,
-  type DataDecl,
-} from "@domain-modeler/model-core";
+import { DATA_CARD_KINDS, type DataDecl } from "@domain-modeler/model-core";
 import {
   DataCardPreview,
   PreviewTypeRef,
@@ -33,6 +30,7 @@ export function PreviewDataCard({
   onRename,
 }: PreviewDataCardProps) {
   const preview = DataCardPreview.create(decl, undefinedTypeNames);
+
   return (
     <article
       className="preview-data-card"
@@ -85,6 +83,7 @@ function DataCardBody({
       />
     );
   }
+
   if (preview.kind === DATA_CARD_KINDS.RECORD) {
     return (
       <ul className="preview-data-card__record">
@@ -103,6 +102,7 @@ function DataCardBody({
       </ul>
     );
   }
+
   if (preview.kind === DATA_CARD_KINDS.CHOICE) {
     return (
       <ChoiceCases
@@ -112,6 +112,7 @@ function DataCardBody({
       />
     );
   }
+
   return <p className="preview-data-card__value">{preview.caption}</p>;
 }
 
@@ -175,11 +176,11 @@ function ChoiceCase({
       />
     </span>
   );
+
   if (leadingSeparator === "none") {
-    return (
-      <span className="preview-data-card__choice-item">{pill}</span>
-    );
+    return <span className="preview-data-card__choice-item">{pill}</span>;
   }
+
   return (
     <span className="preview-data-card__choice-item">
       <span className="preview-data-card__or">or</span>
@@ -194,10 +195,13 @@ function ChoiceCase({
  * @param index 0始まりの位置。
  * @returns 先頭は区切りなし、2件目以降は or。
  */
-const choiceSeparator = (index: number): ChoiceCaseProps["leadingSeparator"] => {
+const choiceSeparator = (
+  index: number,
+): ChoiceCaseProps["leadingSeparator"] => {
   if (index === 0) {
     return "none";
   }
+
   return "or";
 };
 
@@ -253,9 +257,11 @@ function TypeName({ typeRef, onTypeRefClick }: TypeNameProps) {
   const className = typeNameClassName(typeRef);
   const isButton =
     onTypeRefClick !== undefined && !PreviewTypeRef.isPrimitive(typeRef);
+
   if (!isButton) {
     return <span className={className}>{typeRef.term.name}</span>;
   }
+
   return (
     <button
       type="button"
@@ -285,9 +291,11 @@ function UndefinedBadge({
   if (!PreviewTypeRef.isUndefined(typeRef)) {
     return null;
   }
+
   if (onUndefinedBadgeClick === undefined) {
     return <span className="preview-data-card__undefined-badge">未定義</span>;
   }
+
   return (
     <button
       type="button"
@@ -318,5 +326,6 @@ const typeNameClassName = (typeRef: PreviewTypeRef): string => {
     ...undefinedClass,
     ...primitiveClass,
   ];
+
   return classNames.join(" ");
 };

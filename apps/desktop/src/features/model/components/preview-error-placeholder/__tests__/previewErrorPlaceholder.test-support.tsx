@@ -16,7 +16,10 @@ type RenderedPlaceholder = Readonly<{
 }>;
 
 type PlaceholderRenderer = Readonly<{
-  render: (decl: ErrorDecl, diagnostics: readonly Diagnostic[]) => HTMLDivElement;
+  render: (
+    decl: ErrorDecl,
+    diagnostics: readonly Diagnostic[],
+  ) => HTMLDivElement;
   unmountAll: () => void;
 }>;
 
@@ -27,7 +30,9 @@ type PlaceholderRenderer = Readonly<{
  */
 export const firstErrorDecl = (parsed: ParseResult): ErrorDecl => {
   const decl = parsed.document.declarations.find(Declaration.isError);
+
   expect(decl).toEqual(expect.objectContaining({ kind: "error" }));
+
   return decl ?? ErrorDecl.create(SourceRange.onLine(1, 1, 1));
 };
 
@@ -37,11 +42,15 @@ export const firstErrorDecl = (parsed: ParseResult): ErrorDecl => {
  */
 export const createPlaceholderRenderer = (): PlaceholderRenderer => {
   const rendered: RenderedPlaceholder[] = [];
+
   return {
     render: (decl, diagnostics) => {
       const host = document.createElement("div");
+
       document.body.append(host);
+
       const root: Root = createRoot(host);
+
       act(() => {
         root.render(
           <PreviewErrorPlaceholder decl={decl} diagnostics={diagnostics} />,
@@ -49,6 +58,7 @@ export const createPlaceholderRenderer = (): PlaceholderRenderer => {
       });
       rendered.push({
         host,
+
         unmount: () => {
           act(() => {
             root.unmount();
@@ -56,8 +66,10 @@ export const createPlaceholderRenderer = (): PlaceholderRenderer => {
           host.remove();
         },
       });
+
       return host;
     },
+
     unmountAll: () => {
       for (const entry of rendered.splice(0)) {
         entry.unmount();

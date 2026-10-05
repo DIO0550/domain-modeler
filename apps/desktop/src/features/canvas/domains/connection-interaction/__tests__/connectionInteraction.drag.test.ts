@@ -24,6 +24,7 @@ const target = Sticky.create(
   { x: 240, y: 20 },
   { width: 160, height: 100 },
 );
+
 const setup = () =>
   ConnectionInteraction.clickAt(
     ConnectionInteraction.create({
@@ -44,16 +45,19 @@ for (const anchor of Object.values(ANCHORS)) {
       x: 270,
       y: 50,
     });
+
     expect(moved.session).toMatchObject({
       status: "dragging",
       origin: Sticky.anchorPoint(source, anchor),
       point: { x: 270, y: 50 },
     });
     expect(moved.board.history).toBe(initial.board.history);
+
     const finished = ConnectionInteraction.finishConnectionDrag(moved, {
       x: 270,
       y: 50,
     });
+
     expect(finished.board.workingDocument.connections).toHaveLength(1);
     expect(finished.board.workingDocument.connections[0]).toMatchObject({
       from: source.id,
@@ -78,6 +82,7 @@ for (const point of [
       anchor: "right",
     });
     const finished = ConnectionInteraction.finishConnectionDrag(started, point);
+
     expect(finished.session.status).toBe("idle");
     expect(finished.board).toBe(initial.board);
   });
@@ -90,6 +95,7 @@ test("取消後にポインターを離しても接続は残らない", () => {
     anchor: "top",
   });
   const cancelled = ConnectionInteraction.pressEscape(started);
+
   expect(
     ConnectionInteraction.finishConnectionDrag(cancelled, { x: 270, y: 50 })
       .board,
@@ -112,8 +118,11 @@ test("連続して作成した接続は一つずつundoとredoできる", () => 
     }),
     { x: 270, y: 50 },
   );
+
   expect(second.board.workingDocument.connections).toHaveLength(2);
+
   const undone = ConnectionInteraction.undo(second);
+
   expect(undone.board.workingDocument.connections).toEqual(
     first.board.workingDocument.connections,
   );
@@ -133,6 +142,7 @@ test("保存して読み直しても接続の始点の辺を維持する", () =>
   const parsed = Result.unwrap(
     Serialize.parse(Serialize.stringify(created.board.workingDocument)),
   );
+
   expect(parsed.connections[0]?.fromAnchor).toBe("right");
 });
 
@@ -144,6 +154,7 @@ for (const anchor of Object.values(ANCHORS)) {
       anchor: "right",
     });
     const moved = ConnectionInteraction.moveConnectionDrag(started, point);
+
     expect(moved.session).toMatchObject({
       target: {
         some: true,
@@ -154,14 +165,18 @@ for (const anchor of Object.values(ANCHORS)) {
         },
       },
     });
+
     const finished = ConnectionInteraction.finishConnectionDrag(moved, point);
+
     expect(finished.board.workingDocument.connections[0]).toMatchObject({
       to: target.id,
       toAnchor: "left",
     });
+
     const parsed = Result.unwrap(
       Serialize.parse(Serialize.stringify(finished.board.workingDocument)),
     );
+
     expect(parsed.connections[0]?.toAnchor).toBe("left");
   });
 }
@@ -175,6 +190,7 @@ test("付箋の少し外で離しても近い辺中央へ接続する", () => {
     x: 225,
     y: 70,
   });
+
   expect(finished.board.workingDocument.connections[0]).toMatchObject({
     to: target.id,
     toAnchor: "left",
@@ -194,6 +210,7 @@ test("拡大後の近接範囲も画面上24pxを超えない", () => {
     stickyId: source.id,
     anchor: "right",
   });
+
   expect(
     ConnectionInteraction.moveConnectionDrag(started, { x: 227, y: 70 })
       .session,
@@ -227,6 +244,7 @@ for (const direction of [
       started,
       Sticky.center(movedTarget),
     );
+
     expect(result.board.workingDocument.connections[0]).toMatchObject({
       fromAnchor: direction.from,
       toAnchor: direction.to,

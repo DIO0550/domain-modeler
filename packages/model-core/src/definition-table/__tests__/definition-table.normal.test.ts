@@ -73,9 +73,7 @@ test("data と workflow の同名も再宣言エラーになる", () => {
     range: SourceRange.onLine(2, 1, 11),
   });
 
-  expect(
-    DefinitionTable.collectRedeclarationErrors([data, workflow]),
-  ).toEqual([
+  expect(DefinitionTable.collectRedeclarationErrors([data, workflow])).toEqual([
     {
       severity: "error",
       message: "「注文を確定する」は既に宣言されています",

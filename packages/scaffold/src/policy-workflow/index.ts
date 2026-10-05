@@ -16,6 +16,7 @@ export const PolicyWorkflow = {
     if (sticky.type !== "policy") {
       return [];
     }
+
     return Identifier.unify([sticky.text]);
   },
 
@@ -33,13 +34,17 @@ export const PolicyWorkflow = {
         const event = workflow.stickies.find(
           (sticky) => sticky.id === connection.from && sticky.type === "event",
         );
+
         if (event === undefined) {
           return [];
         }
+
         const identifier = Identifier.create(event.text);
+
         if (Option.isNone(identifier)) {
           return [];
         }
+
         return [{ text: identifier.value, label: connection.label }];
       });
     const comments = document.connections
@@ -48,9 +53,11 @@ export const PolicyWorkflow = {
         const command = document.stickies.find(
           (sticky) => sticky.id === connection.to && sticky.type === "command",
         );
+
         if (command === undefined) {
           return [];
         }
+
         return Comment.connectionLines({
           text: command.text,
           label: connection.label,
@@ -63,6 +70,7 @@ export const PolicyWorkflow = {
       terms: events,
     });
     const declaration = `workflow ${workflow.name} =\n${input}\n  output: TODO結果イベント`;
+
     return [...comments, declaration].join("\n");
   },
 } as const;

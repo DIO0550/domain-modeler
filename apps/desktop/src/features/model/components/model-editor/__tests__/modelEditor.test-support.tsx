@@ -20,28 +20,36 @@ type EditorRenderer = Readonly<{
  */
 export const createEditorRenderer = (): EditorRenderer => {
   const cleanup: (() => void)[] = [];
+
   return {
     setup: (initialValue) => {
       const host = document.createElement("div");
+
       document.body.append(host);
+
       const root = createRoot(host);
       let text = initialValue;
+
       const render = (value: string) => {
         text = value;
         act(() => root.render(<ModelEditor value={text} onChange={render} />));
       };
+
       render(initialValue);
       cleanup.push(() => {
         act(() => root.unmount());
         host.remove();
       });
+
       const found = host.querySelector("textarea");
       const input =
         found instanceof HTMLTextAreaElement
           ? found
           : document.createElement("textarea");
+
       return { host, input, render, text: () => text };
     },
+
     unmountAll: () => {
       cleanup.splice(0).forEach((dispose) => dispose());
     },

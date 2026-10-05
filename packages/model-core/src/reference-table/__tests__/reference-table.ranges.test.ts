@@ -9,10 +9,8 @@ const rangesFromSource = (
   name: string,
 ): readonly SourceRange[] => {
   const { document } = Parse.parse(source);
-  return ReferenceTable.rangesOf(
-    Resolve.resolve(document).references,
-    name,
-  );
+
+  return ReferenceTable.rangesOf(Resolve.resolve(document).references, name);
 };
 
 test("宣言名と型参照の出現位置を出現順に返す", () => {
@@ -61,9 +59,9 @@ data 注文明細 = string`;
 });
 
 test("コメント内の同名文字列は置換範囲に含めない", () => {
-  expect(rangesFromSource("data 注文ID = string // 注文ID", "注文ID")).toEqual(
-    [SourceRange.onLine(1, 6, 10)],
-  );
+  expect(rangesFromSource("data 注文ID = string // 注文ID", "注文ID")).toEqual([
+    SourceRange.onLine(1, 6, 10),
+  ]);
 });
 
 test("部分一致する別識別子は置換範囲に含めない", () => {

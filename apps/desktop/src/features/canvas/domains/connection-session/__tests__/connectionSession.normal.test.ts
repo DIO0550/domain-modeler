@@ -4,7 +4,9 @@ import { ConnectionSession } from "..";
 
 test("始点または終点の選択中だけ接続作成中になる", () => {
   expect(ConnectionSession.isCreating({ status: "idle" })).toBe(false);
-  expect(ConnectionSession.isCreating({ status: "selectingSource" })).toBe(true);
+  expect(ConnectionSession.isCreating({ status: "selectingSource" })).toBe(
+    true,
+  );
   expect(
     ConnectionSession.isCreating({
       status: "selectingTarget",
@@ -28,9 +30,6 @@ test("終点選択中に選んだ始点だけを始点として判定する", ()
 
   expect(ConnectionSession.isSource(session, sourceId)).toBe(true);
   expect(
-    ConnectionSession.isSource(
-      session,
-      StickyId.create("stk_target00000"),
-    ),
+    ConnectionSession.isSource(session, StickyId.create("stk_target00000")),
   ).toBe(false);
 });

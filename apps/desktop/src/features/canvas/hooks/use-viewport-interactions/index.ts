@@ -17,6 +17,7 @@ import { EventTargetEx } from "@/utils/EventTargetEx";
 import { WheelEventEx } from "@/utils/WheelEventEx";
 
 type ViewportChange = (current: ViewportModel) => ViewportModel;
+
 type ChangeViewport = (change: ViewportChange) => void;
 
 type PanningPointer =
@@ -81,18 +82,23 @@ export function useViewportInteractions(
     },
     [changeViewport],
   );
+
   const zoomAt = useCallback(
     (zoom: number, fixedPoint: Point) => {
       changeViewport((current) => Viewport.zoomAt(current, zoom, fixedPoint));
     },
     [changeViewport],
   );
+
   const fitAll = useCallback(() => {
     const surface = surfaceElement.current;
+
     if (surface === null) {
       return;
     }
+
     const rect = surface.getBoundingClientRect();
+
     changeViewport(() =>
       Viewport.fitStickies(stickies, {
         width: rect.width,
@@ -100,23 +106,29 @@ export function useViewportInteractions(
       }),
     );
   }, [changeViewport, stickies]);
+
   const stepZoom = useCallback(
     (factor: number) => {
       const surface = surfaceElement.current;
+
       if (surface === null) {
         return;
       }
+
       const rect = surface.getBoundingClientRect();
       const fixedPoint = { x: rect.width / 2, y: rect.height / 2 };
+
       changeViewport((current) =>
         Viewport.zoomAt(current, current.zoom * factor, fixedPoint),
       );
     },
     [changeViewport],
   );
+
   const bindSurface = useCallback((surface: HTMLDivElement | null) => {
     surfaceElement.current = surface;
   }, []);
+
   const finishPanning = useCallback((pointerId: number) => {
     if (
       panningPointer.current.status === "idle" ||
@@ -124,33 +136,43 @@ export function useViewportInteractions(
     ) {
       return;
     }
+
     panningPointer.current = { status: "idle" };
     setIsPanning(false);
   }, []);
+
   const cancelPanning = useCallback((pointerId?: number) => {
     const current = panningPointer.current;
+
     if (
       pointerId !== undefined &&
       (current.status === "idle" || current.pointerId !== pointerId)
     ) {
       return;
     }
+
     suppressClick.current = false;
     panningPointer.current = { status: "idle" };
+
     if (current.status === "panning") {
       setIsPanning(false);
     }
   }, []);
+
   const handleWheel = useCallback(
     (event: globalThis.WheelEvent, surface: HTMLDivElement) => {
       if (EventTargetEx.isTextEntry(event.target)) {
         if (event.ctrlKey || event.metaKey) {
           event.preventDefault();
         }
+
         return;
       }
+
       event.preventDefault();
+
       const delta = WheelEventEx.toPixelDelta(event, surface);
+
       if (event.ctrlKey || event.metaKey) {
         const rect = surface.getBoundingClientRect();
         const fixedPoint = {
@@ -158,11 +180,14 @@ export function useViewportInteractions(
           y: event.clientY - rect.top,
         };
         const factor = Math.exp(-delta.y * 0.002);
+
         changeViewport((current) =>
           Viewport.zoomAt(current, current.zoom * factor, fixedPoint),
         );
+
         return;
       }
+
       panBy({ x: -delta.x, y: -delta.y });
     },
     [changeViewport, panBy],
@@ -177,26 +202,33 @@ export function useViewportInteractions(
       ) {
         return;
       }
+
       if (event.code !== "Space" || EventTargetEx.isTextEntry(event.target)) {
         return;
       }
+
       if (!EventTargetEx.isInteractive(event.target)) {
         event.preventDefault();
       }
+
       spacePressed.current = true;
     };
+
     const handleKeyUp = (event: globalThis.KeyboardEvent): void => {
       if (event.code === "Space") {
         spacePressed.current = false;
       }
     };
+
     const handleBlur = (): void => {
       spacePressed.current = false;
       cancelPanning();
     };
+
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
     window.addEventListener("blur", handleBlur);
+
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
@@ -207,15 +239,19 @@ export function useViewportInteractions(
 
   return {
     viewport,
+
     toWorldPoint: (point) => Viewport.screenToWorld(viewport, point),
+
     toWorldClientPoint: (point) => {
       const rect = surfaceElement.current?.getBoundingClientRect();
       const localPoint =
         rect === undefined
           ? point
           : { x: point.x - rect.left, y: point.y - rect.top };
+
       return Viewport.screenToWorld(viewport, localPoint);
     },
+
     panBy,
     zoomAt,
     fitAll,
@@ -223,10 +259,12 @@ export function useViewportInteractions(
     surfaceInteraction: {
       isPanning,
       bindSurface,
+
       onPointerDown: (event, startsOnBackground) => {
         const startsWithMiddleButton = event.button === 1;
         const startsWithSpace = event.button === 0 && spacePressed.current;
         const startsWithBackground = event.button === 0 && startsOnBackground;
+
         if (
           !startsWithMiddleButton &&
           !startsWithSpace &&
@@ -234,12 +272,16 @@ export function useViewportInteractions(
         ) {
           return;
         }
+
         if (startsWithMiddleButton || startsWithSpace) {
           event.preventDefault();
         }
+
         event.stopPropagation();
         event.currentTarget.setPointerCapture(event.pointerId);
+
         const immediate = startsWithMiddleButton || startsWithSpace;
+
         panningPointer.current = {
           status: immediate ? "panning" : "pending",
           pointerId: event.pointerId,
@@ -249,21 +291,27 @@ export function useViewportInteractions(
         suppressClick.current = startsWithSpace;
         setIsPanning(immediate);
       },
+
       onPointerMove: (event) => {
         const current = panningPointer.current;
+
         if (
           current.status === "idle" ||
           current.pointerId !== event.pointerId
         ) {
           return;
         }
+
         const point = { x: event.clientX, y: event.clientY };
+
         if (current.status === "pending") {
           if (!PointerDrag.hasStarted({ origin: current.point, point })) {
             return;
           }
+
           setIsPanning(true);
         }
+
         // 中ボタンの終了は click を発火しないため、左ドラッグだけを抑止する。
         if (
           current.button === 0 &&
@@ -271,29 +319,36 @@ export function useViewportInteractions(
         ) {
           suppressClick.current = true;
         }
+
         panBy({
           x: point.x - current.point.x,
           y: point.y - current.point.y,
         });
         panningPointer.current = { ...current, status: "panning", point };
       },
+
       onPointerUp: (event) => {
         finishPanning(event.pointerId);
       },
+
       onPointerCancel: (event) => {
         cancelPanning(event.pointerId);
       },
+
       onLostPointerCapture: (event) => {
         cancelPanning(event.pointerId);
       },
+
       onClickCapture: (event) => {
         if (!suppressClick.current) {
           return;
         }
+
         suppressClick.current = false;
         event.preventDefault();
         event.stopPropagation();
       },
+
       onWheel: handleWheel,
     },
   };

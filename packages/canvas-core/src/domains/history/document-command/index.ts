@@ -19,6 +19,7 @@ export const ChangeTitleCommand = {
     readonly previous: string;
     readonly next: string;
   }): ChangeTitleCommand => ({ type: "change_title", ...titles }),
+
   /**
    * 文書タイトルを変更する。
    * @param command 実行するタイトル変更コマンド。
@@ -48,6 +49,7 @@ export const AddConnectionCommand = {
     type: "add_connection",
     connection,
   }),
+
   /**
    * 文書へ接続を追加する。
    * @param command 実行する接続追加コマンド。
@@ -77,6 +79,7 @@ export const RemoveConnectionCommand = {
     type: "remove_connection",
     connection,
   }),
+
   /**
    * 文書から接続を削除する。
    * @param command 実行する接続削除コマンド。
@@ -129,16 +132,17 @@ export const ReplaceDocumentCommand = {
     previous: DocumentContent.from(documents.previous),
     next: DocumentContent.from(documents.next),
   }),
+
   /**
    * 文書内容を next で置き換え、現在の viewport を維持する。
    * @param command 実行する文書内容置換コマンド。
    * @param document 変更前の文書。
    * @returns 現在の viewport を維持した置換後の文書。
    */
-  execute: (
-    command: ReplaceDocumentCommand,
-    document: Document,
-  ): Document => ({ ...command.next, viewport: document.viewport }),
+  execute: (command: ReplaceDocumentCommand, document: Document): Document => ({
+    ...command.next,
+    viewport: document.viewport,
+  }),
 } as const;
 
 /** 履歴へ保存できる文書コマンド。 */
@@ -160,14 +164,18 @@ export const DocumentCommand = {
     switch (command.type) {
       case "change_title":
         return ChangeTitleCommand.execute(command, document);
+
       case "add_connection":
         return AddConnectionCommand.execute(command, document);
+
       case "remove_connection":
         return RemoveConnectionCommand.execute(command, document);
+
       case "replace_document":
         return ReplaceDocumentCommand.execute(command, document);
     }
   },
+
   /**
    * 文書コマンドを逆コマンドへ変換する。
    * @param command 変換する文書コマンド。
@@ -180,10 +188,13 @@ export const DocumentCommand = {
           previous: command.next,
           next: command.previous,
         });
+
       case "add_connection":
         return RemoveConnectionCommand.create(command.connection);
+
       case "remove_connection":
         return AddConnectionCommand.create(command.connection);
+
       case "replace_document":
         return ReplaceDocumentCommand.create({
           previous: command.next,

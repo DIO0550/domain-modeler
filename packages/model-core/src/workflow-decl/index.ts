@@ -66,6 +66,7 @@ export const WorkflowErrorClause = {
     terms: readonly TypeTerm[],
     range: SourceRange,
   ): WorkflowErrorClause => ({ present: true, terms, range }),
+
   /**
    * error 節なしを生成する。
    * @returns present: false。
@@ -89,6 +90,7 @@ export const WorkflowDecl = {
     error: params.error,
     range: params.range,
   }),
+
   /**
    * error 節を持つか判定する。
    * @param decl workflow 宣言。
@@ -99,6 +101,7 @@ export const WorkflowDecl = {
   ): decl is WorkflowDecl & {
     error: Extract<WorkflowErrorClause, { present: true }>;
   } => decl.error.present,
+
   /**
    * workflow 宣言の各節に含まれる型参照項を列挙する。
    * @param decl workflow 宣言。

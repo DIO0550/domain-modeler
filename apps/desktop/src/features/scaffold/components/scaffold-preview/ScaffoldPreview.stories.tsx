@@ -26,6 +26,7 @@ function PreviewFlow({ text }: Readonly<{ text: string }>) {
   const [state, setState] = useState<"preview" | "confirmed" | "cancelled">(
     "preview",
   );
+
   if (state !== "preview") {
     return (
       <div>
@@ -38,6 +39,7 @@ function PreviewFlow({ text }: Readonly<{ text: string }>) {
       </div>
     );
   }
+
   return (
     <ScaffoldPreview
       text={text}
@@ -57,9 +59,12 @@ const meta: Meta<typeof ScaffoldPreview> = {
       </div>
     ),
   ],
+
   render: ({ text }) => <PreviewFlow text={text} />,
 };
+
 export default meta;
+
 type Story = StoryObj<typeof ScaffoldPreview>;
 
 export const Default: Story = { args: { text } };

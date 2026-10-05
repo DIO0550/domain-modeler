@@ -12,9 +12,7 @@ export const TextEdit = {
    * @param selection テキスト入力欄の現在の選択範囲。
    * @returns Tab入力1回分の編集。
    */
-  insertTab(
-    selection: Readonly<{ start: number; end: number }>,
-  ): TextEdit {
+  insertTab(selection: Readonly<{ start: number; end: number }>): TextEdit {
     return { ...selection, replacement: "  " };
   },
 
@@ -30,7 +28,9 @@ export const TextEdit = {
     const lineStart = source.text.lastIndexOf("\n", source.start - 1) + 1;
     const line = source.text.slice(lineStart, source.start);
     const contentStart = line.search(/[^\t ]/);
-    const indentation = contentStart === -1 ? line : line.slice(0, contentStart);
+    const indentation =
+      contentStart === -1 ? line : line.slice(0, contentStart);
+
     return {
       start: source.start,
       end: source.end,

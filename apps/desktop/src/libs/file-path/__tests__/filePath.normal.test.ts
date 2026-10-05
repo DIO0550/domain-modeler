@@ -9,7 +9,11 @@ afterEach(() => {
 test("ファイルシステムが同一と判定したパスは一致する", async () => {
   mockIPC((command, payload) => {
     expect(command).toBe("same_file_path");
-    expect(payload).toEqual({ left: "/docs/Draft.dmodel", right: "/docs/draft.dmodel" });
+    expect(payload).toEqual({
+      left: "/docs/Draft.dmodel",
+      right: "/docs/draft.dmodel",
+    });
+
     return true;
   });
 
@@ -23,13 +27,15 @@ test("IPCを利用できないと異なる文字列表記も安全側で一致�
     throw new Error("IPC unavailable");
   });
 
-  await expect(sameFilePath("/alias/draft.dmodel", "/docs/draft.dmodel"))
-    .resolves.toBe(true);
+  await expect(
+    sameFilePath("/alias/draft.dmodel", "/docs/draft.dmodel"),
+  ).resolves.toBe(true);
 });
 
 test("非UTF-8パスの可逆IPC表現は表示部分だけを返す", () => {
-  expect(displayFilePath("\0domain-modeler-path-v1:unix:ff|/tmp/�/draft.dmodel"))
-    .toBe("/tmp/�/draft.dmodel");
+  expect(
+    displayFilePath("\0domain-modeler-path-v1:unix:ff|/tmp/�/draft.dmodel"),
+  ).toBe("/tmp/�/draft.dmodel");
 });
 
 test("通常のパスは表示時も変更しない", () => {

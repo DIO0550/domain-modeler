@@ -20,6 +20,7 @@ struct FileIdentity {
 impl FileIdentity {
     fn read(file: &File) -> io::Result<Self> {
         const FILE_ID_INFO: i32 = 18;
+
         let mut identity = Self::default();
         // SAFETY: Fileが所有する有効なハンドルと、FILE_ID_INFOに一致する
         // 書き込み可能なバッファ・サイズを渡す。ハンドルの所有権は移さない。
@@ -31,9 +32,11 @@ impl FileIdentity {
                 std::mem::size_of::<Self>() as u32,
             )
         };
+
         if result == 0 {
             return Err(io::Error::last_os_error());
         }
+
         Ok(identity)
     }
 }

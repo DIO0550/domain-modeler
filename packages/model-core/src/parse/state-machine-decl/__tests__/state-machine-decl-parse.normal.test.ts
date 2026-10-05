@@ -71,6 +71,7 @@ test("自己ループと同じ状態からの複数遷移を保持する", () =>
   state: 完了
   transition: 待機 -> 待機 on 再試行
   transition: 待機 -> 完了 on 確定`);
+
   expect(result.diagnostics).toEqual([]);
   expect(result.document.declarations[0]).toMatchObject({
     transitions: [
@@ -86,6 +87,7 @@ test("遷移矢印の前後に空白がなくても解析する", () => {
   state: 待機
   state: 完了
   transition: 待機->完了 on 確定`);
+
   expect(result.diagnostics).toEqual([]);
   expect(result.document.declarations[0]).toMatchObject({
     transitions: [{ from: "待機", to: "完了", event: "確定" }],
@@ -98,6 +100,7 @@ test("重複する初期行の参照位置を両方保持する", () => {
   initial: 完了
   state: 待機
   state: 完了`);
+
   expect(result.document.declarations[0]).toMatchObject({
     initials: [
       { name: "待機", range: { startLine: 2 } },

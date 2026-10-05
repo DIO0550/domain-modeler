@@ -11,6 +11,7 @@ use crate::file_read::{read_utf8_file, FileReadError, FileReadResult};
 #[tauri::command]
 pub async fn read_file(path: String) -> FileReadResult {
     let failure_path = path.clone();
+
     tauri::async_runtime::spawn_blocking(move || read_utf8_file(&path))
         .await
         .unwrap_or_else(|error| FileReadResult::Err {

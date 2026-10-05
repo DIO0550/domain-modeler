@@ -5,17 +5,20 @@ import { StateMachineTransitionChoices } from "..";
 test.each([
   {
     name: "終端状態は遷移先だけの候補になる",
-    source: "state-machine 注文 =\n  state: 完了 terminal\n  state: 待機\n  state: 処理中",
+    source:
+      "state-machine 注文 =\n  state: 完了 terminal\n  state: 待機\n  state: 処理中",
     expected: { from: ["待機", "処理中"], to: ["完了", "待機", "処理中"] },
   },
   {
     name: "同じ状態名は宣言順を保って一つの候補になる",
-    source: "state-machine 注文 =\n  state: 待機\n  state: 処理中\n  state: 待機",
+    source:
+      "state-machine 注文 =\n  state: 待機\n  state: 処理中\n  state: 待機",
     expected: { from: ["待機", "処理中"], to: ["待機", "処理中"] },
   },
   {
     name: "同名の宣言に終端状態が含まれると遷移元の候補にならない",
-    source: "state-machine 注文 =\n  state: 完了\n  state: 待機\n  state: 完了 terminal",
+    source:
+      "state-machine 注文 =\n  state: 完了\n  state: 待機\n  state: 完了 terminal",
     expected: { from: ["待機"], to: ["完了", "待機"] },
   },
   {
@@ -72,5 +75,7 @@ test.each([
     expected: { from: "", to: "完了" },
   },
 ])("$name", ({ choices, selected, expected }) => {
-  expect(StateMachineTransitionChoices.selection(choices, selected)).toEqual(expected);
+  expect(StateMachineTransitionChoices.selection(choices, selected)).toEqual(
+    expected,
+  );
 });

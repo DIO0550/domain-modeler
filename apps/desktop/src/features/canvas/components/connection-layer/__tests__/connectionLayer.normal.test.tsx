@@ -83,13 +83,17 @@ const connectedDocument = {
  */
 const renderLayer = (document: Document): HTMLDivElement => {
   const host = documentValue.createElement("div");
+
   documentValue.body.append(host);
+
   const root: Root = createRoot(host);
+
   act(() => {
     root.render(<ConnectionLayer document={document} />);
   });
   rendered.push({
     host,
+
     unmount: () => {
       act(() => {
         root.unmount();
@@ -97,6 +101,7 @@ const renderLayer = (document: Document): HTMLDivElement => {
       host.remove();
     },
   });
+
   return host;
 };
 
@@ -104,6 +109,7 @@ const documentValue = globalThis.document;
 
 Object.defineProperty(SVGTextElement.prototype, "getComputedTextLength", {
   configurable: true,
+
   value(this: SVGTextElement): number {
     return Array.from(this.textContent ?? "").length * 10;
   },
@@ -111,7 +117,9 @@ Object.defineProperty(SVGTextElement.prototype, "getComputedTextLength", {
 
 test("接続ごとにcoreが解決した端点を結ぶSVG経路と終端矢印を描画する", () => {
   const host = renderLayer(connectedDocument);
-  const connection = host.querySelector('[data-connection-id="con_allowed0000"]');
+  const connection = host.querySelector(
+    '[data-connection-id="con_allowed0000"]',
+  );
   const hitArea = connection?.querySelector(".connection-layer__hit-area");
   const path = connection?.querySelector(".connection-layer__path");
 
@@ -122,7 +130,9 @@ test("接続ごとにcoreが解決した端点を結ぶSVG経路と終端矢印�
 
 test("空でないラベルは経路の中点付近に背景チップ付きで描画する", () => {
   const host = renderLayer(connectedDocument);
-  const connection = host.querySelector('[data-connection-id="con_allowed0000"]');
+  const connection = host.querySelector(
+    '[data-connection-id="con_allowed0000"]',
+  );
   const label = connection?.querySelector(".connection-layer__label");
 
   expect(label?.getAttribute("transform")).toBe("translate(200 80)");
@@ -143,14 +153,18 @@ test("幅広文字を含むラベルの背景は描画されたテキスト幅�
 
 test("空文字のラベルは描画しない", () => {
   const host = renderLayer(connectedDocument);
-  const connection = host.querySelector('[data-connection-id="con_warning0000"]');
+  const connection = host.querySelector(
+    '[data-connection-id="con_warning0000"]',
+  );
 
   expect(connection?.querySelector(".connection-layer__label")).toBeNull();
 });
 
 test("接続ルール外の接続は警告状態と警告用矢印になる", () => {
   const host = renderLayer(connectedDocument);
-  const connection = host.querySelector('[data-connection-id="con_warning0000"]');
+  const connection = host.querySelector(
+    '[data-connection-id="con_warning0000"]',
+  );
   const path = connection?.querySelector(".connection-layer__path");
 
   expect(connection?.getAttribute("data-connection-status")).toBe("warning");
@@ -161,7 +175,9 @@ test("接続ルール外の接続は警告状態と警告用矢印になる", ()
 
 test("警告接続のツールチップにはルール外の旨と推奨接続先を表示する", () => {
   const host = renderLayer(connectedDocument);
-  const connection = host.querySelector('[data-connection-id="con_warning0000"]');
+  const connection = host.querySelector(
+    '[data-connection-id="con_warning0000"]',
+  );
 
   expect(connection?.querySelector("title")?.textContent).toContain(
     "推奨ルール外",

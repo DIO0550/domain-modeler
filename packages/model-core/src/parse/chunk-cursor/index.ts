@@ -23,18 +23,19 @@ const isTrivia = (token: Token): boolean =>
  * @param startIndex 開始 index。
  * @returns trivia 直後の index。
  */
-const skipTrivia = (
-  tokens: readonly Token[],
-  startIndex: number,
-): number => {
+const skipTrivia = (tokens: readonly Token[], startIndex: number): number => {
   let index = startIndex;
+
   while (index < tokens.length) {
     const token = tokens[index];
+
     if (token === undefined || !isTrivia(token)) {
       return index;
     }
+
     index += 1;
   }
+
   return index;
 };
 
@@ -57,6 +58,7 @@ export const ChunkCursor = {
    */
   atEnd: (cursor: ChunkCursor): boolean => {
     const index = skipTrivia(cursor.tokens, cursor.index);
+
     return index >= cursor.tokens.length;
   },
 
@@ -67,6 +69,7 @@ export const ChunkCursor = {
    */
   peek: (cursor: ChunkCursor): Token | undefined => {
     const index = skipTrivia(cursor.tokens, cursor.index);
+
     return cursor.tokens[index];
   },
 
@@ -79,16 +82,21 @@ export const ChunkCursor = {
   peekAt: (cursor: ChunkCursor, offset: number): Token | undefined => {
     const startIndex = skipTrivia(cursor.tokens, cursor.index);
     let seen = 0;
+
     for (let index = startIndex; index < cursor.tokens.length; index += 1) {
       const token = cursor.tokens[index];
+
       if (token === undefined || isTrivia(token)) {
         continue;
       }
+
       if (seen === offset) {
         return token;
       }
+
       seen += 1;
     }
+
     return undefined;
   },
 
@@ -102,12 +110,14 @@ export const ChunkCursor = {
   ): Readonly<{ cursor: ChunkCursor; token: Token | undefined }> => {
     const index = skipTrivia(cursor.tokens, cursor.index);
     const token = cursor.tokens[index];
+
     if (token === undefined) {
       return {
         cursor: { tokens: cursor.tokens, index },
         token: undefined,
       };
     }
+
     return {
       cursor: { tokens: cursor.tokens, index: index + 1 },
       token,

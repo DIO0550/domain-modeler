@@ -16,12 +16,14 @@ impl TempWorkspace {
             .duration_since(UNIX_EPOCH)
             .expect("system clock is after unix epoch")
             .as_nanos();
+
         loop {
             let nonce = WORKSPACE_NONCE.fetch_add(1, Ordering::Relaxed);
             let dir = env::temp_dir().join(format!(
                 "domain-modeler-file-io-{}-{nanos}-{nonce}",
                 std::process::id(),
             ));
+
             match fs::create_dir(&dir) {
                 Ok(()) => return Self { dir },
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
@@ -49,7 +51,9 @@ impl TempWorkspace {
                     .into_owned()
             })
             .collect();
+
         names.sort();
+
         names
     }
 }
@@ -72,12 +76,16 @@ mod tests {
             let handles = (0..32)
                 .map(|_| scope.spawn(TempWorkspace::create))
                 .collect::<Vec<_>>();
+
             handles
                 .into_iter()
                 .map(|handle| handle.join().unwrap())
                 .collect::<Vec<_>>()
         });
-        let paths = workspaces.iter().map(TempWorkspace::dir).collect::<HashSet<_>>();
+        let paths = workspaces
+            .iter()
+            .map(TempWorkspace::dir)
+            .collect::<HashSet<_>>();
 
         assert_eq!(paths.len(), workspaces.len());
     }
@@ -108,8 +116,10 @@ impl RestoredPermissions {
             permissions: original_permissions.clone(),
         };
         let mut readonly = original_permissions;
+
         readonly.set_mode(0o555);
         fs::set_permissions(path, readonly).expect("directory should become read-only");
+
         restore
     }
 }

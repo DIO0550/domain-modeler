@@ -35,6 +35,11 @@ test("定義表・参照表・診断から参照解決結果を生成する", ()
   const stateMachines: readonly StateMachineResolution[] = [];
 
   expect(
-    ResolveResult.create({ definitions, references, stateMachines, diagnostics }),
+    ResolveResult.create({
+      definitions,
+      references,
+      stateMachines,
+      diagnostics,
+    }),
   ).toEqual({ definitions, references, stateMachines, diagnostics });
 });

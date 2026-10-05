@@ -7,6 +7,7 @@ use crate::temp_workspace::TempWorkspace;
 fn utf8ファイルを読むと内容の文字列が返る() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::write(&path, "data 注文 = string\n").expect("fixture should be written");
 
     let result = read_utf8_file(path.to_str().expect("path is utf-8"));
@@ -23,6 +24,7 @@ fn utf8ファイルを読むと内容の文字列が返る() {
 fn 空のutf8ファイルを読むと空文字が返る() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("empty.dcanvas");
+
     fs::write(&path, "").expect("fixture should be written");
 
     let result = read_utf8_file(path.to_str().expect("path is utf-8"));
@@ -57,7 +59,9 @@ fn 存在しないファイルを読むと見つからないエラーが値と�
 fn utf8でないバイト列のファイルを読むと不正なutf8エラーが値として返る() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("binary.dmodel");
+
     fs::write(&path, [0xff, 0xfe, 0xfd]).expect("fixture should be written");
+
     let path_str = path.to_str().expect("path is utf-8");
 
     let result = read_utf8_file(path_str);

@@ -12,11 +12,13 @@ import { StateMachineLayout } from "../../domains/state-machine-layout";
 import type { StateMachineResolution } from "@domain-modeler/model-core";
 import type { StateMachinePart } from "../../domains/state-machine-source";
 
-
-
 type ViewTarget =
   | Readonly<{ kind: "none" }>
-  | Readonly<{ kind: "part"; part: StateMachinePart; initialFrom: Option<string> }>
+  | Readonly<{
+      kind: "part";
+      part: StateMachinePart;
+      initialFrom: Option<string>;
+    }>
   | Readonly<{ kind: "element"; selection: StateMachineGraphSelection }>;
 
 type ViewState = Readonly<{
@@ -27,7 +29,11 @@ type ViewState = Readonly<{
 
 type ViewAction =
   | Readonly<{ type: "machineSelected"; index: number }>
-  | Readonly<{ type: "partSelected"; part: StateMachinePart; initialFrom: Option<string> }>
+  | Readonly<{
+      type: "partSelected";
+      part: StateMachinePart;
+      initialFrom: Option<string>;
+    }>
   | Readonly<{ type: "elementSelected"; selection: StateMachineGraphSelection }>
   | Readonly<{ type: "selectionCleared" }>
   | Readonly<{ type: "zoomed"; factor: number }>
@@ -43,14 +49,32 @@ const reduceView = (view: ViewState, action: ViewAction): ViewState => {
   switch (action.type) {
     case "machineSelected":
       return { machineIndex: action.index, target: { kind: "none" }, zoom: 1 };
+
     case "partSelected":
-      return { ...view, target: { kind: "part", part: action.part, initialFrom: action.initialFrom } };
+      return {
+        ...view,
+        target: {
+          kind: "part",
+          part: action.part,
+          initialFrom: action.initialFrom,
+        },
+      };
+
     case "elementSelected":
-      return { ...view, target: { kind: "element", selection: action.selection } };
+      return {
+        ...view,
+        target: { kind: "element", selection: action.selection },
+      };
+
     case "selectionCleared":
       return { ...view, target: { kind: "none" } };
+
     case "zoomed":
-      return { ...view, zoom: Math.max(0.5, Math.min(3, view.zoom * action.factor)) };
+      return {
+        ...view,
+        zoom: Math.max(0.5, Math.min(3, view.zoom * action.factor)),
+      };
+
     case "fitted":
       return { ...view, zoom: 1 };
   }
@@ -86,16 +110,41 @@ export function useStateMachineView(
   initialMachineIndex = 0,
   onMachineSelected?: (index: number) => void,
 ): UseStateMachineViewResult {
-  const [view, dispatch] = useReducer(reduceView, initialMachineIndex, (index) => ({ ...initialView, machineIndex: index }));
+  const [view, dispatch] = useReducer(
+    reduceView,
+    initialMachineIndex,
+    (index) => ({ ...initialView, machineIndex: index }),
+  );
+
   const analyzed = AnalyzedModel.create(source);
-  const selectedMachineIndex = Math.min(view.machineIndex, analyzed.stateMachines.length - 1);
+  const selectedMachineIndex = Math.min(
+    view.machineIndex,
+    analyzed.stateMachines.length - 1,
+  );
   const resolution = analyzed.stateMachines[selectedMachineIndex];
-  const graph = resolution === undefined ? null : StateMachineGraph.create(resolution, analyzed.diagnostics);
-  const placement = resolution === undefined ? Result.ok({}) : StateMachinePlacement.read(source, resolution);
-  const layout = graph === null ? null : StateMachineLayout.restore(graph, Result.isOk(placement) ? placement.value : {});
+
+  const graph =
+    resolution === undefined
+      ? null
+      : StateMachineGraph.create(resolution, analyzed.diagnostics);
+  const placement =
+    resolution === undefined
+      ? Result.ok({})
+      : StateMachinePlacement.read(source, resolution);
+  const layout =
+    graph === null
+      ? null
+      : StateMachineLayout.restore(
+          graph,
+          Result.isOk(placement) ? placement.value : {},
+        );
+
   let inspection: StateMachineGraphInspection | null = null;
+
   if (graph !== null) {
-    const selection = view.target.kind === "element" ? view.target.selection : undefined;
+    const selection =
+      view.target.kind === "element" ? view.target.selection : undefined;
+
     inspection = StateMachineGraph.inspect(graph, selection);
   }
 
@@ -109,18 +158,29 @@ export function useStateMachineView(
     inspection,
     target: view.target,
     zoom: view.zoom,
+
     selectMachine: (index) => {
       dispatch({ type: "machineSelected", index });
       onMachineSelected?.(index);
     },
-    selectPart: (part) => dispatch({
-      type: "partSelected",
-      part,
-      initialFrom: inspection?.kind === "node" ? Option.some(inspection.node.name) : Option.none(),
-    }),
-    selectElement: (selection) => dispatch({ type: "elementSelected", selection }),
+
+    selectPart: (part) =>
+      dispatch({
+        type: "partSelected",
+        part,
+        initialFrom:
+          inspection?.kind === "node"
+            ? Option.some(inspection.node.name)
+            : Option.none(),
+      }),
+
+    selectElement: (selection) =>
+      dispatch({ type: "elementSelected", selection }),
+
     clearSelection: () => dispatch({ type: "selectionCleared" }),
+
     zoomBy: (factor) => dispatch({ type: "zoomed", factor }),
+
     fit: () => dispatch({ type: "fitted" }),
   };
 }

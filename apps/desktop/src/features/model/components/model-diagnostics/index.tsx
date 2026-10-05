@@ -7,7 +7,10 @@ import {
 } from "@domain-modeler/model-core";
 import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "../../domains/analyzed-model";
-import { DeclTemplate, type DeclTemplate as DeclTemplateValue } from "../../domains/decl-template";
+import {
+  DeclTemplate,
+  type DeclTemplate as DeclTemplateValue,
+} from "../../domains/decl-template";
 import {
   PreviewTypeRef,
   type PreviewTypeRef as PreviewTypeRefValue,
@@ -27,7 +30,9 @@ type ModelDiagnosticsProps = Readonly<{
   value: string;
   onChange: (text: string) => void;
   isActive?: boolean;
-  onHistoryControlsChange?: (controls: Readonly<{ undo?: () => void; redo?: () => void }>) => void;
+  onHistoryControlsChange?: (
+    controls: Readonly<{ undo?: () => void; redo?: () => void }>,
+  ) => void;
 }>;
 
 /**
@@ -37,19 +42,32 @@ type ModelDiagnosticsProps = Readonly<{
  * @param props 全文と変更通知。
  * @returns 左右分割の診断付きモデル編集画面。
  */
-export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryControlsChange }: ModelDiagnosticsProps) {
+export function ModelDiagnostics({
+  value,
+  onChange,
+  isActive = true,
+  onHistoryControlsChange,
+}: ModelDiagnosticsProps) {
   const history = useModelTextHistory({ value, onChange });
   const editing = useTextEditing({ value, onChange: history.change });
   const navigation = useModelModeNavigation({ editing });
-  const { mode, selectedMachineIndex, previewRef, openModel, openStateMachine } = navigation;
+  const {
+    mode,
+    selectedMachineIndex,
+    previewRef,
+    openModel,
+    openStateMachine,
+  } = navigation;
   const analyzed = AnalyzedModel.create(editing.value);
   const workspaceRef = useRef<HTMLDivElement>(null);
+
   const notifyHistoryControlsChange = useEffectEvent(() => {
     onHistoryControlsChange?.({
       undo: history.canUndo ? history.undo : undefined,
       redo: history.canRedo ? history.redo : undefined,
     });
   });
+
   useEffect(() => {
     if (isActive) {
       notifyHistoryControlsChange();
@@ -62,15 +80,18 @@ export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryCo
         ?.querySelector(`[data-decl-name="${CSS.escape(name)}"]`)
         ?.scrollIntoView({ block: "nearest" });
     };
+
     scroll();
     requestAnimationFrame(scroll);
   };
 
   const jumpToDefinition = (name: string) => {
     const caret = AnalyzedModel.caretOfDefinition(analyzed, name);
+
     if (Option.isNone(caret)) {
       return;
     }
+
     editing.moveCaret(caret.value);
     scrollPreviewTo(name);
   };
@@ -80,9 +101,11 @@ export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryCo
       source: editing.value,
       name,
     });
+
     if (Result.isErr(insertion)) {
       return;
     }
+
     editing.applyEdit(insertion.value.edit, insertion.value.caret);
     scrollPreviewTo(name);
   };
@@ -90,8 +113,10 @@ export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryCo
   const handleTypeRefClick = (typeRef: PreviewTypeRefValue) => {
     if (PreviewTypeRef.isDefined(typeRef)) {
       jumpToDefinition(typeRef.term.name);
+
       return;
     }
+
     insertStub(typeRef.term.name);
   };
 
@@ -99,28 +124,35 @@ export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryCo
     insertStub(typeRef.term.name);
   };
 
-  const renameDeclaration = (params: Readonly<{
-    decl: NamedDeclValue;
-    nextName: string;
-  }>) => {
+  const renameDeclaration = (
+    params: Readonly<{
+      decl: NamedDeclValue;
+      nextName: string;
+    }>,
+  ) => {
     const renamed = AnalyzedModel.rename(analyzed, params);
+
     if (Result.isErr(renamed)) {
       return;
     }
+
     editing.applyEdit(renamed.value.edit, renamed.value.caret);
     scrollPreviewTo(params.nextName);
   };
 
   const insertTemplate = (template: DeclTemplateValue) => {
     const input = editing.inputRef.current;
+
     if (input === null) {
       return;
     }
+
     const insertion = DeclTemplate.insert(template, {
       source: editing.value,
       start: input.selectionStart,
       end: input.selectionEnd,
     });
+
     editing.applyEditSelecting(insertion.edit, {
       start: insertion.nameStart,
       end: insertion.nameEnd,
@@ -132,100 +164,153 @@ export function ModelDiagnostics({ value, onChange, isActive = true, onHistoryCo
     if (!event.metaKey && !event.ctrlKey) {
       return;
     }
+
     if (event.altKey) {
       return;
     }
+
     if (event.nativeEvent.isComposing) {
       return;
     }
+
     if (event.target instanceof HTMLInputElement) {
       return;
     }
+
     const key = event.key.toLowerCase();
+
     if (key !== "z" && key !== "y") {
       return;
     }
+
     event.preventDefault();
+
     const restoreFocus = () => {
       if (mode !== "state-machine") {
         return;
       }
+
       requestAnimationFrame(() => {
         if (document.activeElement !== document.body) {
           return;
         }
-        const graph = workspaceRef.current?.querySelector<SVGSVGElement>("svg.state-machine-screen__graph");
-        (graph ?? workspaceRef.current?.querySelector<HTMLSelectElement>(".state-machine-screen__toolbar select"))?.focus();
+
+        const graph = workspaceRef.current?.querySelector<SVGSVGElement>(
+          "svg.state-machine-screen__graph",
+        );
+
+        (
+          graph ??
+          workspaceRef.current?.querySelector<HTMLSelectElement>(
+            ".state-machine-screen__toolbar select",
+          )
+        )?.focus();
       });
     };
+
     const redoRequested = key === "y" || event.shiftKey;
+
     if (redoRequested) {
       history.redo();
       restoreFocus();
+
       return;
     }
+
     history.undo();
     restoreFocus();
   };
 
   return (
-    <div ref={workspaceRef} className="model-diagnostics-workspace" onKeyDownCapture={onHistoryKeyDown}>
-      <nav className="model-diagnostics-workspace__modes" aria-label="表示モード">
-        <button type="button" aria-current={mode === "model" ? "page" : undefined} onClick={() => openModel()}>モデル</button>
-        <button type="button" aria-current={mode === "state-machine" ? "page" : undefined} onClick={() => openStateMachine()}>ステートマシン</button>
+    <div
+      ref={workspaceRef}
+      className="model-diagnostics-workspace"
+      onKeyDownCapture={onHistoryKeyDown}
+    >
+      <nav
+        className="model-diagnostics-workspace__modes"
+        aria-label="表示モード"
+      >
+        <button
+          type="button"
+          aria-current={mode === "model" ? "page" : undefined}
+          onClick={() => openModel()}
+        >
+          モデル
+        </button>
+        <button
+          type="button"
+          aria-current={mode === "state-machine" ? "page" : undefined}
+          onClick={() => openStateMachine()}
+        >
+          ステートマシン
+        </button>
       </nav>
-      {mode === "state-machine" ? <StateMachine.Root value={value} onChange={history.change}
-        initialMachineIndex={selectedMachineIndex} onMachineSelected={navigation.selectMachine}
-        onEditSource={openModel}>
-        <StateMachine.Palette />
-        <StateMachine.Graph />
-        <StateMachine.Inspector />
-      </StateMachine.Root> : <div className="model-diagnostics">
-      <div className="model-diagnostics__editor-heading">モデル定義</div>
-      <div
-        className="model-diagnostics__toolbar"
-        role="toolbar"
-        aria-label="編集支援"
-      >
-        <span className="model-diagnostics__preview-heading">プレビュー</span>
-        <div className="model-diagnostics__actions">
-          <button
-            type="button"
-            className="model-diagnostics__toolbar-button"
-            onClick={() => insertTemplate(DeclTemplate.data())}
+      {mode === "state-machine" ? (
+        <StateMachine.Root
+          value={value}
+          onChange={history.change}
+          initialMachineIndex={selectedMachineIndex}
+          onMachineSelected={navigation.selectMachine}
+          onEditSource={openModel}
+        >
+          <StateMachine.Palette />
+          <StateMachine.Graph />
+          <StateMachine.Inspector />
+        </StateMachine.Root>
+      ) : (
+        <div className="model-diagnostics">
+          <div className="model-diagnostics__editor-heading">モデル定義</div>
+          <div
+            className="model-diagnostics__toolbar"
+            role="toolbar"
+            aria-label="編集支援"
           >
-            ＋ data
-          </button>
-          <button
-            type="button"
-            className="model-diagnostics__toolbar-button"
-            onClick={() => insertTemplate(DeclTemplate.workflow())}
+            <span className="model-diagnostics__preview-heading">
+              プレビュー
+            </span>
+            <div className="model-diagnostics__actions">
+              <button
+                type="button"
+                className="model-diagnostics__toolbar-button"
+                onClick={() => insertTemplate(DeclTemplate.data())}
+              >
+                ＋ data
+              </button>
+              <button
+                type="button"
+                className="model-diagnostics__toolbar-button"
+                onClick={() => insertTemplate(DeclTemplate.workflow())}
+              >
+                ＋ workflow
+              </button>
+            </div>
+          </div>
+          <section
+            className="model-diagnostics__editor"
+            aria-label="テキストエディタ"
           >
-            ＋ workflow
-          </button>
+            <ModelEditorDisplay editing={editing} />
+          </section>
+          <section
+            ref={previewRef}
+            className="model-diagnostics__preview"
+            aria-label="構造化プレビュー"
+          >
+            {analyzed.document.declarations.map((decl) => (
+              <PreviewDeclItem
+                key={declarationKey(decl)}
+                decl={decl}
+                analyzed={analyzed}
+                onTypeRefClick={handleTypeRefClick}
+                onUndefinedBadgeClick={handleUndefinedBadgeClick}
+                onRename={renameDeclaration}
+                onOpenStateMachine={(index) => openStateMachine(index)}
+              />
+            ))}
+          </section>
         </div>
-      </div>
-      <section className="model-diagnostics__editor" aria-label="テキストエディタ">
-        <ModelEditorDisplay editing={editing} />
-      </section>
-      <section
-        ref={previewRef}
-        className="model-diagnostics__preview"
-        aria-label="構造化プレビュー"
-      >
-        {analyzed.document.declarations.map((decl) => (
-          <PreviewDeclItem
-            key={declarationKey(decl)}
-            decl={decl}
-            analyzed={analyzed}
-            onTypeRefClick={handleTypeRefClick}
-            onUndefinedBadgeClick={handleUndefinedBadgeClick}
-            onRename={renameDeclaration}
-            onOpenStateMachine={(index) => openStateMachine(index)}
-          />
-        ))}
-      </section>
-    </div>}
+      )}
     </div>
   );
 }
@@ -235,7 +320,9 @@ type PreviewDeclItemProps = Readonly<{
   analyzed: AnalyzedModel;
   onTypeRefClick: (typeRef: PreviewTypeRefValue) => void;
   onUndefinedBadgeClick: (typeRef: PreviewTypeRefValue) => void;
-  onRename: (params: Readonly<{ decl: NamedDeclValue; nextName: string }>) => void;
+  onRename: (
+    params: Readonly<{ decl: NamedDeclValue; nextName: string }>,
+  ) => void;
   onOpenStateMachine: (index: number) => void;
 }>;
 
@@ -255,27 +342,40 @@ function PreviewDeclItem({
 }: PreviewDeclItemProps) {
   if (Declaration.isError(decl)) {
     return (
-      <PreviewErrorPlaceholder
-        decl={decl}
-        diagnostics={analyzed.diagnostics}
-      />
+      <PreviewErrorPlaceholder decl={decl} diagnostics={analyzed.diagnostics} />
     );
   }
+
   if (Declaration.isStateMachine(decl)) {
     const index = AnalyzedModel.stateMachineIndex(analyzed, decl);
-    return <article className="model-diagnostics__machine-card" data-decl-name={decl.name}>
-      <strong>state-machine {decl.name}</strong>
-      <button type="button" disabled={Option.isNone(index)} onClick={() => {
-        if (Option.isNone(index)) {
-          return;
-        }
-        onOpenStateMachine(index.value);
-      }}>ステートマシンで開く</button>
-    </article>;
+
+    return (
+      <article
+        className="model-diagnostics__machine-card"
+        data-decl-name={decl.name}
+      >
+        <strong>state-machine {decl.name}</strong>
+        <button
+          type="button"
+          disabled={Option.isNone(index)}
+          onClick={() => {
+            if (Option.isNone(index)) {
+              return;
+            }
+
+            onOpenStateMachine(index.value);
+          }}
+        >
+          ステートマシンで開く
+        </button>
+      </article>
+    );
   }
+
   const handleRename = (nextName: string) => {
     onRename({ decl, nextName });
   };
+
   if (Declaration.isData(decl)) {
     return (
       <PreviewDataCard
@@ -287,6 +387,7 @@ function PreviewDeclItem({
       />
     );
   }
+
   return (
     <PreviewWorkflowCard
       decl={decl}

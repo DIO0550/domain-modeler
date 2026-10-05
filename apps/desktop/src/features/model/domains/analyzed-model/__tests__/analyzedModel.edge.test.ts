@@ -23,7 +23,9 @@ data 配送 = 顧客情報 option`);
 
   expect(analyzed.undefinedTypeNames).toEqual(new Set(["顧客情報"]));
   expect(
-    analyzed.diagnostics.filter((diagnostic) => diagnostic.severity === "warning"),
+    analyzed.diagnostics.filter(
+      (diagnostic) => diagnostic.severity === "warning",
+    ),
   ).toHaveLength(2);
 });
 
@@ -183,4 +185,3 @@ data 注文 = 商品ID`,
     },
   });
 });
-

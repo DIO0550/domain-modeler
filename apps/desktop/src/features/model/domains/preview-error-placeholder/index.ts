@@ -34,6 +34,7 @@ export const PreviewErrorPlaceholder = {
         )
         .map((diagnostic) => diagnostic.message),
     );
+
     return {
       startLine: decl.range.startLine,
       messages,

@@ -12,12 +12,15 @@ test.each([
   { from: "readModel" as const, to: "actor" as const },
   { from: "command" as const, to: "externalSystem" as const },
   { from: "externalSystem" as const, to: "event" as const },
-])(
-  "許可ペア $from -> $to は問題なしになる",
-  ({ from, to }: { from: StickyType; to: StickyType }) => {
-    expect(ConnectionStatus.between(from, to)).toBe("ok");
-  },
-);
+])("許可ペア $from -> $to は問題なしになる", ({
+  from,
+  to,
+}: {
+  from: StickyType;
+  to: StickyType;
+}) => {
+  expect(ConnectionStatus.between(from, to)).toBe("ok");
+});
 
 test("Command から推奨される接続先は Aggregate と External System になる", () => {
   expect(ConnectionStatus.recommendedTargets("command")).toEqual([
@@ -59,12 +62,15 @@ test.each([
   { from: "actor" as const, to: "actor" as const },
   { from: "command" as const, to: "command" as const },
   { from: "event" as const, to: "event" as const },
-])(
-  "不許可ペア $from -> $to は警告になる",
-  ({ from, to }: { from: StickyType; to: StickyType }) => {
-    expect(ConnectionStatus.between(from, to)).toBe("warning");
-  },
-);
+])("不許可ペア $from -> $to は警告になる", ({
+  from,
+  to,
+}: {
+  from: StickyType;
+  to: StickyType;
+}) => {
+  expect(ConnectionStatus.between(from, to)).toBe("warning");
+});
 
 test.each([
   { from: "hotspot" as const, to: "actor" as const },
@@ -82,9 +88,12 @@ test.each([
   { from: "policy" as const, to: "hotspot" as const },
   { from: "readModel" as const, to: "hotspot" as const },
   { from: "externalSystem" as const, to: "hotspot" as const },
-])(
-  "hotspot ペア $from -> $to は問題なしになる",
-  ({ from, to }: { from: StickyType; to: StickyType }) => {
-    expect(ConnectionStatus.between(from, to)).toBe("ok");
-  },
-);
+])("hotspot ペア $from -> $to は問題なしになる", ({
+  from,
+  to,
+}: {
+  from: StickyType;
+  to: StickyType;
+}) => {
+  expect(ConnectionStatus.between(from, to)).toBe("ok");
+});

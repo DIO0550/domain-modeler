@@ -2,7 +2,10 @@ import type { Connection } from "../connection";
 import { type Option, Option as OptionValue } from "../option";
 import { Point } from "../point";
 import { Sticky } from "../sticky";
-import { type StickyIndex, StickyIndex as StickyIndexValue } from "../sticky-index";
+import {
+  type StickyIndex,
+  StickyIndex as StickyIndexValue,
+} from "../sticky-index";
 import { NumberEx } from "../../utils/NumberEx";
 
 /** ほぼ水平・垂直とみなすワールド座標上のずれ。 */
@@ -37,6 +40,7 @@ export const ConnectionSegment = {
   ): Option<ConnectionSegment> => {
     const from = StickyIndexValue.get(stickyIndex, connection.from);
     const to = StickyIndexValue.get(stickyIndex, connection.to);
+
     if (!from.some || !to.some) {
       return OptionValue.none();
     }
@@ -47,15 +51,21 @@ export const ConnectionSegment = {
       x: toCenter.x - fromCenter.x,
       y: toCenter.y - fromCenter.y,
     };
-    const fromPoint = connection.fromAnchor === undefined
-      ? Sticky.boundaryPoint(from.value, direction)
-      : OptionValue.some(Sticky.anchorPoint(from.value, connection.fromAnchor));
-    const toPoint = connection.toAnchor === undefined
-      ? Sticky.boundaryPoint(to.value, { x: -direction.x, y: -direction.y })
-      : OptionValue.some(Sticky.anchorPoint(to.value, connection.toAnchor));
+    const fromPoint =
+      connection.fromAnchor === undefined
+        ? Sticky.boundaryPoint(from.value, direction)
+        : OptionValue.some(
+            Sticky.anchorPoint(from.value, connection.fromAnchor),
+          );
+    const toPoint =
+      connection.toAnchor === undefined
+        ? Sticky.boundaryPoint(to.value, { x: -direction.x, y: -direction.y })
+        : OptionValue.some(Sticky.anchorPoint(to.value, connection.toAnchor));
+
     if (!fromPoint.some || !toPoint.some) {
       return OptionValue.none();
     }
+
     return OptionValue.some({
       from: fromPoint.value,
       to: toPoint.value,
@@ -63,6 +73,7 @@ export const ConnectionSegment = {
       toOutwardNormal: Sticky.outwardNormal(to.value, toPoint.value),
     });
   },
+
   /**
    * 2つの端点が向かい合い、ほぼ水平または垂直に結べるか判定する。
    * @param segment 判定対象の接続線。
@@ -81,8 +92,10 @@ export const ConnectionSegment = {
       segment.fromOutwardNormal.y === -segment.toOutwardNormal.y &&
       segment.fromOutwardNormal.y * delta.y > 0 &&
       Math.abs(delta.x) <= STRAIGHT_ALIGNMENT_TOLERANCE;
+
     return facesHorizontally || facesVertically;
   },
+
   /**
    * 接続線から直線のSVG経路を組み立てる。
    * @param segment 変換する接続線。
@@ -96,6 +109,7 @@ export const ConnectionSegment = {
       y: (segment.from.y + segment.to.y) / 2,
     },
   }),
+
   /**
    * 接続線から三次ベジェ曲線のSVG経路を組み立てる。
    * @param segment 変換する接続線。
@@ -104,12 +118,14 @@ export const ConnectionSegment = {
   toCurveRoute: (segment: ConnectionSegment) => {
     const { firstControl, secondControl } =
       ConnectionSegment.curveControlPoints(segment);
+
     return {
       shape: "curve" as const,
       path: `M ${NumberEx.round(segment.from.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(segment.from.y, SVG_COORDINATE_DECIMAL_PLACES)} C ${NumberEx.round(firstControl.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(firstControl.y, SVG_COORDINATE_DECIMAL_PLACES)}, ${NumberEx.round(secondControl.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(secondControl.y, SVG_COORDINATE_DECIMAL_PLACES)}, ${NumberEx.round(segment.to.x, SVG_COORDINATE_DECIMAL_PLACES)} ${NumberEx.round(segment.to.y, SVG_COORDINATE_DECIMAL_PLACES)}`,
       midpoint: ConnectionSegment.curvePointAt(segment, 0.5),
     };
   },
+
   /**
    * 三次ベジェ曲線の制御点を取得する。
    * @param segment 制御点を求める接続線。
@@ -124,6 +140,7 @@ export const ConnectionSegment = {
       MINIMUM_CONTROL_DISTANCE,
       Math.min(MAXIMUM_CONTROL_DISTANCE, endpointDistance * 0.4),
     );
+
     return {
       firstControl: {
         x: segment.from.x + segment.fromOutwardNormal.x * controlDistance,
@@ -135,6 +152,7 @@ export const ConnectionSegment = {
       },
     };
   },
+
   /**
    * 三次ベジェ曲線上の座標を取得する。
    * @param segment 座標を求める接続線。
@@ -145,6 +163,7 @@ export const ConnectionSegment = {
     const { firstControl, secondControl } =
       ConnectionSegment.curveControlPoints(segment);
     const remaining = 1 - progress;
+
     return {
       x:
         remaining ** 3 * segment.from.x +
@@ -158,6 +177,7 @@ export const ConnectionSegment = {
         progress ** 3 * segment.to.y,
     };
   },
+
   /**
    * 接続線の向きに応じたSVG経路を組み立てる。
    * @param segment 変換する接続線。
@@ -167,6 +187,7 @@ export const ConnectionSegment = {
     ConnectionSegment.isStraightRoute(segment)
       ? ConnectionSegment.toStraightRoute(segment)
       : ConnectionSegment.toCurveRoute(segment),
+
   /**
    * ワールド座標と接続線の距離が許容値以内か判定する。
    * @param segment 判定対象の接続線。
@@ -179,6 +200,7 @@ export const ConnectionSegment = {
     point: Point,
     tolerance: number,
   ): boolean => ConnectionSegment.distanceFrom(segment, point) <= tolerance,
+
   /**
    * 点と接続線の最短距離を取得する。
    * @param segment 距離を測る接続線。
@@ -189,6 +211,7 @@ export const ConnectionSegment = {
     if (ConnectionSegment.isStraightRoute(segment)) {
       return Point.distanceFromSegment(point, segment);
     }
+
     const curvePoints = Array.from(
       { length: CURVE_DISTANCE_SEGMENTS + 1 },
       (_, index) =>
@@ -197,6 +220,7 @@ export const ConnectionSegment = {
           index / CURVE_DISTANCE_SEGMENTS,
         ),
     );
+
     return Math.min(
       ...curvePoints.slice(1).map((to, index) =>
         Point.distanceFromSegment(point, {

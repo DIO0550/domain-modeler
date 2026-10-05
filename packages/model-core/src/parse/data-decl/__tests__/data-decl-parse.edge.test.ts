@@ -5,8 +5,10 @@ import { DataDeclParse } from "..";
 
 const materialize = (source: string) => {
   const chunks = DeclChunk.split(Tokenizer.tokenize(source));
+
   expect(chunks).toHaveLength(1);
   expect(chunks[0]).toEqual(expect.objectContaining({ kind: "data" }));
+
   return DataDeclParse.materialize(chunks[0]!);
 };
 

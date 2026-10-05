@@ -21,9 +21,11 @@ export const Point = {
       y: segment.to.y - segment.from.y,
     };
     const squaredLength = vector.x ** 2 + vector.y ** 2;
+
     if (squaredLength === 0) {
       return Math.hypot(point.x - segment.from.x, point.y - segment.from.y);
     }
+
     const projection = Math.min(
       1,
       Math.max(
@@ -33,6 +35,7 @@ export const Point = {
           squaredLength,
       ),
     );
+
     return Math.hypot(
       point.x - (segment.from.x + projection * vector.x),
       point.y - (segment.from.y + projection * vector.y),

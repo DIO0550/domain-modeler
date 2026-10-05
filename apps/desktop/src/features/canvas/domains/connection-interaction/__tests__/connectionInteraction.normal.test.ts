@@ -142,7 +142,9 @@ test("始点に選んだ付箋がundoで消えたら接続作成を終了する"
     ConnectionInteraction.create(),
     { x: 40, y: 60 },
   );
+
   expect(createdSticky.board.workingDocument.stickies).toHaveLength(1);
+
   const stickyId = createdSticky.board.workingDocument.stickies[0].id;
   const selectingTarget = ConnectionInteraction.selectEndpoint(
     ConnectionInteraction.toggleMode(createdSticky),
@@ -195,22 +197,28 @@ test("編集中の接続ラベルを終了保存用の履歴として取得す�
 test.each([
   {
     name: "ドラッグ",
+
     begin: (interaction: ReturnType<typeof StickyInteraction.create>) =>
       StickyInteraction.beginDrag(interaction, sourceId, { x: 20, y: 20 }),
+
     move: (interaction: ReturnType<typeof StickyInteraction.create>) =>
       StickyInteraction.movePointer(interaction, { x: 80, y: 90 }),
+
     expectedPosition: { x: 80, y: 90 },
   },
   {
     name: "リサイズ",
+
     begin: (interaction: ReturnType<typeof StickyInteraction.create>) =>
       StickyInteraction.beginResize(
         StickyInteraction.select(interaction, sourceId),
         STICKY_RESIZE_CORNERS.southEast,
         { x: 20, y: 20 },
       ),
+
     move: (interaction: ReturnType<typeof StickyInteraction.create>) =>
       StickyInteraction.movePointer(interaction, { x: 80, y: 90 }),
+
     expectedPosition: { x: 20, y: 20 },
   },
 ])("付箋の$name中は確定候補だけを1履歴として公開する", (scenario) => {

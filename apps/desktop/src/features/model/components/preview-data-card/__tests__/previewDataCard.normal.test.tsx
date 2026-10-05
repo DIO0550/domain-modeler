@@ -129,7 +129,8 @@ test("RECORD カードはフィールドを罫線区切りの縦リストで表�
   );
   expect(
     Array.from(host.querySelectorAll(".preview-data-card__record-field")).map(
-      (field) => field.querySelector(".preview-data-card__type-name")?.textContent,
+      (field) =>
+        field.querySelector(".preview-data-card__type-name")?.textContent,
     ),
   ).toEqual(["注文ID", "顧客情報", "注文明細"]);
 });
@@ -265,9 +266,7 @@ test("未定義バッジをクリックするとその参照を通知する", ()
       clicked.push(typeRef);
     },
   );
-  const badge = host.querySelector(
-    "button.preview-data-card__undefined-badge",
-  );
+  const badge = host.querySelector("button.preview-data-card__undefined-badge");
 
   act(() => {
     badge?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -302,14 +301,18 @@ test("カード名をクリックして確定すると新しい名前を通知�
       renamed.push(nextName);
     },
   );
-  const button = host.querySelector('button[aria-label="「注文ID」をリネーム"]');
+  const button = host.querySelector(
+    'button[aria-label="「注文ID」をリネーム"]',
+  );
 
   act(() => {
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+
   const input = host.querySelector('input[aria-label="新しい名前"]');
   const nameInput =
     input instanceof HTMLInputElement ? input : document.createElement("input");
+
   act(() => {
     nameInput.value = "商品ID";
     nameInput.dispatchEvent(new Event("input", { bubbles: true }));

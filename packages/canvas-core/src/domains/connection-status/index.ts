@@ -33,6 +33,7 @@ export const ConnectionStatus = {
     if (from === "hotspot" || to === "hotspot") {
       return "ok";
     }
+
     return ALLOWED_PAIR_KEYS.has(`${from}->${to}`) ? "ok" : "warning";
   },
 
@@ -46,6 +47,7 @@ export const ConnectionStatus = {
     if (from === STICKY_TYPES.hotspot) {
       return Object.values(STICKY_TYPES);
     }
+
     return ALLOWED_PAIRS.filter(([allowedFrom]) => allowedFrom === from).map(
       ([, to]) => to,
     );

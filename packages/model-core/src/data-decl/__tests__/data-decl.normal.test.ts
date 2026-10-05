@@ -23,6 +23,7 @@ test("alias 型式の data 宣言は ALIAS カードになる", () => {
     typeExpr,
     range: SourceRange.onLine(1, 1, 18),
   });
+
   expect(decl.kind).toBe("data");
   expect(DataDecl.cardKind(decl)).toBe(DATA_CARD_KINDS.ALIAS);
 });
@@ -48,6 +49,7 @@ test("record 型式の data 宣言は RECORD カードになる", () => {
     typeExpr: TypeExpr.record(terms, SourceRange.onLine(2, 3, 11)),
     range: SourceRange.onLine(1, 1, 11),
   });
+
   expect(DataDecl.cardKind(decl)).toBe(DATA_CARD_KINDS.RECORD);
 });
 
@@ -72,6 +74,7 @@ test("choice 型式の data 宣言は CHOICE カードになる", () => {
     typeExpr: TypeExpr.choice(terms, SourceRange.onLine(1, 10, 27)),
     range: SourceRange.onLine(1, 1, 27),
   });
+
   expect(DataDecl.cardKind(decl)).toBe(DATA_CARD_KINDS.CHOICE);
 });
 
@@ -90,6 +93,7 @@ test("value 型式の data 宣言は VALUE カードになる", () => {
     }),
     range: SourceRange.onLine(1, 1, 26),
   });
+
   expect(DataDecl.cardKind(decl)).toBe(DATA_CARD_KINDS.VALUE);
 });
 

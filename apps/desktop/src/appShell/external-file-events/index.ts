@@ -55,10 +55,7 @@ export type ExternalFileEventOperations = Readonly<{
     action: Extract<
       TabsAction,
       {
-        type:
-          | "markFileMissing"
-          | "clearFileMissing"
-          | "markBackgroundChanged";
+        type: "markFileMissing" | "clearFileMissing" | "markBackgroundChanged";
       }
     >,
   ) => void;
@@ -104,12 +101,15 @@ export const ExternalFileEvents = {
     operations: ExternalFileEventOperations,
   ): Promise<ExternalFileChangeResult> {
     const readResult = await operations.readFile(change.path);
+
     if (readResult.type === "err") {
       const error = {
         kind: "readFailed",
         error: readResult.error,
       } as const;
+
       operations.notifyError(error);
+
       return { status: "rejected", document: change.document, error };
     }
 
@@ -117,19 +117,24 @@ export const ExternalFileEvents = {
       type: "clearFileMissing",
       path: change.path,
     });
+
     const fileHash = operations.hashContents(readResult.value);
+
     if (fileHash === change.lastSavedHash) {
       return { status: "ignored", document: change.document };
     }
 
     const applied = applyContents(change.document, readResult.value);
+
     if (!applied.ok) {
       const error = {
         kind: "invalidCanvas",
         path: change.path,
         error: applied.error,
       } as const;
+
       operations.notifyError(error);
+
       return { status: "rejected", document: change.document, error };
     }
 
@@ -139,6 +144,7 @@ export const ExternalFileEvents = {
         path: change.path,
       });
     }
+
     return { status: "applied", document: applied.document, fileHash };
   },
 
@@ -157,6 +163,7 @@ export const ExternalFileEvents = {
       type: "markFileMissing",
       path: deletion.path,
     });
+
     return { status: "missing", document: deletion.document };
   },
 
@@ -173,9 +180,11 @@ export const ExternalFileEvents = {
     contents: string,
   ): ExternalFileContentsResult {
     const applied = applyContents(document, contents);
+
     if (!applied.ok || applied.document.documentType === "model") {
       return applied;
     }
+
     return {
       ok: true,
       document: {
@@ -205,9 +214,11 @@ const applyContents = (
   }
 
   const result = ExternalChanges.apply(document.history, contents);
+
   if (!result.ok) {
     return result;
   }
+
   return {
     ok: true,
     document: { documentType: "canvas", history: result.value },

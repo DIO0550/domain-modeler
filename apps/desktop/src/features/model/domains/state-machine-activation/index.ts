@@ -5,21 +5,30 @@ export const StateMachineActivation = {
   block(): StateMachineActivation {
     return "blocked";
   },
+
   finishClick(activation: StateMachineActivation): StateMachineActivation {
     if (activation === "ready") {
       return activation;
     }
+
     return "awaiting-click";
   },
-  click(activation: StateMachineActivation, detail: number): StateMachineActivation {
+
+  click(
+    activation: StateMachineActivation,
+    detail: number,
+  ): StateMachineActivation {
     if (activation === "awaiting-click" && detail <= 1) {
       return "ready";
     }
+
     if (activation !== "ready") {
       return "blocked";
     }
+
     return activation;
   },
+
   canEdit(activation: StateMachineActivation): boolean {
     return activation === "ready";
   },

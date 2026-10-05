@@ -81,9 +81,11 @@ export function CanvasView({
     if (dragType.some) {
       return dragType.value;
     }
+
     if (placementTool !== undefined && !placementTool.active) {
       return undefined;
     }
+
     return selectedType;
   })();
   const placement: CanvasSurfaceProps["placement"] = (() => {
@@ -91,15 +93,18 @@ export function CanvasView({
       return {
         status: "dragging",
         type: dragType.value,
+
         onDrop: (point: Point) => {
           onPaletteDrop?.({ type: dragType.value, point });
           setDragType(Option.none());
         },
       };
     }
+
     if (placementTool?.active) {
       return { status: "placing", type: selectedType };
     }
+
     return { status: "inactive" };
   })();
 
@@ -107,6 +112,7 @@ export function CanvasView({
     if (selectedTypeProp === undefined) {
       setUncontrolledType(type);
     }
+
     onSelectType?.(type);
   };
 
@@ -114,7 +120,9 @@ export function CanvasView({
     const canvas = event.currentTarget;
     const ownerDocument = canvas.ownerDocument;
     const focused = ownerDocument.activeElement;
+
     onKeyDown?.(event);
+
     if (
       !event.defaultPrevented ||
       focused === null ||
@@ -122,6 +130,7 @@ export function CanvasView({
     ) {
       return;
     }
+
     // React のイベント更新で削除された要素だけを対象にする。
     // 別の操作が既にフォーカスを移していれば、その移動を優先する。
     queueMicrotask(() => {
@@ -132,6 +141,7 @@ export function CanvasView({
       ) {
         return;
       }
+
       canvas
         .querySelector<HTMLElement>(".canvas-surface")
         ?.focus({ preventScroll: true });
@@ -175,6 +185,7 @@ export function CanvasView({
                 placementTool?.onSelect();
                 setDragType(Option.some(type));
               },
+
               onEnd: () => setDragType(Option.none()),
             }}
           />
@@ -263,6 +274,7 @@ function PaletteButton({
   dragEvents,
 }: PaletteButtonProps) {
   const suppressClick = useRef(false);
+
   return (
     <button
       type="button"
@@ -288,6 +300,7 @@ function PaletteButton({
         if (suppressClick.current && event.detail !== 0) {
           return;
         }
+
         onSelect(appearance.type);
       }}
     >
@@ -346,20 +359,25 @@ function CanvasSurface({
     placement.status === "inactive"
       ? undefined
       : StickyAppearance.of(placement.type);
+
   const isBackground = (
     target: EventTarget | null,
     surface: HTMLDivElement,
   ): boolean => target === surface || target === surface.firstElementChild;
+
   const pendingClick = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
+
   const cancelPendingClick = (): void => {
     if (pendingClick.current === undefined) {
       return;
     }
+
     clearTimeout(pendingClick.current);
     pendingClick.current = undefined;
   };
+
   const style: CanvasSurfaceStyle = {
     "--canvas-grid-position-x": `${viewport.x}px`,
     "--canvas-grid-position-y": `${viewport.y}px`,
@@ -389,9 +407,11 @@ function CanvasSurface({
       }}
       onPointerMove={(event) => {
         viewportInteraction?.onPointerMove(event);
+
         if (placement.status === "inactive") {
           return;
         }
+
         setPointer(
           isBackground(event.target, event.currentTarget) && event.buttons === 0
             ? Option.some(surfacePointFromMouse(event))
@@ -403,8 +423,11 @@ function CanvasSurface({
         if (placement.status !== "dragging") {
           return;
         }
+
         event.preventDefault();
+
         const background = isBackground(event.target, event.currentTarget);
+
         event.dataTransfer.dropEffect = background ? "copy" : "none";
         setPointer(
           background
@@ -419,18 +442,22 @@ function CanvasSurface({
         ) {
           return;
         }
+
         setPointer(Option.none());
       }}
       onDrop={(event) => {
         if (placement.status !== "dragging") {
           return;
         }
+
         event.preventDefault();
         cancelPendingClick();
         setPointer(Option.none());
+
         if (!isBackground(event.target, event.currentTarget)) {
           return;
         }
+
         placement.onDrop(surfacePointFromMouse(event));
       }}
       onPointerUp={viewportInteraction?.onPointerUp}
@@ -441,14 +468,19 @@ function CanvasSurface({
         if (onClick === undefined) {
           return;
         }
+
         if (EventTargetEx.isTextEntry(event.target)) {
           return;
         }
+
         const point = surfacePointFromMouse(event);
+
         if (event.detail === 0) {
           onClick(point);
+
           return;
         }
+
         cancelPendingClick();
         pendingClick.current = setTimeout(() => {
           pendingClick.current = undefined;
@@ -459,9 +491,11 @@ function CanvasSurface({
         if (onDoubleClick === undefined) {
           return;
         }
+
         if (EventTargetEx.isTextEntry(event.target)) {
           return;
         }
+
         cancelPendingClick();
         onDoubleClick(surfacePointFromMouse(event));
       }}
@@ -502,6 +536,7 @@ function CanvasWorld({ viewport, children }: CanvasWorldProps) {
   const style: CSSProperties = {
     transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
   };
+
   return (
     <div className="canvas-world" style={style}>
       {children}
@@ -517,6 +552,7 @@ function CanvasWorld({ viewport, children }: CanvasWorldProps) {
  */
 const surfacePointFromMouse = (event: MouseEvent<HTMLDivElement>): Point => {
   const rect = event.currentTarget.getBoundingClientRect();
+
   return {
     x: event.clientX - rect.left,
     y: event.clientY - rect.top,
@@ -540,6 +576,7 @@ const handleSurfaceKeyDown = (
   if (onKeyDown === undefined) {
     return;
   }
+
   if (
     event.defaultPrevented ||
     event.ctrlKey ||
@@ -551,25 +588,33 @@ const handleSurfaceKeyDown = (
   ) {
     return;
   }
+
   if (event.key === "Escape") {
     event.preventDefault();
     onKeyDown("Escape");
+
     return;
   }
+
   if (event.key === "Delete" || event.key === "Backspace") {
     if (EventTargetEx.isTextEntry(event.target)) {
       return;
     }
+
     event.preventDefault();
     onKeyDown(event.key);
+
     return;
   }
+
   if (event.key !== "Enter") {
     return;
   }
+
   if (EventTargetEx.isTextEntry(event.target)) {
     return;
   }
+
   event.preventDefault();
   onKeyDown("Enter");
 };
@@ -611,5 +656,6 @@ function CanvasStatusBar({ saveIndicator, zoomLabel }: CanvasStatusBarProps) {
 const paletteButtonClassName = (selected: boolean): string => {
   const selectedClass = selected ? ["canvas-palette__button--selected"] : [];
   const classNames = ["canvas-palette__button", ...selectedClass];
+
   return classNames.join(" ");
 };

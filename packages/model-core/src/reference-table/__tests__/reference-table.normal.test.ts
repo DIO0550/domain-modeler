@@ -35,10 +35,7 @@ test("宣言名と名前付き型参照の出現位置を出現順に集める",
 
   expect(ReferenceTable.create([order, orderId])).toEqual({
     注文: [SourceRange.onLine(1, 6, 8)],
-    注文ID: [
-      TypeTerm.nameRange(orderIdTerm),
-      SourceRange.onLine(2, 6, 10),
-    ],
+    注文ID: [TypeTerm.nameRange(orderIdTerm), SourceRange.onLine(2, 6, 10)],
   });
 });
 

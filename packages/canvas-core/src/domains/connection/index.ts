@@ -56,6 +56,7 @@ export const Connection = {
       anchors.map((toAnchor) => {
         const from = Sticky.anchorPoint(endpoints.from, fromAnchor);
         const to = Sticky.anchorPoint(endpoints.to, toAnchor);
+
         return {
           fromAnchor,
           toAnchor,
@@ -66,8 +67,10 @@ export const Connection = {
     const nearest = pairs.reduce((best, candidate) =>
       candidate.distance < best.distance ? candidate : best,
     );
+
     return { fromAnchor: nearest.fromAnchor, toAnchor: nearest.toAnchor };
   },
+
   /**
    * 指定された始点、終点、表示情報から接続を生成する。
    * @param id 接続ID。

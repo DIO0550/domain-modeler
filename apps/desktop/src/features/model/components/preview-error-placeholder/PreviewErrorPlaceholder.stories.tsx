@@ -18,6 +18,7 @@ const errorArgs = (source: string): ErrorArgs => {
   const decl =
     parsed.document.declarations.find(Declaration.isError) ??
     ErrorDecl.create(SourceRange.onLine(1, 1, 1));
+
   return { decl, diagnostics: parsed.diagnostics };
 };
 
@@ -41,6 +42,7 @@ const meta: Meta<typeof PreviewErrorPlaceholder> = {
     ),
   ],
 };
+
 export default meta;
 
 type Story = StoryObj<typeof PreviewErrorPlaceholder>;
@@ -57,6 +59,7 @@ export const AllProps: Story = {
       </div>
     ),
   ],
+
   render: () => (
     <>
       <PreviewErrorPlaceholder

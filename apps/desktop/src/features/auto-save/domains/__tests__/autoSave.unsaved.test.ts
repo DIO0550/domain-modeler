@@ -7,6 +7,7 @@ test("未保存文書は編集しても自動保存を予約せず書き込み�
     "edited",
     100,
   );
+
   expect(AutoSave.due(draft, 10_000)).toEqual({ status: "notScheduled" });
   expect(AutoSave.startSaving(draft)).toEqual(draft);
   expect(AutoSave.isDirty(draft)).toBe(true);
@@ -23,6 +24,7 @@ test("初回保存中の追加編集を保存先への次の書き込みとし�
     { path: "/draft.dmodel", contents: "before" },
     200,
   );
+
   expect(attached).toMatchObject({
     status: "pending",
     path: "/draft.dmodel",

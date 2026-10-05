@@ -4,10 +4,7 @@ import {
   EditorDiagnostic,
   type EditorLineView,
 } from "../../domains/editor-diagnostic";
-import {
-  useTextEditing,
-  type TextEditing,
-} from "../../hooks/use-text-editing";
+import { useTextEditing, type TextEditing } from "../../hooks/use-text-editing";
 import "./ModelEditor.css";
 
 type ModelEditorProps = Readonly<{
@@ -24,6 +21,7 @@ type ModelEditorProps = Readonly<{
  */
 export function ModelEditor({ value, onChange }: ModelEditorProps) {
   const editing = useTextEditing({ value, onChange });
+
   return <ModelEditorDisplay editing={editing} />;
 }
 
@@ -43,6 +41,7 @@ export function ModelEditorDisplay({ editing }: ModelEditorDisplayProps) {
   const summaryId = useId();
   const { lineViews, summary } = useMemo(() => {
     const analyzed = AnalyzedModel.create(editing.value);
+
     return {
       lineViews: EditorDiagnostic.lineViews(
         editing.value,
@@ -84,7 +83,9 @@ export function ModelEditorDisplay({ editing }: ModelEditorDisplayProps) {
           onKeyDown={editing.onKeyDown}
           onCompositionStart={editing.onCompositionStart}
           onCompositionEnd={editing.onCompositionEnd}
-          onScroll={(event) => syncEditorScroll(event, gutterRef, diagnosticsRef)}
+          onScroll={(event) =>
+            syncEditorScroll(event, gutterRef, diagnosticsRef)
+          }
         />
         {summary.description.length > 0 ? (
           <p id={summaryId} className="model-editor__a11y-summary">
@@ -139,6 +140,7 @@ function EditorDiagnosticLine({ lineView }: EditorDiagnosticLineProps) {
     lineView.errorMark.kind === "error"
       ? "model-editor__diagnostics-line model-editor__diagnostics-line--error"
       : "model-editor__diagnostics-line";
+
   return (
     <div className={className} data-line={lineView.line}>
       {lineView.segments.map((segment, index) => (
@@ -172,9 +174,11 @@ function EndOfLineMessage({ errorMark }: EndOfLineMessageProps) {
   if (errorMark.kind !== "error") {
     return null;
   }
+
   if (errorMark.messages.length === 0) {
     return null;
   }
+
   return (
     <span className="model-editor__diagnostics-message">
       {errorMark.messages.join(" ")}
@@ -195,9 +199,11 @@ const syncEditorScroll = (
   diagnosticsRef: RefObject<HTMLDivElement | null>,
 ): void => {
   const { scrollTop, scrollLeft } = event.currentTarget;
+
   if (gutterRef.current !== null) {
     gutterRef.current.scrollTop = scrollTop;
   }
+
   if (diagnosticsRef.current !== null) {
     diagnosticsRef.current.scrollTop = scrollTop;
     diagnosticsRef.current.scrollLeft = scrollLeft;

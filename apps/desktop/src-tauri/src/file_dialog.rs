@@ -73,6 +73,7 @@ pub fn open_dialog_result(picked: Option<FilePath>) -> Option<String> {
 pub fn save_dialog_result(picked: Option<FilePath>, kind: DocumentKind) -> Option<String> {
     picked.map(|path| {
         let path = file_path_to_path_buf(path).with_extension(kind.extension());
+
         crate::ipc_path::encode(&path)
     })
 }
@@ -83,6 +84,7 @@ fn file_path_to_string(path: FilePath) -> String {
 
 fn file_path_to_path_buf(path: FilePath) -> PathBuf {
     let path = path.simplified();
+
     path.clone()
         .into_path()
         .unwrap_or_else(|_| PathBuf::from(path.to_string()))

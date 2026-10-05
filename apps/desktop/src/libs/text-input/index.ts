@@ -33,10 +33,13 @@ const scrollToLine = (input: HTMLTextAreaElement, line: number): void => {
   const topPadding = Number.isFinite(paddingTop) ? paddingTop : 0;
   const lineTop = topPadding + (line - 1) * lineHeight;
   const lineBottom = lineTop + lineHeight;
+
   if (lineTop < input.scrollTop) {
     input.scrollTop = Math.max(0, lineTop - topPadding);
+
     return;
   }
+
   if (lineBottom > input.scrollTop + input.clientHeight) {
     input.scrollTop = Math.max(0, lineBottom - input.clientHeight);
   }
@@ -54,6 +57,7 @@ export const TextInput = {
   toApiValue(text: string): string {
     return text.replace(/\r\n|\r/g, "\n");
   },
+
   /**
    * 選択範囲を1回の入力操作として置き換える。
    * ネイティブ undo に積むため、入力欄へフォーカスしてから置換する。
@@ -84,17 +88,22 @@ export const TextInput = {
       data: edit.replacement,
       inputType: "insertText",
     });
+
     if (nativeValueSetter === undefined) {
       input.setRangeText(edit.replacement, edit.start, edit.end, "end");
       input.dispatchEvent(inputEvent);
+
       return;
     }
 
     nativeValueSetter.call(input, editedText);
+
     const caret = edit.start + edit.replacement.length;
+
     input.setSelectionRange(caret, caret);
     input.dispatchEvent(inputEvent);
   },
+
   /**
    * キャレットを指定位置へ移し、その行が見えるようスクロールする。
    *
@@ -108,6 +117,7 @@ export const TextInput = {
       line: caret.line,
     });
   },
+
   /**
    * 選択範囲を指定し、その行が見えるようスクロールする。
    *
@@ -117,6 +127,7 @@ export const TextInput = {
   select(input: HTMLTextAreaElement, selection: TextInputSelection): void {
     const start = Math.max(0, Math.min(selection.start, input.value.length));
     const end = Math.max(0, Math.min(selection.end, input.value.length));
+
     input.focus();
     input.setSelectionRange(start, end, "forward");
     scrollToLine(input, selection.line);

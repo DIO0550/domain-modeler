@@ -33,6 +33,7 @@ const sampleSticky = (
   position: Readonly<{ x: number; y: number }> = { x: 16, y: 16 },
 ): StickyModel => {
   const appearance = StickyAppearance.of(type);
+
   return StickyModel.create(
     StickyId.create(`stk_${type}`),
     type,
@@ -59,6 +60,7 @@ const meta: Meta<typeof Sticky> = {
     ),
   ],
 };
+
 export default meta;
 
 type Story = StoryObj<typeof Sticky>;
@@ -96,6 +98,7 @@ export const AllProps: Story = {
       </div>
     ),
   ],
+
   render: () => (
     <>
       {StickyAppearance.all().map((appearance) => (
@@ -108,10 +111,14 @@ export const AllProps: Story = {
           }}
         >
           <Sticky
-            sticky={sampleSticky(appearance.type, SAMPLE_TEXT[appearance.type], {
-              x: 0,
-              y: 0,
-            })}
+            sticky={sampleSticky(
+              appearance.type,
+              SAMPLE_TEXT[appearance.type],
+              {
+                x: 0,
+                y: 0,
+              },
+            )}
           />
         </div>
       ))}
@@ -160,6 +167,7 @@ export const EdgeCases: Story = {
       </div>
     ),
   ],
+
   render: () => (
     <>
       <div className="sticky-story__cell" style={{ width: 120, height: 80 }}>
@@ -187,10 +195,14 @@ export const EdgeCases: Story = {
       </div>
       <div className="sticky-story__cell" style={{ width: 160, height: 100 }}>
         <Sticky
-          sticky={sampleSticky("externalSystem", "決済\nサービス\nのタイムアウト", {
-            x: 0,
-            y: 0,
-          })}
+          sticky={sampleSticky(
+            "externalSystem",
+            "決済\nサービス\nのタイムアウト",
+            {
+              x: 0,
+              y: 0,
+            },
+          )}
         />
       </div>
     </>

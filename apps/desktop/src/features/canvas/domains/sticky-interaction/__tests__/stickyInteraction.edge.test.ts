@@ -127,10 +127,10 @@ test("本文変更を undo したあと redo すると確定した本文に戻�
 test("編集中に別の空白をクリックすると確定してから新しい付箋を作る", () => {
   const editing = StickyInteraction.changeDraft(
     StickyInteraction.pressEnter(
-      StickyInteraction.clickAt(
-        StickyInteraction.create(documentWithSticky),
-        { x: 50, y: 40 },
-      ),
+      StickyInteraction.clickAt(StickyInteraction.create(documentWithSticky), {
+        x: 50,
+        y: 40,
+      }),
     ),
     "更新後",
   );
@@ -139,7 +139,7 @@ test("編集中に別の空白をクリックすると確定してから新し�
   expect(created.workingDocument.stickies).toHaveLength(2);
   expect(created.workingDocument.stickies[0]?.text).toBe("更新後");
   expect(created.session.status).toBe("editing");
-  expect(created.session.status === "editing" && created.session.stickyId).not.toBe(
-    existingId,
-  );
+  expect(
+    created.session.status === "editing" && created.session.stickyId,
+  ).not.toBe(existingId);
 });

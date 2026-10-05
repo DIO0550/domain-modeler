@@ -16,6 +16,7 @@ export const StickyIndex = {
   create: (stickies: readonly Sticky[]): StickyIndex => ({
     byId: new Map(stickies.map((sticky) => [sticky.id, sticky])),
   }),
+
   /**
    * 指定したIDの付箋を取得する。
    * @param index 検索対象の索引。
@@ -24,8 +25,7 @@ export const StickyIndex = {
    */
   get: (index: StickyIndex, stickyId: StickyId): Option<Sticky> => {
     const sticky = index.byId.get(stickyId);
-    return sticky === undefined
-      ? OptionValue.none()
-      : OptionValue.some(sticky);
+
+    return sticky === undefined ? OptionValue.none() : OptionValue.some(sticky);
   },
 } as const;

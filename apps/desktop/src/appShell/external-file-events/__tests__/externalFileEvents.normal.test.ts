@@ -23,10 +23,13 @@ const operationsRecording = (
   effects: Effect[],
 ): ExternalFileEventOperations => ({
   readFile: async () => ({ type: "ok", value: contents }),
+
   hashContents: (value) => `hash:${value}`,
+
   dispatchTabs: (action) => {
     effects.push({ type: "tabAction", action });
   },
+
   notifyError: (error) => {
     effects.push({ type: "notification", error });
   },
@@ -47,7 +50,10 @@ test("直近に保存した内容とハッシュが一致する変更イベン�
     operationsRecording(contents, effects),
   );
 
-  expect(result).toEqual({ status: "ignored", document: { documentType: "canvas", history } });
+  expect(result).toEqual({
+    status: "ignored",
+    document: { documentType: "canvas", history },
+  });
   expect(effects).toEqual([
     {
       type: "tabAction",
@@ -122,10 +128,7 @@ test("背景のモデルへ外部変更を取り込むとタブへ変更マー�
   );
   const updatedTabs = effects
     .filter((effect) => effect.type === "tabAction")
-    .reduce(
-      (state, effect) => TabsState.reducer(state, effect.action),
-      tabs,
-    );
+    .reduce((state, effect) => TabsState.reducer(state, effect.action), tabs);
 
   expect(result).toEqual({
     status: "applied",

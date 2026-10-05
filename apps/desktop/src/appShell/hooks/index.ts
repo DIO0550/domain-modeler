@@ -55,21 +55,28 @@ export function useAppShell(
         type: "newTab",
         documentType: commandId === "newCanvas" ? "canvas" : "model",
       });
+
       return;
     }
+
     if (commandId === "save" && tabsState.status === "active") {
       await operations.saveDocument?.(tabsState.activePath);
+
       return;
     }
+
     if (commandId !== "closeTab") {
       return;
     }
+
     if (tabsState.status !== "active") {
       return;
     }
+
     if (!(await operations.flushDocument(tabsState.activePath))) {
       return;
     }
+
     dispatch({ type: "closeTab", path: tabsState.activePath });
   };
 

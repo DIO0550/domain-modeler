@@ -32,6 +32,7 @@ const documentWithSticky = {
  */
 const lastSticky = (document: Document): Sticky => {
   const sticky = document.stickies[document.stickies.length - 1];
+
   return sticky ?? existingSticky;
 };
 
@@ -113,10 +114,10 @@ test("付箋をダブルクリックすると本文編集を始める", () => {
 
 test("編集中に本文を変えて確定すると undo 1回で編集前の本文に戻る", () => {
   const editing = StickyInteraction.pressEnter(
-    StickyInteraction.clickAt(
-      StickyInteraction.create(documentWithSticky),
-      { x: 50, y: 40 },
-    ),
+    StickyInteraction.clickAt(StickyInteraction.create(documentWithSticky), {
+      x: 50,
+      y: 40,
+    }),
   );
   const typed = StickyInteraction.changeDraft(
     StickyInteraction.changeDraft(editing, "注文が"),
@@ -138,10 +139,10 @@ test("編集中に本文を変えて確定すると undo 1回で編集前の本�
 test("編集中に Esc を押すと本文を確定して選択中になる", () => {
   const editing = StickyInteraction.changeDraft(
     StickyInteraction.pressEnter(
-      StickyInteraction.clickAt(
-        StickyInteraction.create(documentWithSticky),
-        { x: 50, y: 40 },
-      ),
+      StickyInteraction.clickAt(StickyInteraction.create(documentWithSticky), {
+        x: 50,
+        y: 40,
+      }),
     ),
     "更新後",
   );
@@ -166,10 +167,10 @@ test("選択中に Esc を押すと選択を解除する", () => {
 
 test("本文が変わっていなければ確定しても履歴は増えない", () => {
   const editing = StickyInteraction.pressEnter(
-    StickyInteraction.clickAt(
-      StickyInteraction.create(documentWithSticky),
-      { x: 50, y: 40 },
-    ),
+    StickyInteraction.clickAt(StickyInteraction.create(documentWithSticky), {
+      x: 50,
+      y: 40,
+    }),
   );
   const committed = StickyInteraction.commitEdit(editing);
 
@@ -199,17 +200,20 @@ test("選択中の付箋は選択の chrome を出し、他の付箋は通常表
     status: "selected",
   });
   expect(
-    StickySession.chromeOf(selected.session, StickyId.create("stk_other000000")),
+    StickySession.chromeOf(
+      selected.session,
+      StickyId.create("stk_other000000"),
+    ),
   ).toEqual({ status: "plain" });
 });
 
 test("編集中の付箋は下書きの chrome を出し、対象外は通常表示にする", () => {
   const editing = StickyInteraction.changeDraft(
     StickyInteraction.pressEnter(
-      StickyInteraction.clickAt(
-        StickyInteraction.create(documentWithSticky),
-        { x: 50, y: 40 },
-      ),
+      StickyInteraction.clickAt(StickyInteraction.create(documentWithSticky), {
+        x: 50,
+        y: 40,
+      }),
     ),
     "下書き",
   );

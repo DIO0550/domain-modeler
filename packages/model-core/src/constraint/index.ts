@@ -30,6 +30,7 @@ export const Constraint = {
     bounds,
     range,
   }),
+
   /**
    * 文字列長制約を生成する。
    * @param bounds 長さの範囲。

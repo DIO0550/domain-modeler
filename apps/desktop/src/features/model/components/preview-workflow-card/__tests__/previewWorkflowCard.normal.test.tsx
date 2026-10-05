@@ -66,20 +66,22 @@ test("WORKFLOW ラベルと名前と IN / OUT を表示する", () => {
   expect(host.querySelector(".preview-workflow-card__name")?.textContent).toBe(
     "注文を確定する",
   );
-  expect(inputRow?.querySelector(".preview-workflow-card__section-label")?.textContent).toBe(
-    "IN",
-  );
   expect(
-    Array.from(inputRow?.querySelectorAll(".preview-workflow-card__type-name") ?? []).map(
-      (node) => node.textContent,
-    ),
+    inputRow?.querySelector(".preview-workflow-card__section-label")
+      ?.textContent,
+  ).toBe("IN");
+  expect(
+    Array.from(
+      inputRow?.querySelectorAll(".preview-workflow-card__type-name") ?? [],
+    ).map((node) => node.textContent),
   ).toEqual(["未検証の注文", "在庫状況"]);
   expect(
     inputRow?.querySelector(".preview-workflow-card__separator")?.textContent,
   ).toBe("+");
-  expect(outputRow?.querySelector(".preview-workflow-card__section-label")?.textContent).toBe(
-    "OUT",
-  );
+  expect(
+    outputRow?.querySelector(".preview-workflow-card__section-label")
+      ?.textContent,
+  ).toBe("OUT");
   expect(
     outputRow?.querySelector(".preview-workflow-card__type-name")?.textContent,
   ).toBe("注文確定イベント");
@@ -125,9 +127,9 @@ test("output の OR 連結は or で区切って1行に並べる", () => {
   const outputRow = host.querySelector('[data-section="output"]');
 
   expect(
-    Array.from(outputRow?.querySelectorAll(".preview-workflow-card__type-name") ?? []).map(
-      (node) => node.textContent,
-    ),
+    Array.from(
+      outputRow?.querySelectorAll(".preview-workflow-card__type-name") ?? [],
+    ).map((node) => node.textContent),
   ).toEqual(["注文確定イベント", "注文保留イベント"]);
   expect(
     outputRow?.querySelector(".preview-workflow-card__separator")?.textContent,
@@ -183,20 +185,21 @@ test("error 節ありなら ERR 行を表示する", () => {
   );
   const errorRow = host.querySelector('[data-section="error"]');
 
-  expect(errorRow?.querySelector(".preview-workflow-card__section-label")?.textContent).toBe(
-    "ERR",
-  );
   expect(
-    Array.from(errorRow?.querySelectorAll(".preview-workflow-card__type-name") ?? []).map(
-      (node) => node.textContent,
-    ),
+    errorRow?.querySelector(".preview-workflow-card__section-label")
+      ?.textContent,
+  ).toBe("ERR");
+  expect(
+    Array.from(
+      errorRow?.querySelectorAll(".preview-workflow-card__type-name") ?? [],
+    ).map((node) => node.textContent),
   ).toEqual(["検証エラー", "在庫不足"]);
   expect(
     errorRow?.querySelector(".preview-workflow-card__separator")?.textContent,
   ).toBe("or");
-  expect(errorRow?.querySelector(".preview-workflow-card__modifier")?.textContent).toBe(
-    "option",
-  );
+  expect(
+    errorRow?.querySelector(".preview-workflow-card__modifier")?.textContent,
+  ).toBe("option");
 });
 
 test("名前付き型参照をクリックするとその参照を通知する", () => {
@@ -341,9 +344,11 @@ test("カード名をクリックして確定すると新しい名前を通知�
   act(() => {
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+
   const input = host.querySelector('input[aria-label="新しい名前"]');
   const nameInput =
     input instanceof HTMLInputElement ? input : document.createElement("input");
+
   act(() => {
     nameInput.value = "依頼を確定する";
     nameInput.dispatchEvent(new Event("input", { bubbles: true }));

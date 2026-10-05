@@ -33,18 +33,21 @@ export const NumberRange = {
     min,
     max,
   }),
+
   /**
    * 下限のみの範囲を生成する。
    * @param min 下限。
    * @returns 下限のみの数値範囲。
    */
   minOnly: (min: number): NumberRange => ({ bound: "minOnly", min }),
+
   /**
    * 上限のみの範囲を生成する。
    * @param max 上限。
    * @returns 上限のみの数値範囲。
    */
   maxOnly: (max: number): NumberRange => ({ bound: "maxOnly", max }),
+
   /**
    * 制約構文と同じ範囲表記にする(model-format.md §6)。
    * @param range 数値範囲。
@@ -54,8 +57,10 @@ export const NumberRange = {
     switch (range.bound) {
       case "both":
         return `${toSourceBound(range.min)}..${toSourceBound(range.max)}`;
+
       case "minOnly":
         return `${toSourceBound(range.min)}..`;
+
       case "maxOnly":
         return `..${toSourceBound(range.max)}`;
     }

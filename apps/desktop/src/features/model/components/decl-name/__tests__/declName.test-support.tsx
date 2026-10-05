@@ -8,7 +8,10 @@ type RenderedName = Readonly<{
 }>;
 
 type NameRenderer = Readonly<{
-  render: (name: string, onRename?: (nextName: string) => void) => HTMLDivElement;
+  render: (
+    name: string,
+    onRename?: (nextName: string) => void,
+  ) => HTMLDivElement;
   unmountAll: () => void;
 }>;
 
@@ -19,11 +22,15 @@ type NameRenderer = Readonly<{
  */
 export const createNameRenderer = (): NameRenderer => {
   const rendered: RenderedName[] = [];
+
   return {
     render: (name, onRename) => {
       const host = document.createElement("div");
+
       document.body.append(host);
+
       const root: Root = createRoot(host);
+
       act(() => {
         root.render(
           <DeclName name={name} className="decl-name" onRename={onRename} />,
@@ -31,6 +38,7 @@ export const createNameRenderer = (): NameRenderer => {
       });
       rendered.push({
         host,
+
         unmount: () => {
           act(() => {
             root.unmount();
@@ -38,8 +46,10 @@ export const createNameRenderer = (): NameRenderer => {
           host.remove();
         },
       });
+
       return host;
     },
+
     unmountAll: () => {
       for (const entry of rendered.splice(0)) {
         entry.unmount();

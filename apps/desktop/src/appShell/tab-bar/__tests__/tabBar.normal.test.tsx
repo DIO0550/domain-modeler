@@ -29,8 +29,11 @@ const renderTabBar = (
   historyControls?: HistoryControlsValue,
 ): HTMLDivElement => {
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
+
   act(() => {
     root.render(
       <TabBar
@@ -42,11 +45,13 @@ const renderTabBar = (
   });
   rendered.push({
     host,
+
     unmount: () => {
       act(() => root.unmount());
       host.remove();
     },
   });
+
   return host;
 };
 
@@ -64,10 +69,10 @@ test("アクティブ文書の履歴状態をタイトル行へ反映する", ()
     redo: HistoryButton.disabled(),
   });
 
-  expect(host.querySelector<HTMLButtonElement>('[aria-label="元に戻す"]')?.disabled).toBe(
-    false,
-  );
-  expect(host.querySelector<HTMLButtonElement>('[aria-label="やり直す"]')?.disabled).toBe(
-    true,
-  );
+  expect(
+    host.querySelector<HTMLButtonElement>('[aria-label="元に戻す"]')?.disabled,
+  ).toBe(false);
+  expect(
+    host.querySelector<HTMLButtonElement>('[aria-label="やり直す"]')?.disabled,
+  ).toBe(true);
 });

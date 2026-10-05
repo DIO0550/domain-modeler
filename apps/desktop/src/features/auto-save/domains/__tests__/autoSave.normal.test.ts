@@ -17,8 +17,10 @@ type WriteCall = Readonly<{ path: string; contents: string }>;
 const operationsRecording = (writes: WriteCall[]): AutoSaveOperations => ({
   writeFile: async (path, contents) => {
     writes.push({ path, contents });
+
     return { type: "ok" };
   },
+
   now: () => Date.now(),
 });
 
@@ -28,6 +30,7 @@ afterEach(() => {
 
 test("変更から500ms経過すると最新内容を1回だけ書き込む", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsRecording(writes);
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
@@ -40,10 +43,12 @@ test("変更から500ms経過すると最新内容を1回だけ書き込む", as
 
   await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS - 1);
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   expect(writes).toEqual([]);
 
   await vi.advanceTimersByTimeAsync(1);
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":1}' },
   ]);
@@ -52,6 +57,7 @@ test("変更から500ms経過すると最新内容を1回だけ書き込む", as
 
 test("連続変更中は最後の変更から500ms後に保存する", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsRecording(writes);
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
@@ -70,10 +76,12 @@ test("連続変更中は最後の変更から500ms後に保存する", async () 
 
   await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS - 1);
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   expect(writes).toEqual([]);
 
   await vi.advanceTimersByTimeAsync(1);
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":2}' },
   ]);
@@ -81,6 +89,7 @@ test("連続変更中は最後の変更から500ms後に保存する", async () 
 
 test("連続変更中は最大2秒で最新内容を保存する", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsRecording(writes);
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
@@ -91,6 +100,7 @@ test("連続変更中は最大2秒で最新内容を保存する", async () => {
     Date.now(),
   );
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   for (const version of Array.from({ length: 19 }, (_, index) => index + 1)) {
     await vi.advanceTimersByTimeAsync(100);
     autoSave = AutoSave.notifyContentsChanged(
@@ -103,6 +113,7 @@ test("連続変更中は最大2秒で最新内容を保存する", async () => {
 
   await vi.advanceTimersByTimeAsync(100);
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":19}' },
   ]);
@@ -110,6 +121,7 @@ test("連続変更中は最大2秒で最新内容を保存する", async () => {
 
 test("最大間隔で保存した後も変更が続けば次の2秒で再保存する", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsRecording(writes);
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
@@ -126,6 +138,7 @@ test("最大間隔で保存した後も変更が続けば次の2秒で再保存�
     '{"version":1}',
     Date.now(),
   );
+
   for (const version of Array.from({ length: 19 }, (_, index) => index + 2)) {
     await vi.advanceTimersByTimeAsync(100);
     autoSave = AutoSave.notifyContentsChanged(
@@ -138,6 +151,7 @@ test("最大間隔で保存した後も変更が続けば次の2秒で再保存�
 
   await vi.advanceTimersByTimeAsync(100);
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":0}' },
     { path: "/documents/context.dcanvas", contents: '{"version":20}' },
@@ -146,6 +160,7 @@ test("最大間隔で保存した後も変更が続けば次の2秒で再保存�
 
 test("トランザクション中は待機時間が経過しても書き込まない", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsRecording(writes);
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
@@ -166,6 +181,7 @@ test("トランザクション中は待機時間が経過しても書き込ま�
 
 test("トランザクション終了後は未保存変更を保存する", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsRecording(writes);
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
@@ -187,6 +203,7 @@ test("トランザクション終了後は未保存変更を保存する", async
 
 test("トランザクション中でもflushは待たずに保存する", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsRecording(writes);
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
@@ -207,7 +224,9 @@ test("トランザクション中でもflushは待たずに保存する", async 
 
 test("書き込み中の変更は完了後も残る", async () => {
   vi.useFakeTimers();
+
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
+
   autoSave = AutoSave.notifyContentsChanged(
     autoSave,
     '{"version":1}',
@@ -221,7 +240,9 @@ test("書き込み中の変更は完了後も残る", async () => {
     '{"version":2}',
     Date.now(),
   );
+
   const editedAt = Date.now();
+
   await vi.advanceTimersByTimeAsync(500);
   autoSave = AutoSave.finishSaving(autoSave, {
     contents: '{"version":1}',
@@ -239,6 +260,7 @@ test("書き込み中の変更は完了後も残る", async () => {
 
 test("保存済み内容に戻すと待機時間後も書き込まない", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsRecording(writes);
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
@@ -258,6 +280,7 @@ test("保存済み内容に戻すと待機時間後も書き込まない", async
 
 test("内容が変わっていないとflushは書き込まない", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsRecording(writes);
   const autoSave = AutoSave.create("/documents/context.dcanvas", "{}");

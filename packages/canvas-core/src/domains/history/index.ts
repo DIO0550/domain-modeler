@@ -31,6 +31,7 @@ export const History = {
     undoStack: CommandStackValue.empty(),
     redoStack: CommandStackValue.empty(),
   }),
+
   /**
    * 文書コマンドを実行して履歴へ記録する。
    * ドラッグ・リサイズ・編集セッションなどの連続操作は、中間状態を積まず確定時に1コマンドだけ渡す。
@@ -47,6 +48,7 @@ export const History = {
     ),
     redoStack: CommandStackValue.empty(),
   }),
+
   /**
    * 直前の文書コマンドを逆操作で取り消す。
    * @param history undo 前の履歴。
@@ -54,9 +56,11 @@ export const History = {
    */
   undo: (history: History): Option<History> => {
     const popped = CommandStackValue.pop(history.undoStack);
+
     if (!popped.some) {
       return OptionValue.none();
     }
+
     return OptionValue.some({
       current: DocumentCommandValue.execute(
         popped.value.command,
@@ -69,6 +73,7 @@ export const History = {
       ),
     });
   },
+
   /**
    * 取り消した文書コマンドを再実行する。
    * @param history redo 前の履歴。
@@ -76,9 +81,11 @@ export const History = {
    */
   redo: (history: History): Option<History> => {
     const popped = CommandStackValue.pop(history.redoStack);
+
     if (!popped.some) {
       return OptionValue.none();
     }
+
     return OptionValue.some({
       current: DocumentCommandValue.execute(
         popped.value.command,

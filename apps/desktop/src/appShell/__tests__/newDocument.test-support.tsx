@@ -16,13 +16,17 @@ export const cleanupApps = (): void => {
 /** 実際のAppを描画する。外部I/Oだけを各テストで差し替える。 */
 export const renderApp = (): HTMLElement => {
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root = createRoot(host);
+
   act(() => root.render(<App />));
   cleanups.push(() => {
     act(() => root.unmount());
     host.remove();
   });
+
   return host;
 };
 
@@ -39,9 +43,11 @@ export type CommandHandlers = Readonly<
 export const mockCommands = (handlers: CommandHandlers): void => {
   mockIPC((command, payload) => {
     const handler = handlers[command];
+
     if (handler === undefined) {
       throw new Error(`想定していないIPCを呼び出しました: ${command}`);
     }
+
     return handler(payload);
   });
 };
@@ -61,7 +67,9 @@ export const clickNamed = async (
   const button = Array.from(host.querySelectorAll("button")).find(
     (candidate) => candidate.textContent === name,
   );
+
   expect(button).toBeDefined();
+
   await act(async () => button?.click());
 };
 
@@ -83,6 +91,7 @@ export const editModel = async (
   text: string,
 ): Promise<void> => {
   const input = host.querySelector("textarea");
+
   await act(async () => {
     Object.getOwnPropertyDescriptor(
       HTMLTextAreaElement.prototype,
@@ -118,24 +127,30 @@ export const mockRetryableFirstSave = (
   const state = { shouldFail: true };
   const message =
     failure === "dialog" ? "dialog unavailable" : "permission denied";
+
   mockCommands({
     save_file_dialog: () => {
       if (failure === "dialog" && state.shouldFail) {
         throw new Error(message);
       }
+
       return path;
     },
+
     create_file: () => {
       if (failure === "write" && state.shouldFail) {
         throw new Error(message);
       }
+
       return { type: "ok" };
     },
   });
+
   return {
     succeed: () => {
       state.shouldFail = false;
     },
+
     message,
   };
 };

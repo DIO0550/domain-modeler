@@ -94,6 +94,7 @@ impl AppSettings {
         let Some(path_str) = path.to_str() else {
             return Self::default();
         };
+
         match read_utf8_file(path_str) {
             FileReadResult::Ok { value } => Self::from_json_or_default(&value),
             FileReadResult::Err { .. } => Self::default(),
@@ -115,13 +116,16 @@ impl AppSettings {
                 "path is not valid utf-8",
             );
         };
+
         if let Err(err) = fs::create_dir_all(config_dir) {
             return AppSettingsWriteResult::write_failed(path_str, &err.to_string());
         }
+
         let json = match serde_json::to_string_pretty(self) {
             Ok(json) => json,
             Err(err) => return AppSettingsWriteResult::write_failed(path_str, &err.to_string()),
         };
+
         match write_utf8_file(path_str, &json) {
             FileWriteResult::Ok => AppSettingsWriteResult::Ok,
             FileWriteResult::Err {

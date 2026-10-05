@@ -1,5 +1,9 @@
 import { expect, test } from "vitest";
-import { SourceRange, TYPE_MODIFIERS, TypeTerm } from "@domain-modeler/model-core";
+import {
+  SourceRange,
+  TYPE_MODIFIERS,
+  TypeTerm,
+} from "@domain-modeler/model-core";
 import { PreviewTypeRef } from "..";
 
 const range = SourceRange.onLine(1, 1, 40);

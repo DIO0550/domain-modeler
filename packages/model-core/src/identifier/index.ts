@@ -12,6 +12,7 @@ export const Identifier = {
   isAcceptable: (text: string): boolean => {
     const tokens = Tokenizer.tokenize(text);
     const [token] = tokens;
+
     return (
       tokens.length === 1 &&
       token !== undefined &&

@@ -46,32 +46,29 @@ test.each([
     documentType: "model" as const,
     generateFromCanvas: "disabled" as const,
   },
-])(
-  "アクティブな文書が $documentType のとき生成は $generateFromCanvas になる",
-  ({
+])("アクティブな文書が $documentType のとき生成は $generateFromCanvas になる", ({
+  documentType,
+  generateFromCanvas,
+}: {
+  documentType: "canvas" | "model";
+  generateFromCanvas: "enabled" | "disabled";
+}) => {
+  const tabsState = openTabs({
+    path: `/documents/order.d${documentType === "canvas" ? "canvas" : "model"}`,
     documentType,
-    generateFromCanvas,
-  }: {
-    documentType: "canvas" | "model";
-    generateFromCanvas: "enabled" | "disabled";
-  }) => {
-    const tabsState = openTabs({
-      path: `/documents/order.d${documentType === "canvas" ? "canvas" : "model"}`,
-      documentType,
-    });
+  });
 
-    expect(MenuState.from(tabsState)).toEqual({
-      newCanvas: "enabled",
-      newModel: "enabled",
-      open: "enabled",
-      save: "enabled",
-      closeTab: "enabled",
-      undo: "enabled",
-      redo: "enabled",
-      generateFromCanvas,
-    });
-  },
-);
+  expect(MenuState.from(tabsState)).toEqual({
+    newCanvas: "enabled",
+    newModel: "enabled",
+    open: "enabled",
+    save: "enabled",
+    closeTab: "enabled",
+    undo: "enabled",
+    redo: "enabled",
+    generateFromCanvas,
+  });
+});
 
 test("モデルを前面にすると生成は無効になり、キャンバスを前面にすると有効になる", () => {
   const bothOpen = openTabs(

@@ -15,6 +15,7 @@ export const NamedDecl = {
    */
   is: (declaration: Declaration): declaration is NamedDecl =>
     declaration.kind === "data" || declaration.kind === "workflow",
+
   /**
    * 宣言に含まれる型参照項を列挙する。
    * @param decl data または workflow 宣言。

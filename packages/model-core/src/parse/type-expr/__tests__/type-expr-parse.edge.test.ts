@@ -12,6 +12,7 @@ const parseTypeExpr = (source: string) => {
     tokens,
     range: DeclChunk.rangeOf(tokens),
   };
+
   return TypeExprParse.parse(cursor, chunk);
 };
 

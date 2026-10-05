@@ -51,6 +51,7 @@ const documentCommandAvailability = (
   if (tabsState.status === "empty") {
     return "disabled";
   }
+
   return "enabled";
 };
 
@@ -64,9 +65,12 @@ const generateAvailability = (tabsState: TabsState): CommandAvailability => {
   if (tabsState.status === "empty") {
     return "disabled";
   }
+
   const activeTab = TabsState.activeTab(tabsState);
+
   if (activeTab.documentType === "canvas") {
     return "enabled";
   }
+
   return "disabled";
 };

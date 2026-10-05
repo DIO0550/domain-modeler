@@ -1,5 +1,30 @@
 # コーディング規約
 
+## 空行と改行で処理のまとまりを示す
+
+**コードを詰め込まず、準備・分岐・操作・結果の返却を空行で区切る。** TypeScript / TSX、Rust、スクリプト、テストに共通する。
+
+- 型・関数・コンパニオンオブジェクトのメソッドなど、独立した宣言の間は1行空ける。コメント・JSDoc は対象の宣言に付けたままにする
+- 条件分岐・ループの前後と、値の準備から `return` へ移る箇所は1行空ける。ブロックの先頭・末尾には空行を足さない
+- 同じ目的の変数宣言・連続した操作・同じ結果に対する検証はまとめる。すべての行の間に機械的に空行を入れず、処理の段階が変わるところを区切る
+- テストは準備・操作・検証のまとまりを空行で分ける。追加の操作を挟む場合も、その前後を区切る
+- 長い引数・型・JSX はフォーマッターに従って複数行に展開する。複数の文や複数の JSX 要素を1行へ詰め込まない
+- CSS は宣言を1行ずつ書き、ルールの間は1行空ける
+- 空行は原則1行とし、連続する空行で間隔を広げない
+
+```typescript
+const positions = StateMachinePlacement.read(source, resolution);
+
+if (Result.isErr(positions)) {
+  return positions;
+}
+
+const graph = StateMachineGraph.create(resolution, []);
+const layout = StateMachineLayout.restore(graph, positions.value);
+
+return Result.ok(layout);
+```
+
 ## コンパニオンオブジェクトパターン
 
 ドメインロジックは**ドメインオブジェクト自身に閉じ込める**。

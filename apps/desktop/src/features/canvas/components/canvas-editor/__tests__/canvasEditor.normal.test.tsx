@@ -37,6 +37,7 @@ const dragElement = (
   const first = points[0] ?? { x: 0, y: 0 };
   const last = points[points.length - 1] ?? first;
   const isPrimary = options.isPrimary ?? true;
+
   act(() => {
     element.dispatchEvent(
       new PointerEvent("pointerdown", {
@@ -49,6 +50,7 @@ const dragElement = (
       }),
     );
   });
+
   for (const point of points.slice(1)) {
     act(() => {
       element.dispatchEvent(
@@ -62,6 +64,7 @@ const dragElement = (
       );
     });
   }
+
   act(() => {
     element.dispatchEvent(
       new PointerEvent(options.endType ?? "pointerup", {
@@ -85,18 +88,19 @@ test("パレットの種別を選んで空白をクリックするとその種�
   clickSurface(host, { x: 80, y: 90 });
 
   const note = host.querySelector("article");
+
   expect(note?.getAttribute("data-sticky-type")).toBe("command");
   expect(note?.getAttribute("data-sticky-session")).toBe("editing");
-  expect(host.querySelector<HTMLTextAreaElement>(".sticky__editor")).not.toBeNull();
+  expect(
+    host.querySelector<HTMLTextAreaElement>(".sticky__editor"),
+  ).not.toBeNull();
 });
 
 test("アクティブなキャンバスの履歴状態をタイトル行へ渡せる", () => {
   const controls: string[] = [];
   const host = renderEditor(undefined, {
     onHistoryControlsChange: (value) => {
-      controls.push(
-        `${value.undo.availability}:${value.redo.availability}`,
-      );
+      controls.push(`${value.undo.availability}:${value.redo.availability}`);
     },
   });
 
@@ -112,8 +116,10 @@ test("アクティブなキャンバスの履歴状態をタイトル行へ渡�
 
 test("非アクティブなキャンバスは履歴状態をタイトル行へ渡さない", () => {
   const controls: string[] = [];
+
   renderEditor(undefined, {
     isActive: false,
+
     onHistoryControlsChange: () => controls.push("called"),
   });
 
@@ -161,6 +167,7 @@ test("接続ラベルをクリックしても新しい付箋を作成しない",
   const label = host.querySelector(".connection-layer__label");
 
   expect(label?.getAttribute("pointer-events")).toBe("all");
+
   act(() => {
     label?.dispatchEvent(
       new MouseEvent("click", {
@@ -212,7 +219,9 @@ test("選択中の付箋をダブルクリックすると本文編集を始め�
 
   doubleClickSurface(host, { x: 20, y: 30 });
 
-  expect(host.querySelector<HTMLTextAreaElement>(".sticky__editor")?.value).toBe("注文が確定した");
+  expect(
+    host.querySelector<HTMLTextAreaElement>(".sticky__editor")?.value,
+  ).toBe("注文が確定した");
 });
 
 test("本文を変えて確定したあと undo 1回で編集前の本文に戻る", () => {
@@ -230,16 +239,20 @@ test("本文を変えて確定したあと undo 1回で編集前の本文に戻�
   });
 
   doubleClickSurface(host, { x: 20, y: 30 });
-  const foundEditor = host.querySelector<HTMLTextAreaElement>(".sticky__editor");
+
+  const foundEditor =
+    host.querySelector<HTMLTextAreaElement>(".sticky__editor");
   const editor =
     foundEditor instanceof HTMLTextAreaElement
       ? foundEditor
       : document.createElement("textarea");
+
   act(() => {
     const nativeSetter = Object.getOwnPropertyDescriptor(
       HTMLTextAreaElement.prototype,
       "value",
     )?.set;
+
     nativeSetter?.call(editor, "注文がキャンセルされた");
     editor.dispatchEvent(new Event("input", { bubbles: true }));
   });
@@ -270,14 +283,18 @@ test("選択中に Enter を押すと本文編集を始める", () => {
   });
 
   clickSurface(host, { x: 20, y: 30 });
+
   const note = host.querySelector("article");
+
   act(() => {
     note?.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
     );
   });
 
-  expect(host.querySelector<HTMLTextAreaElement>(".sticky__editor")).not.toBeNull();
+  expect(
+    host.querySelector<HTMLTextAreaElement>(".sticky__editor"),
+  ).not.toBeNull();
 });
 
 test("編集中に Esc を押すと本文を確定して選択中になる", () => {
@@ -295,7 +312,9 @@ test("編集中に Esc を押すと本文を確定して選択中になる", () 
   });
 
   doubleClickSurface(host, { x: 20, y: 30 });
+
   const surface = host.querySelector(".canvas-surface");
+
   act(() => {
     surface?.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
@@ -322,7 +341,9 @@ test("編集中の本文をクリックしても編集は終わらない", () =>
     );
   });
 
-  expect(host.querySelector<HTMLTextAreaElement>(".sticky__editor")).not.toBeNull();
+  expect(
+    host.querySelector<HTMLTextAreaElement>(".sticky__editor"),
+  ).not.toBeNull();
   expect(articleOf(host).getAttribute("data-sticky-session")).toBe("editing");
 });
 
@@ -330,6 +351,7 @@ test("IME変換中の Escape では本文を確定しない", () => {
   const host = renderEditor(existingStickyDocument);
 
   doubleClickSurface(host, { x: 20, y: 30 });
+
   const foundSurface = host.querySelector(".canvas-surface");
   const surface =
     foundSurface instanceof HTMLElement
@@ -339,6 +361,7 @@ test("IME変換中の Escape では本文を確定しない", () => {
     key: "Escape",
     bubbles: true,
   });
+
   Object.defineProperty(escapeWhileComposing, "isComposing", {
     value: true,
   });
@@ -346,7 +369,9 @@ test("IME変換中の Escape では本文を確定しない", () => {
     surface.dispatchEvent(escapeWhileComposing);
   });
 
-  expect(host.querySelector<HTMLTextAreaElement>(".sticky__editor")).not.toBeNull();
+  expect(
+    host.querySelector<HTMLTextAreaElement>(".sticky__editor"),
+  ).not.toBeNull();
   expect(articleOf(host).getAttribute("data-sticky-session")).toBe("editing");
 });
 
@@ -384,9 +409,7 @@ test("本文を確定したあと選択中の付箋へフォーカスを戻さ�
 
 test("最前面でない付箋を動かさずにクリックしても重なり順と履歴を変えない", () => {
   const host = renderEditor(documentWithTwoStickies);
-  const rearSticky = host.querySelector(
-    '[data-sticky-id="stk_existing000"]',
-  );
+  const rearSticky = host.querySelector('[data-sticky-id="stk_existing000"]');
   const article = rearSticky ?? document.createElement("article");
 
   dragElement(article, [{ x: 20, y: 30 }]);
@@ -406,14 +429,13 @@ test("最前面でない付箋を動かさずにクリックしても重なり�
     ),
   ).toEqual(["stk_existing000", "stk_front0000000"]);
   expect(article.getAttribute("data-sticky-session")).toBe("selected");
+
   expectUndoUnchanged(host);
 });
 
 test("4px未満のポインタ移動ではドラッグを開始しない", () => {
   const host = renderEditor(documentWithTwoStickies);
-  const rearSticky = host.querySelector(
-    '[data-sticky-id="stk_existing000"]',
-  );
+  const rearSticky = host.querySelector('[data-sticky-id="stk_existing000"]');
   const article = rearSticky ?? document.createElement("article");
 
   dragElement(article, [
@@ -428,6 +450,7 @@ test("4px未満のポインタ移動ではドラッグを開始しない", () =>
       sticky.getAttribute("data-sticky-id"),
     ),
   ).toEqual(["stk_existing000", "stk_front0000000"]);
+
   expectUndoUnchanged(host);
 });
 
@@ -445,14 +468,13 @@ test("非primary pointerではドラッグを開始しない", () => {
 
   expect(articleOf(host).style.left).toBe("10px");
   expect(articleOf(host).style.top).toBe("20px");
+
   expectUndoUnchanged(host);
 });
 
 test("ドラッグ中のpointercancelは開始前へ戻して履歴へ積まない", () => {
   const host = renderEditor(documentWithTwoStickies);
-  const rearSticky = host.querySelector(
-    '[data-sticky-id="stk_existing000"]',
-  );
+  const rearSticky = host.querySelector('[data-sticky-id="stk_existing000"]');
   const article = rearSticky ?? document.createElement("article");
 
   dragElement(
@@ -471,6 +493,7 @@ test("ドラッグ中のpointercancelは開始前へ戻して履歴へ積まな�
       sticky.getAttribute("data-sticky-id"),
     ),
   ).toEqual(["stk_existing000", "stk_front0000000"]);
+
   expectUndoUnchanged(host);
 });
 
@@ -485,20 +508,23 @@ test("付箋を連続pointermoveでドラッグしてもundo 1回で開始位置
 
   expect(articleOf(host).style.left).toBe("60px");
   expect(articleOf(host).style.top).toBe("80px");
+
   act(() => {
     undo(host);
   });
+
   expect(articleOf(host).style.left).toBe("10px");
   expect(articleOf(host).style.top).toBe("20px");
+
   expectUndoUnchanged(host);
 });
 
 test("選択中の南東ハンドルをドラッグすると付箋をリサイズする", () => {
   const host = renderEditor(existingStickyDocument);
+
   clickSurface(host, { x: 20, y: 30 });
-  const handle = host.querySelector(
-    '[data-resize-corner="southEast"]',
-  );
+
+  const handle = host.querySelector('[data-resize-corner="southEast"]');
   const resizeHandle = handle ?? document.createElement("span");
 
   dragElement(resizeHandle, [
@@ -527,24 +553,30 @@ test("初期文書の接続は付箋と同じキャンバス面に描画する",
 
 test("接続線をダブルクリックするとラベルをインライン編集して確定できる", () => {
   const host = renderEditor(documentWithConnection);
-  const connection = host.querySelector('[data-connection-id="con_existing000"]');
+  const connection = host.querySelector(
+    '[data-connection-id="con_existing000"]',
+  );
 
   act(() => {
     connection?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
   });
+
   const foundInput = host.querySelector('input[aria-label="接続ラベル"]');
   const input =
     foundInput instanceof HTMLInputElement
       ? foundInput
       : document.createElement("input");
+
   expect(input.closest(".connection-layer")?.classList).toContain(
     "connection-layer--editing",
   );
+
   act(() => {
     const nativeSetter = Object.getOwnPropertyDescriptor(
       HTMLInputElement.prototype,
       "value",
     )?.set;
+
     nativeSetter?.call(input, "配信");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
@@ -553,12 +585,16 @@ test("接続線をダブルクリックするとラベルをインライン編�
   });
 
   expect(host.querySelector('input[aria-label="接続ラベル"]')).toBeNull();
-  expect(host.querySelector(".connection-layer__label")?.textContent).toBe("配信");
+  expect(host.querySelector(".connection-layer__label")?.textContent).toBe(
+    "配信",
+  );
 });
 
 test("選択中の接続でDeleteを押すと接続だけを削除してundoで戻せる", () => {
   const host = renderEditor(documentWithConnection);
-  const connection = host.querySelector('[data-connection-id="con_existing000"]');
+  const connection = host.querySelector(
+    '[data-connection-id="con_existing000"]',
+  );
   const surface = host.querySelector(".canvas-surface");
 
   act(() => {
@@ -576,18 +612,22 @@ test("選択中の接続でDeleteを押すと接続だけを削除してundoで�
   act(() => {
     undo(host);
   });
+
   expect(host.querySelectorAll("[data-connection-id]")).toHaveLength(1);
 });
 
 test("フォーカス中の接続はSpaceで選択してDeleteで削除できる", () => {
   const host = renderEditor(documentWithConnection);
-  const connection = host.querySelector('[data-connection-id="con_existing000"]');
+  const connection = host.querySelector(
+    '[data-connection-id="con_existing000"]',
+  );
 
   act(() => {
     connection?.dispatchEvent(
       new KeyboardEvent("keydown", { key: " ", bubbles: true }),
     );
   });
+
   expect(connection?.getAttribute("data-connection-session")).toBe("selected");
 
   act(() => {
@@ -602,32 +642,47 @@ test("フォーカス中の接続はSpaceで選択してDeleteで削除できる
 
 test("通常の空白クリックやダブルクリックでは配置せず、種別選択後だけ1個配置する", () => {
   const host = renderEditor();
+
   clickSurface(host, { x: 80, y: 90 });
   doubleClickSurface(host, { x: 80, y: 90 });
+
   expect(host.querySelectorAll("article")).toHaveLength(0);
+
   act(() => buttonNamed(host, "Command").click());
+
   expect(host.textContent).toContain("空白をクリックして1個配置");
+
   clickSurface(host, { x: 80, y: 90 });
+
   expect(host.querySelectorAll("article")).toHaveLength(1);
   expect(buttonNamed(host, "選択").getAttribute("aria-pressed")).toBe("true");
+
   clickSurface(host, { x: 500, y: 400 });
+
   expect(host.querySelectorAll("article")).toHaveLength(1);
 });
 
 test("配置ツールは選択ボタンで取り消せる", () => {
   const host = renderEditor();
+
   act(() => buttonNamed(host, "Command").click());
   act(() => buttonNamed(host, "選択").click());
   clickSurface(host, { x: 80, y: 90 });
+
   expect(host.querySelectorAll("article")).toHaveLength(0);
 });
-
 
 test("種別ボタンにフォーカスがあるままEscで配置を取り消せる", () => {
   const host = renderEditor();
   const button = buttonNamed(host, "Command");
+
   act(() => button.click());
-  act(() => button.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  act(() =>
+    button.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    ),
+  );
   clickSurface(host, { x: 80, y: 90 });
+
   expect(host.querySelectorAll("article")).toHaveLength(0);
 });

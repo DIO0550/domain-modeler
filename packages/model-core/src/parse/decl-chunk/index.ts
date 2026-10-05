@@ -27,9 +27,11 @@ const declarationKindOf = (token: Token | undefined): DeclChunk["kind"] => {
   if (token?.text === RESERVED_WORDS.workflow) {
     return "workflow";
   }
+
   if (token?.text === RESERVED_WORDS["state-machine"]) {
     return "state-machine";
   }
+
   return "data";
 };
 
@@ -47,10 +49,13 @@ const leadingOrphanChunks = (
   const firstMeaningfulIndex = leadingTokens.findIndex(
     (token) => !isTrivia(token),
   );
+
   if (firstMeaningfulIndex === -1) {
     return [];
   }
+
   const orphanTokens = leadingTokens.slice(firstMeaningfulIndex);
+
   return [
     {
       kind: "orphan",
@@ -70,11 +75,14 @@ export const DeclChunk = {
   rangeOf: (tokens: readonly Token[]): Range => {
     const first = tokens[0];
     const last = tokens[tokens.length - 1];
+
     if (first === undefined || last === undefined) {
       return emptyRange();
     }
+
     return SourceRange.span(first.range, last.range);
   },
+
   /**
    * トークン列を宣言チャンクに分割する。
    * 非インデントの data / workflow / state-machine を同期ポイントとする。
@@ -91,6 +99,7 @@ export const DeclChunk = {
       const endIndex = nextSync === undefined ? tokens.length : nextSync;
       const chunkTokens = tokens.slice(startIndex, endIndex);
       const start = tokens[startIndex];
+
       return {
         kind: declarationKindOf(start),
         tokens: chunkTokens,
@@ -98,6 +107,7 @@ export const DeclChunk = {
       };
     });
     const leadingEnd = syncIndexes[0] ?? tokens.length;
+
     return [...leadingOrphanChunks(tokens, leadingEnd), ...syncedChunks];
   },
 } as const;

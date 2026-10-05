@@ -31,9 +31,7 @@ const setupDocument = (): Document => ({
       { width: 100, height: 60 },
     ),
   ],
-  connections: [
-    Connection.create(connectionId, backId, frontId, "", ""),
-  ],
+  connections: [Connection.create(connectionId, backId, frontId, "", "")],
 });
 
 test("付箋の境界を含む矩形内では最前面の付箋を取得する", () => {

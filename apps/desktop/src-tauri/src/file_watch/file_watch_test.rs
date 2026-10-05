@@ -68,7 +68,9 @@ fn 監視開始後の失敗イベントはjsonで理由を返す() {
 fn ファイル内容が変わると変更イベントが返る() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::write(&path, "data 注文 = string\n").expect("fixture should be written");
+
     let path_str = path.to_str().expect("path is utf-8");
     let registry = FileWatchRegistry::new();
     let events = start_collecting(&registry, path_str);
@@ -85,40 +87,50 @@ fn ファイル内容が変わると変更イベントが返る() {
 
 #[test]
 fn 同じ受信バッチの変更はデバウンスされて1件の変更イベントになる() {
-    use std::sync::atomic::AtomicBool;
-    use std::sync::Arc;
     use notify::event::{DataChange, ModifyKind};
     use notify::{Event, EventKind};
+    use std::sync::atomic::AtomicBool;
+    use std::sync::Arc;
 
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::write(&path, "latest\n").unwrap();
+
     let path_str = path.to_str().unwrap();
     let target = super::WatchTarget::resolve(path_str).unwrap();
     let (input_tx, input_rx) = mpsc::channel();
     let (output_tx, events) = mpsc::channel();
+
     // OS通知の到着間隔は制御できないため、境界から届くイベントだけを代替する。
     // 消費開始前にキューへ積み、CIのスケジューリングで入力間隔が広がらないようにする。
     for _ in 0..3 {
         let event = Event::new(EventKind::Modify(ModifyKind::Data(DataChange::Content)))
             .add_path(target.file.clone());
+
         input_tx.send(super::WatchMsg::Fs(Ok(event))).unwrap();
     }
+
     let worker = thread::spawn(move || {
         target.debounce(
             input_rx,
-            |event| { let _ = output_tx.send(event); },
+            |event| {
+                let _ = output_tx.send(event);
+            },
             Arc::new(AtomicBool::new(false)),
         );
     });
     let event = recv_event(&events);
     let extra = events.recv_timeout(DEBOUNCE + Duration::from_millis(200));
+
     input_tx.send(super::WatchMsg::Stop).unwrap();
     worker.join().unwrap();
 
     assert_eq!(
         event,
-        FileWatchEvent::Changed { path: path_str.to_string() },
+        FileWatchEvent::Changed {
+            path: path_str.to_string()
+        },
     );
     assert!(extra.is_err(), "unexpected extra watch event: {extra:?}");
 }
@@ -127,7 +139,9 @@ fn 同じ受信バッチの変更はデバウンスされて1件の変更イベ�
 fn ファイルを削除すると削除イベントが返る() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::write(&path, "data 注文 = string\n").expect("fixture should be written");
+
     let path_str = path.to_str().expect("path is utf-8");
     let registry = FileWatchRegistry::new();
     let events = start_collecting(&registry, path_str);
@@ -146,7 +160,9 @@ fn ファイルを削除すると削除イベントが返る() {
 fn 削除の直後に再作成すると変更イベントになる() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::write(&path, "old\n").expect("fixture should be written");
+
     let path_str = path.to_str().expect("path is utf-8");
     let registry = FileWatchRegistry::new();
     let events = start_collecting(&registry, path_str);
@@ -160,6 +176,7 @@ fn 削除の直後に再作成すると変更イベントになる() {
             path: path_str.to_string(),
         }
     );
+
     assert_no_event(&events);
 }
 
@@ -167,12 +184,15 @@ fn 削除の直後に再作成すると変更イベントになる() {
 fn 削除イベントの後に再出現すると変更イベントが返る() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::write(&path, "old\n").expect("fixture should be written");
+
     let path_str = path.to_str().expect("path is utf-8");
     let registry = FileWatchRegistry::new();
     let events = start_collecting(&registry, path_str);
 
     fs::remove_file(&path).expect("file should be removed");
+
     assert_eq!(
         recv_event(&events),
         FileWatchEvent::Deleted {
@@ -181,6 +201,7 @@ fn 削除イベントの後に再出現すると変更イベントが返る() {
     );
 
     fs::write(&path, "new\n").expect("file should reappear");
+
     assert_eq!(
         recv_event(&events),
         FileWatchEvent::Changed {
@@ -211,12 +232,15 @@ fn 存在しないファイルの監視を開始して作成すると変更イ�
 fn 監視を止めたあとの変更はイベントにならない() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::write(&path, "v1\n").expect("fixture should be written");
+
     let path_str = path.to_str().expect("path is utf-8");
     let registry = FileWatchRegistry::new();
     let events = start_collecting(&registry, path_str);
 
     assert_eq!(registry.stop(path_str), FileWatchResult::Ok);
+
     fs::write(&path, "v2\n").expect("file should be updated after stop");
 
     assert_no_event(&events);
@@ -226,7 +250,9 @@ fn 監視を止めたあとの変更はイベントにならない() {
 fn 同じパスの監視開始は追加のイベントを生まない() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::write(&path, "v1\n").expect("fixture should be written");
+
     let path_str = path.to_str().expect("path is utf-8");
     let registry = FileWatchRegistry::new();
     let events = start_collecting(&registry, path_str);
@@ -244,6 +270,7 @@ fn 同じパスの監視開始は追加のイベントを生まない() {
             path: path_str.to_string(),
         }
     );
+
     assert_no_event(&events);
 }
 
@@ -251,14 +278,19 @@ fn 同じパスの監視開始は追加のイベントを生まない() {
 fn 同じパスの一方の登録解除では残る監視を停止しない() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::write(&path, "v1\n").expect("fixture should be written");
+
     let path_str = path.to_str().expect("path is utf-8");
     let registry = FileWatchRegistry::new();
     let events = start_collecting(&registry, path_str);
+
     assert_eq!(registry.start(path_str, |_| {}), FileWatchResult::Ok);
 
     assert_eq!(registry.stop(path_str), FileWatchResult::Ok);
+
     fs::write(&path, "v2\n").expect("file should be updated");
+
     assert_eq!(
         recv_event(&events),
         FileWatchEvent::Changed {
@@ -267,6 +299,7 @@ fn 同じパスの一方の登録解除では残る監視を停止しない() {
     );
 
     assert_eq!(registry.stop(path_str), FileWatchResult::Ok);
+
     fs::write(&path, "v3\n").expect("file should be updated after final stop");
     assert_no_event(&events);
 }
@@ -314,10 +347,13 @@ fn start_collecting(registry: &FileWatchRegistry, path: &str) -> Receiver<FileWa
     let result = registry.start(path, move |event| {
         let _ = tx.send(event);
     });
+
     assert_eq!(result, FileWatchResult::Ok);
+
     // FSEventsなどはfixture作成の通知を監視開始後に届ける場合がある。
     // 固定sleepでは次の操作の通知と混ざるため、初期通知の静穏を確認する。
     let deadline = Instant::now() + Duration::from_secs(5);
+
     loop {
         match rx.recv_timeout(Duration::from_secs(1)) {
             Ok(FileWatchEvent::WatchFailed { message, .. }) => {
@@ -328,6 +364,7 @@ fn start_collecting(registry: &FileWatchRegistry, path: &str) -> Receiver<FileWa
             Err(mpsc::RecvTimeoutError::Disconnected) => panic!("watch disconnected at startup"),
         }
     }
+
     rx
 }
 
@@ -339,5 +376,6 @@ fn recv_event(events: &Receiver<FileWatchEvent>) -> FileWatchEvent {
 
 fn assert_no_event(events: &Receiver<FileWatchEvent>) {
     let extra = events.recv_timeout(DEBOUNCE + Duration::from_millis(200));
+
     assert!(extra.is_err(), "unexpected extra watch event: {extra:?}");
 }

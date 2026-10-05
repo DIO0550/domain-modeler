@@ -34,6 +34,7 @@ const emptyRect = {
   left: 0,
   bottom: 600,
   right: 800,
+
   toJSON: () => ({}),
 };
 
@@ -87,7 +88,9 @@ export const renderEditor = (
   }> = {},
 ): HTMLDivElement => {
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
 
   act(() => {
@@ -104,10 +107,12 @@ export const renderEditor = (
   const surface = host.querySelector(".canvas-surface");
   const canvasSurface =
     surface instanceof HTMLElement ? surface : document.createElement("div");
+
   canvasSurface.getBoundingClientRect = () => emptyRect;
 
   rendered.push({
     host,
+
     unmount: () => {
       act(() => {
         root.unmount();
@@ -115,6 +120,7 @@ export const renderEditor = (
       host.remove();
     },
   });
+
   return host;
 };
 
@@ -126,6 +132,7 @@ export const clickSurface = (
   const found = host.querySelector(".canvas-surface");
   const surface =
     found instanceof HTMLElement ? found : document.createElement("div");
+
   act(() => {
     surface.dispatchEvent(
       new MouseEvent("click", {
@@ -145,6 +152,7 @@ export const doubleClickSurface = (
   const found = host.querySelector(".canvas-surface");
   const surface =
     found instanceof HTMLElement ? found : document.createElement("div");
+
   act(() => {
     surface.dispatchEvent(
       new MouseEvent("click", {
@@ -182,6 +190,7 @@ export const buttonNamed = (
       element.getAttribute("aria-label") === name ||
       element.textContent === name,
   );
+
   return found instanceof HTMLButtonElement
     ? found
     : document.createElement("button");
@@ -190,6 +199,7 @@ export const buttonNamed = (
 /** 描画された付箋要素を返す。 */
 export const articleOf = (host: HTMLDivElement): HTMLElement => {
   const found = host.querySelector("article");
+
   return found instanceof HTMLElement
     ? found
     : document.createElement("article");
@@ -198,6 +208,7 @@ export const articleOf = (host: HTMLDivElement): HTMLElement => {
 /** 描画された本文エディタを返す。 */
 export const editorOf = (host: HTMLDivElement): HTMLTextAreaElement => {
   const found = host.querySelector(".sticky__editor");
+
   return found instanceof HTMLTextAreaElement
     ? found
     : document.createElement("textarea");
@@ -206,31 +217,33 @@ export const editorOf = (host: HTMLDivElement): HTMLTextAreaElement => {
 /** 履歴ショートカットをキャンバスへ送る。 */
 export const undo = (host: HTMLDivElement): void => {
   act(() => {
-    host
-      .querySelector(".canvas-surface")
-      ?.dispatchEvent(
-        new KeyboardEvent("keydown", {
-          key: "z",
-          ctrlKey: true,
-          bubbles: true,
-        }),
-      );
+    host.querySelector(".canvas-surface")?.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "z",
+        ctrlKey: true,
+        bubbles: true,
+      }),
+    );
   });
 };
 
 /** undo対象が無いときに表示文書が変わらないことを検証する。 */
 export const expectUndoUnchanged = (host: HTMLDivElement): void => {
   const before = host.querySelector(".canvas-world")?.innerHTML;
+
   undo(host);
+
   expect(host.querySelector(".canvas-world")?.innerHTML).toBe(before);
 };
 
 /** セレクタに一致する要素を返す。見つからない場合はテストを落とす。 */
 export const elementOf = (host: HTMLElement, selector: string): HTMLElement => {
   const found = host.querySelector(selector);
+
   if (!(found instanceof HTMLElement)) {
     throw new Error(`要素がありません: ${selector}`);
   }
+
   return found;
 };
 
@@ -243,9 +256,11 @@ export const stickyArticleOf = (
 /** 右プロパティの本文入力欄を返す。 */
 export const propertyBodyOf = (host: HTMLElement): HTMLTextAreaElement => {
   const found = host.querySelector('[aria-label="プロパティの本文"]');
+
   if (!(found instanceof HTMLTextAreaElement)) {
     throw new Error("本文欄がありません");
   }
+
   return found;
 };
 
@@ -266,11 +281,14 @@ export const connectionHandleOf = (
   anchor: string,
 ): HTMLButtonElement => {
   const found = host.querySelector(`[data-connection-anchor="${anchor}"]`);
+
   if (!(found instanceof HTMLButtonElement)) {
     throw new Error(`接続ハンドルがありません: ${anchor}`);
   }
+
   found.setPointerCapture = () => {};
   found.releasePointerCapture = () => {};
+
   return found;
 };
 

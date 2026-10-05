@@ -1,7 +1,4 @@
-import {
-  type FormEvent,
-  type KeyboardEvent,
-} from "react";
+import { type FormEvent, type KeyboardEvent } from "react";
 import { useDeclNameEdit } from "../../hooks/use-decl-name-edit";
 import "./DeclName.css";
 
@@ -22,10 +19,13 @@ export function DeclName({ name, className, onRename }: DeclNameProps) {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
+
     const field = event.currentTarget.querySelector("input");
+
     if (!(field instanceof HTMLInputElement)) {
       return;
     }
+
     nameEdit.submit(field.value);
   };
 
@@ -33,6 +33,7 @@ export function DeclName({ name, className, onRename }: DeclNameProps) {
     if (event.key !== "Escape") {
       return;
     }
+
     event.preventDefault();
     nameEdit.cancel();
   };
@@ -47,7 +48,9 @@ export function DeclName({ name, className, onRename }: DeclNameProps) {
             value={nameEdit.edit.draft}
             autoFocus
             onFocus={(event) => event.currentTarget.select()}
-            onChange={(event) => nameEdit.changeDraft(event.currentTarget.value)}
+            onChange={(event) =>
+              nameEdit.changeDraft(event.currentTarget.value)
+            }
             onBlur={(event) => nameEdit.blur(event.currentTarget.value)}
             onKeyDown={handleKeyDown}
           />

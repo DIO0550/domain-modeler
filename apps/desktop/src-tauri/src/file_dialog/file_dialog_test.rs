@@ -81,19 +81,22 @@ fn 保存ダイアログで別の拡張子だと文書種別の拡張子に揃�
 #[test]
 fn 保存ダイアログは非utf8の親パスを可逆形式で返す() {
     use std::os::unix::ffi::OsStringExt;
+
     let original = PathBuf::from(std::ffi::OsString::from_vec(
         b"/tmp/non-utf8-\xff/board".to_vec(),
     ));
 
-    let result = save_dialog_result(
-        Some(FilePath::from(original)),
-        DocumentKind::Canvas,
-    )
-    .expect("path should be selected");
+    let result = save_dialog_result(Some(FilePath::from(original)), DocumentKind::Canvas)
+        .expect("path should be selected");
 
     assert!(result.ends_with("/board.dcanvas"));
-    assert_eq!(crate::ipc_path::decode(&result).extension().unwrap(), "dcanvas");
+    assert_eq!(
+        crate::ipc_path::decode(&result).extension().unwrap(),
+        "dcanvas"
+    );
+
     use std::os::unix::ffi::OsStrExt;
+
     assert!(crate::ipc_path::decode(&result)
         .as_os_str()
         .as_bytes()

@@ -1,92 +1,215 @@
 import { canvasPointer } from "@/libs/svg-canvas/__tests__/svgCanvas.test-support";
 import { act } from "react";
 import { afterEach, expect, test, vi } from "vitest";
-import { machineSource, openMode, addState, enterGraphName } from "./model-modes.test-support";
+import {
+  machineSource,
+  openMode,
+  addState,
+  enterGraphName,
+} from "./model-modes.test-support";
 import { openModelWorkspace } from "./model-modes-workspace.test-support";
 
 const opened: Array<ReturnType<typeof openModelWorkspace>> = [];
+
 afterEach(() => {
   for (const workspace of opened.splice(0)) {
     workspace.close();
   }
+
   vi.useRealTimers();
 });
 
 const open = (path: string, files: Map<string, string>) => {
   const workspace = openModelWorkspace(path, files);
+
   opened.push(workspace);
+
   return workspace;
 };
 
 test.each([
   { label: "待機 initial", key: "Delete", kind: "state" },
   { label: "待機 から 完了 へ、確定", key: "Backspace", kind: "edge" },
-])("$kindを$keyで削除し、連続Undo/Redo・自動保存・再読込で参照と座標を復元できる", async ({ label, key, kind }) => {
+])("$kindを$keyで削除し、連続Undo/Redo・自動保存・再読込で参照と座標を復元できる", async ({
+  label,
+  key,
+  kind,
+}) => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+
   const path = "/deletion.dmodel";
-  const source = "state-machine 注文 =\n  initial: 待機\n  state: 待機 // @canvas-position(v1, 200, 200)\n  state: 完了 terminal // @canvas-position(v1, 500, 200)\n  transition: 待機 -> 完了 on 確定";
+  const source =
+    "state-machine 注文 =\n  initial: 待機\n  state: 待機 // @canvas-position(v1, 200, 200)\n  state: 完了 terminal // @canvas-position(v1, 500, 200)\n  transition: 待機 -> 完了 on 確定";
   const files = new Map([[path, source]]);
   const workspace = open(path, files);
+
   await workspace.changed(path);
   await openMode(workspace.host, "ステートマシン");
-  const element = workspace.host.querySelector<SVGGElement>(`.state-machine-screen__${kind === "state" ? "node" : "edge"}[aria-label="${label}"]`)!;
+
+  const element = workspace.host.querySelector<SVGGElement>(
+    `.state-machine-screen__${kind === "state" ? "node" : "edge"}[aria-label="${label}"]`,
+  )!;
+
   element.focus();
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })));
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    ),
+  );
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   const deleted = files.get(path)!;
+
   expect(deleted).not.toContain("transition:");
-  expect(deleted).toContain("state: 完了 terminal // @canvas-position(v1, 500, 200)");
-  expect(document.activeElement).toBe(workspace.host.querySelector("svg.state-machine-screen__graph"));
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+  expect(deleted).toContain(
+    "state: 完了 terminal // @canvas-position(v1, 500, 200)",
+  );
+  expect(document.activeElement).toBe(
+    workspace.host.querySelector("svg.state-machine-screen__graph"),
+  );
+
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(source);
-  expect(document.activeElement).toBe(workspace.host.querySelector("svg.state-machine-screen__graph"));
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true })));
+  expect(document.activeElement).toBe(
+    workspace.host.querySelector("svg.state-machine-screen__graph"),
+  );
+
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "z",
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(deleted);
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(source);
+
   workspace.close();
   opened.splice(opened.indexOf(workspace), 1);
+
   const reopened = open(path, files);
+
   await reopened.changed(path);
   await openMode(reopened.host, "ステートマシン");
-  expect(reopened.host.querySelector('[aria-label="待機 initial"] rect')?.getAttribute("x")).toBe("120");
-  expect(reopened.host.querySelector('[aria-label="完了 terminal"] rect')?.getAttribute("x")).toBe("420");
-  expect(reopened.host.querySelectorAll(".state-machine-screen__edge")).toHaveLength(1);
+
+  expect(
+    reopened.host
+      .querySelector('[aria-label="待機 initial"] rect')
+      ?.getAttribute("x"),
+  ).toBe("120");
+  expect(
+    reopened.host
+      .querySelector('[aria-label="完了 terminal"] rect')
+      ?.getAttribute("x"),
+  ).toBe("420");
+  expect(
+    reopened.host.querySelectorAll(".state-machine-screen__edge"),
+  ).toHaveLength(1);
+
   await openMode(reopened.host, "モデル");
-  expect(reopened.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(source);
+
+  expect(
+    reopened.host.querySelector<HTMLTextAreaElement>("textarea")?.value,
+  ).toBe(source);
 });
 
 test("追加した状態にフォーカスしたままUndoしても、グラフからRedoと削除を続けられる", async () => {
-  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance", "requestAnimationFrame", "cancelAnimationFrame"] });
+  vi.useFakeTimers({
+    toFake: [
+      "setTimeout",
+      "clearTimeout",
+      "performance",
+      "requestAnimationFrame",
+      "cancelAnimationFrame",
+    ],
+  });
+
   const path = "/keyboard-focus.dmodel";
   const files = new Map([[path, machineSource]]);
   const workspace = open(path, files);
+
   await workspace.changed(path);
   await openMode(workspace.host, "ステートマシン");
   await addState(workspace.host, "保留");
-  const node = workspace.host.querySelector<SVGGElement>('[aria-label="保留 normal"]')!;
+
+  const node = workspace.host.querySelector<SVGGElement>(
+    '[aria-label="保留 normal"]',
+  )!;
+
   node.focus();
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(machineSource);
-  expect(document.activeElement).toBe(workspace.host.querySelector("svg.state-machine-screen__graph"));
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true })));
+  expect(document.activeElement).toBe(
+    workspace.host.querySelector("svg.state-machine-screen__graph"),
+  );
+
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "z",
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toContain("state: 保留");
-  expect(document.activeElement).toBe(workspace.host.querySelector("svg.state-machine-screen__graph"));
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true, cancelable: true })));
+  expect(document.activeElement).toBe(
+    workspace.host.querySelector("svg.state-machine-screen__graph"),
+  );
+
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Delete",
+        bubbles: true,
+        cancelable: true,
+      }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(`${machineSource}\n`);
 });
 
 test("既存の data、workflow、state-machine を同じタブで読み込み各モードに表示する", async () => {
   const path = "/existing.dmodel";
   const workspace = open(path, new Map([[path, machineSource]]));
+
   await workspace.changed(path);
+
   expect(
     workspace.host.querySelector<HTMLTextAreaElement>("textarea")?.value,
   ).toBe(machineSource);
@@ -96,7 +219,9 @@ test("既存の data、workflow、state-machine を同じタブで読み込み�
   expect(
     workspace.host.querySelector('[data-decl-name="注文処理"]'),
   ).not.toBeNull();
+
   await openMode(workspace.host, "ステートマシン");
+
   expect(
     workspace.host.querySelectorAll(".state-machine-screen__node"),
   ).toHaveLength(2);
@@ -109,16 +234,22 @@ test("state-machine のない既存の data と workflow はモデル表示を�
   const path = "/legacy.dmodel";
   const source = "data ID = string\nworkflow 保存 =\n  input: ID\n  output: ID";
   const workspace = open(path, new Map([[path, source]]));
+
   await workspace.changed(path);
+
   expect(workspace.host.querySelector('[data-decl-name="ID"]')).not.toBeNull();
   expect(
     workspace.host.querySelector('[data-decl-name="保存"]'),
   ).not.toBeNull();
+
   await openMode(workspace.host, "ステートマシン");
+
   expect(
     workspace.host.querySelector('input[aria-label="マシン名"]'),
   ).not.toBeNull();
+
   await openMode(workspace.host, "モデル");
+
   expect(
     workspace.host.querySelector<HTMLTextAreaElement>("textarea")?.value,
   ).toBe(source);
@@ -126,19 +257,26 @@ test("state-machine のない既存の data と workflow はモデル表示を�
 
 test("保存したグラフ編集を文書セッションの再作成後に再読込できる", async () => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+
   const path = "/reopen.dmodel";
   const files = new Map([[path, machineSource]]);
   const workspace = open(path, files);
+
   await workspace.changed(path);
   await openMode(workspace.host, "ステートマシン");
   await addState(workspace.host, "保留");
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toContain("state: 保留");
+
   workspace.close();
   opened.splice(opened.indexOf(workspace), 1);
+
   const reopened = open(path, files);
+
   await reopened.changed(path);
   await openMode(reopened.host, "ステートマシン");
+
   expect(
     reopened.host.querySelector(
       '.state-machine-screen__node[aria-label^="保留"]',
@@ -150,7 +288,9 @@ test("構文エラーと未定義参照がある既存文書でも複数マシ�
   const path = "/broken.dmodel";
   const source = `data 顧客 = 未定義型\ndata 数量 = int constrained 10..1\n${machineSource}\nstate-machine 返金 =\n  state: 申請`;
   const workspace = open(path, new Map([[path, source]]));
+
   await workspace.changed(path);
+
   expect(
     workspace.host.querySelector(".model-editor__diagnostics-warning")
       ?.textContent,
@@ -158,138 +298,306 @@ test("構文エラーと未定義参照がある既存文書でも複数マシ�
   expect(
     workspace.host.querySelector(".preview-error-placeholder"),
   ).not.toBeNull();
+
   await openMode(workspace.host, "ステートマシン");
+
   const picker = workspace.host.querySelector<HTMLSelectElement>(
     ".state-machine-screen__toolbar select",
   );
+
   expect(picker?.options).toHaveLength(2);
+
   await act(async () => {
     if (picker === null) {
       return;
     }
+
     picker.value = "1";
     picker.dispatchEvent(new Event("change", { bubbles: true }));
   });
+
   expect(
     workspace.host
       .querySelector(".state-machine-screen__graph")
       ?.getAttribute("aria-label"),
   ).toBe("返金 の状態遷移図");
+
   await openMode(workspace.host, "モデル");
+
   expect(
     workspace.host.querySelector<HTMLTextAreaElement>("textarea")?.value,
   ).toBe(source);
 });
 
-
 test("配置と移動が自動保存され、モード切替・Undo/Redo・文書再読込後も一致する", async () => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+
   const path = "/placement.dmodel";
   const files = new Map([[path, machineSource]]);
   const workspace = open(path, files);
+
   await workspace.changed(path);
   await openMode(workspace.host, "ステートマシン");
+
   const canvas = canvasPointer(workspace.host);
-  act(() => [...workspace.host.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "状態")!.click());
+
+  act(() =>
+    [...workspace.host.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "状態")!
+      .click(),
+  );
   canvas.click({ x: 700, y: 440 });
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   const placed = files.get(path)!;
+
   expect(placed).toContain("state: 状態1 // @canvas-position(v1, 300, 200)");
-  canvas.pointer("pointerdown", { x: 700, y: 440 }, workspace.host.querySelector('[aria-label="状態1 normal"]')!);
+
+  canvas.pointer(
+    "pointerdown",
+    { x: 700, y: 440 },
+    workspace.host.querySelector('[aria-label="状態1 normal"]')!,
+  );
   canvas.pointer("pointermove", { x: 900, y: 640 });
   canvas.pointer("pointerup", { x: 900, y: 640 });
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   const moved = files.get(path)!;
+
   expect(moved).toContain("state: 状態1 // @canvas-position(v1, 400, 300)");
+
   await openMode(workspace.host, "モデル");
-  expect(workspace.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(moved);
+
+  expect(
+    workspace.host.querySelector<HTMLTextAreaElement>("textarea")?.value,
+  ).toBe(moved);
+
   await openMode(workspace.host, "ステートマシン");
-  const graph = workspace.host.querySelector<SVGSVGElement>("svg.state-machine-screen__graph")!;
-  act(() => graph.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+
+  const graph = workspace.host.querySelector<SVGSVGElement>(
+    "svg.state-machine-screen__graph",
+  )!;
+
+  act(() =>
+    graph.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(placed);
-  act(() => graph.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true })));
+
+  act(() =>
+    graph.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "z",
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(moved);
+
   workspace.close();
   opened.splice(opened.indexOf(workspace), 1);
+
   const reopened = open(path, files);
+
   await reopened.changed(path);
   await openMode(reopened.host, "ステートマシン");
+
   const rect = reopened.host.querySelector('[aria-label="状態1 normal"] rect')!;
+
   expect(rect.getAttribute("x")).toBe("320");
   expect(rect.getAttribute("y")).toBe("268");
 });
 
 test("接続確定だけを自動保存し、連続Undo/Redoで遷移を復元できる", async () => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+
   const path = "/connection.dmodel";
-  const source = "state-machine 注文 =\n  state: 待機 // @canvas-position(v1, 200, 200)\n  state: 完了 terminal // @canvas-position(v1, 500, 200)";
+  const source =
+    "state-machine 注文 =\n  state: 待機 // @canvas-position(v1, 200, 200)\n  state: 完了 terminal // @canvas-position(v1, 500, 200)";
   const files = new Map([[path, source]]);
   const workspace = open(path, files);
+
   await workspace.changed(path);
   await openMode(workspace.host, "ステートマシン");
+
   const canvas = canvasPointer(workspace.host);
-  act(() => workspace.host.querySelector('[aria-label="待機 normal"]')!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
-  canvas.pointer("pointerdown", { x: 660, y: 440 }, workspace.host.querySelector('[aria-label="待機 から接続 right"]')!);
+
+  act(() =>
+    workspace.host
+      .querySelector('[aria-label="待機 normal"]')!
+      .dispatchEvent(new MouseEvent("click", { bubbles: true })),
+  );
+  canvas.pointer(
+    "pointerdown",
+    { x: 660, y: 440 },
+    workspace.host.querySelector('[aria-label="待機 から接続 right"]')!,
+  );
   canvas.pointer("pointerup", { x: 1000, y: 440 });
-  const input = workspace.host.querySelector<HTMLInputElement>('input[aria-label="新しい遷移のイベント名"]')!;
+
+  const input = workspace.host.querySelector<HTMLInputElement>(
+    'input[aria-label="新しい遷移のイベント名"]',
+  )!;
+
   act(() => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "確定");
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )!.set!.call(input, "確定");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(source);
-  act(() => input.form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+
+  act(() =>
+    input.form!.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   const connected = files.get(path)!;
+
   expect(connected).toContain("transition: 待機 -> 完了 on 確定");
   expect(document.activeElement).toBe(canvas.svg);
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(source);
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true })));
+
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "z",
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(connected);
+
   await openMode(workspace.host, "モデル");
-  expect(workspace.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(connected);
+
+  expect(
+    workspace.host.querySelector<HTMLTextAreaElement>("textarea")?.value,
+  ).toBe(connected);
 });
 
-test.each(["state", "event"])("図上の%s名編集は1履歴で保存し、Undo/Redo・文書再読込で参照と座標が一致する", async (kind) => {
+test.each([
+  "state",
+  "event",
+])("図上の%s名編集は1履歴で保存し、Undo/Redo・文書再読込で参照と座標が一致する", async (kind) => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+
   const path = "/label.dmodel";
-  const source = "state-machine 注文 =\n  initial: 待機\n  state: 待機 // @canvas-position(v1, 200, 200)\n  state: 完了 terminal // @canvas-position(v1, 500, 200)\n  transition: 待機 -> 完了 on 確定";
+  const source =
+    "state-machine 注文 =\n  initial: 待機\n  state: 待機 // @canvas-position(v1, 200, 200)\n  state: 完了 terminal // @canvas-position(v1, 500, 200)\n  transition: 待機 -> 完了 on 確定";
   const files = new Map([[path, source]]);
   const workspace = open(path, files);
+
   await workspace.changed(path);
   await openMode(workspace.host, "ステートマシン");
-  const input = await enterGraphName(workspace.host, kind === "state" ? "待機" : "確定", kind === "state" ? "保留" : "承認");
+
+  const input = await enterGraphName(
+    workspace.host,
+    kind === "state" ? "待機" : "確定",
+    kind === "state" ? "保留" : "承認",
+  );
+
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(source);
-  act(() => input.form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+
+  act(() =>
+    input.form!.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
-  const renamed = kind === "state" ? source.replace(/待機/g, "保留") : source.replace("on 確定", "on 承認");
+
+  const renamed =
+    kind === "state"
+      ? source.replace(/待機/g, "保留")
+      : source.replace("on 確定", "on 承認");
+
   expect(files.get(path)).toBe(renamed);
-  expect(document.activeElement).toBe(workspace.host.querySelector("svg.state-machine-screen__graph"));
-  await enterGraphName(workspace.host, kind === "state" ? "保留" : "承認", "未確定の下書き");
-  act(() => workspace.host.querySelector<SVGSVGElement>("svg.state-machine-screen__graph")!.focus());
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })));
+  expect(document.activeElement).toBe(
+    workspace.host.querySelector("svg.state-machine-screen__graph"),
+  );
+
+  await enterGraphName(
+    workspace.host,
+    kind === "state" ? "保留" : "承認",
+    "未確定の下書き",
+  );
+  act(() =>
+    workspace.host
+      .querySelector<SVGSVGElement>("svg.state-machine-screen__graph")!
+      .focus(),
+  );
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(source);
-  expect(workspace.host.querySelector(".state-machine-screen__label-editor")).toBeNull();
-  act(() => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true })));
+  expect(
+    workspace.host.querySelector(".state-machine-screen__label-editor"),
+  ).toBeNull();
+
+  act(() =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "z",
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
+    ),
+  );
   await act(async () => vi.advanceTimersByTimeAsync(1000));
+
   expect(files.get(path)).toBe(renamed);
-  expect(workspace.host.querySelector(".state-machine-screen__label-editor")).toBeNull();
+  expect(
+    workspace.host.querySelector(".state-machine-screen__label-editor"),
+  ).toBeNull();
+
   workspace.close();
   opened.splice(opened.indexOf(workspace), 1);
+
   const reopened = open(path, files);
+
   await reopened.changed(path);
   await openMode(reopened.host, "ステートマシン");
+
   const stateName = kind === "state" ? "保留" : "待機";
-  const rect = reopened.host.querySelector(`[aria-label="${stateName} initial"] rect`)!;
+  const rect = reopened.host.querySelector(
+    `[aria-label="${stateName} initial"] rect`,
+  )!;
+
   expect(rect.getAttribute("x")).toBe("120");
   expect(rect.getAttribute("y")).toBe("168");
+
   await openMode(reopened.host, "モデル");
-  expect(reopened.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(renamed);
+
+  expect(
+    reopened.host.querySelector<HTMLTextAreaElement>("textarea")?.value,
+  ).toBe(renamed);
 });

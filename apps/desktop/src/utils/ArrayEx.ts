@@ -11,9 +11,12 @@ export const ArrayEx = {
     if (items.length === 0) {
       return undefined;
     }
+
     const wrapped = ((index % items.length) + items.length) % items.length;
+
     return items[wrapped];
   },
+
   /**
    * 出現順を保ったまま重複する値を除く。
    *

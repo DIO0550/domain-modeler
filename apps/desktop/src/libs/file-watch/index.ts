@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+
 type FileReadError =
   | Readonly<{ kind: "notFound"; path: string }>
   | Readonly<{ kind: "invalidUtf8"; path: string }>
@@ -46,43 +47,57 @@ const watch = async (
       if (event.payload.path !== path || !active) {
         return;
       }
+
       onEvent(event.payload);
+
       if (event.payload.type !== "watchFailed") {
         return;
       }
+
       restart = restart.then(async () => {
         if (!active) {
           return;
         }
+
         await invoke<FileWatchResult>("stop_file_watch", { path });
+
         if (!active) {
           return;
         }
+
         const restarted = await invoke<FileWatchResult>("start_file_watch", {
           path,
         });
+
         if (!active) {
           return;
         }
+
         if (restarted.type === "err") {
           onEvent({
             type: "watchFailed",
             path,
             message: restarted.error.message,
           });
+
           return;
         }
+
         // 再開直後に現在の内容を読み直し、停止中の変更を取りこぼさない。
         onEvent({ type: "changed", path });
       });
     });
     const result = await invoke<FileWatchResult>("start_file_watch", { path });
+
     if (result.type === "err") {
       unlisten();
+
       return result;
     }
+
     return {
       type: "ok",
+
       stop: async () => {
         active = false;
         unlisten();
@@ -104,5 +119,6 @@ const watch = async (
 
 export const FILE_WATCH_OPERATIONS: FileWatchOperations = {
   watch,
+
   readFile: (path) => invoke<FileReadResult>("read_file", { path }),
 };

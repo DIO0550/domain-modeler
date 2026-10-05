@@ -4,10 +4,7 @@ import { DocumentWorkspace } from "./appShell/document-workspace";
 import { useAppShell } from "./appShell/hooks";
 import { MenuBar } from "./appShell/menu-bar";
 import { TabBar } from "./appShell/tab-bar";
-import {
-  isAppWindowAvailable,
-  listenCloseRequested,
-} from "./libs/app-window";
+import { isAppWindowAvailable, listenCloseRequested } from "./libs/app-window";
 import { FILE_WATCH_OPERATIONS } from "./libs/file-watch";
 import "./App.css";
 
@@ -26,23 +23,28 @@ function App() {
   } = useAppShell({
     saveDocument: async (path) =>
       await (manualSaves.current.get(path)?.() ?? Promise.resolve(false)),
+
     flushDocument: async (path) =>
       await flushStableSaveSession(saveSessions.current, path),
   });
+
   const updateDocumentHistory = useCallback(
     (path: string, controls: HistoryControlsValue | undefined): void => {
       if (tabsState.status !== "active" || tabsState.activePath !== path) {
         return;
       }
+
       setDocumentHistory(
         controls === undefined ? undefined : { path, controls },
       );
     },
     [tabsState],
   );
+
   const registerSaveSession = useCallback(
     (path: string, flush: () => Promise<boolean>): (() => void) => {
       saveSessions.current.set(path, flush);
+
       return () => {
         if (saveSessions.current.get(path) === flush) {
           saveSessions.current.delete(path);
@@ -55,6 +57,7 @@ function App() {
   const registerManualSave = useCallback(
     (path: string, save: () => Promise<boolean>) => {
       manualSaves.current.set(path, save);
+
       return () => {
         if (manualSaves.current.get(path) === save) {
           manualSaves.current.delete(path);
@@ -68,17 +71,22 @@ function App() {
     if (import.meta.env.MODE === "test" || !isAppWindowAvailable()) {
       return;
     }
+
     let disposed = false;
     let unlisten: (() => void) | undefined;
+
     void listenCloseRequested(() =>
       flushStableSaveSessions(saveSessions.current),
     ).then((nextUnlisten) => {
       if (disposed) {
         nextUnlisten();
+
         return;
       }
+
       unlisten = nextUnlisten;
     });
+
     return () => {
       disposed = true;
       unlisten?.();
@@ -122,20 +130,26 @@ export async function flushStableSaveSessions(
   sessions: ReadonlyMap<string, () => Promise<boolean>>,
 ): Promise<boolean> {
   const verified = new Map<string, () => Promise<boolean>>();
+
   while (true) {
     const snapshot = [...sessions.entries()];
+
     for (const [path, flush] of snapshot) {
       if (verified.get(path) === flush) {
         continue;
       }
+
       if (!(await flush())) {
         return false;
       }
+
       verified.set(path, flush);
     }
+
     const isStable =
       snapshot.length === sessions.size &&
       snapshot.every(([path, flush]) => sessions.get(path) === flush);
+
     if (isStable) {
       return true;
     }
@@ -155,12 +169,15 @@ export async function flushStableSaveSession(
 ): Promise<boolean> {
   while (true) {
     const flush = sessions.get(path);
+
     if (flush === undefined) {
       return true;
     }
+
     if (!(await flush())) {
       return false;
     }
+
     if (sessions.get(path) === flush) {
       return true;
     }

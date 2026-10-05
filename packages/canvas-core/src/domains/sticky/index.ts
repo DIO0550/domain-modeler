@@ -100,6 +100,7 @@ export const Sticky = {
     position: Point,
     size: Size,
   ): Sticky => ({ id, type, text, position, size }),
+
   /**
    * ワールド座標が付箋の矩形内にあるか判定する。
    * @param sticky 判定対象の付箋。
@@ -111,6 +112,7 @@ export const Sticky = {
     point.x <= sticky.position.x + sticky.size.width &&
     point.y >= sticky.position.y &&
     point.y <= sticky.position.y + sticky.size.height,
+
   /**
    * 付箋の中心座標を取得する。
    * @param sticky 中心を求める付箋。
@@ -120,6 +122,7 @@ export const Sticky = {
     x: sticky.position.x + sticky.size.width / 2,
     y: sticky.position.y + sticky.size.height / 2,
   }),
+
   /**
    * 付箋の辺上にある座標から外向き法線を取得する。
    * @param sticky 辺を持つ付箋。
@@ -132,11 +135,14 @@ export const Sticky = {
       Math.abs(point.x - center.x) / (sticky.size.width / 2);
     const verticalRatio =
       Math.abs(point.y - center.y) / (sticky.size.height / 2);
+
     if (horizontalRatio >= verticalRatio) {
       return { x: point.x < center.x ? -1 : 1, y: 0 };
     }
+
     return { x: 0, y: point.y < center.y ? -1 : 1 };
   },
+
   /**
    * 付箋のアンカー座標を取得する。
    * @param sticky アンカーを持つ付箋。
@@ -151,8 +157,10 @@ export const Sticky = {
       bottom: { x: center.x, y: sticky.position.y + sticky.size.height },
       left: { x: sticky.position.x, y: center.y },
     } as const;
+
     return points[anchor];
   },
+
   /**
    * 付箋の中心から指定方向へ伸ばした直線と矩形の交点を取得する。
    * @param sticky 交点を求める付箋。
@@ -163,6 +171,7 @@ export const Sticky = {
     if (direction.x === 0 && direction.y === 0) {
       return OptionValue.none();
     }
+
     const center = Sticky.center(sticky);
     const scale =
       1 /
@@ -170,6 +179,7 @@ export const Sticky = {
         Math.abs(direction.x) / (sticky.size.width / 2),
         Math.abs(direction.y) / (sticky.size.height / 2),
       );
+
     return OptionValue.some({
       x: center.x + direction.x * scale,
       y: center.y + direction.y * scale,

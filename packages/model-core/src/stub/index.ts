@@ -15,7 +15,9 @@ export const Stub = {
     if (!Identifier.isAcceptable(name)) {
       return Result.err("invalid_identifier");
     }
+
     const stub: Stub = `data ${name} = string // TODO 詳細化`;
+
     return Result.ok(stub);
   },
 } as const;

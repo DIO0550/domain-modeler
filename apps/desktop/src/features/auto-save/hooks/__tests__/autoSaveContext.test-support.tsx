@@ -21,11 +21,15 @@ export type AutoSaveProbe = Readonly<{
  * @param writes ファイル書き込みの呼び出し履歴。
  * @returns テスト用の自動保存操作。
  */
-export const operationsRecording = (writes: WriteCall[]): AutoSaveOperations => ({
+export const operationsRecording = (
+  writes: WriteCall[],
+): AutoSaveOperations => ({
   writeFile: async (path, contents) => {
     writes.push({ path, contents });
+
     return { type: "ok" };
   },
+
   now: () => Date.now(),
 });
 
@@ -35,16 +39,21 @@ export const operationsRecording = (writes: WriteCall[]): AutoSaveOperations => 
  * @param operations ファイル書き込みと時刻取得。
  * @returns 最新の Context 値、再描画、unmount。
  */
-export const renderAutoSave = (operations: AutoSaveOperations): AutoSaveProbe => {
+export const renderAutoSave = (
+  operations: AutoSaveOperations,
+): AutoSaveProbe => {
   const latest: { current: AutoSaveContextValue | undefined } = {
     current: undefined,
   };
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
 
   const Probe = () => {
     latest.current = useAutoSave();
+
     return null;
   };
 
@@ -70,6 +79,7 @@ export const renderAutoSave = (operations: AutoSaveOperations): AutoSaveProbe =>
   return {
     latest,
     rerender: renderProvider,
+
     unmount: () => {
       act(() => {
         root.unmount();
@@ -89,19 +99,24 @@ export const operationsBlockingFirstWrite = (
   writes: WriteCall[],
 ): Readonly<{ operations: AutoSaveOperations; finish: () => void }> => {
   const pending = { finish: () => {} };
+
   return {
     operations: {
       writeFile: async (path, contents) => {
         writes.push({ path, contents });
+
         if (writes.length > 1) {
           return { type: "ok" };
         }
+
         return await new Promise((resolve) => {
           pending.finish = () => resolve({ type: "ok" });
         });
       },
+
       now: () => Date.now(),
     },
+
     finish: () => pending.finish(),
   };
 };

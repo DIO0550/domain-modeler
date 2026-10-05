@@ -11,14 +11,19 @@ export const Comment = {
       prefix: "// -> ",
       text: connection.text,
     });
+
     if (connection.label.length === 0) {
       return destination;
     }
+
     const label = Comment.lines({ prefix: "// ", text: connection.label });
+
     return [...destination, ...label];
   },
+
   lines: ({ prefix, text }: Comment): readonly string[] => {
     const [first = "", ...rest] = text.split(/\r\n|[\r\n\u2028\u2029]/u);
+
     return [`${prefix}${first}`, ...rest.map((line) => `// ${line}`)];
   },
 } as const;

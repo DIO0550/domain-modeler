@@ -58,15 +58,17 @@ const renderHook = (
     current: UseConnectionInteractionsResult | undefined;
   } = { current: undefined };
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
 
   const Probe = () => {
-    latest.current = useConnectionInteractions(
-      initialDocument,
-      undefined,
-      { onDraftHistoryChange, onHistoryChange },
-    );
+    latest.current = useConnectionInteractions(initialDocument, undefined, {
+      onDraftHistoryChange,
+      onHistoryChange,
+    });
+
     return null;
   };
 
@@ -81,6 +83,7 @@ const renderHook = (
       host.remove();
     },
   });
+
   return latest;
 };
 
@@ -95,6 +98,7 @@ test("付箋の入力イベント中に最新下書きを同期通知する", ()
   });
   act(() => {
     latest.current?.changeDraft("終了直前の入力");
+
     expect(published?.current.stickies[0]?.text).toBe("終了直前の入力");
   });
 });
@@ -107,6 +111,7 @@ test("確定操作中に最新履歴を同期通知する", () => {
 
   act(() => {
     latest.current?.clickAt({ x: 500, y: 500 });
+
     expect(published?.current.stickies).toHaveLength(3);
   });
 });
@@ -142,6 +147,7 @@ test("接続のラベル編集と削除は付箋操作と同じundo履歴を使�
   });
   act(() => {
     const current = latest.current;
+
     current?.editConnection(current.connections[0].id);
   });
   act(() => {
@@ -157,5 +163,6 @@ test("接続のラベル編集と削除は付箋操作と同じundo履歴を使�
   act(() => {
     latest.current?.undo();
   });
+
   expect(latest.current?.connections[0]?.label).toBe("操作");
 });

@@ -40,6 +40,7 @@ const asResultOperations = (
   operations: AutoSaveOperations,
 ): AutoSaveOperations => ({
   ...operations,
+
   writeFile: (path, contents) =>
     writeFileAsResult(operations.writeFile, { path, contents }),
 });
@@ -88,16 +89,19 @@ function AutoSaveSession({
     AutoSave.create(path, initialContents),
   );
   const [paused, setPaused] = useState(false);
+
   const pausedRef = useRef(false);
   const autoSaveRef = useRef(autoSave);
   const operationsRef = useRef(asResultOperations(operations));
   const writeQueueRef = useRef(Promise.resolve());
   const sessionMountedRef = useRef(true);
+
   autoSaveRef.current = autoSave;
   operationsRef.current = asResultOperations(operations);
 
   useEffect(() => {
     sessionMountedRef.current = true;
+
     return () => {
       sessionMountedRef.current = false;
     };
@@ -108,10 +112,13 @@ function AutoSaveSession({
   ): void => {
     const current = autoSaveRef.current;
     const resolved = typeof next === "function" ? next(current) : next;
+
     autoSaveRef.current = resolved;
+
     if (!sessionMountedRef.current) {
       return;
     }
+
     setAutoSave(resolved);
   };
 
@@ -120,22 +127,27 @@ function AutoSaveSession({
       if (pausedRef.current) {
         return false;
       }
+
       const current = autoSaveRef.current;
+
       if (force) {
         if (!AutoSave.isDirty(current)) {
           return true;
         }
       } else {
         const due = AutoSave.due(current, operationsRef.current.now());
+
         if (due.status === "notScheduled" || due.delayMs > 0) {
           return true;
         }
       }
 
       const saving = AutoSave.startSaving(current);
+
       if (saving.status !== "saving") {
         return true;
       }
+
       if (
         current.status === "saving" &&
         current.pendingContents === current.writingContents
@@ -144,10 +156,12 @@ function AutoSaveSession({
       }
 
       replaceAutoSave(saving);
+
       const result = await operationsRef.current.writeFile(
         saving.path,
         saving.writingContents,
       );
+
       replaceAutoSave((latest) =>
         AutoSave.finishSaving(latest, {
           contents: saving.writingContents,
@@ -155,14 +169,17 @@ function AutoSaveSession({
           now: operationsRef.current.now(),
         }),
       );
+
       return result.type === "ok";
     };
 
     const queued = writeQueueRef.current.then(run, run);
+
     writeQueueRef.current = queued.then(
       () => undefined,
       () => undefined,
     );
+
     return await queued;
   };
 
@@ -170,7 +187,9 @@ function AutoSaveSession({
     if (paused) {
       return;
     }
+
     const due = AutoSave.due(autoSave, operationsRef.current.now());
+
     if (due.status === "notScheduled") {
       return;
     }
@@ -190,11 +209,13 @@ function AutoSaveSession({
   const value = useMemo((): AutoSaveContextValue => {
     return {
       autoSave,
+
       attachFile: (file) => {
         replaceAutoSave((current) =>
           AutoSave.attachFile(current, file, operationsRef.current.now()),
         );
       },
+
       notifyContentsChanged: (contents) => {
         replaceAutoSave((current) =>
           AutoSave.notifyContentsChanged(
@@ -204,62 +225,80 @@ function AutoSaveSession({
           ),
         );
       },
+
       acceptExternalContents: (contents) => {
         pausedRef.current = false;
         setPaused(false);
         replaceAutoSave(AutoSave.create(path, contents));
       },
+
       pause: () => {
         pausedRef.current = true;
         setPaused(true);
       },
+
       resume: () => {
         pausedRef.current = false;
         setPaused(false);
       },
+
       waitForPendingWrites: async () => {
         await writeQueueRef.current;
+
         return autoSaveRef.current;
       },
+
       beginTransaction: () => {
         replaceAutoSave(AutoSave.beginTransaction);
       },
+
       endTransaction: () => {
         replaceAutoSave(AutoSave.endTransaction);
       },
+
       flush: async () => {
         if (autoSaveRef.current.status === "unsaved") {
           return false;
         }
+
         while (AutoSave.isDirty(autoSaveRef.current)) {
           if (!(await runSave(true))) {
             return false;
           }
         }
+
         return true;
       },
+
       overwrite: async (contents) => {
         const run = async (): Promise<boolean> => {
           const current = autoSaveRef.current;
+
           if (current.status === "unsaved") {
             return false;
           }
+
           const path = current.path;
           const result = await operationsRef.current.writeFile(path, contents);
+
           if (result.type !== "ok") {
             return false;
           }
+
           pausedRef.current = false;
           setPaused(false);
+
           const latest = autoSaveRef.current;
           const latestContents =
             latest.status === "idle"
               ? latest.lastSavedContents
               : latest.pendingContents;
           let reconciled = AutoSave.create(path, contents);
+
           for (let depth = 0; depth < latest.transactionDepth; depth += 1) {
             reconciled = AutoSave.beginTransaction(reconciled);
           }
+
           if (latestContents !== contents) {
             reconciled = AutoSave.notifyContentsChanged(
               reconciled,
@@ -267,14 +306,19 @@ function AutoSaveSession({
               operationsRef.current.now(),
             );
           }
+
           replaceAutoSave(reconciled);
+
           return true;
         };
+
         const queued = writeQueueRef.current.then(run, run);
+
         writeQueueRef.current = queued.then(
           () => undefined,
           () => undefined,
         );
+
         return await queued;
       },
     };

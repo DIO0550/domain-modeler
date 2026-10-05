@@ -24,19 +24,27 @@ afterEach(() => {
  * @param tabsState メニュー有効状態の元になるタブ状態。
  * @returns 描画先のホスト要素。
  */
-const renderMenuBarWithGenerateOpen = (tabsState: TabsState): HTMLDivElement => {
+const renderMenuBarWithGenerateOpen = (
+  tabsState: TabsState,
+): HTMLDivElement => {
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
 
   act(() => {
     root.render(
-      <MenuBar menuState={MenuState.from(tabsState)} onCommand={() => undefined} />,
+      <MenuBar
+        menuState={MenuState.from(tabsState)}
+        onCommand={() => undefined}
+      />,
     );
   });
 
   rendered.push({
     host,
+
     unmount: () => {
       act(() => {
         root.unmount();
@@ -46,9 +54,11 @@ const renderMenuBarWithGenerateOpen = (tabsState: TabsState): HTMLDivElement => 
   });
 
   const generateButton = menuItemNamed(host, "生成");
+
   act(() => {
     generateButton.click();
   });
+
   return host;
 };
 
@@ -59,11 +69,17 @@ const renderMenuBarWithGenerateOpen = (tabsState: TabsState): HTMLDivElement => 
  * @param name メニュー項目の表示名。
  * @returns 該当するボタン。無ければ空のボタン。
  */
-const menuItemNamed = (host: HTMLDivElement, name: string): HTMLButtonElement => {
+const menuItemNamed = (
+  host: HTMLDivElement,
+  name: string,
+): HTMLButtonElement => {
   const found = Array.from(host.querySelectorAll('[role="menuitem"]')).find(
     (element) => element.textContent === name,
   );
-  return found instanceof HTMLButtonElement ? found : document.createElement("button");
+
+  return found instanceof HTMLButtonElement
+    ? found
+    : document.createElement("button");
 };
 
 test.each([
@@ -77,28 +93,25 @@ test.each([
     path: "/documents/order.dmodel",
     ariaDisabled: "true",
   },
-])(
-  "アクティブな文書が $documentType のとき生成コマンドの aria-disabled は $ariaDisabled になる",
-  ({
-    documentType,
+])("アクティブな文書が $documentType のとき生成コマンドの aria-disabled は $ariaDisabled になる", ({
+  documentType,
+  path,
+  ariaDisabled,
+}: {
+  documentType: "canvas" | "model";
+  path: string;
+  ariaDisabled: string;
+}) => {
+  const tabsState = TabsState.reducer(TabsState.create(), {
+    type: "openTab",
     path,
-    ariaDisabled,
-  }: {
-    documentType: "canvas" | "model";
-    path: string;
-    ariaDisabled: string;
-  }) => {
-    const tabsState = TabsState.reducer(TabsState.create(), {
-      type: "openTab",
-      path,
-      documentType,
-    });
-    const host = renderMenuBarWithGenerateOpen(tabsState);
+    documentType,
+  });
+  const host = renderMenuBarWithGenerateOpen(tabsState);
 
-    expect(
-      menuItemNamed(host, "キャンバスからドメインモデルを生成").getAttribute(
-        "aria-disabled",
-      ),
-    ).toBe(ariaDisabled);
-  },
-);
+  expect(
+    menuItemNamed(host, "キャンバスからドメインモデルを生成").getAttribute(
+      "aria-disabled",
+    ),
+  ).toBe(ariaDisabled);
+});

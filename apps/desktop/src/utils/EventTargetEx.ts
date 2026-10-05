@@ -17,6 +17,7 @@ export const EventTargetEx = {
         ) !== null)
     );
   },
+
   /**
    * イベントの発生元が操作可能な要素内か判定する。
    *

@@ -31,6 +31,7 @@ export const ConnectionTarget = {
       if (candidate.id === sourceId) {
         return false;
       }
+
       const dx = Math.max(
         candidate.position.x - pointer.point.x,
         0,
@@ -41,12 +42,15 @@ export const ConnectionTarget = {
         0,
         pointer.point.y - candidate.position.y - candidate.size.height,
       );
+
       return Math.hypot(dx, dy) <= margin;
     });
     const source = stickies.find((candidate) => candidate.id === sourceId);
+
     if (sticky === undefined || source === undefined) {
       return Option.none();
     }
+
     const { fromAnchor, toAnchor } = Connection.nearestAnchors({
       from: source,
       to: sticky,
@@ -57,6 +61,7 @@ export const ConnectionTarget = {
       anchor: toAnchor,
       point: Sticky.anchorPoint(sticky, toAnchor),
     };
+
     return Option.some({
       stickyId: sticky.id,
       ...nearest,

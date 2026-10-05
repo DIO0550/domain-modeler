@@ -27,6 +27,7 @@ export const DefinitionTable = {
         hasName(table, decl.name) ? table : { ...table, [decl.name]: decl },
       {},
     ),
+
   /**
    * 定義表に名前が載っているか判定する。
    * @param table 定義表。
@@ -34,6 +35,7 @@ export const DefinitionTable = {
    * @returns 載っている場合は `true`。
    */
   has: hasName,
+
   /**
    * 同名の再宣言をエラー診断として集める。
    * @param declarations 出現順の文書直下の宣言。
@@ -59,6 +61,7 @@ export const DefinitionTable = {
             ],
           };
         }
+
         return {
           names: [...acc.names, decl.name],
           errors: acc.errors,

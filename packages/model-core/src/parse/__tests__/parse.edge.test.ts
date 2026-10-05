@@ -93,7 +93,9 @@ data 注文ID = string`;
 
 test("不正な入力でも例外を投げずに結果を返す", () => {
   expect(() => Parse.parse("data ====")).not.toThrow();
+
   const result = Parse.parse("data ====");
+
   expect(result.tokens.length).toBeGreaterThan(0);
   expect(result.diagnostics.length).toBeGreaterThan(0);
 });

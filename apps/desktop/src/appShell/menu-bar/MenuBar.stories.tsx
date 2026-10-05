@@ -1,11 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn, userEvent } from "storybook/test";
 import { MenuState } from "../menu";
-import {
-  type TabDocumentType,
-  type TabsAction,
-  TabsState,
-} from "../tabs";
+import { type TabDocumentType, type TabsAction, TabsState } from "../tabs";
 import { MenuBar } from "./index";
 
 const meta: Meta<typeof MenuBar> = {
@@ -28,6 +24,7 @@ const meta: Meta<typeof MenuBar> = {
     ),
   ],
 };
+
 export default meta;
 
 type Story = StoryObj<typeof MenuBar>;
@@ -37,6 +34,7 @@ const openTabs = (
   ...rest: readonly Readonly<{ path: string; documentType: TabDocumentType }>[]
 ): TabsState => {
   const documents = [first, ...rest];
+
   return documents.reduce<TabsState>(
     (state, document) =>
       TabsState.reducer(state, {
@@ -111,6 +109,7 @@ export const AllProps: Story = {
       }),
     ),
   },
+
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("menuitem", { name: "ファイル" }));
   },
@@ -120,6 +119,7 @@ export const EdgeCases: Story = {
   args: {
     menuState: MenuState.from(TabsState.create()),
   },
+
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("menuitem", { name: "ファイル" }));
   },

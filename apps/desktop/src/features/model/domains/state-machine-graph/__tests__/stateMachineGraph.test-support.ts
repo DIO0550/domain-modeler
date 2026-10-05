@@ -5,8 +5,10 @@ import { StateMachineGraph } from "..";
 export const graphOf = (source: string): StateMachineGraph => {
   const analyzed = AnalyzedModel.create(source);
   const resolution = analyzed.stateMachines[0];
+
   if (resolution === undefined) {
     throw new Error("テスト文書に state-machine が必要です");
   }
+
   return StateMachineGraph.create(resolution, analyzed.diagnostics);
 };

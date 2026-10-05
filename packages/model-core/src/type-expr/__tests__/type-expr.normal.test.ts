@@ -15,6 +15,7 @@ test("単一参照の alias 型式を生成する", () => {
   });
   const range = SourceRange.onLine(1, 12, 18);
   const expr = TypeExpr.alias(term, range);
+
   expect(expr).toEqual({ form: "alias", term, range });
   expect(TypeExpr.isAlias(expr)).toBe(true);
 });
@@ -36,6 +37,7 @@ test("AND 連結の record 型式を生成する", () => {
   ];
   const range = SourceRange.onLine(2, 3, 11);
   const expr = TypeExpr.record(terms, range);
+
   expect(expr).toEqual({ form: "record", terms, range });
   expect(TypeExpr.isRecord(expr)).toBe(true);
 });
@@ -57,6 +59,7 @@ test("OR 連結の choice 型式を生成する", () => {
   ];
   const range = SourceRange.onLine(1, 10, 27);
   const expr = TypeExpr.choice(terms, range);
+
   expect(expr).toEqual({ form: "choice", terms, range });
   expect(TypeExpr.isChoice(expr)).toBe(true);
 });
@@ -72,6 +75,7 @@ test("制約付きの value 型式を生成する", () => {
     constraint,
     range: SourceRange.onLine(1, 14, 26),
   });
+
   expect(expr).toEqual({
     form: "value",
     primitive: "int",

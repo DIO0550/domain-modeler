@@ -23,7 +23,9 @@ const createFileInto =
         },
       };
     }
+
     files.set(target.path, target.contents);
+
     return { type: "ok" };
   };
 
@@ -33,7 +35,6 @@ const createFileInto =
  * @returns 生成元、外部操作、および呼び出しの記録。
  */
 export function setupScaffoldAction() {
-
   const openedTabs: Readonly<{ path: string; documentType: "model" }>[] = [];
   const files = new Map<string, string>([
     ["/source.dcanvas", "original canvas"],
@@ -49,14 +50,19 @@ export function setupScaffoldAction() {
   const createFile = createFileInto(files);
   const operations = {
     createFile,
+
     confirm: async (text: string): Promise<"confirmed" | "cancelled"> => {
       previews.push(text);
+
       return "confirmed";
     },
+
     selectSavePath: async () => Option.some("/generated.dmodel"),
+
     openTab: (path: string, documentType: "model") => {
       openedTabs.push({ path, documentType });
     },
   };
+
   return { source, operations, files, previews, openedTabs };
 }

@@ -13,13 +13,17 @@ export function slowFirstFlushSession(): Readonly<{
 }> {
   const pending = { resolve: (_saved: boolean) => {} };
   let flushCount = 0;
+
   return {
     finish: (saved) => pending.resolve(saved),
+
     flush: async () => {
       flushCount += 1;
+
       if (flushCount > 1) {
         return true;
       }
+
       return await new Promise<boolean>((resolve) => {
         pending.resolve = resolve;
       });

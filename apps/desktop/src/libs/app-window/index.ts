@@ -18,8 +18,10 @@ export const listenCloseRequested = (
   canClose: () => Promise<boolean>,
 ): Promise<() => void> => {
   const appWindow = getCurrentWindow();
+
   return appWindow.onCloseRequested(async (event) => {
     event.preventDefault();
+
     if (await canClose()) {
       await appWindow.destroy();
     }

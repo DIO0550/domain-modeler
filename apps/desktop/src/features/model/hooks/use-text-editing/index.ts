@@ -68,15 +68,20 @@ export function useTextEditing({
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const text = event.currentTarget.value;
+
     if (session.status === "composing") {
       selection.rememberSelection(event);
       setSession({ ...session, text });
+
       return;
     }
+
     if (session.status === "discarding-composition-input") {
       setSession({ status: "idle" });
+
       return;
     }
+
     selection.rememberSelection(event);
     onChange(text);
   };
@@ -96,9 +101,11 @@ export function useTextEditing({
     event: CompositionEvent<HTMLTextAreaElement>,
   ) => {
     selection.onCompositionEnd(event);
+
     const composedText = event.currentTarget.value;
     const externalUpdatePending =
       session.status === "composing" && value !== session.parentTextAtStart;
+
     if (externalUpdatePending) {
       setSession({ status: "discarding-composition-input" });
       queueMicrotask(() => {
@@ -106,14 +113,18 @@ export function useTextEditing({
           if (currentSession.status === "discarding-composition-input") {
             return { status: "idle" };
           }
+
           return currentSession;
         });
       });
+
       return;
     }
+
     if (composedText !== value) {
       onChange(composedText);
     }
+
     setSession({ status: "idle" });
   };
 
@@ -128,19 +139,23 @@ export function useTextEditing({
     ) {
       return;
     }
+
     const input = event.currentTarget;
     const source = {
       text: input.value,
       start: input.selectionStart,
       end: input.selectionEnd,
     };
+
     if (event.key !== "Tab" && event.key !== "Enter") {
       return;
     }
+
     const edit =
       event.key === "Tab"
         ? TextEdit.insertTab(source)
         : TextEdit.insertLineBreak(source);
+
     event.preventDefault();
     TextInput.applyEdit(input, edit);
   };
@@ -151,9 +166,11 @@ export function useTextEditing({
 
   const selectRange = (range: SourceRange) => {
     const selected = Position.selectionFromRange(displayedText, range);
+
     if (Option.isNone(selected)) {
       return;
     }
+
     selection.select(selected.value);
   };
 
@@ -162,9 +179,11 @@ export function useTextEditing({
     range: Readonly<{ start: number; end: number; line: number }>,
   ) => {
     const input = selection.inputRef.current;
+
     if (input === null) {
       return;
     }
+
     TextInput.applyEdit(input, edit);
     selection.select(range);
   };

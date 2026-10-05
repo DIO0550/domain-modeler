@@ -35,6 +35,7 @@ export function PreviewWorkflowCard({
   onRename,
 }: PreviewWorkflowCardProps) {
   const preview = WorkflowCardPreview.create(decl, undefinedTypeNames);
+
   return (
     <article
       className="preview-workflow-card"
@@ -82,10 +83,7 @@ function WorkflowSectionRow({
   onUndefinedBadgeClick,
 }: WorkflowSectionRowProps) {
   return (
-    <div
-      className="preview-workflow-card__section"
-      data-section={section.kind}
-    >
+    <div className="preview-workflow-card__section" data-section={section.kind}>
       <div className="preview-workflow-card__section-label">
         <SectionIcon kind={section.kind} />
         <span>{section.label}</span>
@@ -131,11 +129,11 @@ function WorkflowTerm({
       onUndefinedBadgeClick={onUndefinedBadgeClick}
     />
   );
+
   if (leadingSeparator === "none") {
-    return (
-      <span className="preview-workflow-card__term">{typeRefView}</span>
-    );
+    return <span className="preview-workflow-card__term">{typeRefView}</span>;
   }
+
   return (
     <span className="preview-workflow-card__term">
       <span className="preview-workflow-card__separator">
@@ -199,9 +197,11 @@ function TypeName({ typeRef, onTypeRefClick }: TypeNameProps) {
   const className = typeNameClassName(typeRef);
   const isButton =
     onTypeRefClick !== undefined && !PreviewTypeRef.isPrimitive(typeRef);
+
   if (!isButton) {
     return <span className={className}>{typeRef.term.name}</span>;
   }
+
   return (
     <button
       type="button"
@@ -231,11 +231,13 @@ function UndefinedBadge({
   if (!PreviewTypeRef.isUndefined(typeRef)) {
     return null;
   }
+
   if (onUndefinedBadgeClick === undefined) {
     return (
       <span className="preview-workflow-card__undefined-badge">未定義</span>
     );
   }
+
   return (
     <button
       type="button"
@@ -279,6 +281,7 @@ function SectionIcon({ kind }: SectionIconProps) {
       </svg>
     );
   }
+
   if (kind === "output") {
     return (
       <svg
@@ -299,6 +302,7 @@ function SectionIcon({ kind }: SectionIconProps) {
       </svg>
     );
   }
+
   return (
     <svg
       className="preview-workflow-card__section-icon"
@@ -326,6 +330,7 @@ const termSeparator = (
   if (index === 0) {
     return "none";
   }
+
   return separator;
 };
 
@@ -347,5 +352,6 @@ const typeNameClassName = (typeRef: PreviewTypeRefValue): string => {
     ...undefinedClass,
     ...primitiveClass,
   ];
+
   return classNames.join(" ");
 };

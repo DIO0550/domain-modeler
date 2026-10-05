@@ -8,7 +8,11 @@ export type CaretPosition = Readonly<{
 }>;
 
 /** テキスト入力欄の選択範囲。 */
-export type SourceSelection = Readonly<{ start: number; end: number; line: number }>;
+export type SourceSelection = Readonly<{
+  start: number;
+  end: number;
+  line: number;
+}>;
 
 /**
  * 各行の先頭オフセットを出現順に返す。
@@ -39,14 +43,17 @@ export const CaretPosition = {
     column: number,
   ): OptionType<CaretPosition> {
     const lineStart = lineStartOffsets(source)[line - 1];
+
     if (lineStart === undefined) {
       return Option.none();
     }
+
     return Option.some({
       offset: lineStart + column - 1,
       line,
     });
   },
+
   /**
    * ソース範囲の開始位置をキャレット位置にする。
    *
@@ -54,28 +61,44 @@ export const CaretPosition = {
    * @param range 1始まりのソース範囲。
    * @returns 範囲の開始位置。行が文書に無い場合は値なし。
    */
-  fromRange(
-    source: string,
-    range: SourceRange,
-  ): OptionType<CaretPosition> {
+  fromRange(source: string, range: SourceRange): OptionType<CaretPosition> {
     return CaretPosition.fromLineColumn(
       source,
       range.startLine,
       range.startColumn,
     );
   },
+
   /** DSL の範囲を textarea の選択範囲へ変換する。 */
-  selectionFromRange(source: string, range: SourceRange): OptionType<SourceSelection> {
+  selectionFromRange(
+    source: string,
+    range: SourceRange,
+  ): OptionType<SourceSelection> {
     const start = CaretPosition.fromRange(source, range);
-    const end = CaretPosition.fromLineColumn(source, range.endLine, range.endColumn);
+    const end = CaretPosition.fromLineColumn(
+      source,
+      range.endLine,
+      range.endColumn,
+    );
+
     if (Option.isNone(start) || Option.isNone(end)) {
       return Option.none();
     }
-    if (start.value.offset > end.value.offset || end.value.offset > source.length) {
+
+    if (
+      start.value.offset > end.value.offset ||
+      end.value.offset > source.length
+    ) {
       return Option.none();
     }
-    return Option.some({ start: start.value.offset, end: end.value.offset, line: start.value.line });
+
+    return Option.some({
+      start: start.value.offset,
+      end: end.value.offset,
+      line: start.value.line,
+    });
   },
+
   /**
    * 文字オフセットから行番号付きのキャレット位置を作る。
    *
@@ -88,6 +111,7 @@ export const CaretPosition = {
       (current, start, index) => (start <= offset ? index + 1 : current),
       1,
     );
+
     return { offset, line };
   },
 } as const;

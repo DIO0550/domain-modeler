@@ -6,7 +6,10 @@ import {
   type ValueOf,
 } from "@domain-modeler/model-core";
 import { Option, type Option as OptionType } from "@/utils/Option";
-import { CaretPosition, type CaretPosition as CaretPositionValue } from "../caret-position";
+import {
+  CaretPosition,
+  type CaretPosition as CaretPositionValue,
+} from "../caret-position";
 import type { TextEdit } from "../text-edit";
 
 /** 識別子の出現を1回のテキスト編集で置き換えた結果。 */
@@ -56,9 +59,11 @@ const offsetsOfRange = (
     range.endLine,
     range.endColumn,
   );
+
   if (Option.isNone(start) || Option.isNone(end)) {
     return Option.none();
   }
+
   return Option.some({ start: start.value.offset, end: end.value.offset });
 };
 
@@ -75,11 +80,14 @@ const occurrenceOffsets = (
 ): readonly OccurrenceOffset[] => {
   const offsets = ranges.flatMap((range) => {
     const occurrence = offsetsOfRange(source, range);
+
     if (Option.isNone(occurrence)) {
       return [];
     }
+
     return [occurrence.value];
   });
+
   return [...offsets].sort((left, right) => left.start - right.start);
 };
 
@@ -105,6 +113,7 @@ const replacementInSpan = (
     }),
     { text: "", cursor: spanStart },
   );
+
   return `${rewritten.text}${source.slice(rewritten.cursor, spanEnd)}`;
 };
 
@@ -123,12 +132,15 @@ export const IdentifierRename = {
     if (!Identifier.isAcceptable(params.nextName)) {
       return Result.err(IDENTIFIER_RENAME_ERRORS.invalidIdentifier);
     }
+
     const offsets = occurrenceOffsets(params.source, params.ranges);
     const first = offsets[0];
     const last = offsets[offsets.length - 1];
+
     if (first === undefined || last === undefined) {
       return Result.err(IDENTIFIER_RENAME_ERRORS.nameNotFound);
     }
+
     return Result.ok({
       edit: {
         start: first.start,
