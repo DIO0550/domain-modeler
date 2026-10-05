@@ -49,11 +49,14 @@ export function useDeclNameEdit({
     if (committed.current) {
       return;
     }
+
     committed.current = true;
     setEdit({ status: "idle" });
+
     if (onRename === undefined || nextName === name || nextName.length === 0) {
       return;
     }
+
     onRename(nextName);
   };
 
@@ -61,6 +64,7 @@ export function useDeclNameEdit({
     if (committed.current) {
       return;
     }
+
     committed.current = true;
     setEdit({ status: "idle" });
   };

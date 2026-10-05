@@ -106,24 +106,27 @@ test.each([
   { zoom: 0.1, expected: 0.1 },
   { zoom: 4.0, expected: 4.0 },
   { zoom: 10, expected: 4.0 },
-])(
-  "viewport.zoom が $zoom のとき $expected にクランプする",
-  ({ zoom, expected }: { zoom: number; expected: number }) => {
-    const document = Result.unwrap(
-      Serialize.parse(
-        JSON.stringify({
-          version: "1.0",
-          title: "",
-          viewport: { x: 0, y: 0, zoom },
-          stickies: [],
-          connections: [],
-        }),
-      ),
-    );
+])("viewport.zoom が $zoom のとき $expected にクランプする", ({
+  zoom,
+  expected,
+}: {
+  zoom: number;
+  expected: number;
+}) => {
+  const document = Result.unwrap(
+    Serialize.parse(
+      JSON.stringify({
+        version: "1.0",
+        title: "",
+        viewport: { x: 0, y: 0, zoom },
+        stickies: [],
+        connections: [],
+      }),
+    ),
+  );
 
-    expect(document.viewport.zoom).toBe(expected);
-  },
-);
+  expect(document.viewport.zoom).toBe(expected);
+});
 
 test("接続の note は読み込み時に無視して空文字にする", () => {
   const document = Result.unwrap(Serialize.parse(validDocumentJson()));

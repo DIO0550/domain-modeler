@@ -156,6 +156,7 @@ const meta: Meta<typeof PreviewDataCard> = {
     ),
   ],
 };
+
 export default meta;
 
 type Story = StoryObj<typeof PreviewDataCard>;
@@ -174,6 +175,7 @@ export const AllProps: Story = {
       </div>
     ),
   ],
+
   render: (args) => (
     <>
       <PreviewDataCard {...args} decl={choiceCard} />
@@ -192,6 +194,7 @@ export const EdgeCases: Story = {
       </div>
     ),
   ],
+
   render: (args) => (
     <>
       <PreviewDataCard

@@ -4,6 +4,7 @@ import { SourceRange } from "../../source-range";
 
 test("エラー診断を生成する", () => {
   const range = SourceRange.onLine(2, 1, 10);
+
   expect(
     Diagnostic.create(DIAGNOSTIC_SEVERITIES.error, "宣言の形が不正です", range),
   ).toEqual({
@@ -15,6 +16,7 @@ test("エラー診断を生成する", () => {
 
 test("警告診断を生成する", () => {
   const range = SourceRange.onLine(5, 3, 8);
+
   expect(
     Diagnostic.create(
       DIAGNOSTIC_SEVERITIES.warning,

@@ -53,6 +53,7 @@ export const TypeExpr = {
     term,
     range,
   }),
+
   /**
    * AND 連結(直積)の型式を生成する。
    * @param terms 連結する項(パーサ保証: 2つ以上)。
@@ -64,6 +65,7 @@ export const TypeExpr = {
     terms,
     range,
   }),
+
   /**
    * OR 連結(直和)の型式を生成する。
    * @param terms 連結する項(パーサ保証: 2つ以上)。
@@ -75,6 +77,7 @@ export const TypeExpr = {
     terms,
     range,
   }),
+
   /**
    * 制約付きプリミティブの型式を生成する。
    * @param params 生成パラメータ。
@@ -87,6 +90,7 @@ export const TypeExpr = {
     constraint: params.constraint,
     range: params.range,
   }),
+
   /**
    * alias 型式か判定する。
    * @param expr 判定する型式。
@@ -94,6 +98,7 @@ export const TypeExpr = {
    */
   isAlias: (expr: TypeExpr): expr is Extract<TypeExpr, { form: "alias" }> =>
     expr.form === "alias",
+
   /**
    * record 型式か判定する。
    * @param expr 判定する型式。
@@ -101,6 +106,7 @@ export const TypeExpr = {
    */
   isRecord: (expr: TypeExpr): expr is Extract<TypeExpr, { form: "record" }> =>
     expr.form === "record",
+
   /**
    * choice 型式か判定する。
    * @param expr 判定する型式。
@@ -108,6 +114,7 @@ export const TypeExpr = {
    */
   isChoice: (expr: TypeExpr): expr is Extract<TypeExpr, { form: "choice" }> =>
     expr.form === "choice",
+
   /**
    * value 型式か判定する。
    * @param expr 判定する型式。
@@ -115,6 +122,7 @@ export const TypeExpr = {
    */
   isValue: (expr: TypeExpr): expr is Extract<TypeExpr, { form: "value" }> =>
     expr.form === "value",
+
   /**
    * 型式に含まれる型参照項を列挙する。
    * value 型式はプリミティブ制約のみのため空列を返す。
@@ -125,9 +133,11 @@ export const TypeExpr = {
     switch (expr.form) {
       case "alias":
         return [expr.term];
+
       case "record":
       case "choice":
         return expr.terms;
+
       case "value":
         return [];
     }

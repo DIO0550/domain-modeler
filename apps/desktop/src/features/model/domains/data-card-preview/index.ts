@@ -63,6 +63,7 @@ export const DataCardPreview = {
           name: decl.name,
           term: PreviewTypeRef.create(decl.typeExpr.term, undefinedTypeNames),
         };
+
       case "record":
         return {
           kind: DATA_CARD_KINDS.RECORD,
@@ -72,6 +73,7 @@ export const DataCardPreview = {
             undefinedTypeNames,
           ),
         };
+
       case "choice":
         return {
           kind: DATA_CARD_KINDS.CHOICE,
@@ -81,6 +83,7 @@ export const DataCardPreview = {
             undefinedTypeNames,
           ),
         };
+
       case "value":
         return {
           kind: DATA_CARD_KINDS.VALUE,
@@ -100,7 +103,5 @@ export const DataCardPreview = {
  * @param bounds 制約の数値範囲。
  * @returns `int 1..100` 形式の見出し。
  */
-const valueCaption = (
-  primitive: Primitive,
-  bounds: NumberRangeValue,
-): string => `${primitive} ${NumberRange.toSource(bounds)}`;
+const valueCaption = (primitive: Primitive, bounds: NumberRangeValue): string =>
+  `${primitive} ${NumberRange.toSource(bounds)}`;

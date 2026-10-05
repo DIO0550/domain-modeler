@@ -59,9 +59,7 @@ test("list option を重ねた後置修飾を解析する", () => {
 });
 
 test("OR 連結の data 宣言を choice 型式として解析する", () => {
-  const result = Parse.parse(
-    "data 注文 = 未検証の注文 OR 検証済みの注文",
-  );
+  const result = Parse.parse("data 注文 = 未検証の注文 OR 検証済みの注文");
 
   expect(result.diagnostics).toEqual([]);
   expect(result.document.declarations[0]).toMatchObject({
@@ -120,9 +118,7 @@ test("int の数値制約を value 型式として解析する", () => {
 });
 
 test("string の length 制約を value 型式として解析する", () => {
-  const result = Parse.parse(
-    "data 顧客名 = string constrained length 1..50",
-  );
+  const result = Parse.parse("data 顧客名 = string constrained length 1..50");
 
   expect(result.diagnostics).toEqual([]);
   expect(result.document.declarations[0]).toMatchObject({

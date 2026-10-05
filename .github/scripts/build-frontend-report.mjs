@@ -22,22 +22,29 @@ const statusFor = (pct) => {
   if (pct >= 80) {
     return "🟢";
   }
+
   if (pct >= 50) {
     return "🟡";
   }
+
   return "🔴";
 };
+
 const pctStr = (pct) => `${pct.toFixed(2)}%`;
+
 // 実行環境の絶対パスをリポジトリ相対に落とす。
 // monorepo では apps/ / packages/ を残し、単一 src/ 構成では src/ 以降を残す。
 const relPath = (p) => {
   const normalized = p.replace(/\\/g, "/");
   const monorepo = normalized.match(/(?:apps|packages)\/.+$/);
+
   if (monorepo) {
     return monorepo[0];
   }
+
   return normalized.replace(/^.*?(?=src\/)/, "");
 };
+
 const fmtMs = (ms) =>
   ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`;
 
@@ -45,30 +52,41 @@ const fmtMs = (ms) =>
 const toRanges = (lineList) => {
   const lines = [...new Set(lineList)].sort((a, b) => a - b);
   const ranges = [];
+
   for (const line of lines) {
     const last = ranges[ranges.length - 1];
+
     if (last && line <= last[1] + 1) {
       last[1] = Math.max(last[1], line);
     } else {
       ranges.push([line, line]);
     }
   }
+
   return ranges.map(([s, e]) => (s === e ? `${s}` : `${s}-${e}`));
 };
 
 const out = [];
+
 out.push("## Frontend CI Report");
+
 out.push("");
+
 out.push(`Commit: \`${sha}\` — 凡例: 🟢 ≥80 / 🟡 50-79 / 🔴 <50`);
 
 // ---- カバレッジ全体 ---------------------------------------------------------
 const summary = readJson("coverage/coverage-summary.json");
+
 out.push("");
+
 out.push("### カバレッジ (vitest)");
+
 out.push("");
+
 if (summary?.total) {
   out.push("| Status | Metric | Percentage |");
   out.push("| :---: | --- | ---: |");
+
   for (const [label, key] of [
     ["Lines", "lines"],
     ["Statements", "statements"],
@@ -76,6 +94,7 @@ if (summary?.total) {
     ["Branches", "branches"],
   ]) {
     const pct = summary.total[key]?.pct ?? 0;
+
     out.push(`| ${statusFor(pct)} | ${label} | ${pctStr(pct)} |`);
   }
 } else {
@@ -84,21 +103,27 @@ if (summary?.total) {
 
 // ---- カバレッジが足りないファイル -------------------------------------------
 const final = readJson("coverage/coverage-final.json");
+
 // coverage-final.json から「ヒット 0 の statement が載っている行」を集める
 const uncoveredLines = (absPath) => {
   const entry = final?.[absPath];
+
   if (!entry) {
     return [];
   }
+
   const lines = [];
+
   for (const [id, range] of Object.entries(entry.statementMap ?? {})) {
     if (entry.s?.[id] !== 0) {
       continue;
     }
+
     for (let l = range.start.line; l <= range.end.line; l++) {
       lines.push(l);
     }
   }
+
   return toRanges(lines);
 };
 
@@ -113,12 +138,15 @@ if (summary) {
   out.push("");
   out.push(`### カバレッジが足りないファイル (Lines < ${THRESHOLD}%)`);
   out.push("");
+
   if (files.length === 0) {
     out.push(`🎉 すべてのファイルが Lines ${THRESHOLD}% 以上です。`);
   } else {
     const LIMIT = 15;
+
     out.push("| Status | File | Lines | Branches | Functions | 未カバー行 |");
     out.push("| :---: | --- | ---: | ---: | ---: | --- |");
+
     for (const { path, cov } of files.slice(0, LIMIT)) {
       const lines = cov.lines?.pct ?? 0;
       const ranges = uncoveredLines(path);
@@ -126,12 +154,14 @@ if (summary) {
         ranges.length > 8
           ? `${ranges.slice(0, 8).join(", ")}, …(他 ${ranges.length - 8} 箇所)`
           : ranges.join(", ");
+
       out.push(
         `| ${statusFor(lines)} | \`${relPath(path)}\` | ${pctStr(lines)} ` +
           `| ${pctStr(cov.branches?.pct ?? 0)} | ${pctStr(cov.functions?.pct ?? 0)} ` +
           `| ${shownRanges || "-"} |`,
       );
     }
+
     if (files.length > LIMIT) {
       out.push("");
       out.push(
@@ -143,9 +173,13 @@ if (summary) {
 
 // ---- テスト実行時間 ---------------------------------------------------------
 const report = readJson("vitest-report.json");
+
 out.push("");
+
 out.push("### テスト実行時間 (vitest 計測)");
+
 out.push("");
+
 if (report?.testResults) {
   const fileTimes = report.testResults
     .map((r) => ({
@@ -179,6 +213,7 @@ if (report?.testResults) {
     )
     .sort((a, b) => b.dur - a.dur)
     .slice(0, 10);
+
   out.push("");
   out.push("<details><summary>遅いテスト Top 10 (個別)</summary>");
   out.push("");

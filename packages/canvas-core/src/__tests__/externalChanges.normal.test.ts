@@ -161,6 +161,7 @@ test("取り込み成功時に redo スタックが破棄される", () => {
     ChangeTitleCommand.create({ previous: "初期", next: "編集後" }),
   );
   const undone = History.undo(edited);
+
   expect(undone.some).toBe(true);
 
   const applied = Result.unwrap(

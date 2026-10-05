@@ -42,9 +42,9 @@ test("パースエラーがあっても文書とトークンを返す", () => {
   const analyzed = AnalyzedModel.create("data 注文 =");
 
   expect(analyzed.diagnostics.length).toBeGreaterThan(0);
-  expect(analyzed.diagnostics.every((diagnostic) => diagnostic.severity === "error")).toBe(
-    true,
-  );
+  expect(
+    analyzed.diagnostics.every((diagnostic) => diagnostic.severity === "error"),
+  ).toBe(true);
   expect(analyzed.document.declarations.some(Declaration.isError)).toBe(true);
   expect(analyzed.tokens.length).toBeGreaterThan(0);
 });
@@ -119,8 +119,14 @@ state-machine 注文 =
   transition: 開始 -> 不明 on 確定`);
 
   expect(analyzed.definitions["注文"]?.kind).toBe("state-machine");
-  expect(analyzed.stateMachines[0]?.definitions["開始"]?.nameRange.startLine).toBe(4);
-  expect(analyzed.stateMachines[0]?.references["開始"]?.map((range) => range.startLine)).toEqual([3, 4, 5]);
+  expect(
+    analyzed.stateMachines[0]?.definitions["開始"]?.nameRange.startLine,
+  ).toBe(4);
+  expect(
+    analyzed.stateMachines[0]?.references["開始"]?.map(
+      (range) => range.startLine,
+    ),
+  ).toEqual([3, 4, 5]);
   expect(analyzed.diagnostics).toEqual([
     expect.objectContaining({
       severity: "error",

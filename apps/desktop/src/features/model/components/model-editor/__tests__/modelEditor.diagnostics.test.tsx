@@ -6,6 +6,7 @@ import {
 } from "./modelEditor.test-support";
 
 const editors = createEditorRenderer();
+
 afterEach(() => {
   editors.unmountAll();
 });
@@ -24,7 +25,9 @@ test("パースエラー行は背景と行末メッセージを表示する", ()
 test("未定義参照は点線下線になりエラー行にはしない", () => {
   const { host } = editors.setup("data 注文 = 未定義型");
 
-  expect(host.querySelector(".model-editor__diagnostics-line--error")).toBeNull();
+  expect(
+    host.querySelector(".model-editor__diagnostics-line--error"),
+  ).toBeNull();
   expect(
     host.querySelector(".model-editor__diagnostics-warning")?.textContent,
   ).toBe("未定義型");
@@ -32,6 +35,7 @@ test("未定義参照は点線下線になりエラー行にはしない", () =>
 
 test("パースエラーがあっても入力内容を親へ反映する", () => {
   const editor = editors.setup("data 注文ID = string");
+
   act(() => {
     setNativeTextareaValue(editor.input, "data 注文 =\n");
     editor.input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -43,10 +47,12 @@ test("パースエラーがあっても入力内容を親へ反映する", () =>
 
 test("縦スクロールに診断レイヤが追従する", () => {
   const { host, input } = editors.setup("data A = string\n".repeat(100));
+
   act(() => {
     input.scrollTop = 240;
     input.dispatchEvent(new Event("scroll", { bubbles: true }));
   });
+
   expect(host.querySelector(".model-editor__diagnostics")?.scrollTop).toBe(240);
 });
 

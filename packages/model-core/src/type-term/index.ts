@@ -30,6 +30,7 @@ export const TypeTerm = {
     modifiers: params.modifiers,
     range: params.range,
   }),
+
   /**
    * 型名識別子だけのソース範囲を返す(後置修飾を含まない)。
    * @param term 型参照項。
@@ -41,6 +42,7 @@ export const TypeTerm = {
       term.range.startColumn,
       term.range.startColumn + term.name.length,
     ),
+
   /**
    * 参照解決の対象になる型参照項か判定する。
    * プリミティブ型は対象外(model-core.md §7)。

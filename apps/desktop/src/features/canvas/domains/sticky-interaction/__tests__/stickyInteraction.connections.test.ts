@@ -68,6 +68,7 @@ for (const scenario of [
 ]) {
   test(`付箋${scenario.id}を${JSON.stringify(scenario.position)}へ動かすと両端が近い辺に切り替わる`, () => {
     const moved = Document.moveSticky(document, scenario.id, scenario.position);
+
     expect(moved.connections[0]).toEqual({
       ...connection,
       fromAnchor: scenario.fromAnchor,
@@ -84,19 +85,26 @@ test("ドラッグ中の接続変更を確定し、undo/redoと保存読込で�
     { x: 80, y: 50 },
   );
   const moved = StickyInteraction.movePointer(dragging, { x: 380, y: 350 });
+
   expect(moved.workingDocument.connections[0]).toMatchObject({
     fromAnchor: "top",
     toAnchor: "bottom",
   });
   expect(StickyInteraction.hasUndo(moved)).toBe(false);
+
   const committed = StickyInteraction.commitManipulation(moved);
   const undone = StickyInteraction.undo(committed);
+
   expect(undone.workingDocument).toEqual(document);
+
   const redone = StickyInteraction.redo(undone);
+
   expect(redone.workingDocument).toEqual(committed.workingDocument);
+
   const restored = Result.unwrap(
     Serialize.parse(Serialize.stringify(redone.workingDocument)),
   );
+
   expect(restored.stickies).toEqual(redone.workingDocument.stickies);
   expect(restored.connections[0]).toMatchObject({
     fromAnchor: "top",
@@ -111,6 +119,7 @@ test("ドラッグの取消で位置と接続先の辺を一緒に戻す", () =>
     { x: 80, y: 50 },
   );
   const moved = StickyInteraction.movePointer(dragging, { x: 380, y: 350 });
+
   expect(StickyInteraction.cancelManipulation(moved).workingDocument).toEqual(
     document,
   );
@@ -148,6 +157,7 @@ test("関連する複数の接続を付け直し、関係ない接続と欠損�
     from.id,
     { x: 600, y: 300 },
   );
+
   expect(moved.connections[1]).toMatchObject({
     fromAnchor: "bottom",
     toAnchor: "top",
@@ -164,6 +174,7 @@ test("サイズ変更後の辺中央に対しても最短の両端を選び直�
   const resized = Result.unwrap(
     Document.resizeSticky(before, from.id, { width: 560, height: 100 }),
   );
+
   expect(resized.connections[0]).toMatchObject({
     fromAnchor: "bottom",
     toAnchor: "top",

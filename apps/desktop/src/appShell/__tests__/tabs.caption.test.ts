@@ -11,6 +11,7 @@ const openTabs = (
   ...rest: readonly TabDocument[]
 ): Extract<TabsState, { status: "active" }> => {
   const documents = [first, ...rest];
+
   return documents.reduce<TabsState>(
     (current, document) =>
       TabsState.reducer(current, {

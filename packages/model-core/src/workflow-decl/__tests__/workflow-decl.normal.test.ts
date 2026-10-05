@@ -1,11 +1,7 @@
 import { expect, test } from "vitest";
 import { SourceRange } from "../../source-range";
 import { TypeTerm } from "../../type-term";
-import {
-  WorkflowDecl,
-  WorkflowErrorClause,
-  WorkflowSection,
-} from "..";
+import { WorkflowDecl, WorkflowErrorClause, WorkflowSection } from "..";
 
 test("error 節なしの workflow 宣言を生成する", () => {
   const input = WorkflowSection.create(
@@ -38,6 +34,7 @@ test("error 節なしの workflow 宣言を生成する", () => {
     error: WorkflowErrorClause.absent(),
     range: SourceRange.onLine(1, 1, 19),
   });
+
   expect(decl.kind).toBe("workflow");
   expect(WorkflowDecl.hasError(decl)).toBe(false);
   expect(decl.error).toEqual({ present: false });
@@ -63,6 +60,7 @@ test("error 節ありの workflow 宣言を生成する", () => {
     ),
     range: SourceRange.onLine(1, 1, 15),
   });
+
   expect(WorkflowDecl.hasError(decl)).toBe(true);
   expect(decl.error).toEqual({
     present: true,
@@ -93,14 +91,8 @@ test("workflow 宣言の各節から型参照項を出現順に列挙する", ()
   const decl = WorkflowDecl.create({
     name: "注文を確定する",
     nameRange: SourceRange.onLine(1, 10, 17),
-    input: WorkflowSection.create(
-      [inputTerm],
-      SourceRange.onLine(2, 3, 16),
-    ),
-    output: WorkflowSection.create(
-      [outputTerm],
-      SourceRange.onLine(3, 3, 19),
-    ),
+    input: WorkflowSection.create([inputTerm], SourceRange.onLine(2, 3, 16)),
+    output: WorkflowSection.create([outputTerm], SourceRange.onLine(3, 3, 19)),
     error: WorkflowErrorClause.present(
       [errorTerm],
       SourceRange.onLine(4, 3, 15),

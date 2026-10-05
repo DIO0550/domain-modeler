@@ -49,9 +49,11 @@ export const ConnectionAppearance = {
     const segment = ConnectionSegment.create(stickyIndex, connection);
     const from = StickyIndexValue.get(stickyIndex, connection.from);
     const to = StickyIndexValue.get(stickyIndex, connection.to);
+
     if (!segment.some || !from.some || !to.some) {
       return OptionValue.none();
     }
+
     const route = ConnectionSegment.toRoute(segment.value);
     const status = ConnectionStatus.between(from.value.type, to.value.type);
     const recommendedTargets = ConnectionStatus.recommendedTargets(
@@ -59,6 +61,7 @@ export const ConnectionAppearance = {
     )
       .map((type) => StickyAppearance.of(type).caption)
       .join(" / ");
+
     return OptionValue.some({
       route,
       endpoints: { from: segment.value.from, to: segment.value.to },

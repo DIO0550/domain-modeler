@@ -39,11 +39,14 @@ const renderHook = (
     current: undefined,
   };
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
 
   const Probe = () => {
     latest.current = useStickyInteractions(initialDocument);
+
     return null;
   };
 
@@ -53,6 +56,7 @@ const renderHook = (
 
   rendered.push({
     latest,
+
     unmount: () => {
       act(() => {
         root.unmount();
@@ -60,6 +64,7 @@ const renderHook = (
       host.remove();
     },
   });
+
   return latest;
 };
 
@@ -129,6 +134,7 @@ test("連続するポインタ移動を確定すると undo 1回でドラッグ�
   act(() => {
     latest.current?.commitManipulation();
   });
+
   expect(latest.current?.stickies[0]?.position).toEqual({ x: 60, y: 80 });
 
   act(() => {

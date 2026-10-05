@@ -131,6 +131,7 @@ export const StateMachineDecl = {
     transitions: params.transitions,
     range: params.range,
   }),
+
   /**
    * 初期状態を持つか判定する。
    * @param decl state-machine 宣言。
@@ -138,6 +139,7 @@ export const StateMachineDecl = {
    */
   hasInitialState: (decl: StateMachineDecl): boolean =>
     decl.states.some((state) => state.initial),
+
   /**
    * 終端状態を持つか判定する。
    * @param decl state-machine 宣言。

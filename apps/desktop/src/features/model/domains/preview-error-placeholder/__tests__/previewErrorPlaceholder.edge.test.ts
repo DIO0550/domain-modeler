@@ -10,11 +10,7 @@ import { PreviewErrorPlaceholder } from "..";
 test("宣言範囲に重ならない診断はプレースホルダに載せない", () => {
   const decl = ErrorDecl.create(SourceRange.onLine(1, 1, 8));
   const placeholder = PreviewErrorPlaceholder.create(decl, [
-    Diagnostic.create(
-      "error",
-      "別の行のエラー",
-      SourceRange.onLine(3, 1, 4),
-    ),
+    Diagnostic.create("error", "別の行のエラー", SourceRange.onLine(3, 1, 4)),
   ]);
 
   expect(placeholder).toEqual({
@@ -29,8 +25,16 @@ test("同じ壊れた宣言の複数エラーは出現順のメッセージを�
     SourceRange.onLine(2, 1, 4),
   );
   const placeholder = PreviewErrorPlaceholder.create(ErrorDecl.create(range), [
-    Diagnostic.create("error", "宣言の形が不正です", SourceRange.onLine(1, 1, 5)),
-    Diagnostic.create("warning", "参照が未定義です", SourceRange.onLine(1, 6, 8)),
+    Diagnostic.create(
+      "error",
+      "宣言の形が不正です",
+      SourceRange.onLine(1, 1, 5),
+    ),
+    Diagnostic.create(
+      "warning",
+      "参照が未定義です",
+      SourceRange.onLine(1, 6, 8),
+    ),
     Diagnostic.create("error", "識別子が必要です", SourceRange.onLine(2, 1, 4)),
   ]);
 

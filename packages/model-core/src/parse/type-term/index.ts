@@ -30,6 +30,7 @@ const collectModifiers = (
   modifiers: readonly Modifier[],
 ): WithCursor<ModifiersParse> => {
   const modifierToken = ChunkCursor.peek(cursor);
+
   if (
     modifierToken === undefined ||
     modifierToken.kind !== TOKEN_KINDS.reserved ||
@@ -37,12 +38,13 @@ const collectModifiers = (
   ) {
     return { cursor, value: { modifiers, endRange } };
   }
+
   const advanced = ChunkCursor.advance(cursor);
-  return collectModifiers(
-    advanced.cursor,
-    modifierToken.range,
-    [...modifiers, modifierToken.text],
-  );
+
+  return collectModifiers(advanced.cursor, modifierToken.range, [
+    ...modifiers,
+    modifierToken.text,
+  ]);
 };
 
 /** 型参照項を解析する関数群。 */
@@ -58,9 +60,11 @@ export const TypeTermParse = {
     chunk: DeclChunk,
   ): Result<WithCursor<TypeTerm>, Diagnostic> => {
     const token = ChunkCursor.peek(cursor);
+
     if (token === undefined) {
       return Result.err(ExpectToken.errorAt("型参照が必要です", chunk.range));
     }
+
     if (token.kind !== TOKEN_KINDS.identifier) {
       return Result.err(
         ExpectToken.errorAt(
@@ -69,8 +73,10 @@ export const TypeTermParse = {
         ),
       );
     }
+
     const afterName = ChunkCursor.advance(cursor);
     const collected = collectModifiers(afterName.cursor, token.range, []);
+
     return Result.ok({
       cursor: collected.cursor,
       value: TypeTerm.create({

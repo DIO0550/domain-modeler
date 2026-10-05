@@ -20,14 +20,18 @@ test("リネーム通知があるときは名前ボタンから新しい名前�
   const host = names.render("注文ID", (nextName) => {
     renamed.push(nextName);
   });
-  const button = host.querySelector('button[aria-label="「注文ID」をリネーム"]');
+  const button = host.querySelector(
+    'button[aria-label="「注文ID」をリネーム"]',
+  );
 
   act(() => {
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+
   const input = host.querySelector('input[aria-label="新しい名前"]');
   const nameInput =
     input instanceof HTMLInputElement ? input : document.createElement("input");
+
   act(() => {
     nameInput.value = "商品ID";
     nameInput.dispatchEvent(new Event("input", { bubbles: true }));

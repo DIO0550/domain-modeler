@@ -27,6 +27,7 @@ test("errorAt は error 深刻度の診断を生成する", () => {
 test("fallbackRange はカーソル位置のトークン範囲を返す", () => {
   const token = Token.create(TOKEN_KINDS.identifier, "注文", 1, 3);
   const cursor = ChunkCursor.create([token]);
+
   expect(ExpectToken.fallbackRange(cursor, chunkOf([token]))).toEqual(
     token.range,
   );
@@ -35,6 +36,7 @@ test("fallbackRange はカーソル位置のトークン範囲を返す", () => 
 test("fallbackRange は意味トークンが無いときチャンク範囲を返す", () => {
   const chunk = chunkOf([]);
   const cursor = ChunkCursor.create([]);
+
   expect(ExpectToken.fallbackRange(cursor, chunk)).toEqual(chunk.range);
 });
 
@@ -47,6 +49,7 @@ test("reserved は一致する予約語を消費して成功を返す", () => {
     chunkOf([token]),
     "data が必要です",
   );
+
   expect(result).toMatchObject({
     ok: true,
     value: { value: token },
@@ -71,6 +74,7 @@ test("reserved 成功後のカーソルは末尾になる", () => {
     chunkOf([token]),
     "data が必要です",
   );
+
   expect(result).toMatchObject({
     ok: true,
     value: {
@@ -82,6 +86,7 @@ test("reserved 成功後のカーソルは末尾になる", () => {
 test("reserved は不一致のとき診断を返す", () => {
   const token = Token.create(TOKEN_KINDS.identifier, "注文", 1, 1);
   const cursor = ChunkCursor.create([token]);
+
   expect(
     ExpectToken.reserved(cursor, "data", chunkOf([token]), "data が必要です"),
   ).toEqual({
@@ -97,6 +102,7 @@ test("reserved は不一致のとき診断を返す", () => {
 test("equals は = トークンを消費して成功を返す", () => {
   const token = Token.create(TOKEN_KINDS.equals, "=", 1, 5);
   const cursor = ChunkCursor.create([token]);
+
   expect(ExpectToken.equals(cursor, chunkOf([token]))).toMatchObject({
     ok: true,
     value: { value: token },
@@ -106,6 +112,7 @@ test("equals は = トークンを消費して成功を返す", () => {
 test("equals は = 以外のとき診断を返す", () => {
   const token = Token.create(TOKEN_KINDS.identifier, "string", 1, 5);
   const cursor = ChunkCursor.create([token]);
+
   expect(ExpectToken.equals(cursor, chunkOf([token]))).toEqual({
     ok: false,
     error: expect.objectContaining({ message: "= が必要です" }),
@@ -115,6 +122,7 @@ test("equals は = 以外のとき診断を返す", () => {
 test("declarationName は data 名の識別子を消費して成功を返す", () => {
   const token = Token.create(TOKEN_KINDS.identifier, "注文ID", 1, 6);
   const cursor = ChunkCursor.create([token]);
+
   expect(
     ExpectToken.declarationName(cursor, chunkOf([token]), "data"),
   ).toMatchObject({
@@ -126,12 +134,13 @@ test("declarationName は data 名の識別子を消費して成功を返す", (
 test("declarationName は data 名が予約語のとき診断を返す", () => {
   const token = Token.create(TOKEN_KINDS.reserved, "AND", 1, 6);
   const cursor = ChunkCursor.create([token]);
-  expect(
-    ExpectToken.declarationName(cursor, chunkOf([token]), "data"),
-  ).toEqual({
-    ok: false,
-    error: expect.objectContaining({
-      message: "データ名の識別子が必要です",
-    }),
-  });
+
+  expect(ExpectToken.declarationName(cursor, chunkOf([token]), "data")).toEqual(
+    {
+      ok: false,
+      error: expect.objectContaining({
+        message: "データ名の識別子が必要です",
+      }),
+    },
+  );
 });

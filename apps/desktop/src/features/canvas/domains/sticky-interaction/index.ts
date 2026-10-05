@@ -83,12 +83,14 @@ export const StickySession = {
     if (session.status === "idle") {
       return { status: "plain" };
     }
+
     if (
       (session.status === "dragging" || session.status === "resizing") &&
       session.originalSticky.id !== stickyId
     ) {
       return { status: "plain" };
     }
+
     if (
       session.status !== "dragging" &&
       session.status !== "resizing" &&
@@ -96,12 +98,15 @@ export const StickySession = {
     ) {
       return { status: "plain" };
     }
+
     if (session.status === "selected") {
       return { status: "selected" };
     }
+
     if (session.status === "editing") {
       return { status: "editing", draftText: session.draftText };
     }
+
     return { status: session.status };
   },
 } as const;
@@ -151,6 +156,7 @@ export const StickyInteraction = {
     if (interaction.session.status !== "selected") {
       return interaction;
     }
+
     return {
       ...interaction,
       clipboard: Document.stickyById(
@@ -169,6 +175,7 @@ export const StickyInteraction = {
     ) {
       return interaction;
     }
+
     const source = interaction.clipboard.value;
     const added = Document.addSticky(
       interaction.workingDocument,
@@ -177,13 +184,17 @@ export const StickyInteraction = {
       { x: source.position.x + 24, y: source.position.y + 24 },
       source.size,
     );
+
     if (!added.ok) {
       return interaction;
     }
+
     const pasted = added.value.stickies[added.value.stickies.length - 1];
+
     if (pasted === undefined) {
       return interaction;
     }
+
     return {
       ...StickyInteraction.withDocument(interaction, added.value),
       clipboard: Option.some(pasted),
@@ -196,10 +207,12 @@ export const StickyInteraction = {
     if (interaction.session.status !== "selected") {
       return interaction;
     }
+
     const document = Document.removeSticky(
       interaction.workingDocument,
       interaction.session.stickyId,
     );
+
     return {
       ...StickyInteraction.withDocument(interaction, document),
       session: { status: "idle" },
@@ -216,6 +229,7 @@ export const StickyInteraction = {
     ) {
       return interaction;
     }
+
     return StickyInteraction.withDocument(
       interaction,
       Document.bringStickyToFront(
@@ -233,6 +247,7 @@ export const StickyInteraction = {
     if (document === interaction.workingDocument) {
       return interaction;
     }
+
     const history = History.execute(
       interaction.history,
       ReplaceDocumentCommand.create({
@@ -240,6 +255,7 @@ export const StickyInteraction = {
         next: document,
       }),
     );
+
     return { ...interaction, history, workingDocument: history.current };
   },
 
@@ -294,16 +310,19 @@ export const StickyInteraction = {
   ): StickyInteraction {
     const committed = commitSession(interaction);
     const hit = Document.stickyAt(committed.workingDocument, point);
+
     if (hit.some) {
       return {
         ...committed,
         session: { status: "selected", stickyId: hit.value.id },
       };
     }
+
     const position =
       placementAnchor === "center"
         ? StickyAppearance.positionAtCenter(committed.selectedType, point)
         : point;
+
     return createEditingSticky(committed, position);
   },
 
@@ -320,9 +339,11 @@ export const StickyInteraction = {
   ): StickyInteraction {
     const committed = commitSession(interaction);
     const sticky = Document.stickyById(committed.workingDocument, stickyId);
+
     if (!sticky.some) {
       return committed;
     }
+
     return {
       ...committed,
       session: { status: "selected", stickyId },
@@ -343,9 +364,11 @@ export const StickyInteraction = {
   ): StickyInteraction {
     const committed = commitSession(interaction);
     const hit = Document.stickyAt(committed.workingDocument, point);
+
     if (!hit.some) {
       return committed;
     }
+
     return startEditing(committed, hit.value);
   },
 
@@ -363,6 +386,7 @@ export const StickyInteraction = {
     if (interaction.session.status !== "editing") {
       return interaction;
     }
+
     return {
       ...interaction,
       workingDocument: Document.updateStickyText(
@@ -389,9 +413,11 @@ export const StickyInteraction = {
   ): StickyInteraction {
     const committed = commitSession(interaction);
     const sticky = Document.stickyById(committed.workingDocument, stickyId);
+
     if (!sticky.some) {
       return committed;
     }
+
     return {
       ...committed,
       workingDocument: Document.bringStickyToFront(
@@ -422,13 +448,16 @@ export const StickyInteraction = {
     if (interaction.session.status !== "selected") {
       return interaction;
     }
+
     const sticky = Document.stickyById(
       interaction.workingDocument,
       interaction.session.stickyId,
     );
+
     if (!sticky.some) {
       return { ...interaction, session: { status: "idle" } };
     }
+
     return {
       ...interaction,
       session: {
@@ -451,6 +480,7 @@ export const StickyInteraction = {
   movePointer(interaction: StickyInteraction, point: Point): StickyInteraction {
     if (interaction.session.status === "dragging") {
       const position = draggedPosition(interaction.session, point);
+
       return {
         ...interaction,
         workingDocument: Document.moveSticky(
@@ -460,9 +490,11 @@ export const StickyInteraction = {
         ),
       };
     }
+
     if (interaction.session.status !== "resizing") {
       return interaction;
     }
+
     const rectangle = resizedRectangle(interaction.session, point);
     const moved = Document.moveSticky(
       interaction.workingDocument,
@@ -474,6 +506,7 @@ export const StickyInteraction = {
       interaction.session.originalSticky.id,
       rectangle.size,
     );
+
     return resized.ok
       ? { ...interaction, workingDocument: resized.value }
       : interaction;
@@ -492,6 +525,7 @@ export const StickyInteraction = {
     ) {
       return interaction;
     }
+
     const selected: StickyInteraction = {
       ...interaction,
       session: {
@@ -499,12 +533,14 @@ export const StickyInteraction = {
         stickyId: interaction.session.originalSticky.id,
       },
     };
+
     if (!hasManipulationChange(interaction)) {
       return {
         ...selected,
         workingDocument: interaction.history.current,
       };
     }
+
     const history = History.execute(
       interaction.history,
       ReplaceDocumentCommand.create({
@@ -512,6 +548,7 @@ export const StickyInteraction = {
         next: interaction.workingDocument,
       }),
     );
+
     return { ...selected, history, workingDocument: history.current };
   },
 
@@ -528,6 +565,7 @@ export const StickyInteraction = {
     ) {
       return interaction;
     }
+
     return {
       ...interaction,
       workingDocument: interaction.history.current,
@@ -548,6 +586,7 @@ export const StickyInteraction = {
     if (interaction.session.status !== "editing") {
       return interaction;
     }
+
     const selected: StickyInteraction = {
       ...interaction,
       session: {
@@ -555,12 +594,14 @@ export const StickyInteraction = {
         stickyId: interaction.session.stickyId,
       },
     };
+
     if (interaction.session.draftText === interaction.session.originalText) {
       return {
         ...selected,
         workingDocument: interaction.history.current,
       };
     }
+
     const history = History.execute(
       interaction.history,
       ReplaceDocumentCommand.create({
@@ -568,6 +609,7 @@ export const StickyInteraction = {
         next: interaction.workingDocument,
       }),
     );
+
     return {
       ...selected,
       history,
@@ -585,13 +627,16 @@ export const StickyInteraction = {
     if (interaction.session.status !== "selected") {
       return interaction;
     }
+
     const sticky = Document.stickyById(
       interaction.workingDocument,
       interaction.session.stickyId,
     );
+
     if (!sticky.some) {
       return { ...interaction, session: { status: "idle" } };
     }
+
     return startEditing(interaction, sticky.value);
   },
 
@@ -605,15 +650,18 @@ export const StickyInteraction = {
     if (interaction.session.status === "editing") {
       return StickyInteraction.commitEdit(interaction);
     }
+
     if (
       interaction.session.status === "dragging" ||
       interaction.session.status === "resizing"
     ) {
       return StickyInteraction.commitManipulation(interaction);
     }
+
     if (interaction.session.status === "selected") {
       return { ...interaction, session: { status: "idle" } };
     }
+
     return interaction;
   },
 
@@ -625,6 +673,7 @@ export const StickyInteraction = {
    */
   deselect(interaction: StickyInteraction): StickyInteraction {
     const committed = commitSession(interaction);
+
     return { ...committed, session: { status: "idle" } };
   },
 
@@ -637,9 +686,11 @@ export const StickyInteraction = {
   undo(interaction: StickyInteraction): StickyInteraction {
     const committed = commitSession(interaction);
     const undone = History.undo(committed.history);
+
     if (!undone.some) {
       return committed;
     }
+
     return withHistory(committed, undone.value);
   },
 
@@ -652,9 +703,11 @@ export const StickyInteraction = {
   redo(interaction: StickyInteraction): StickyInteraction {
     const committed = commitSession(interaction);
     const redone = History.redo(committed.history);
+
     if (!redone.some) {
       return committed;
     }
+
     return withHistory(committed, redone.value);
   },
 
@@ -698,13 +751,17 @@ const createEditingSticky = (
     point,
     appearance.defaultSize,
   );
+
   if (!added.ok) {
     return interaction;
   }
+
   const sticky = added.value.stickies[added.value.stickies.length - 1];
+
   if (sticky === undefined) {
     return interaction;
   }
+
   const history = History.execute(
     interaction.history,
     ReplaceDocumentCommand.create({
@@ -712,6 +769,7 @@ const createEditingSticky = (
       next: added.value,
     }),
   );
+
   return {
     ...interaction,
     history,
@@ -790,6 +848,7 @@ const resizedRectangle = (
     session.originalSticky.size.height +
       (movesNorth ? -verticalDelta : verticalDelta),
   );
+
   return {
     position: {
       x: movesWest
@@ -820,25 +879,31 @@ const hasManipulationChange = (interaction: StickyInteraction): boolean => {
   ) {
     return false;
   }
+
   const original = interaction.session.originalSticky;
   const current = Document.stickyById(interaction.workingDocument, original.id);
+
   if (!current.some) {
     return false;
   }
+
   const positionChanged =
     current.value.position.x !== original.position.x ||
     current.value.position.y !== original.position.y;
   const sizeChanged =
     current.value.size.width !== original.size.width ||
     current.value.size.height !== original.size.height;
+
   if (interaction.session.status === "resizing") {
     return positionChanged || sizeChanged;
   }
+
   const originalFront =
     interaction.history.current.stickies[
       interaction.history.current.stickies.length - 1
     ];
   const movedToFront = originalFront?.id !== original.id;
+
   return positionChanged || movedToFront;
 };
 
@@ -852,6 +917,7 @@ const commitSession = (interaction: StickyInteraction): StickyInteraction => {
   if (interaction.session.status === "editing") {
     return StickyInteraction.commitEdit(interaction);
   }
+
   return StickyInteraction.commitManipulation(interaction);
 };
 
@@ -870,6 +936,7 @@ const withHistory = (
     ...history.current,
     viewport: interaction.workingDocument.viewport,
   };
+
   return {
     ...interaction,
     history: { ...history, current },
@@ -892,16 +959,20 @@ const sessionIfStickyExists = (
   if (session.status === "idle") {
     return session;
   }
+
   const stickyId =
     session.status === "dragging" || session.status === "resizing"
       ? session.originalSticky.id
       : session.stickyId;
   const sticky = Document.stickyById(document, stickyId);
+
   if (!sticky.some) {
     return { status: "idle" };
   }
+
   if (session.status !== "selected") {
     return { status: "selected", stickyId };
   }
+
   return session;
 };

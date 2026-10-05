@@ -54,6 +54,7 @@ pub fn write_utf8_file(path: &str, contents: &str) -> FileWriteResult {
 
     if let Err(err) = write_temp_then_rename(temp_file, &temp_path, target, contents) {
         let _ = fs::remove_file(&temp_path);
+
         return write_failed(path, &err.to_string());
     }
 
@@ -65,6 +66,7 @@ pub fn write_utf8_file(path: &str, contents: &str) -> FileWriteResult {
 pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
     let target_path = crate::ipc_path::decode(path);
     let target = target_path.as_path();
+
     if !target
         .extension()
         .and_then(|extension| extension.to_str())
@@ -72,6 +74,7 @@ pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {
     {
         return write_failed(path, "保存先には新規 .dmodel ファイルを指定してください");
     }
+
     create_utf8_file(path, contents)
 }
 
@@ -86,26 +89,35 @@ pub fn create_utf8_file(path: &str, contents: &str) -> FileWriteResult {
     let prepared = temp_file
         .write_all(contents.as_bytes())
         .and_then(|()| temp_file.sync_all());
+
     if let Err(error) = prepared {
         drop(temp_file);
+
         let _ = fs::remove_file(&temp_path);
+
         return write_failed(path, &error.to_string());
     }
+
     // 公開が終わるまで inode のハンドルを保持し、一時パスだけを根拠にしない。
     // no-replace rename は hard link 非対応のボリュームでも既存先を置換しない。
     match publish_new_file(&temp_file, &temp_path, &target) {
         Ok(PublishMethod::Linked) => {
             drop(temp_file);
+
             let _ = fs::remove_file(&temp_path);
+
             FileWriteResult::Ok
         }
         Ok(PublishMethod::Renamed) => {
             drop(temp_file);
+
             FileWriteResult::Ok
         }
         Err(error) => {
             drop(temp_file);
+
             let _ = fs::remove_file(&temp_path);
+
             write_failed(path, &error.to_string())
         }
     }
@@ -127,18 +139,21 @@ fn publish_new_file(
             "temporary file path no longer names the prepared file",
         ));
     }
+
     let method = publish_open_file(
         temp_file,
         link_open_file(temp_file, temp_path, target),
         temp_path,
         target,
     )?;
+
     if !open_file_matches_path(temp_file, target) {
         return Err(io::Error::new(
             io::ErrorKind::Other,
             "published file is not the prepared temporary file",
         ));
     }
+
     Ok(method)
 }
 
@@ -157,11 +172,7 @@ fn publish_open_file(
 }
 
 #[cfg(windows)]
-fn rename_open_file_no_replace(
-    file: &File,
-    _source: &Path,
-    target: &Path,
-) -> io::Result<()> {
+fn rename_open_file_no_replace(file: &File, _source: &Path, target: &Path) -> io::Result<()> {
     use std::ffi::c_void;
     use std::os::windows::ffi::OsStrExt;
     use std::os::windows::io::AsRawHandle;
@@ -185,9 +196,10 @@ fn rename_open_file_no_replace(
     }
 
     const FILE_RENAME_INFO: u32 = 3;
-    let file_name = target.file_name().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidInput, "target has no file name")
-    })?;
+
+    let file_name = target
+        .file_name()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "target has no file name"))?;
     let parent = target
         .parent()
         .filter(|path| !path.as_os_str().is_empty())
@@ -201,6 +213,7 @@ fn rename_open_file_no_replace(
     let word_count = buffer_size.div_ceil(std::mem::size_of::<usize>());
     let mut buffer = vec![0usize; word_count];
     let information = buffer.as_mut_ptr().cast::<FileRenameInfo>();
+
     unsafe {
         (*information).replace_if_exists = 0;
         (*information).root_directory = std::ptr::null_mut();
@@ -211,6 +224,7 @@ fn rename_open_file_no_replace(
             name.len(),
         );
     }
+
     let result = unsafe {
         SetFileInformationByHandle(
             file.as_raw_handle().cast(),
@@ -219,17 +233,14 @@ fn rename_open_file_no_replace(
             buffer_size as u32,
         )
     };
+
     (result != 0)
         .then_some(())
         .ok_or_else(io::Error::last_os_error)
 }
 
 #[cfg(not(windows))]
-fn rename_open_file_no_replace(
-    _file: &File,
-    source: &Path,
-    target: &Path,
-) -> io::Result<()> {
+fn rename_open_file_no_replace(_file: &File, source: &Path, target: &Path) -> io::Result<()> {
     rename_no_replace(source, target)
 }
 
@@ -241,7 +252,9 @@ fn link_open_file(file: &File, _temp_path: &Path, target: &Path) -> io::Result<(
     use std::os::unix::ffi::OsStrExt;
 
     const AT_FDCWD: c_int = -100;
+
     const AT_SYMLINK_FOLLOW: c_int = 0x400;
+
     extern "C" {
         fn linkat(
             olddirfd: c_int,
@@ -251,6 +264,7 @@ fn link_open_file(file: &File, _temp_path: &Path, target: &Path) -> io::Result<(
             flags: c_int,
         ) -> c_int;
     }
+
     #[cfg(any(target_os = "linux", target_os = "android"))]
     let source = format!("/proc/self/fd/{}", file.as_raw_fd());
     #[cfg(not(any(target_os = "linux", target_os = "android")))]
@@ -268,17 +282,14 @@ fn link_open_file(file: &File, _temp_path: &Path, target: &Path) -> io::Result<(
             AT_SYMLINK_FOLLOW,
         )
     };
+
     (result == 0)
         .then_some(())
         .ok_or_else(io::Error::last_os_error)
 }
 
 #[cfg(not(unix))]
-fn link_open_file(
-    _file: &File,
-    temp_path: &Path,
-    target: &Path,
-) -> io::Result<()> {
+fn link_open_file(_file: &File, temp_path: &Path, target: &Path) -> io::Result<()> {
     // Windowsではcreate_temp_fileの共有モードで一時パスの削除・renameを禁止する。
     fs::hard_link(temp_path, target)
 }
@@ -290,6 +301,7 @@ fn open_file_matches_path(file: &File, path: &Path) -> bool {
     let (Ok(opened), Ok(named)) = (file.metadata(), fs::metadata(path)) else {
         return false;
     };
+
     opened.dev() == named.dev() && opened.ino() == named.ino()
 }
 
@@ -301,6 +313,7 @@ fn open_file_matches_path(file: &File, path: &Path) -> bool {
     let Ok(named) = File::options().access_mode(0).open(path) else {
         return false;
     };
+
     crate::file_identity::same_open_file(file, &named).unwrap_or(false)
 }
 
@@ -316,7 +329,9 @@ fn rename_no_replace(source: &Path, target: &Path) -> io::Result<()> {
     use std::os::unix::ffi::OsStrExt;
 
     const AT_FDCWD: c_int = -100;
+
     const RENAME_NOREPLACE: u32 = 1;
+
     extern "C" {
         fn renameat2(
             olddirfd: c_int,
@@ -326,6 +341,7 @@ fn rename_no_replace(source: &Path, target: &Path) -> io::Result<()> {
             flags: u32,
         ) -> c_int;
     }
+
     let source = CString::new(source.as_os_str().as_bytes())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "source path contains NUL"))?;
     let target = CString::new(target.as_os_str().as_bytes())
@@ -339,6 +355,7 @@ fn rename_no_replace(source: &Path, target: &Path) -> io::Result<()> {
             RENAME_NOREPLACE,
         )
     };
+
     (result == 0)
         .then_some(())
         .ok_or_else(io::Error::last_os_error)
@@ -351,14 +368,17 @@ fn rename_no_replace(source: &Path, target: &Path) -> io::Result<()> {
     use std::os::unix::ffi::OsStrExt;
 
     const RENAME_EXCL: u32 = 0x0000_0004;
+
     extern "C" {
         fn renamex_np(old: *const c_char, new: *const c_char, flags: u32) -> c_int;
     }
+
     let source = CString::new(source.as_os_str().as_bytes())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "source path contains NUL"))?;
     let target = CString::new(target.as_os_str().as_bytes())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "target path contains NUL"))?;
     let result = unsafe { renamex_np(source.as_ptr(), target.as_ptr(), RENAME_EXCL) };
+
     (result == 0)
         .then_some(())
         .ok_or_else(io::Error::last_os_error)
@@ -376,6 +396,7 @@ fn rename_no_replace(source: &Path, target: &Path) -> io::Result<()> {
             flags: u32,
         ) -> i32;
     }
+
     let source = source
         .as_os_str()
         .encode_wide()
@@ -388,6 +409,7 @@ fn rename_no_replace(source: &Path, target: &Path) -> io::Result<()> {
         .collect::<Vec<_>>();
     // MOVEFILE_REPLACE_EXISTING を指定しないことで、既存の保存先を保護する。
     let result = unsafe { MoveFileExW(source.as_ptr(), target.as_ptr(), 0) };
+
     (result != 0)
         .then_some(())
         .ok_or_else(io::Error::last_os_error)
@@ -434,6 +456,7 @@ fn create_temp_file_with_options(
             "path has no file name",
         ));
     }
+
     let parent = match target.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => parent,
         _ => Path::new("."),
@@ -442,6 +465,7 @@ fn create_temp_file_with_options(
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
+
     loop {
         let nonce = TEMP_FILE_NONCE.fetch_add(1, Ordering::Relaxed);
         let path = parent.join(format!(
@@ -449,24 +473,35 @@ fn create_temp_file_with_options(
             std::process::id(),
         ));
         let mut options = File::options();
+
         options.write(true).create_new(true);
+
         #[cfg(windows)]
         {
             use std::os::windows::fs::OpenOptionsExt;
+
             // 開いている間の削除・renameを共有せず、一時パスの差し替えを防ぐ。
             const DELETE: u32 = 0x0001_0000;
+
             const FILE_SHARE_READ: u32 = 0x0000_0001;
+
             const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+
             const FILE_SHARE_DELETE: u32 = 0x0000_0004;
+
             const GENERIC_WRITE: u32 = 0x4000_0000;
+
             options.access_mode(GENERIC_WRITE | DELETE);
+
             let delete_sharing = if _allow_delete_sharing {
                 FILE_SHARE_DELETE
             } else {
                 0
             };
+
             options.share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | delete_sharing);
         }
+
         match options.open(&path) {
             Ok(file) => return Ok((path, file)),
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
@@ -485,6 +520,7 @@ fn write_temp_then_rename(
 ) -> io::Result<()> {
     file.write_all(contents.as_bytes())?;
     file.sync_all()?;
+
     fs::rename(temp_path, target)
 }
 

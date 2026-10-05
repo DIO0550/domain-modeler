@@ -8,7 +8,11 @@ export type StateMachineLayout = Readonly<{
   width: number;
   height: number;
   nodes: Readonly<Record<string, StateMachinePosition>>;
-  edges: readonly Readonly<{ id: string; path: string; label: StateMachinePosition }>[];
+  edges: readonly Readonly<{
+    id: string;
+    path: string;
+    label: StateMachinePosition;
+  }>[];
 }>;
 
 const NODE_SIZE = { width: 160, height: 64 } as const;
@@ -19,23 +23,59 @@ const MARGIN = 100;
 /** 状態遷移の自動配置とノード寸法。 */
 export const StateMachineLayout = {
   nodeSize: NODE_SIZE,
-  frame(size: Pick<StateMachineLayout, "left" | "top" | "width" | "height">): Pick<StateMachineLayout, "left" | "top" | "width" | "height"> {
-    return { left: size.left, top: size.top, width: Math.max(960, size.width), height: Math.max(640, size.height) };
+
+  frame(
+    size: Pick<StateMachineLayout, "left" | "top" | "width" | "height">,
+  ): Pick<StateMachineLayout, "left" | "top" | "width" | "height"> {
+    return {
+      left: size.left,
+      top: size.top,
+      width: Math.max(960, size.width),
+      height: Math.max(640, size.height),
+    };
   },
-  viewport(frame: Pick<StateMachineLayout, "left" | "top" | "width" | "height">, zoom: number): Pick<StateMachineLayout, "left" | "top" | "width" | "height"> {
-    const x = frame.left + frame.width * (1 - 1 / zoom) / 2;
-    const y = frame.top + frame.height * (1 - 1 / zoom) / 2;
-    return { left: x, top: y, width: frame.width / zoom, height: frame.height / zoom };
+
+  viewport(
+    frame: Pick<StateMachineLayout, "left" | "top" | "width" | "height">,
+    zoom: number,
+  ): Pick<StateMachineLayout, "left" | "top" | "width" | "height"> {
+    const x = frame.left + (frame.width * (1 - 1 / zoom)) / 2;
+    const y = frame.top + (frame.height * (1 - 1 / zoom)) / 2;
+
+    return {
+      left: x,
+      top: y,
+      width: frame.width / zoom,
+      height: frame.height / zoom,
+    };
   },
-  viewBox(frame: Pick<StateMachineLayout, "left" | "top" | "width" | "height">, zoom: number): string {
+
+  viewBox(
+    frame: Pick<StateMachineLayout, "left" | "top" | "width" | "height">,
+    zoom: number,
+  ): string {
     const viewport = StateMachineLayout.viewport(frame, zoom);
+
     return `${viewport.left} ${viewport.top} ${viewport.width} ${viewport.height}`;
   },
+
   /** 図上の入力欄(260×200)を表示範囲内へ収める。 */
-  labelInputPosition(point: StateMachinePosition, viewport: Pick<StateMachineLayout, "left" | "top" | "width" | "height">): StateMachinePosition {
-    return { x: Math.max(viewport.left + 140, Math.min(viewport.left + viewport.width - 140, point.x)),
-      y: Math.max(viewport.top + 48, Math.min(viewport.top + viewport.height - 172, point.y)) };
+  labelInputPosition(
+    point: StateMachinePosition,
+    viewport: Pick<StateMachineLayout, "left" | "top" | "width" | "height">,
+  ): StateMachinePosition {
+    return {
+      x: Math.max(
+        viewport.left + 140,
+        Math.min(viewport.left + viewport.width - 140, point.x),
+      ),
+      y: Math.max(
+        viewport.top + 48,
+        Math.min(viewport.top + viewport.height - 172, point.y),
+      ),
+    };
   },
+
   /**
    * 初期状態から左→右へ配置する。循環・自己ループ・孤立状態も表示する。
    * @param graph 描画用の状態と遷移。
@@ -44,82 +84,130 @@ export const StateMachineLayout = {
   create(graph: StateMachineGraph): StateMachineLayout {
     const ids = graph.nodes.map((node) => node.id);
     const levels = new Map(ids.map((id) => [id, 0]));
-    const initial = graph.nodes.filter((node) => node.appearance.includes("initial"));
+    const initial = graph.nodes.filter((node) =>
+      node.appearance.includes("initial"),
+    );
     const roots = initial.length > 0 ? initial : graph.nodes.slice(0, 1);
     const queue = roots.map((node) => node.id);
     const reached = new Set(queue);
+
     while (queue.length > 0) {
       const from = queue.shift();
+
       if (from === undefined) {
         continue;
       }
+
       for (const edge of graph.edges.filter((item) => item.from === from)) {
         if (reached.has(edge.to)) {
           continue;
         }
+
         reached.add(edge.to);
         levels.set(edge.to, (levels.get(from) ?? 0) + 1);
         queue.push(edge.to);
       }
     }
+
     const columns = new Map<number, string[]>();
+
     for (const id of ids) {
       const level = levels.get(id) ?? 0;
+
       columns.set(level, [...(columns.get(level) ?? []), id]);
     }
+
     const nodes: Record<string, StateMachinePosition> = {};
+
     for (const [level, column] of columns) {
       column.forEach((id, index) => {
         nodes[id] = { x: MARGIN + level * COLUMN, y: MARGIN + index * ROW };
       });
     }
+
     const maxLevel = Math.max(0, ...columns.keys());
-    const maxRows = Math.max(1, ...[...columns.values()].map((column) => column.length));
+    const maxRows = Math.max(
+      1,
+      ...[...columns.values()].map((column) => column.length),
+    );
+
     return StateMachineLayout.position(graph, nodes, {
       width: MARGIN * 2 + maxLevel * COLUMN + NODE_SIZE.width,
       height: MARGIN * 2 + (maxRows - 1) * ROW + NODE_SIZE.height,
     });
   },
+
   /** 保存済み座標を優先し、座標のない新しい状態だけを空き領域へ置く。 */
-  restore(graph: StateMachineGraph, saved: Readonly<Record<string, StateMachinePosition>>): StateMachineLayout {
+  restore(
+    graph: StateMachineGraph,
+    saved: Readonly<Record<string, StateMachinePosition>>,
+  ): StateMachineLayout {
     const automatic = StateMachineLayout.create(graph);
+
     if (Object.keys(saved).length === 0) {
       return automatic;
     }
+
     const right = Math.max(...Object.values(saved).map((point) => point.x));
-    const missing = graph.nodes.filter((node) => !Object.prototype.hasOwnProperty.call(saved, node.id));
-    const additions = Object.fromEntries(missing.map((node, index) => [node.id, {
-      x: right + COLUMN, y: MARGIN + index * ROW,
-    }]));
+    const missing = graph.nodes.filter(
+      (node) => !Object.prototype.hasOwnProperty.call(saved, node.id),
+    );
+    const additions = Object.fromEntries(
+      missing.map((node, index) => [
+        node.id,
+        {
+          x: right + COLUMN,
+          y: MARGIN + index * ROW,
+        },
+      ]),
+    );
+
     return StateMachineLayout.position(graph, { ...saved, ...additions });
   },
+
   /** 座標だけを入力にして、すべての遷移経路と描画範囲を作り直す。 */
-  position(graph: StateMachineGraph, nodes: Readonly<Record<string, StateMachinePosition>>,
-    minimum: Readonly<{ width: number; height: number }> = { width: 360, height: 264 }): StateMachineLayout {
+  position(
+    graph: StateMachineGraph,
+    nodes: Readonly<Record<string, StateMachinePosition>>,
+    minimum: Readonly<{ width: number; height: number }> = {
+      width: 360,
+      height: 264,
+    },
+  ): StateMachineLayout {
     const edges = graph.edges.map((edge, index) => {
       const from = nodes[edge.from];
       const to = nodes[edge.to];
+
       if (from === undefined || to === undefined) {
         return { id: edge.id, path: "", label: { x: 0, y: 0 } };
       }
-      const parallel = graph.edges.slice(0, index).filter((item) => item.from === edge.from && item.to === edge.to).length;
+
+      const parallel = graph.edges
+        .slice(0, index)
+        .filter(
+          (item) => item.from === edge.from && item.to === edge.to,
+        ).length;
+
       if (edge.from === edge.to) {
         const x = from.x + NODE_SIZE.width / 2;
         const y = from.y - NODE_SIZE.height / 2;
         const lift = 55 + parallel * 28;
+
         return {
           id: edge.id,
           path: `M ${x - 30} ${y} C ${x - 75} ${y - lift}, ${x + 75} ${y - lift}, ${x + 30} ${y}`,
           label: { x, y: y - lift + 12 },
         };
       }
+
       const direction = to.x >= from.x ? 1 : -1;
-      const startX = from.x + direction * NODE_SIZE.width / 2;
-      const endX = to.x - direction * NODE_SIZE.width / 2;
+      const startX = from.x + (direction * NODE_SIZE.width) / 2;
+      const endX = to.x - (direction * NODE_SIZE.width) / 2;
       const shift = parallel * 24;
       const startY = from.y + shift;
       const endY = to.y + shift;
       const middleX = (startX + endX) / 2;
+
       return {
         id: edge.id,
         path: `M ${startX} ${startY} C ${middleX} ${startY}, ${middleX} ${endY}, ${endX} ${endY}`,
@@ -128,12 +216,23 @@ export const StateMachineLayout = {
     });
     const points = Object.values(nodes);
     const left = Math.min(-MARGIN, ...points.map((point) => point.x - MARGIN));
-    const top = Math.min(-MARGIN, ...points.map((point) => point.y - MARGIN), ...edges.map((edge) => edge.label.y - 24));
+    const top = Math.min(
+      -MARGIN,
+      ...points.map((point) => point.y - MARGIN),
+      ...edges.map((edge) => edge.label.y - 24),
+    );
+
     return {
       left,
       top,
-      width: Math.max(minimum.width, ...points.map((point) => point.x + MARGIN + NODE_SIZE.width / 2 - left)),
-      height: Math.max(minimum.height, ...points.map((point) => point.y + MARGIN + NODE_SIZE.height / 2 - top)),
+      width: Math.max(
+        minimum.width,
+        ...points.map((point) => point.x + MARGIN + NODE_SIZE.width / 2 - left),
+      ),
+      height: Math.max(
+        minimum.height,
+        ...points.map((point) => point.y + MARGIN + NODE_SIZE.height / 2 - top),
+      ),
       nodes,
       edges,
     };

@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, extname, join } from "node:path";
 import { ODiffServer } from "odiff-bin";
@@ -12,14 +21,18 @@ const parseArgs = () => {
   const [command, ...tokens] = process.argv.slice(2);
   const args = tokens.filter((token) => token !== "--");
   const options = {};
+
   for (let index = 0; index < args.length; index += 2) {
     const key = args[index]?.replace(/^--/, "");
     const value = args[index + 1];
+
     if (!key || value === undefined) {
       throw new Error(`Invalid argument near ${args[index] ?? ""}`);
     }
+
     options[key] = value;
   }
+
   return { command, options };
 };
 
@@ -27,14 +40,25 @@ const listFiles = (dir) => {
   if (!existsSync(dir)) {
     return [];
   }
+
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
+
     return entry.isDirectory() ? listFiles(path) : [path];
   });
 };
 
 const contentType = (path) => {
-  const map = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon" };
+  const map = {
+    ".html": "text/html",
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".json": "application/json",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+  };
+
   return map[extname(path)] ?? "application/octet-stream";
 };
 
@@ -43,76 +67,120 @@ const serveStatic = async (root) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
     const decoded = decodeURIComponent(url.pathname);
     const target = join(root, decoded === "/" ? "index.html" : decoded);
-    if (!target.startsWith(root) || !existsSync(target) || statSync(target).isDirectory()) {
+
+    if (
+      !target.startsWith(root) ||
+      !existsSync(target) ||
+      statSync(target).isDirectory()
+    ) {
       response.writeHead(404);
       response.end("not found");
+
       return;
     }
+
     response.writeHead(200, { "content-type": contentType(target) });
     response.end(readFileSync(target));
   });
+
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+
   const address = server.address();
+
   if (!address || typeof address === "string") {
     throw new Error("Failed to start static server");
   }
+
   return { server, origin: `http://127.0.0.1:${address.port}` };
 };
 
 const requestJson = async (url, options) => {
   const response = await fetch(url, options);
+
   if (!response.ok) {
-    throw new Error(`${options?.method ?? "GET"} ${url} failed: ${response.status}`);
+    throw new Error(
+      `${options?.method ?? "GET"} ${url} failed: ${response.status}`,
+    );
   }
+
   return response.json();
 };
 
 const requestOk = async (url, options) => {
   const response = await fetch(url, options);
+
   if (!response.ok) {
-    throw new Error(`${options?.method ?? "GET"} ${url} failed: ${response.status}`);
+    throw new Error(
+      `${options?.method ?? "GET"} ${url} failed: ${response.status}`,
+    );
   }
+
   await response.arrayBuffer();
 };
 
 const findChrome = () => {
-  const candidates = [process.env.CHROME_BIN, "google-chrome", "google-chrome-stable", "chromium", "chromium-browser"].filter(Boolean);
-  const found = candidates.find((candidate) => spawnSync(candidate, ["--version"], { stdio: "ignore" }).status === 0);
+  const candidates = [
+    process.env.CHROME_BIN,
+    "google-chrome",
+    "google-chrome-stable",
+    "chromium",
+    "chromium-browser",
+  ].filter(Boolean);
+  const found = candidates.find(
+    (candidate) =>
+      spawnSync(candidate, ["--version"], { stdio: "ignore" }).status === 0,
+  );
+
   if (!found) {
-    throw new Error("Chrome is required. Install Google Chrome/Chromium or set CHROME_BIN.");
+    throw new Error(
+      "Chrome is required. Install Google Chrome/Chromium or set CHROME_BIN.",
+    );
   }
+
   return found;
 };
 
 const openCdp = async (wsUrl) => {
   const socket = new WebSocket(wsUrl);
+
   await new Promise((resolve, reject) => {
     socket.addEventListener("open", resolve, { once: true });
     socket.addEventListener("error", reject, { once: true });
   });
+
   let id = 0;
   const pending = new Map();
+
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data.toString());
+
     if (!message.id) {
       return;
     }
+
     const callbacks = pending.get(message.id);
+
     if (!callbacks) {
       return;
     }
+
     pending.delete(message.id);
+
     if (message.error) {
       callbacks.reject(new Error(message.error.message));
     } else {
       callbacks.resolve(message.result ?? {});
     }
   });
-  const send = (method, params = {}) => new Promise((resolve, reject) => {
-    const messageId = ++id;
-    pending.set(messageId, { resolve, reject });
-    socket.send(JSON.stringify({ id: messageId, method, params }));
-  });
+
+  const send = (method, params = {}) =>
+    new Promise((resolve, reject) => {
+      const messageId = ++id;
+
+      pending.set(messageId, { resolve, reject });
+      socket.send(JSON.stringify({ id: messageId, method, params }));
+    });
+
   return { send, close: () => socket.close() };
 };
 
@@ -123,14 +191,19 @@ const openCdp = async (wsUrl) => {
 const japaneseGlyphProbe = () => {
   const draw = (text) => {
     const canvas = document.createElement("canvas");
+
     canvas.width = 64;
     canvas.height = 64;
+
     const context = canvas.getContext("2d");
+
     context.font = "48px sans-serif";
     context.textBaseline = "top";
     context.fillText(text, 0, 0);
+
     return canvas.toDataURL();
   };
+
   return { japanese: draw("あ"), notdef: draw("\u{10FFFD}"), blank: draw(" ") };
 };
 
@@ -138,17 +211,26 @@ const japaneseGlyphProbe = () => {
 // 日本語が豆腐(□)で描画される。豆腐は毎回同じ絵なので比較では差分として現れず、
 // 気づかないまま baseline に焼き付いてしまう。撮影を始める前に落とす。
 const assertJapaneseFontAvailable = async () => {
-  const target = await requestJson(`http://127.0.0.1:9222/json/new?${encodeURIComponent("about:blank")}`, { method: "PUT" });
+  const target = await requestJson(
+    `http://127.0.0.1:9222/json/new?${encodeURIComponent("about:blank")}`,
+    { method: "PUT" },
+  );
   const cdp = await openCdp(target.webSocketDebuggerUrl);
+
   try {
     const { result, exceptionDetails } = await cdp.send("Runtime.evaluate", {
       expression: `(${japaneseGlyphProbe.toString()})()`,
       returnByValue: true,
     });
+
     if (exceptionDetails) {
-      throw new Error(`Japanese font probe failed to evaluate: ${exceptionDetails.text ?? "unknown error"}`);
+      throw new Error(
+        `Japanese font probe failed to evaluate: ${exceptionDetails.text ?? "unknown error"}`,
+      );
     }
+
     const { japanese, notdef, blank } = result.value;
+
     if (japanese === notdef || japanese === blank) {
       throw new Error(
         "No Japanese font is available to Chrome; Japanese text would be captured as tofu (□).\n" +
@@ -169,10 +251,13 @@ const capture = async (options) => {
   const settleMs = Number(options["settle-ms"] ?? 750);
   const stablePollMs = Number(options["stable-poll-ms"] ?? 250);
   const stableTimeoutMs = Number(options["stable-timeout-ms"] ?? 8000);
+
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
 
-  const { server, origin } = await serveStatic(process.cwd() + `/${storybookDir}`);
+  const { server, origin } = await serveStatic(
+    process.cwd() + `/${storybookDir}`,
+  );
   // Chrome 136+ は remote debugging に非デフォルトの user-data-dir が必須。
   const userDataDir = mkdtempSync(join(tmpdir(), "storybook-visual-chrome-"));
   const chrome = spawn(
@@ -190,92 +275,158 @@ const capture = async (options) => {
   );
   // stderr は dbus 警告などで際限なく増えるため末尾だけ保持する。
   let chromeStderr = "";
+
   chrome.stderr.setEncoding("utf8");
   chrome.stderr.on("data", (chunk) => {
     chromeStderr = (chromeStderr + chunk).slice(-4000);
   });
+
   let chromeExit = null;
+
   chrome.on("exit", (code, signal) => {
     chromeExit = { code, signal };
   });
+
   const describeChromeFailure = () => {
-    const exit = chromeExit ? `exited with code=${chromeExit.code} signal=${chromeExit.signal}` : "still running";
+    const exit = chromeExit
+      ? `exited with code=${chromeExit.code} signal=${chromeExit.signal}`
+      : "still running";
     const stderr = chromeStderr.trim() || "(no stderr output)";
+
     return `Chrome DevTools endpoint did not start (${exit})\n--- chrome stderr ---\n${stderr}`;
   };
+
   try {
     let version;
+
     // 遅いランナーでも待てるよう 30 秒まで許容し、早期終了時は即座に諦める。
     for (let attempt = 0; attempt < 300; attempt += 1) {
       try {
         version = await requestJson("http://127.0.0.1:9222/json/version");
+
         break;
       } catch {
         if (chromeExit) {
           break;
         }
+
         await sleep(100);
       }
     }
+
     if (!version) {
       throw new Error(describeChromeFailure());
     }
+
     await assertJapaneseFontAvailable();
+
     const index = await requestJson(`${origin}/index.json`);
-    const stories = Object.values(index.entries ?? {}).filter((entry) => entry.type === "story").sort((a, b) => a.id.localeCompare(b.id));
-    writeFileSync(join(out, "stories.json"), JSON.stringify(stories.map(({ id, title, name }) => ({ id, title, name })), null, 2));
+    const stories = Object.values(index.entries ?? {})
+      .filter((entry) => entry.type === "story")
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    writeFileSync(
+      join(out, "stories.json"),
+      JSON.stringify(
+        stories.map(({ id, title, name }) => ({ id, title, name })),
+        null,
+        2,
+      ),
+    );
+
     const unstable = [];
+
     for (const story of stories) {
-      const target = await requestJson(`http://127.0.0.1:9222/json/new?${encodeURIComponent(`${origin}/iframe.html?id=${story.id}`)}`, { method: "PUT" });
+      const target = await requestJson(
+        `http://127.0.0.1:9222/json/new?${encodeURIComponent(`${origin}/iframe.html?id=${story.id}`)}`,
+        { method: "PUT" },
+      );
       const cdp = await openCdp(target.webSocketDebuggerUrl);
+
       await cdp.send("Page.enable");
-      await cdp.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+      await cdp.send("Emulation.setDeviceMetricsOverride", {
+        width,
+        height,
+        deviceScaleFactor: 1,
+        mobile: false,
+      });
       await sleep(settleMs);
+
       // 固定待ちのままだと非同期描画が終わる前に撮れてしまい、loading 表示が
       // baseline に焼き付く。同じフレームが 2 回続くまで待ってから採用する。
-      const settledShot = await cdp.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+      const settledShot = await cdp.send("Page.captureScreenshot", {
+        format: "png",
+        captureBeyondViewport: false,
+      });
       let screenshot = settledShot;
       let stable = false;
       const deadline = Date.now() + stableTimeoutMs;
+
       while (Date.now() < deadline) {
         await sleep(stablePollMs);
-        const next = await cdp.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+
+        const next = await cdp.send("Page.captureScreenshot", {
+          format: "png",
+          captureBeyondViewport: false,
+        });
+
         if (next.data === screenshot.data) {
           stable = true;
+
           break;
         }
+
         screenshot = next;
       }
+
       if (!stable) {
         // spinner 等は永久に安定しない。待ち続けた末の任意フレームより、
         // 従来どおり settle-ms 時点の再現性あるフレームを採用する。
         screenshot = settledShot;
         unstable.push(story.id);
       }
-      writeFileSync(join(out, `${story.id}.png`), Buffer.from(screenshot.data, "base64"));
+
+      writeFileSync(
+        join(out, `${story.id}.png`),
+        Buffer.from(screenshot.data, "base64"),
+      );
       cdp.close();
       await requestOk(`http://127.0.0.1:9222/json/close/${target.id}`);
       console.log(`captured ${story.id}${stable ? "" : " (never stabilized)"}`);
     }
+
     if (unstable.length > 0) {
       // 撮影は続けるが、アニメーション等で揺れ続けるストーリーは差分の温床なので明示する。
-      console.warn(`warning: ${unstable.length} story(ies) never stabilized within ${stableTimeoutMs}ms: ${unstable.join(", ")}`);
+      console.warn(
+        `warning: ${unstable.length} story(ies) never stabilized within ${stableTimeoutMs}ms: ${unstable.join(", ")}`,
+      );
     }
   } finally {
     chrome.kill("SIGTERM");
     await sleep(250);
+
     try {
       chrome.kill("SIGKILL");
     } catch {
       // already exited
     }
+
     server.close();
+
     // Chrome 終了直後は user-data-dir がまだ書き込み中のことがあるためリトライする。
     // それでも残った場合はキャプチャ自体は成功しているので握りつぶす。
     try {
-      rmSync(userDataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      rmSync(userDataDir, {
+        recursive: true,
+        force: true,
+        maxRetries: 10,
+        retryDelay: 100,
+      });
     } catch (error) {
-      console.warn(`failed to remove chrome user data dir: ${userDataDir}`, error);
+      console.warn(
+        `failed to remove chrome user data dir: ${userDataDir}`,
+        error,
+      );
     }
   }
 };
@@ -284,10 +435,13 @@ const copy = (from, to) => writeFileSync(to, readFileSync(from));
 
 const readStoryMetadata = (dir) => {
   const path = join(dir, "stories.json");
+
   if (!existsSync(path)) {
     return new Map();
   }
+
   const stories = JSON.parse(readFileSync(path, "utf8"));
+
   return new Map(stories.map((story) => [story.id, story]));
 };
 
@@ -298,16 +452,27 @@ const compare = async (options) => {
   const maxDiffRatio = Number(options["max-diff-ratio"] ?? 0.002);
   const threshold = Number(options.threshold ?? 0.1);
   const reportVersion = options["report-version"] ?? "local";
+
   rmSync(out, { recursive: true, force: true });
+
   for (const dir of ["actual", "expected", "diff"]) {
     mkdirSync(join(out, dir), { recursive: true });
   }
-  const actualNames = listFiles(actual).filter((path) => extname(path) === ".png").map((path) => basename(path));
-  const expectedNames = listFiles(expected).filter((path) => extname(path) === ".png").map((path) => basename(path));
-  const storyMetadata = new Map([...readStoryMetadata(expected), ...readStoryMetadata(actual)]);
+
+  const actualNames = listFiles(actual)
+    .filter((path) => extname(path) === ".png")
+    .map((path) => basename(path));
+  const expectedNames = listFiles(expected)
+    .filter((path) => extname(path) === ".png")
+    .map((path) => basename(path));
+  const storyMetadata = new Map([
+    ...readStoryMetadata(expected),
+    ...readStoryMetadata(actual),
+  ]);
   const names = [...new Set([...actualNames, ...expectedNames])].sort();
   const server = new ODiffServer();
   const results = [];
+
   try {
     for (const name of names) {
       const story = name.replace(/\.png$/, "");
@@ -315,18 +480,44 @@ const compare = async (options) => {
       const actualPath = join(actual, name);
       const expectedPath = join(expected, name);
       const diffPath = join(out, "diff", name);
+
       if (!existsSync(expectedPath)) {
         copy(actualPath, join(out, "actual", name));
-        results.push({ story, ...metadata, status: "new", reason: "no-baseline", diffPixels: 0, diffRatio: 0, hasExpected: false, hasActual: true, hasDiff: false });
+        results.push({
+          story,
+          ...metadata,
+          status: "new",
+          reason: "no-baseline",
+          diffPixels: 0,
+          diffRatio: 0,
+          hasExpected: false,
+          hasActual: true,
+          hasDiff: false,
+        });
+
         continue;
       }
+
       if (!existsSync(actualPath)) {
         copy(expectedPath, join(out, "expected", name));
-        results.push({ story, ...metadata, status: "deleted", reason: "no-current", diffPixels: 0, diffRatio: 0, hasExpected: true, hasActual: false, hasDiff: false });
+        results.push({
+          story,
+          ...metadata,
+          status: "deleted",
+          reason: "no-current",
+          diffPixels: 0,
+          diffRatio: 0,
+          hasExpected: true,
+          hasActual: false,
+          hasDiff: false,
+        });
+
         continue;
       }
+
       copy(actualPath, join(out, "actual", name));
       copy(expectedPath, join(out, "expected", name));
+
       const result = await server.compare(expectedPath, actualPath, diffPath, {
         threshold,
         antialiasing: true,
@@ -334,17 +525,43 @@ const compare = async (options) => {
         failOnLayoutDiff: true,
         timeout: 30_000,
       });
+
       if (result.match) {
-        results.push({ story, ...metadata, status: "passed", reason: "match", diffPixels: 0, diffRatio: 0, hasExpected: true, hasActual: true, hasDiff: false });
+        results.push({
+          story,
+          ...metadata,
+          status: "passed",
+          reason: "match",
+          diffPixels: 0,
+          diffRatio: 0,
+          hasExpected: true,
+          hasActual: true,
+          hasDiff: false,
+        });
+
         continue;
       }
+
       if (result.reason !== "pixel-diff") {
         // 寸法違いなどピクセル比較まで到達しなかった失敗。odiff は diff 画像を出力しない。
-        results.push({ story, ...metadata, status: "changed", reason: result.reason, diffPixels: 0, diffRatio: 1, hasExpected: true, hasActual: true, hasDiff: false });
+        results.push({
+          story,
+          ...metadata,
+          status: "changed",
+          reason: result.reason,
+          diffPixels: 0,
+          diffRatio: 1,
+          hasExpected: true,
+          hasActual: true,
+          hasDiff: false,
+        });
+
         continue;
       }
+
       const diffRatio = result.diffPercentage / 100;
       const overThreshold = diffRatio > maxDiffRatio;
+
       results.push({
         story,
         ...metadata,
@@ -360,7 +577,10 @@ const compare = async (options) => {
   } finally {
     server.stop();
   }
-  const countOf = (status) => results.filter((result) => result.status === status).length;
+
+  const countOf = (status) =>
+    results.filter((result) => result.status === status).length;
+
   const summary = {
     reportVersion,
     maxDiffRatio,
@@ -372,23 +592,34 @@ const compare = async (options) => {
     failed: countOf("changed"),
     results,
   };
+
   writeFileSync(join(out, "summary.json"), JSON.stringify(summary, null, 2));
   writeFileSync(join(out, "index.html"), renderHtml(summary));
+
   for (const result of results) {
     const storyDir = join(out, result.story);
+
     mkdirSync(storyDir, { recursive: true });
-    writeFileSync(join(storyDir, "index.html"), renderHtml({ ...summary, results: [result] }, { detailStory: result.story, pathPrefix: "../" }));
+    writeFileSync(
+      join(storyDir, "index.html"),
+      renderHtml(
+        { ...summary, results: [result] },
+        { detailStory: result.story, pathPrefix: "../" },
+      ),
+    );
   }
+
   if (summary.failed > 0) {
     process.exitCode = 1;
   }
 };
 
-const escapeHtml = (value) => String(value)
-  .replaceAll("&", "&amp;")
-  .replaceAll("<", "&lt;")
-  .replaceAll(">", "&gt;")
-  .replaceAll('"', "&quot;");
+const escapeHtml = (value) =>
+  String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 
 // reg-viz のレポートに合わせた4分類。サイドバー・本文ともこの順で並べる。
 const CATEGORIES = [
@@ -412,36 +643,47 @@ const storyLabel = (result) => {
   if (!result.title) {
     return result.story;
   }
+
   return result.name ? `${result.title} / ${result.name}` : result.title;
 };
 
-const storySearchText = (result) => `${result.title ?? ""} ${result.name ?? ""} ${result.story}`.toLowerCase();
+const storySearchText = (result) =>
+  `${result.title ?? ""} ${result.name ?? ""} ${result.story}`.toLowerCase();
 
 // カードのサムネイル。差分画像があればそれを、無ければ手元にある方のスクリーンショットを使う。
 const thumbnailKind = (result) => {
   if (result.hasDiff) {
     return "diff";
   }
+
   return result.hasActual ? "actual" : "expected";
 };
 
 // 詳細ページ(<story>/index.html)からは画像が1階層上、リンク先は自分自身になる。
 const assetPrefix = (options) => options.pathPrefix ?? "";
-const storyHref = (story, options) => (options.detailStory ? "./" : `${story}/`);
 
-const groupByCategory = (results) => CATEGORIES
-  .map((category) => ({ ...category, results: results.filter((result) => result.status === category.key) }))
-  .filter((group) => group.results.length > 0);
+const storyHref = (story, options) =>
+  options.detailStory ? "./" : `${story}/`;
+
+const groupByCategory = (results) =>
+  CATEGORIES.map((category) => ({
+    ...category,
+    results: results.filter((result) => result.status === category.key),
+  })).filter((group) => group.results.length > 0);
 
 // 表示順(Changed → New → Deleted → Passed)に並べ直した一覧。
 // ビューアの前後送りとカウンタはこの順序を使う。
-const orderResults = (results) => groupByCategory(results).flatMap((group) => group.results);
+const orderResults = (results) =>
+  groupByCategory(results).flatMap((group) => group.results);
 
-const ball = (status) => `<span class="ball ball--${status}" aria-hidden="true"></span>`;
+const ball = (status) =>
+  `<span class="ball ball--${status}" aria-hidden="true"></span>`;
 
 const renderSidebar = (summary, options) => {
   const groups = groupByCategory(summary.results);
-  const items = groups.map((group) => `<details class="group group--${group.key}" open>
+  const items = groups
+    .map(
+      (group) => `<details class="group group--${group.key}" open>
         <summary>
           <span class="group__caret" aria-hidden="true"></span>
           <span class="group__name">${group.label}</span>
@@ -451,7 +693,10 @@ const renderSidebar = (summary, options) => {
         <ul class="group__list">
           ${group.results.map((result) => `<li data-nav-item data-search="${escapeHtml(storySearchText(result))}"><a href="${storyHref(escapeHtml(result.story), options)}" data-open="${escapeHtml(result.story)}" title="${escapeHtml(result.story)}">${escapeHtml(storyLabel(result))}</a></li>`).join("")}
         </ul>
-      </details>`).join("");
+      </details>`,
+    )
+    .join("");
+
   return `<aside class="sidebar" id="story-navigation" aria-label="Visual regression items">
       <div class="sidebar__search">
         <span class="icon-search" aria-hidden="true"></span>
@@ -471,9 +716,11 @@ const renderSidebar = (summary, options) => {
 
 const renderCard = (result, options) => {
   const story = escapeHtml(result.story);
-  const metrics = result.status === "changed" && result.reason === "pixel-diff"
-    ? `${(result.diffRatio * 100).toFixed(3)}% · ${result.diffPixels} px`
-    : (REASON_LABELS[result.reason] ?? result.status);
+  const metrics =
+    result.status === "changed" && result.reason === "pixel-diff"
+      ? `${(result.diffRatio * 100).toFixed(3)}% · ${result.diffPixels} px`
+      : (REASON_LABELS[result.reason] ?? result.status);
+
   return `<li class="card card--${result.status}">
           <a class="card__open" href="${storyHref(story, options)}" data-open="${story}" aria-label="Open ${story}">
             <span class="card__thumb checker"><img loading="lazy" src="${assetPrefix(options)}${thumbnailKind(result)}/${story}.png" alt="${story}"></span>
@@ -487,12 +734,19 @@ const renderCard = (result, options) => {
 };
 
 // data-count は CSS 側でカードの大きさを決めるために使う(件数が少ない分類ほど大きく見せる)。
-const renderSections = (summary, options) => groupByCategory(summary.results).map((group) => `<section class="section" data-section="${group.key}" data-count="${Math.min(group.results.length, 3)}">
+const renderSections = (summary, options) =>
+  groupByCategory(summary.results)
+    .map(
+      (
+        group,
+      ) => `<section class="section" data-section="${group.key}" data-count="${Math.min(group.results.length, 3)}">
       <h2 class="section__title">${group.label} items <span class="section__count">${group.results.length}</span></h2>
       <ul class="cards">
         ${group.results.map((result) => renderCard(result, options)).join("")}
       </ul>
-    </section>`).join("");
+    </section>`,
+    )
+    .join("");
 
 const VIEW_MODES = [
   { key: "diff", label: "Diff" },
@@ -519,21 +773,22 @@ const renderViewer = () => `<div class="viewer" data-viewer hidden>
   </div>`;
 
 // summary.json をそのまま埋めるとレポートが重くなるので、ビューアが必要とする項目だけ渡す。
-const reportData = (summary, options) => JSON.stringify({
-  pathPrefix: options.pathPrefix ?? "",
-  initialStory: options.detailStory ?? null,
-  items: orderResults(summary.results).map((result) => ({
-    story: result.story,
-    label: storyLabel(result),
-    status: result.status,
-    reason: result.reason ?? null,
-    diffPixels: result.diffPixels,
-    diffRatio: result.diffRatio,
-    hasExpected: result.hasExpected,
-    hasActual: result.hasActual,
-    hasDiff: result.hasDiff,
-  })),
-}).replaceAll("<", "\\u003c");
+const reportData = (summary, options) =>
+  JSON.stringify({
+    pathPrefix: options.pathPrefix ?? "",
+    initialStory: options.detailStory ?? null,
+    items: orderResults(summary.results).map((result) => ({
+      story: result.story,
+      label: storyLabel(result),
+      status: result.status,
+      reason: result.reason ?? null,
+      diffPixels: result.diffPixels,
+      diffRatio: result.diffRatio,
+      hasExpected: result.hasExpected,
+      hasActual: result.hasActual,
+      hasDiff: result.hasDiff,
+    })),
+  }).replaceAll("<", "\\u003c");
 
 const renderStyles = () => `
     :root {
@@ -966,8 +1221,14 @@ const renderScript = () => `
     if (requested && indexOfStory.has(requested)) show(indexOfStory.get(requested));`;
 
 const renderHtml = (summary, options = {}) => {
-  const totals = CATEGORIES.map((category) => `<span class="total">${ball(category.key)}<span>${category.label}</span><span>${summary[category.key] ?? 0}</span></span>`).join("");
-  const heading = options.detailStory ? escapeHtml(options.detailStory) : "Report detail";
+  const totals = CATEGORIES.map(
+    (category) =>
+      `<span class="total">${ball(category.key)}<span>${category.label}</span><span>${summary[category.key] ?? 0}</span></span>`,
+  ).join("");
+  const heading = options.detailStory
+    ? escapeHtml(options.detailStory)
+    : "Report detail";
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -996,12 +1257,14 @@ const renderHtml = (summary, options = {}) => {
 </html>`;
 };
 
-
 const { command, options } = parseArgs();
+
 if (command === "capture") {
   await capture(options);
 } else if (command === "compare") {
   await compare(options);
 } else {
-  throw new Error("Usage: storybook-visual-regression.mjs <capture|compare> [--key value]");
+  throw new Error(
+    "Usage: storybook-visual-regression.mjs <capture|compare> [--key value]",
+  );
 }

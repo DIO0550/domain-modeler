@@ -20,6 +20,7 @@ fn apply_filters<R: tauri::Runtime>(
 #[tauri::command]
 pub async fn open_file_dialog<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Option<String> {
     let builder = apply_filters(app.dialog().file(), open_dialog_filters());
+
     open_dialog_result(builder.blocking_pick_file())
 }
 
@@ -42,5 +43,6 @@ pub async fn save_file_dialog<R: tauri::Runtime>(
         .dialog()
         .file()
         .add_filter(filter.name, filter.extensions);
+
     save_dialog_result(builder.blocking_save_file(), kind)
 }

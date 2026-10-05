@@ -4,12 +4,15 @@ import { connection, dmodel, sticky } from "./dmodel-fixture";
 
 test("Event 入力のない Policy は未定義のトリガーと結果を残し data を生成しない", () => {
   const text = dmodel([sticky("p", "policy", "発送する")]);
+
   expect(text).toContain(
     "workflow 発送する =\n  input: TODOトリガーイベント\n  output: TODO結果イベント",
   );
   expect(text).not.toContain("data 発送する");
   expect(text).not.toContain("error:");
+
   const parsed = Parse.parse(text);
+
   expect(parsed.diagnostics).toEqual([]);
   expect(
     Resolve.resolve(parsed.document).diagnostics.map(
@@ -30,8 +33,11 @@ test("Policy の入力 Event は接続配列順で AND 結合される", () => {
     ],
     [connection("e2", "p"), connection("e1", "p")],
   );
+
   expect(text).toContain("input: 在庫あり AND 入金済み");
+
   const parsed = Parse.parse(text);
+
   expect(parsed.diagnostics).toEqual([]);
   expect(
     Resolve.resolve(parsed.document).diagnostics.map(
@@ -49,6 +55,7 @@ test("ラベル付き入力はラベルなしの項も継続行にし複数行�
     ],
     [connection("e1", "p", "確認\nworkflow 偽 ="), connection("e2", "p")],
   );
+
   expect(text).toContain(
     "input: 入金済み // 確認\n    // workflow 偽 =\n    AND 在庫あり",
   );
@@ -64,6 +71,7 @@ test("Policy の接続先 Command はラベルとともに直前コメントに�
     ],
     [connection("p", "c", "自動\n実行"), connection("c", "e")],
   );
+
   expect(text).toContain(
     "// -> 配送\n// 依頼\n// 自動\n// 実行\nworkflow 発送する =\n  input: TODOトリガーイベント\n  output: TODO結果イベント",
   );
@@ -80,6 +88,7 @@ test("同名 Policy は入力を統合しラベルなしの同名 Event を重�
     ],
     [connection("e1", "p1"), connection("e1", "p2"), connection("e2", "p2")],
   );
+
   expect(text.match(/workflow 発送_する =/gu)).toHaveLength(1);
   expect(text).toContain("input: 入金済み AND 在庫あり");
 });
@@ -102,6 +111,7 @@ test("入力は変換可能な Event から対象 Policy への接続だけを�
       connection("p", "missing"),
     ],
   );
+
   expect(text).toContain("workflow 発送する =\n  input: TODOトリガーイベント");
   expect(Parse.parse(text).diagnostics).toEqual([]);
 });
@@ -111,6 +121,7 @@ test.each([
   "1st",
 ])("識別子化できない Policy %s は未変換欄に残る", (name) => {
   const text = dmodel([sticky("p", "policy", name)]);
+
   expect(text).toContain(`// policy: ${name}`);
   expect(text).not.toMatch(/^workflow /mu);
 });
@@ -128,9 +139,12 @@ test.each([
   const policy = sticky("p", "policy", "注文");
   const other = sticky("o", type, "注文");
   const policyFirst = dmodel([policy, other], [connection("o", "p")]);
+
   expect(policyFirst).toContain(`// ${type}: 注文`);
   expect(policyFirst).toContain("input: TODOトリガーイベント");
+
   const otherFirst = dmodel([other, policy]);
+
   expect(otherFirst).toContain("// policy: 注文");
   expect(Parse.parse(policyFirst).diagnostics).toEqual([]);
   expect(Parse.parse(otherFirst).diagnostics).toEqual([]);
@@ -142,6 +156,7 @@ test("Command と Policy の workflow は付箋の作成順で並ぶ", () => {
     sticky("c", "command", "発送する"),
     sticky("p2", "policy", "通知する"),
   ]);
+
   expect(text.match(/^workflow \S+/gmu)).toEqual([
     "workflow 確認する",
     "workflow 発送する",

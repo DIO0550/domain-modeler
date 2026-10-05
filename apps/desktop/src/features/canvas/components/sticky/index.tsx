@@ -48,6 +48,7 @@ export const StickyChrome = {
     if (view.status !== "editing") {
       return view;
     }
+
     return {
       status: "editing",
       draftText: view.draftText,
@@ -127,6 +128,7 @@ export function Sticky({
     height: `${sticky.size.height}px`,
     "--sticky-body-line-count": lineCount,
   };
+
   const trackPointer = (
     event: PointerEvent<HTMLElement>,
     tracking: PointerTracking,
@@ -139,65 +141,88 @@ export function Sticky({
     ) {
       return false;
     }
+
     pointerTrackingRef.current = tracking;
     event.currentTarget.setPointerCapture(event.pointerId);
+
     return true;
   };
+
   const moveManipulation = (event: PointerEvent<HTMLElement>): void => {
     const tracking = pointerTrackingRef.current;
+
     if (manipulation === undefined || tracking.status === "idle") {
       return;
     }
+
     if (tracking.pointerId !== event.pointerId) {
       return;
     }
+
     event.stopPropagation();
+
     const point = pointFromPointer(event);
+
     if (tracking.status === "pendingDrag") {
       if (!PointerDrag.hasStarted({ origin: tracking.origin, point })) {
         return;
       }
+
       pointerTrackingRef.current = {
         status: "manipulating",
         pointerId: event.pointerId,
       };
       manipulation.onDragStart(tracking.origin);
     }
+
     manipulation.onPointerMove(point);
   };
+
   // 捕捉喪失だけでは移動を巻き戻さず、最後に表示した位置を確定する。
   // pointerup後の捕捉喪失はidleで無視し、二重に履歴へ記録しない。
   const commitManipulation = (event: PointerEvent<HTMLElement>): void => {
     const tracking = pointerTrackingRef.current;
+
     if (manipulation === undefined || tracking.status === "idle") {
       return;
     }
+
     if (tracking.pointerId !== event.pointerId) {
       return;
     }
+
     event.stopPropagation();
     pointerTrackingRef.current = { status: "idle" };
+
     if (tracking.status === "manipulating") {
       manipulation.onPointerCommit();
     }
   };
+
   const cancelManipulation = (event: PointerEvent<HTMLElement>): void => {
     const tracking = pointerTrackingRef.current;
+
     if (manipulation === undefined || tracking.status === "idle") {
       return;
     }
+
     if (tracking.pointerId !== event.pointerId) {
       return;
     }
+
     event.stopPropagation();
     pointerTrackingRef.current = { status: "idle" };
+
     if (tracking.status === "manipulating") {
       manipulation.onPointerCancel();
     }
   };
+
   const cancelTrackedManipulation = useEffectEvent((): void => {
     const tracking = pointerTrackingRef.current;
+
     pointerTrackingRef.current = { status: "idle" };
+
     if (tracking.status === "manipulating") {
       manipulation?.onPointerCancel();
     }
@@ -211,22 +236,31 @@ export function Sticky({
 
   useEffect(() => {
     const isFirstRun = !focusEffectRanRef.current;
+
     focusEffectRanRef.current = true;
+
     const previousStatus = previousChromeStatusRef.current;
+
     previousChromeStatusRef.current = chrome.status;
+
     if (!isFirstRun && previousStatus === chrome.status) {
       return;
     }
+
     if (chrome.status === "editing") {
       editorRef.current?.focus();
+
       return;
     }
+
     if (chrome.status !== "selected") {
       return;
     }
+
     if (previousStatus === "editing") {
       return;
     }
+
     articleRef.current?.focus();
   }, [chrome.status, sticky.id]);
 
@@ -245,6 +279,7 @@ export function Sticky({
         if (pointerTrackingRef.current.status !== "idle") {
           return;
         }
+
         activateStickyFromFocus(event, onActivate);
       }}
       onKeyDown={(event) => {
@@ -254,7 +289,9 @@ export function Sticky({
         if (isTextEditorTarget(event.target) || manipulation === undefined) {
           return;
         }
+
         const origin = pointFromPointer(event);
+
         trackPointer(event, {
           status: "pendingDrag",
           pointerId: event.pointerId,
@@ -300,11 +337,13 @@ export function Sticky({
               aria-hidden="true"
               onPointerDown={(event) => {
                 event.stopPropagation();
+
                 const point = pointFromPointer(event);
                 const tracked = trackPointer(event, {
                   status: "manipulating",
                   pointerId: event.pointerId,
                 });
+
                 if (tracked) {
                   manipulation.onResizeStart(corner, point);
                 }
@@ -373,9 +412,11 @@ const activateStickyFromFocus = (
   if (onActivate === undefined) {
     return;
   }
+
   if (event.target !== event.currentTarget) {
     return;
   }
+
   onActivate();
 };
 
@@ -392,9 +433,11 @@ const activateStickyFromKey = (
   if (onKeyActivate === undefined || event.target !== event.currentTarget) {
     return;
   }
+
   if (event.key !== "Enter" && event.key !== " ") {
     return;
   }
+
   event.preventDefault();
   event.stopPropagation();
   onKeyActivate();
@@ -411,6 +454,7 @@ const stickyAccessibleName = (caption: string, text: string): string => {
   if (text.length === 0) {
     return caption;
   }
+
   return `${caption}: ${text}`;
 };
 
@@ -423,6 +467,7 @@ const stickyAccessibleName = (caption: string, text: string): string => {
 const stickyClassName = (status: StickyChrome["status"]): string => {
   const selectedClass = status === "plain" ? [] : ["sticky--selected"];
   const classNames = ["sticky", ...selectedClass];
+
   return classNames.join(" ");
 };
 
@@ -435,5 +480,6 @@ const stickyClassName = (status: StickyChrome["status"]): string => {
 const stickyFaceClassName = (rotation: StickyRotation): string => {
   const tiltedClass = rotation === "tilted" ? ["sticky__face--tilted"] : [];
   const classNames = ["sticky__face", ...tiltedClass];
+
   return classNames.join(" ");
 };

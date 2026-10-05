@@ -45,6 +45,7 @@ const TEMPLATE_NAME = "名前";
  */
 const fromSource = (kind: DeclTemplateKind, source: string): DeclTemplate => {
   const nameStart = source.indexOf(TEMPLATE_NAME);
+
   return {
     kind,
     source,
@@ -84,6 +85,7 @@ export const DeclTemplate = {
       `data ${TEMPLATE_NAME} = string`,
     );
   },
+
   /**
    * workflow 宣言の雛形を返す。
    *
@@ -95,6 +97,7 @@ export const DeclTemplate = {
       `workflow ${TEMPLATE_NAME} =\n  input: string\n  output: string`,
     );
   },
+
   /**
    * カーソル位置(または選択範囲)へ雛形を挿入する編集を作る。
    * 行の途中なら前後を改行で区切り、挿入直後に名前部分を選択できるようにする。
@@ -114,6 +117,7 @@ export const DeclTemplate = {
     const nameStart = caret.start + prefix.length + template.nameStart;
     const nameEnd = caret.start + prefix.length + template.nameEnd;
     const nextSource = `${caret.source.slice(0, caret.start)}${replacement}${caret.source.slice(caret.end)}`;
+
     return {
       edit: {
         start: caret.start,

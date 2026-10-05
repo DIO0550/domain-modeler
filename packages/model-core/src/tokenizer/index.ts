@@ -16,6 +16,7 @@ const stripTrailingCr = (line: string): string =>
  */
 const leadingWhitespaceLength = (line: string): number => {
   const matched = /^[ \t]*/u.exec(line);
+
   return matched === null ? 0 : matched[0].length;
 };
 
@@ -26,6 +27,7 @@ const leadingWhitespaceLength = (line: string): number => {
  */
 const numberLength = (text: string): number => {
   const matched = /^\d+/u.exec(text);
+
   return matched === null ? 0 : matched[0].length;
 };
 
@@ -36,6 +38,7 @@ const numberLength = (text: string): number => {
  */
 const wordLength = (text: string): number => {
   const matched = /^[^\s=./]+?(?=->|[\s=./]|$)/u.exec(text);
+
   return matched === null ? 0 : matched[0].length;
 };
 
@@ -69,18 +72,21 @@ const tokenizeLineContent = (
 
     if (rest.startsWith("//")) {
       tokens.push(Token.create(TOKEN_KINDS.comment, rest, lineNumber, column));
+
       break;
     }
 
     if (rest.startsWith("=")) {
       tokens.push(Token.create(TOKEN_KINDS.equals, "=", lineNumber, column));
       column += 1;
+
       continue;
     }
 
     if (rest.startsWith("->")) {
       tokens.push(Token.create(TOKEN_KINDS.arrow, "->", lineNumber, column));
       column += 2;
+
       continue;
     }
 
@@ -89,43 +95,50 @@ const tokenizeLineContent = (
         Token.create(TOKEN_KINDS.rangeDots, "..", lineNumber, column),
       );
       column += 2;
+
       continue;
     }
 
     if (rest[0] === " " || rest[0] === "\t") {
       column += 1;
+
       continue;
     }
 
     const digits = numberLength(rest);
+
     if (digits > 0) {
       const text = rest.slice(0, digits);
+
       tokens.push(Token.create(TOKEN_KINDS.number, text, lineNumber, column));
       column += digits;
+
       continue;
     }
 
     const reservedLength = ReservedWord.matchedLength(rest);
+
     if (reservedLength > 0) {
       const text = rest.slice(0, reservedLength);
-      tokens.push(
-        Token.create(TOKEN_KINDS.reserved, text, lineNumber, column),
-      );
+
+      tokens.push(Token.create(TOKEN_KINDS.reserved, text, lineNumber, column));
       column += reservedLength;
+
       continue;
     }
 
     const length = wordLength(rest);
+
     if (length === 0) {
       // 想定外の1文字は読み飛ばして解析を止めない
       column += 1;
+
       continue;
     }
 
     const text = rest.slice(0, length);
-    tokens.push(
-      Token.create(TOKEN_KINDS.identifier, text, lineNumber, column),
-    );
+
+    tokens.push(Token.create(TOKEN_KINDS.identifier, text, lineNumber, column));
     column += length;
   }
 
@@ -150,6 +163,7 @@ const tokenizeLine = (
   }
 
   const tokens: DslToken[] = [];
+
   if (indentLength > 0) {
     tokens.push(
       Token.create(
@@ -160,7 +174,9 @@ const tokenizeLine = (
       ),
     );
   }
+
   tokens.push(...tokenizeLineContent(line, lineNumber, indentLength + 1));
+
   return tokens;
 };
 
@@ -173,6 +189,7 @@ export const Tokenizer = {
    */
   tokenize: (source: string): readonly DslToken[] => {
     const lines = source.split(/\r\n|\r|\n/).map(stripTrailingCr);
+
     return lines.flatMap((line, index) => tokenizeLine(line, index + 1));
   },
 } as const;

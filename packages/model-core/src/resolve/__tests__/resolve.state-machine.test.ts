@@ -21,14 +21,23 @@ state-machine 返金 =
 
   expect(parsed.diagnostics).toEqual([]);
   expect(resolved.diagnostics).toEqual([]);
-  expect(Object.keys(resolved.definitions)).toEqual(["ID", "注文", "通知", "返金"]);
+  expect(Object.keys(resolved.definitions)).toEqual([
+    "ID",
+    "注文",
+    "通知",
+    "返金",
+  ]);
   expect(resolved.definitions["注文"]?.kind).toBe("state-machine");
   expect(resolved.references["待機"]).toBeUndefined();
   expect(resolved.references["注文"]).toEqual([SourceRange.onLine(2, 15, 17)]);
   expect(resolved.stateMachines).toHaveLength(2);
+
   const order = resolved.stateMachines[0];
   const refund = resolved.stateMachines[1];
-  expect(order?.definitions["待機"]?.nameRange).toEqual(SourceRange.onLine(5, 10, 12));
+
+  expect(order?.definitions["待機"]?.nameRange).toEqual(
+    SourceRange.onLine(5, 10, 12),
+  );
   expect(order?.references["待機"]).toEqual([
     SourceRange.onLine(3, 15, 17),
     SourceRange.onLine(4, 12, 14),
@@ -57,9 +66,21 @@ state-machine 注文 =
   expect(resolved.definitions["注文"]?.kind).toBe("data");
   expect(resolved.stateMachines).toHaveLength(2);
   expect(resolved.diagnostics).toEqual([
-    { severity: "error", message: "「注文」は既に宣言されています", range: SourceRange.onLine(2, 15, 17) },
-    { severity: "error", message: "「注文」は既に宣言されています", range: SourceRange.onLine(5, 10, 12) },
-    { severity: "error", message: "「注文」は既に宣言されています", range: SourceRange.onLine(8, 15, 17) },
+    {
+      severity: "error",
+      message: "「注文」は既に宣言されています",
+      range: SourceRange.onLine(2, 15, 17),
+    },
+    {
+      severity: "error",
+      message: "「注文」は既に宣言されています",
+      range: SourceRange.onLine(5, 10, 12),
+    },
+    {
+      severity: "error",
+      message: "「注文」は既に宣言されています",
+      range: SourceRange.onLine(8, 15, 17),
+    },
   ]);
 });
 
@@ -81,15 +102,43 @@ state-machine 次 =
     { message: "遷移先の識別子が必要です", range: { startLine: 7 } },
   ]);
   expect(resolved.diagnostics).toEqual([
-    { severity: "error", message: "状態が必要です", range: SourceRange.onLine(1, 15, 16) },
-    { severity: "error", message: "初期状態が必要です", range: SourceRange.onLine(1, 15, 16) },
-    { severity: "error", message: "状態「開始」は既に宣言されています", range: SourceRange.onLine(6, 10, 12) },
-    { severity: "error", message: "状態「不明」は未定義です", range: SourceRange.onLine(3, 12, 14) },
-    { severity: "error", message: "初期状態は1つだけ指定できます", range: SourceRange.onLine(4, 3, 14) },
-    { severity: "error", message: "状態「欠落」は未定義です", range: SourceRange.onLine(8, 21, 23) },
+    {
+      severity: "error",
+      message: "状態が必要です",
+      range: SourceRange.onLine(1, 15, 16),
+    },
+    {
+      severity: "error",
+      message: "初期状態が必要です",
+      range: SourceRange.onLine(1, 15, 16),
+    },
+    {
+      severity: "error",
+      message: "状態「開始」は既に宣言されています",
+      range: SourceRange.onLine(6, 10, 12),
+    },
+    {
+      severity: "error",
+      message: "状態「不明」は未定義です",
+      range: SourceRange.onLine(3, 12, 14),
+    },
+    {
+      severity: "error",
+      message: "初期状態は1つだけ指定できます",
+      range: SourceRange.onLine(4, 3, 14),
+    },
+    {
+      severity: "error",
+      message: "状態「欠落」は未定義です",
+      range: SourceRange.onLine(8, 21, 23),
+    },
   ]);
-  expect(resolved.stateMachines[1]?.definitions["開始"]?.nameRange).toEqual(SourceRange.onLine(5, 10, 12));
-  expect(resolved.stateMachines[1]?.references["欠落"]).toEqual([SourceRange.onLine(8, 21, 23)]);
+  expect(resolved.stateMachines[1]?.definitions["開始"]?.nameRange).toEqual(
+    SourceRange.onLine(5, 10, 12),
+  );
+  expect(resolved.stateMachines[1]?.references["欠落"]).toEqual([
+    SourceRange.onLine(8, 21, 23),
+  ]);
   expect(resolved.stateMachines[2]?.diagnostics).toEqual([]);
 });
 
@@ -107,8 +156,16 @@ test("終端からの遷移と完全一致する重複辺を検出し、自己�
 
   expect(parsed.diagnostics).toEqual([]);
   expect(resolved.diagnostics).toEqual([
-    { severity: "error", message: "同じ遷移が既に宣言されています", range: SourceRange.onLine(8, 3, 29) },
-    { severity: "error", message: "終端状態「終了」からは遷移できません", range: SourceRange.onLine(9, 15, 17) },
+    {
+      severity: "error",
+      message: "同じ遷移が既に宣言されています",
+      range: SourceRange.onLine(8, 3, 29),
+    },
+    {
+      severity: "error",
+      message: "終端状態「終了」からは遷移できません",
+      range: SourceRange.onLine(9, 15, 17),
+    },
   ]);
 });
 
@@ -117,9 +174,11 @@ test("AST上の空イベント名も意味診断に残す", () => {
   initial: 開始
   state: 開始`);
   const machine = parsed.document.declarations[0];
+
   if (machine?.kind !== "state-machine") {
     throw new Error("テスト入力のマシンが解析されませんでした");
   }
+
   const transition = TransitionDecl.create({
     from: "開始",
     fromRange: SourceRange.onLine(4, 15, 17),
@@ -131,11 +190,17 @@ test("AST上の空イベント名も意味診断に残す", () => {
   });
   const document = {
     ...parsed.document,
-    declarations: [StateMachineDecl.create({ ...machine, transitions: [transition] })],
+    declarations: [
+      StateMachineDecl.create({ ...machine, transitions: [transition] }),
+    ],
   };
 
   expect(Resolve.resolve(document).diagnostics).toEqual([
-    { severity: "error", message: "イベント名が必要です", range: transition.eventRange },
+    {
+      severity: "error",
+      message: "イベント名が必要です",
+      range: transition.eventRange,
+    },
   ]);
 });
 
@@ -150,7 +215,11 @@ test("Object.prototype と同名の状態も参照表へ安全に登録する", 
   const machine = resolved.stateMachines[0];
 
   expect(parsed.diagnostics).toEqual([]);
-  expect(Object.keys(machine?.references ?? {})).toEqual(["toString", "constructor", "valueOf"]);
+  expect(Object.keys(machine?.references ?? {})).toEqual([
+    "toString",
+    "constructor",
+    "valueOf",
+  ]);
   expect(machine?.references["toString"]).toHaveLength(3);
   expect(machine?.references["constructor"]).toHaveLength(3);
   expect(machine?.references["valueOf"]).toHaveLength(1);

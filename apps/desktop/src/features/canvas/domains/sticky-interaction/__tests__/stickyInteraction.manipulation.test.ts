@@ -42,6 +42,7 @@ const documentWithTwoStickies = {
  */
 const stickyIn = (document: Document, stickyId: StickyId): StickyModel => {
   const sticky = Document.stickyById(document, stickyId);
+
   return sticky.some ? sticky.value : draggedSticky;
 };
 
@@ -227,7 +228,6 @@ test("リサイズを取り消すと開始前の矩形へ戻して履歴へ積�
   expect(canceled.session).toEqual({ status: "selected", stickyId: draggedId });
   expect(StickyInteraction.hasUndo(canceled)).toBe(false);
 });
-
 
 test("viewport の変更は undo 履歴へ積まない", () => {
   const viewport = { x: 80, y: -40, zoom: 1.5 };

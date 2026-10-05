@@ -5,7 +5,9 @@ import {
 } from "@domain-modeler/canvas-core";
 import type { FileWriteError, FileWriteResult } from "@/libs/file-write";
 import type { SavePathSelection } from "@/libs/file-dialog";
+
 export type { SavePathSelection } from "@/libs/file-dialog";
+
 import type { TabDocumentType } from "./tabs";
 
 /** ファイル読み込みに失敗した理由。 */
@@ -73,14 +75,17 @@ export const FileActions = {
     openPaths: readonly string[] = [],
   ): Promise<NewDocumentResult> {
     const selection = await operations.selectSavePath(documentType);
+
     if (selection.status !== "selected") {
       return selection;
     }
+
     const pathMatches = await Promise.all(
       openPaths.map((openPath) =>
         operations.sameFilePath(selection.path, openPath),
       ),
     );
+
     if (pathMatches.some((matches) => matches)) {
       return {
         status: "writeFailed",
@@ -97,11 +102,13 @@ export const FileActions = {
       selection.path,
       operations.contents?.() ?? initialContents(documentType),
     );
+
     if (writeResult.type === "err") {
       return { status: "writeFailed", error: writeResult.error };
     }
 
     operations.openTab(selection.path, documentType);
+
     return { status: "created", path: selection.path };
   },
 
@@ -118,11 +125,13 @@ export const FileActions = {
     operations: OpenDocumentOperations,
   ): Promise<OpenDocumentResult> {
     const documentType = documentTypeOf(path);
+
     if (documentType === undefined) {
       return rejectOpen({ kind: "unsupportedExtension", path }, operations);
     }
 
     const readResult = await operations.readFile(path);
+
     if (readResult.type === "err") {
       return rejectOpen(
         { kind: "readFailed", error: readResult.error },
@@ -132,6 +141,7 @@ export const FileActions = {
 
     if (documentType === "canvas") {
       const parseResult = Serialize.parse(readResult.value);
+
       if (!parseResult.ok) {
         return rejectOpen(
           { kind: "invalidCanvas", path, error: parseResult.error },
@@ -141,6 +151,7 @@ export const FileActions = {
     }
 
     operations.openTab(path, documentType);
+
     return { status: "opened", path, documentType };
   },
 } as const;
@@ -162,12 +173,15 @@ const initialContents = (documentType: TabDocumentType): string =>
  */
 const documentTypeOf = (path: string): TabDocumentType | undefined => {
   const normalized = path.toLowerCase();
+
   if (normalized.endsWith(".dcanvas")) {
     return "canvas";
   }
+
   if (normalized.endsWith(".dmodel")) {
     return "model";
   }
+
   return undefined;
 };
 
@@ -183,5 +197,6 @@ const rejectOpen = (
   operations: OpenDocumentOperations,
 ): OpenDocumentResult => {
   operations.notifyError(error);
+
   return { status: "rejected", error };
 };

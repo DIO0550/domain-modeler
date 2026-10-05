@@ -19,6 +19,7 @@ export const HistoryButton = {
    * @returns 無効な履歴ボタン。
    */
   disabled: (): HistoryButton => ({ availability: "disabled" }),
+
   /**
    * 押すと操作を実行する履歴ボタンを返す。
    *
@@ -46,8 +47,11 @@ type HistoryControlsProps = Readonly<{
  * @param props アクティブ文書の履歴操作。省略時は両方無効。
  * @returns アクセシブルな履歴操作群。
  */
-export function HistoryControls({ value = DISABLED_HISTORY }: HistoryControlsProps) {
+export function HistoryControls({
+  value = DISABLED_HISTORY,
+}: HistoryControlsProps) {
   const shortcutModifier = useMemo(() => historyShortcutModifier(), []);
+
   return (
     <div className="history-controls" role="group" aria-label="履歴操作">
       <HistoryControlButton
@@ -81,6 +85,7 @@ function HistoryControlButton({
   icon,
 }: HistoryControlButtonProps) {
   const isDisabled = button.availability === "disabled";
+
   return (
     <button
       type="button"
@@ -104,6 +109,7 @@ function HistoryIcon({ icon }: HistoryIconProps) {
   const path = icon === "undo" ? "M9 6 4 11l5 5" : "m15 6 5 5-5 5";
   const curve =
     icon === "undo" ? "M5 11h8a5 5 0 0 1 5 5" : "M19 11h-8a5 5 0 0 0-5 5";
+
   return (
     <svg
       width="16"
@@ -128,6 +134,7 @@ const historyButtonClassName = (
 ): string => {
   const disabledClass =
     availability === "disabled" ? ["history-controls__button--disabled"] : [];
+
   return ["history-controls__button", ...disabledClass].join(" ");
 };
 
@@ -136,6 +143,7 @@ const historyShortcutModifier = (): "⌘" | "Ctrl+" => {
   if (typeof navigator === "undefined") {
     return "Ctrl+";
   }
+
   return /Mac|iPhone|iPad|iPod/.test(
     `${navigator.platform} ${navigator.userAgent}`,
   )

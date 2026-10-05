@@ -26,9 +26,7 @@ const VERSION_PATTERN = /^(\d+)\.(\d+)$/;
  * @param value 判定する値。
  * @returns プレーンオブジェクトの場合は `true`。
  */
-const isPlainObject = (
-  value: unknown,
-): value is Record<string, unknown> =>
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 /**
@@ -62,6 +60,7 @@ const parseVersion = (version: unknown): Result<string> => {
   }
 
   const matched = VERSION_PATTERN.exec(version);
+
   if (matched === null) {
     return Result.err(
       CanvasError.create(
@@ -72,6 +71,7 @@ const parseVersion = (version: unknown): Result<string> => {
   }
 
   const major = Number(matched[1]);
+
   if (major !== SUPPORTED_MAJOR) {
     return Result.err(
       CanvasError.create(
@@ -95,6 +95,7 @@ const parseViewport = (viewport: unknown): Result<Viewport> => {
       CanvasError.create("INVALID_DOCUMENT", "viewport must be an object"),
     );
   }
+
   if (
     !NumberEx.isFinite(viewport.x) ||
     !NumberEx.isFinite(viewport.y) ||
@@ -128,6 +129,7 @@ const parseOptionalAnchor = (
   if (value === undefined) {
     return Result.ok(undefined);
   }
+
   if (!Anchor.is(value)) {
     return Result.err(
       CanvasError.create(
@@ -136,6 +138,7 @@ const parseOptionalAnchor = (
       ),
     );
   }
+
   return Result.ok(value);
 };
 
@@ -150,11 +153,13 @@ const parseSticky = (value: unknown): Result<Sticky> => {
       CanvasError.create("INVALID_DOCUMENT", "sticky must be an object"),
     );
   }
+
   if (typeof value.id !== "string") {
     return Result.err(
       CanvasError.create("INVALID_DOCUMENT", "sticky.id must be a string"),
     );
   }
+
   if (!StickyType.is(value.type)) {
     return Result.err(
       CanvasError.create(
@@ -163,16 +168,22 @@ const parseSticky = (value: unknown): Result<Sticky> => {
       ),
     );
   }
+
   if (typeof value.text !== "string") {
     return Result.err(
       CanvasError.create("INVALID_DOCUMENT", "sticky.text must be a string"),
     );
   }
+
   if (!isPlainObject(value.position)) {
     return Result.err(
-      CanvasError.create("INVALID_DOCUMENT", "sticky.position must be an object"),
+      CanvasError.create(
+        "INVALID_DOCUMENT",
+        "sticky.position must be an object",
+      ),
     );
   }
+
   if (
     !NumberEx.isFinite(value.position.x) ||
     !NumberEx.isFinite(value.position.y)
@@ -184,11 +195,13 @@ const parseSticky = (value: unknown): Result<Sticky> => {
       ),
     );
   }
+
   if (!isPlainObject(value.size)) {
     return Result.err(
       CanvasError.create("INVALID_DOCUMENT", "sticky.size must be an object"),
     );
   }
+
   if (
     !NumberEx.isFinite(value.size.width) ||
     !NumberEx.isFinite(value.size.height)
@@ -202,6 +215,7 @@ const parseSticky = (value: unknown): Result<Sticky> => {
   }
 
   const size = { width: value.size.width, height: value.size.height };
+
   if (!Size.isValid(size)) {
     return Result.err(
       CanvasError.create("INVALID_STICKY_SIZE", "Sticky size must be positive"),
@@ -234,11 +248,13 @@ const parseStickies = (stickies: unknown): Result<readonly Sticky[]> => {
 
   for (const stickyValue of stickies) {
     const stickyResult = parseSticky(stickyValue);
+
     if (!stickyResult.ok) {
       return stickyResult;
     }
 
     const sticky = stickyResult.value;
+
     if (seenIds.has(sticky.id)) {
       return Result.err(
         CanvasError.create(
@@ -247,6 +263,7 @@ const parseStickies = (stickies: unknown): Result<readonly Sticky[]> => {
         ),
       );
     }
+
     seenIds.add(sticky.id);
     parsed.push(sticky);
   }
@@ -269,24 +286,34 @@ const parseConnection = (
       CanvasError.create("INVALID_DOCUMENT", "connection must be an object"),
     );
   }
+
   if (typeof value.id !== "string") {
     return Result.err(
       CanvasError.create("INVALID_DOCUMENT", "connection.id must be a string"),
     );
   }
+
   if (typeof value.from !== "string") {
     return Result.err(
-      CanvasError.create("INVALID_DOCUMENT", "connection.from must be a string"),
+      CanvasError.create(
+        "INVALID_DOCUMENT",
+        "connection.from must be a string",
+      ),
     );
   }
+
   if (typeof value.to !== "string") {
     return Result.err(
       CanvasError.create("INVALID_DOCUMENT", "connection.to must be a string"),
     );
   }
+
   if (typeof value.label !== "string") {
     return Result.err(
-      CanvasError.create("INVALID_DOCUMENT", "connection.label must be a string"),
+      CanvasError.create(
+        "INVALID_DOCUMENT",
+        "connection.label must be a string",
+      ),
     );
   }
 
@@ -298,6 +325,7 @@ const parseConnection = (
       ),
     );
   }
+
   if (!stickyIds.has(value.from)) {
     return Result.err(
       CanvasError.create(
@@ -306,6 +334,7 @@ const parseConnection = (
       ),
     );
   }
+
   if (!stickyIds.has(value.to)) {
     return Result.err(
       CanvasError.create(
@@ -316,10 +345,13 @@ const parseConnection = (
   }
 
   const fromAnchorResult = parseOptionalAnchor(value.fromAnchor, "fromAnchor");
+
   if (!fromAnchorResult.ok) {
     return fromAnchorResult;
   }
+
   const toAnchorResult = parseOptionalAnchor(value.toAnchor, "toAnchor");
+
   if (!toAnchorResult.ok) {
     return toAnchorResult;
   }
@@ -359,11 +391,13 @@ const parseConnections = (
 
   for (const connectionValue of connections) {
     const connectionResult = parseConnection(connectionValue, stickyIds);
+
     if (!connectionResult.ok) {
       return connectionResult;
     }
 
     const connection = connectionResult.value;
+
     if (seenIds.has(connection.id)) {
       return Result.err(
         CanvasError.create(
@@ -372,6 +406,7 @@ const parseConnections = (
         ),
       );
     }
+
     seenIds.add(connection.id);
     parsed.push(connection);
   }
@@ -384,11 +419,15 @@ const parseConnections = (
  * @param raw トップレベルの JSON オブジェクト。
  * @returns 検証済みの Document。
  */
-const parseDocumentObject = (raw: Record<string, unknown>): Result<Document> => {
+const parseDocumentObject = (
+  raw: Record<string, unknown>,
+): Result<Document> => {
   const versionResult = parseVersion(raw.version);
+
   if (!versionResult.ok) {
     return versionResult;
   }
+
   if (typeof raw.title !== "string") {
     return Result.err(
       CanvasError.create("INVALID_DOCUMENT", "title must be a string"),
@@ -396,11 +435,13 @@ const parseDocumentObject = (raw: Record<string, unknown>): Result<Document> => 
   }
 
   const viewportResult = parseViewport(raw.viewport);
+
   if (!viewportResult.ok) {
     return viewportResult;
   }
 
   const stickiesResult = parseStickies(raw.stickies);
+
   if (!stickiesResult.ok) {
     return stickiesResult;
   }
@@ -409,6 +450,7 @@ const parseDocumentObject = (raw: Record<string, unknown>): Result<Document> => 
     raw.connections,
     stickiesResult.value,
   );
+
   if (!connectionsResult.ok) {
     return connectionsResult;
   }
@@ -504,9 +546,11 @@ export const Serialize = {
    */
   parse: (json: string): Result<Document> => {
     const jsonResult = parseJson(json);
+
     if (!jsonResult.ok) {
       return jsonResult;
     }
+
     if (!isPlainObject(jsonResult.value)) {
       return Result.err(
         CanvasError.create("INVALID_DOCUMENT", "document must be an object"),

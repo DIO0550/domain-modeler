@@ -79,7 +79,8 @@ test("RECORD では未定義のフィールドだけバッジを付ける", () =
     fields[0]?.querySelector(".preview-data-card__undefined-badge"),
   ).toBeNull();
   expect(
-    fields[1]?.querySelector(".preview-data-card__undefined-badge")?.textContent,
+    fields[1]?.querySelector(".preview-data-card__undefined-badge")
+      ?.textContent,
   ).toBe("未定義");
 });
 
@@ -178,7 +179,9 @@ test("CHOICE の or は直後のケースと同じまとまりになる", () => 
       range,
     }),
   );
-  const groupedCase = host.querySelector(".preview-data-card__choice-item:nth-child(2)");
+  const groupedCase = host.querySelector(
+    ".preview-data-card__choice-item:nth-child(2)",
+  );
 
   expect(
     groupedCase?.querySelector(".preview-data-card__or")?.textContent,

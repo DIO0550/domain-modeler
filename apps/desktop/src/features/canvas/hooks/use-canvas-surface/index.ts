@@ -12,6 +12,7 @@ export function useCanvasSurface(
 ): RefCallback<HTMLDivElement> {
   const surfaceRef = useRef<HTMLDivElement>(null);
   const bindSurface = interaction?.bindSurface;
+
   const setSurfaceRef = useCallback(
     (surface: HTMLDivElement | null) => {
       surfaceRef.current = surface;
@@ -23,13 +24,17 @@ export function useCanvasSurface(
   useEffect(() => {
     const surface = surfaceRef.current;
     const onWheel = interaction?.onWheel;
+
     if (surface === null || onWheel === undefined) {
       return;
     }
+
     const handleWheel = (event: globalThis.WheelEvent): void => {
       onWheel(event, surface);
     };
+
     surface.addEventListener("wheel", handleWheel, { passive: false });
+
     return () => {
       surface.removeEventListener("wheel", handleWheel);
     };

@@ -1,10 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
-import {
-  type TabDocumentType,
-  type TabsAction,
-  TabsState,
-} from "../tabs";
+import { type TabDocumentType, type TabsAction, TabsState } from "../tabs";
 import { TabBar } from "./index";
 
 const meta: Meta<typeof TabBar> = {
@@ -27,6 +23,7 @@ const meta: Meta<typeof TabBar> = {
     ),
   ],
 };
+
 export default meta;
 
 type Story = StoryObj<typeof TabBar>;
@@ -36,6 +33,7 @@ const openTabs = (
   ...rest: readonly Readonly<{ path: string; documentType: TabDocumentType }>[]
 ): Extract<TabsState, { status: "active" }> => {
   const documents = [first, ...rest];
+
   return documents.reduce<TabsState>(
     (state, document) =>
       TabsState.reducer(state, {

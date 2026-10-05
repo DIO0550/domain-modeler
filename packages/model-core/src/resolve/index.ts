@@ -42,11 +42,14 @@ export const Resolve = {
    */
   resolve: (document: Document): ResolveResult => {
     const namedDeclarations = document.declarations.filter(NamedDecl.is);
-    const documentDeclarations = document.declarations.filter(DocumentDeclaration.is);
+    const documentDeclarations = document.declarations.filter(
+      DocumentDeclaration.is,
+    );
     const definitions = DefinitionTable.create(documentDeclarations);
     const stateMachines = document.declarations
       .filter(Declaration.isStateMachine)
       .map(StateMachineResolution.create);
+
     return ResolveResult.create({
       definitions,
       references: ReferenceTable.create(documentDeclarations),

@@ -23,6 +23,7 @@ const parseDataChunk = (chunk: DeclChunk): Result<DataDecl, Diagnostic> => {
     chunk,
     "data が必要です",
   );
+
   if (Result.isErr(dataKeyword)) {
     return dataKeyword;
   }
@@ -32,22 +33,26 @@ const parseDataChunk = (chunk: DeclChunk): Result<DataDecl, Diagnostic> => {
     chunk,
     "data",
   );
+
   if (Result.isErr(nameToken)) {
     return nameToken;
   }
 
   const equals = ExpectToken.equals(nameToken.value.cursor, chunk);
+
   if (Result.isErr(equals)) {
     return equals;
   }
 
   const typeExpr = TypeExprParse.parse(equals.value.cursor, chunk);
+
   if (Result.isErr(typeExpr)) {
     return typeExpr;
   }
 
   if (!ChunkCursor.atEnd(typeExpr.value.cursor)) {
     const unexpected = ChunkCursor.peek(typeExpr.value.cursor);
+
     return Result.err(
       ExpectToken.errorAt(
         "型式の後に余分なトークンがあります",
@@ -78,9 +83,11 @@ export const DataDeclParse = {
    */
   materialize: (chunk: DeclChunk): MaterializedDecl => {
     const parsed = parseDataChunk(chunk);
+
     if (Result.isOk(parsed)) {
       return { declaration: parsed.value, diagnostics: [] };
     }
+
     return {
       declaration: ErrorDecl.create(chunk.range),
       diagnostics: [parsed.error],

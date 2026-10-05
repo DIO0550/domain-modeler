@@ -21,7 +21,10 @@ import {
   type ValueOf,
 } from "@domain-modeler/model-core";
 import { Option, type Option as OptionType } from "@/utils/Option";
-import { CaretPosition, type CaretPosition as CaretPositionValue } from "../caret-position";
+import {
+  CaretPosition,
+  type CaretPosition as CaretPositionValue,
+} from "../caret-position";
 import {
   IDENTIFIER_RENAME_ERRORS,
   IdentifierRename,
@@ -47,7 +50,9 @@ export const ANALYZED_MODEL_RENAME_ERRORS = {
 } as const;
 
 /** 解析済み文書のリネーム失敗理由。 */
-export type AnalyzedModelRenameError = ValueOf<typeof ANALYZED_MODEL_RENAME_ERRORS>;
+export type AnalyzedModelRenameError = ValueOf<
+  typeof ANALYZED_MODEL_RENAME_ERRORS
+>;
 
 /**
  * 未定義の型名を定義表から集める。
@@ -61,6 +66,7 @@ const collectUndefinedTypeNames = (
   definitions: DefinitionTableValue,
 ): ReadonlySet<string> => {
   const namedDeclarations = document.declarations.filter(NamedDecl.is);
+
   return new Set(
     namedDeclarations.flatMap((decl) =>
       NamedDecl.referencedTerms(decl)
@@ -105,10 +111,13 @@ const rangesForRename = (
   const isCanonical =
     defined !== undefined &&
     SourceRange.equals(defined.nameRange, target.nameRange);
+
   if (!isCanonical) {
     return [target.nameRange];
   }
+
   const skipped = otherDuplicateNameRanges(model, target);
+
   return allRanges.filter((range) =>
     skipped.every((other) => !SourceRange.equals(range, other)),
   );
@@ -127,6 +136,7 @@ export const AnalyzedModel = {
     const resolved = Resolve.resolve(parsed.document);
     const diagnostics = [...parsed.diagnostics, ...resolved.diagnostics];
     const definitions = resolved.definitions;
+
     return {
       source,
       document: parsed.document,
@@ -141,14 +151,23 @@ export const AnalyzedModel = {
       ),
     };
   },
+
   /** 同名宣言が複数あっても source range で対応するマシンを特定する。 */
-  stateMachineIndex(model: AnalyzedModel, decl: StateMachineDecl): OptionType<number> {
-    const index = model.stateMachines.findIndex((item) => SourceRange.equals(item.machine.nameRange, decl.nameRange));
+  stateMachineIndex(
+    model: AnalyzedModel,
+    decl: StateMachineDecl,
+  ): OptionType<number> {
+    const index = model.stateMachines.findIndex((item) =>
+      SourceRange.equals(item.machine.nameRange, decl.nameRange),
+    );
+
     if (index < 0) {
       return Option.none();
     }
+
     return Option.some(index);
   },
+
   /**
    * 型名の定義宣言先頭へジャンプするキャレットを返す。
    *
@@ -161,11 +180,14 @@ export const AnalyzedModel = {
     name: string,
   ): OptionType<CaretPositionValue> {
     const decl = model.definitions[name];
+
     if (!DefinitionTable.has(model.definitions, name) || decl === undefined) {
       return Option.none();
     }
+
     return CaretPosition.fromRange(model.source, decl.range);
   },
+
   /**
    * 宣言名と型参照の出現を新しい名前へ一括置換する。
    * 置換対象は参照表のトークン位置だけで、コメント内の同名文字列は含まない。
@@ -185,6 +207,7 @@ export const AnalyzedModel = {
     ) {
       return Result.err(ANALYZED_MODEL_RENAME_ERRORS.nameCollision);
     }
+
     return IdentifierRename.create({
       source: model.source,
       ranges: rangesForRename(model, params.decl),

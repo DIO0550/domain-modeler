@@ -25,6 +25,7 @@ export const SourceRange = {
     endLine: line,
     endColumn,
   }),
+
   /**
    * 2つの範囲を包含する最小範囲を生成する。
    * @param start 開始側の範囲。
@@ -37,6 +38,7 @@ export const SourceRange = {
     endLine: end.endLine,
     endColumn: end.endColumn,
   }),
+
   /**
    * 2つの範囲が同じ位置かを判定する。
    * @param left 比較する範囲。
@@ -48,6 +50,7 @@ export const SourceRange = {
     left.startColumn === right.startColumn &&
     left.endLine === right.endLine &&
     left.endColumn === right.endColumn,
+
   /**
    * 範囲が指定した行を含むか判定する。
    * 空範囲でも開始行(終了行)は含む。

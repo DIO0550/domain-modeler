@@ -12,8 +12,15 @@ fn 両文書を排他的に作成し競合先の内容を維持する() {
         let workspace = TempWorkspace::create();
         let path = workspace.path(name);
         let path_str = path.to_str().unwrap();
-        assert_eq!(super::create_utf8_file(path_str, "first"), FileWriteResult::Ok);
-        assert!(matches!(super::create_utf8_file(path_str, "second"), FileWriteResult::Err { .. }));
+
+        assert_eq!(
+            super::create_utf8_file(path_str, "first"),
+            FileWriteResult::Ok
+        );
+        assert!(matches!(
+            super::create_utf8_file(path_str, "second"),
+            FileWriteResult::Err { .. }
+        ));
         assert_eq!(fs::read_to_string(&path).unwrap(), "first");
         assert_eq!(workspace.entry_names(), [name]);
     }
@@ -37,6 +44,7 @@ fn 長い有効なファイル名でも新規作成できる() {
 fn 排他的作成は既存ファイルを上書きしない() {
     let workspace = TempWorkspace::create();
     let target = workspace.path("draft.dmodel");
+
     fs::write(&target, "existing").unwrap();
 
     assert!(matches!(
@@ -53,12 +61,15 @@ fn 完成した一時ファイルだけを新規パスへ公開する() {
     let workspace = TempWorkspace::create();
     let target = workspace.path("draft.dmodel");
     let (temp_path, mut temp_file) = super::create_temp_file(&target).unwrap();
+
     temp_file.write_all(b"complete").unwrap();
     temp_file.sync_all().unwrap();
 
     assert!(!target.exists());
+
     super::publish_new_file(&temp_file, &temp_path, &target).unwrap();
     drop(temp_file);
+
     assert_eq!(fs::read_to_string(target).unwrap(), "complete");
 }
 
@@ -69,8 +80,10 @@ fn hard_link非対応時も上書きなしrenameで完成済みファイルを�
     let workspace = TempWorkspace::create();
     let target = workspace.path("設計 図.dcanvas");
     let (temp_path, mut temp_file) = super::create_temp_file(&target).unwrap();
+
     temp_file.write_all(b"complete").unwrap();
     temp_file.sync_all().unwrap();
+
     let unsupported = std::io::Error::new(std::io::ErrorKind::Unsupported, "no links");
 
     super::publish_open_file(&temp_file, Err(unsupported), &temp_path, &target).unwrap();
@@ -86,10 +99,14 @@ fn renameへのフォールバックでも既存ファイルは上書きしな�
 
     let workspace = TempWorkspace::create();
     let target = workspace.path("existing.dcanvas");
+
     fs::write(&target, "original").unwrap();
+
     let (temp_path, mut temp_file) = super::create_temp_file(&target).unwrap();
+
     temp_file.write_all(b"replacement").unwrap();
     temp_file.sync_all().unwrap();
+
     let unsupported = std::io::Error::new(std::io::ErrorKind::Unsupported, "no links");
 
     assert!(super::publish_open_file(&temp_file, Err(unsupported), &temp_path, &target).is_err());
@@ -103,8 +120,13 @@ fn 新規作成は壊れたシンボリックリンクも置換しない() {
     let workspace = TempWorkspace::create();
     let missing = workspace.path("missing.dcanvas");
     let link = workspace.path("link.dcanvas");
+
     std::os::unix::fs::symlink(&missing, &link).unwrap();
-    assert!(matches!(super::create_utf8_file(link.to_str().unwrap(), "new"), FileWriteResult::Err { .. }));
+
+    assert!(matches!(
+        super::create_utf8_file(link.to_str().unwrap(), "new"),
+        FileWriteResult::Err { .. }
+    ));
     assert!(link.is_symlink());
     assert!(!missing.exists());
     assert_eq!(workspace.entry_names(), ["link.dcanvas"]);
@@ -144,6 +166,7 @@ fn 同じ対象の一時ファイルを連続確保しても別の排他的な�
     let (second_path, second_file) = super::create_temp_file(&target).unwrap();
 
     assert_ne!(first_path, second_path);
+
     drop((first_file, second_file));
     fs::remove_file(first_path).unwrap();
     fs::remove_file(second_path).unwrap();
@@ -153,7 +176,9 @@ fn 同じ対象の一時ファイルを連続確保しても別の排他的な�
 fn 既存ファイルを上書きすると新しい内容になる() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("board.dcanvas");
+
     fs::write(&path, "old contents\n").expect("fixture should be written");
+
     let path_str = path.to_str().expect("path is utf-8");
 
     let result = write_utf8_file(path_str, "new contents\n");
@@ -169,7 +194,9 @@ fn 既存ファイルを上書きすると新しい内容になる() {
 fn 空文字を書くと空ファイルになる() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("empty.dmodel");
+
     fs::write(&path, "not empty").expect("fixture should be written");
+
     let path_str = path.to_str().expect("path is utf-8");
 
     let result = write_utf8_file(path_str, "");
@@ -201,7 +228,9 @@ fn 親ディレクトリが無いと書き込み失敗が値として返る() {
 fn ディレクトリへ書くと書き込み失敗が値として返る() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::create_dir(&path).expect("target directory should be created");
+
     let path_str = path.to_str().expect("path is utf-8");
 
     let json =
@@ -218,7 +247,9 @@ fn ディレクトリへ書くと書き込み失敗が値として返る() {
 fn ディレクトリへの書き込み失敗後に一時ファイルを残さない() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::create_dir(&path).expect("target directory should be created");
+
     let path_str = path.to_str().expect("path is utf-8");
 
     let result = write_utf8_file(path_str, "nope\n");
@@ -248,7 +279,9 @@ fn 書き込み失敗はjsonの値としてシリアライズされる() {
 fn 書き込みに失敗しても既存ファイルの内容は残る() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("note.dmodel");
+
     fs::write(&path, "original\n").expect("fixture should be written");
+
     let path_str = path.to_str().expect("path is utf-8");
 
     let _restore = RestoredPermissions::make_dir_readonly(workspace.dir());
@@ -267,8 +300,15 @@ fn 生成モデルは新規作成され既存ファイルには追記も上書�
     let workspace = TempWorkspace::create();
     let path = workspace.path("generated.dmodel");
     let path_str = path.to_str().unwrap();
-    assert_eq!(super::create_dmodel_file(path_str, "first"), FileWriteResult::Ok);
-    assert!(matches!(super::create_dmodel_file(path_str, "second"), FileWriteResult::Err { .. }));
+
+    assert_eq!(
+        super::create_dmodel_file(path_str, "first"),
+        FileWriteResult::Ok
+    );
+    assert!(matches!(
+        super::create_dmodel_file(path_str, "second"),
+        FileWriteResult::Err { .. }
+    ));
     assert_eq!(fs::read_to_string(&path).unwrap(), "first");
     assert_eq!(workspace.entry_names(), ["generated.dmodel"]);
 }
@@ -277,7 +317,11 @@ fn 生成モデルは新規作成され既存ファイルには追記も上書�
 fn 生成モデルはキャンバス拡張子に保存できない() {
     let workspace = TempWorkspace::create();
     let path = workspace.path("source.dcanvas");
-    assert!(matches!(super::create_dmodel_file(path.to_str().unwrap(), "model"), FileWriteResult::Err { .. }));
+
+    assert!(matches!(
+        super::create_dmodel_file(path.to_str().unwrap(), "model"),
+        FileWriteResult::Err { .. }
+    ));
     assert!(!path.exists());
 }
 
@@ -287,9 +331,14 @@ fn 生成モデルはシンボリックリンク先も変更しない() {
     let workspace = TempWorkspace::create();
     let original = workspace.path("original.dmodel");
     let link = workspace.path("link.dmodel");
+
     fs::write(&original, "original").unwrap();
     std::os::unix::fs::symlink(&original, &link).unwrap();
-    assert!(matches!(super::create_dmodel_file(link.to_str().unwrap(), "new"), FileWriteResult::Err { .. }));
+
+    assert!(matches!(
+        super::create_dmodel_file(link.to_str().unwrap(), "new"),
+        FileWriteResult::Err { .. }
+    ));
     assert_eq!(fs::read_to_string(original).unwrap(), "original");
     assert!(link.is_symlink());
 }

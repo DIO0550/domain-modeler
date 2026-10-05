@@ -16,6 +16,7 @@ const parseTerm = (source: string) => {
     tokens,
     range: DeclChunk.rangeOf(tokens),
   };
+
   return TypeTermParse.parse(ChunkCursor.create(tokens), chunk);
 };
 

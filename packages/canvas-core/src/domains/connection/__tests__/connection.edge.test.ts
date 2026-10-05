@@ -14,9 +14,12 @@ test.each([
   { text: "a\r\nb", expected: "a b" },
   { text: "a\rb", expected: "a b" },
   { text: "a\n\nb", expected: "a  b" },
-])(
-  "改行を含むテキストはスペースに置換してから note に使う ($text)",
-  ({ text, expected }: { text: string; expected: string }) => {
-    expect(Connection.buildNote(text, "x")).toBe(`${expected} -> x`);
-  },
-);
+])("改行を含むテキストはスペースに置換してから note に使う ($text)", ({
+  text,
+  expected,
+}: {
+  text: string;
+  expected: string;
+}) => {
+  expect(Connection.buildNote(text, "x")).toBe(`${expected} -> x`);
+});

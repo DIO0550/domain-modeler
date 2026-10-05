@@ -13,10 +13,16 @@ test("循環と自己ループを含むグラフを有限の位置へ自動配�
   transition: 待機 -> 待機 on 再試行`;
   const analyzed = AnalyzedModel.create(source);
   const resolution = analyzed.stateMachines[0];
+
   expect(resolution).toBeDefined();
-  if (resolution === undefined) { return; }
+
+  if (resolution === undefined) {
+    return;
+  }
+
   const graph = StateMachineGraph.create(resolution, analyzed.diagnostics);
   const layout = StateMachineLayout.create(graph);
+
   expect(layout.width).toBeGreaterThan(0);
   expect(Object.keys(layout.nodes)).toHaveLength(2);
   expect(layout.edges).toHaveLength(3);

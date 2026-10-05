@@ -40,6 +40,7 @@ test("data・workflow・エラー宣言を出現順に保持する", () => {
     [data, broken, workflow],
     SourceRange.onLine(1, 1, 8),
   );
+
   expect(document.declarations).toEqual([data, broken, workflow]);
   expect(Declaration.isData(data)).toBe(true);
   expect(Declaration.isError(broken)).toBe(true);
@@ -48,6 +49,7 @@ test("data・workflow・エラー宣言を出現順に保持する", () => {
 
 test("空の宣言列でも Document を生成できる", () => {
   const range = SourceRange.onLine(1, 1, 1);
+
   expect(Document.create([], range)).toEqual({
     declarations: [],
     range,

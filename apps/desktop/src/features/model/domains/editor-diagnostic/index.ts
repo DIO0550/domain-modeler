@@ -44,19 +44,25 @@ const splitLines = (source: string): readonly string[] =>
 const mergeColumnRanges = (
   ranges: readonly ColumnRange[],
 ): readonly ColumnRange[] => {
-  const filtered = ranges.filter((range) => range.endColumn > range.startColumn);
+  const filtered = ranges.filter(
+    (range) => range.endColumn > range.startColumn,
+  );
   const sorted = [...filtered].sort(
     (left, right) =>
       left.startColumn - right.startColumn || left.endColumn - right.endColumn,
   );
+
   return sorted.reduce<readonly ColumnRange[]>((merged, range) => {
     const last = merged[merged.length - 1];
+
     if (last === undefined) {
       return [range];
     }
+
     if (range.startColumn > last.endColumn) {
       return [...merged, range];
     }
+
     return [
       ...merged.slice(0, -1),
       {
@@ -82,13 +88,16 @@ const clipWarningToLine = (
   if (!SourceRange.coversLine(range, line)) {
     return [];
   }
+
   const startColumn = range.startLine === line ? range.startColumn : 1;
   const rawEndColumn =
     range.endLine === line ? range.endColumn : lineLength + 1;
   const endColumn = Math.min(rawEndColumn, lineLength + 1);
+
   if (endColumn <= startColumn) {
     return [];
   }
+
   return [{ startColumn, endColumn }];
 };
 
@@ -103,9 +112,11 @@ const segmentsOf = (
   warnings: readonly ColumnRange[],
 ): readonly EditorLineSegment[] => {
   const merged = mergeColumnRanges(warnings);
+
   if (merged.length === 0) {
     return [{ kind: "plain", text }];
   }
+
   const split = merged.reduce<
     Readonly<{ segments: readonly EditorLineSegment[]; cursor: number }>
   >(
@@ -120,16 +131,19 @@ const segmentsOf = (
         warning.length === 0
           ? withBefore
           : [...withBefore, { kind: "warning" as const, text: warning }];
+
       return { segments: withWarning, cursor: range.endColumn };
     },
     { segments: [], cursor: 1 },
   );
   const tail = text.slice(split.cursor - 1);
+
   if (tail.length === 0) {
     return split.segments.length === 0
       ? [{ kind: "plain", text: "" }]
       : split.segments;
   }
+
   return [...split.segments, { kind: "plain", text: tail }];
 };
 
@@ -148,21 +162,26 @@ const bucketByLine = (
 }> => {
   const warnings = lines.map((): ColumnRange[] => []);
   const errors = lines.map((): Diagnostic[] => []);
+
   for (const diagnostic of diagnostics) {
     const first = Math.max(1, diagnostic.range.startLine);
     const last = Math.min(lines.length, diagnostic.range.endLine);
+
     for (let line = first; line <= last; line += 1) {
       const text = lines[line - 1] ?? "";
+
       if (diagnostic.severity === DIAGNOSTIC_SEVERITIES.warning) {
         warnings[line - 1]?.push(
           ...clipWarningToLine(diagnostic.range, line, text.length),
         );
       }
+
       if (diagnostic.severity === DIAGNOSTIC_SEVERITIES.error) {
         errors[line - 1]?.push(diagnostic);
       }
     }
   }
+
   return { warnings, errors };
 };
 
@@ -179,11 +198,13 @@ const errorMarkOf = (
   if (covering.length === 0) {
     return { kind: "none" };
   }
+
   const messages = ArrayEx.unique(
     covering
       .filter((diagnostic) => diagnostic.range.startLine === line)
       .map((diagnostic) => diagnostic.message),
   );
+
   return { kind: "error", messages };
 };
 
@@ -202,12 +223,14 @@ export const EditorDiagnostic = {
   ): readonly EditorLineView[] {
     const lines = splitLines(source);
     const buckets = bucketByLine(lines, diagnostics);
+
     return lines.map((text, index) => ({
       line: index + 1,
       segments: segmentsOf(text, buckets.warnings[index] ?? []),
       errorMark: errorMarkOf(index + 1, buckets.errors[index] ?? []),
     }));
   },
+
   /**
    * 読み上げ用に、エラーを無効状態として説明文へまとめる。
    * 警告は説明に含めるが無効状態にはしない。
@@ -223,6 +246,7 @@ export const EditorDiagnostic = {
     const warnings = diagnostics.filter(
       (diagnostic) => diagnostic.severity === DIAGNOSTIC_SEVERITIES.warning,
     );
+
     return {
       invalid: errors.length > 0,
       description: ArrayEx.unique([

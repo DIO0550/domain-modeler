@@ -1,12 +1,18 @@
 import { DIAGNOSTIC_SEVERITIES, Diagnostic } from "../diagnostic";
 import type { SourceRange } from "../source-range";
-import type { StateDecl, StateMachineDecl, TransitionDecl } from "../state-machine-decl";
+import type {
+  StateDecl,
+  StateMachineDecl,
+  TransitionDecl,
+} from "../state-machine-decl";
 
 /** 1つのマシン内に閉じた状態名と最初の宣言。 */
 export type StateDefinitionTable = Readonly<Record<string, StateDecl>>;
 
 /** 1つのマシン内の状態名と宣言・参照の出現位置。未定義参照も含む。 */
-export type StateReferenceTable = Readonly<Record<string, readonly SourceRange[]>>;
+export type StateReferenceTable = Readonly<
+  Record<string, readonly SourceRange[]>
+>;
 
 /** マシンの状態参照解決結果。machine で同名マシンも区別する。 */
 export type StateMachineResolution = Readonly<{
@@ -32,8 +38,14 @@ type StateOccurrence = Readonly<{ name: string; range: SourceRange }>;
 
 const occurrencesOf = (machine: StateMachineDecl): readonly StateOccurrence[] =>
   [
-    ...machine.states.map((state) => ({ name: state.name, range: state.nameRange })),
-    ...machine.initials.map((initial) => ({ name: initial.name, range: initial.nameRange })),
+    ...machine.states.map((state) => ({
+      name: state.name,
+      range: state.nameRange,
+    })),
+    ...machine.initials.map((initial) => ({
+      name: initial.name,
+      range: initial.nameRange,
+    })),
     ...machine.transitions.flatMap((transition) => [
       { name: transition.from, range: transition.fromRange },
       { name: transition.to, range: transition.toRange },
@@ -50,7 +62,7 @@ const referenceTableOf = (machine: StateMachineDecl): StateReferenceTable =>
       ...references,
       [occurrence.name]: [
         ...(Object.prototype.hasOwnProperty.call(references, occurrence.name)
-          ? references[occurrence.name] ?? []
+          ? (references[occurrence.name] ?? [])
           : []),
         occurrence.range,
       ],
@@ -58,7 +70,9 @@ const referenceTableOf = (machine: StateMachineDecl): StateReferenceTable =>
     {},
   );
 
-const duplicateStateDiagnosticsOf = (machine: StateMachineDecl): readonly Diagnostic[] =>
+const duplicateStateDiagnosticsOf = (
+  machine: StateMachineDecl,
+): readonly Diagnostic[] =>
   machine.states.flatMap((state, index) =>
     machine.states.slice(0, index).some((prior) => prior.name === state.name)
       ? [
@@ -90,13 +104,28 @@ const initialDiagnosticsOf = (
   definitions: StateDefinitionTable,
 ): readonly Diagnostic[] => [
   ...(machine.initials.length === 0
-    ? [Diagnostic.create(DIAGNOSTIC_SEVERITIES.error, "初期状態が必要です", machine.nameRange)]
+    ? [
+        Diagnostic.create(
+          DIAGNOSTIC_SEVERITIES.error,
+          "初期状態が必要です",
+          machine.nameRange,
+        ),
+      ]
     : []),
   ...machine.initials.flatMap((initial, index) => [
     ...(index > 0
-      ? [Diagnostic.create(DIAGNOSTIC_SEVERITIES.error, "初期状態は1つだけ指定できます", initial.range)]
+      ? [
+          Diagnostic.create(
+            DIAGNOSTIC_SEVERITIES.error,
+            "初期状態は1つだけ指定できます",
+            initial.range,
+          ),
+        ]
       : []),
-    ...undefinedStateAt(definitions, { name: initial.name, range: initial.nameRange }),
+    ...undefinedStateAt(definitions, {
+      name: initial.name,
+      range: initial.nameRange,
+    }),
   ]),
 ];
 
@@ -108,16 +137,42 @@ const transitionDiagnosticsOf = (
   definitions: StateDefinitionTable,
 ): readonly Diagnostic[] =>
   machine.transitions.flatMap((transition, index) => [
-    ...undefinedStateAt(definitions, { name: transition.from, range: transition.fromRange }),
-    ...undefinedStateAt(definitions, { name: transition.to, range: transition.toRange }),
+    ...undefinedStateAt(definitions, {
+      name: transition.from,
+      range: transition.fromRange,
+    }),
+    ...undefinedStateAt(definitions, {
+      name: transition.to,
+      range: transition.toRange,
+    }),
     ...(definitions[transition.from]?.terminal
-      ? [Diagnostic.create(DIAGNOSTIC_SEVERITIES.error, `終端状態「${transition.from}」からは遷移できません`, transition.fromRange)]
+      ? [
+          Diagnostic.create(
+            DIAGNOSTIC_SEVERITIES.error,
+            `終端状態「${transition.from}」からは遷移できません`,
+            transition.fromRange,
+          ),
+        ]
       : []),
     ...(transition.event.trim() === ""
-      ? [Diagnostic.create(DIAGNOSTIC_SEVERITIES.error, "イベント名が必要です", transition.eventRange)]
+      ? [
+          Diagnostic.create(
+            DIAGNOSTIC_SEVERITIES.error,
+            "イベント名が必要です",
+            transition.eventRange,
+          ),
+        ]
       : []),
-    ...(machine.transitions.slice(0, index).some((prior) => sameTransition(prior, transition))
-      ? [Diagnostic.create(DIAGNOSTIC_SEVERITIES.error, "同じ遷移が既に宣言されています", transition.range)]
+    ...(machine.transitions
+      .slice(0, index)
+      .some((prior) => sameTransition(prior, transition))
+      ? [
+          Diagnostic.create(
+            DIAGNOSTIC_SEVERITIES.error,
+            "同じ遷移が既に宣言されています",
+            transition.range,
+          ),
+        ]
       : []),
   ]);
 
@@ -130,13 +185,20 @@ export const StateMachineResolution = {
    */
   create: (machine: StateMachineDecl): StateMachineResolution => {
     const definitions = definitionTableOf(machine);
+
     return {
       machine,
       definitions,
       references: referenceTableOf(machine),
       diagnostics: [
         ...(machine.states.length === 0
-          ? [Diagnostic.create(DIAGNOSTIC_SEVERITIES.error, "状態が必要です", machine.nameRange)]
+          ? [
+              Diagnostic.create(
+                DIAGNOSTIC_SEVERITIES.error,
+                "状態が必要です",
+                machine.nameRange,
+              ),
+            ]
           : []),
         ...duplicateStateDiagnosticsOf(machine),
         ...initialDiagnosticsOf(machine, definitions),

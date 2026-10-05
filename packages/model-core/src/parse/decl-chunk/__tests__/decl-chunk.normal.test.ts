@@ -13,6 +13,7 @@ test("空のトークン列の rangeOf は 1:1 の空範囲になる", () => {
 
 test("トークン列の先頭から末尾までの範囲を rangeOf で返す", () => {
   const tokens = Tokenizer.tokenize("data 注文 = string");
+
   expect(DeclChunk.rangeOf(tokens)).toEqual({
     startLine: 1,
     startColumn: 1,
@@ -55,6 +56,7 @@ test("継続行は直前の宣言チャンクに含める", () => {
 
 test("宣言が無いソースは空のチャンク列になる", () => {
   const tokens = Tokenizer.tokenize("// コメントだけ\n\n");
+
   expect(DeclChunk.split(tokens)).toEqual([]);
 });
 

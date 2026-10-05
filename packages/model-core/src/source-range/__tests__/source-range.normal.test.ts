@@ -22,6 +22,7 @@ test("空の範囲は開始桁と終了桁が一致する", () => {
 test("2つの範囲を包含する最小範囲を span で生成する", () => {
   const start = SourceRange.onLine(1, 1, 5);
   const end = SourceRange.onLine(3, 2, 8);
+
   expect(SourceRange.span(start, end)).toEqual({
     startLine: 1,
     startColumn: 1,
@@ -32,6 +33,7 @@ test("2つの範囲を包含する最小範囲を span で生成する", () => {
 
 test("同一行の範囲はその行を含み前後の行は含まない", () => {
   const range = SourceRange.onLine(2, 3, 8);
+
   expect(SourceRange.coversLine(range, 2)).toBe(true);
   expect(SourceRange.coversLine(range, 1)).toBe(false);
   expect(SourceRange.coversLine(range, 3)).toBe(false);
@@ -42,6 +44,7 @@ test("複数行の範囲は両端の行を含む", () => {
     SourceRange.onLine(2, 1, 5),
     SourceRange.onLine(4, 2, 3),
   );
+
   expect(SourceRange.coversLine(range, 2)).toBe(true);
   expect(SourceRange.coversLine(range, 3)).toBe(true);
   expect(SourceRange.coversLine(range, 4)).toBe(true);
@@ -55,12 +58,18 @@ test("空範囲でも開始行を含む", () => {
 
 test("同じ位置の範囲は equals が真になる", () => {
   expect(
-    SourceRange.equals(SourceRange.onLine(1, 6, 10), SourceRange.onLine(1, 6, 10)),
+    SourceRange.equals(
+      SourceRange.onLine(1, 6, 10),
+      SourceRange.onLine(1, 6, 10),
+    ),
   ).toBe(true);
 });
 
 test("桁が違う範囲は equals が偽になる", () => {
   expect(
-    SourceRange.equals(SourceRange.onLine(1, 6, 10), SourceRange.onLine(1, 6, 11)),
+    SourceRange.equals(
+      SourceRange.onLine(1, 6, 10),
+      SourceRange.onLine(1, 6, 11),
+    ),
   ).toBe(false);
 });

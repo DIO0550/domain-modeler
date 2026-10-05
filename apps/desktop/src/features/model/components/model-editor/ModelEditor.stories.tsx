@@ -4,6 +4,7 @@ import { ModelEditor } from "./index";
 
 function EditableModel({ value: initialValue }: { value: string }) {
   const [value, setValue] = useState(initialValue);
+
   return (
     <div className="model-editor-story">
       <ModelEditor value={value} onChange={setValue} />
@@ -14,10 +15,14 @@ function EditableModel({ value: initialValue }: { value: string }) {
 const meta: Meta<typeof ModelEditor> = {
   component: ModelEditor,
   title: "Model/ModelEditor",
+
   render: (args) => <EditableModel value={args.value} />,
+
   argTypes: { onChange: { control: false } },
 };
+
 export default meta;
+
 type Story = StoryObj<typeof ModelEditor>;
 
 export const Default: Story = {

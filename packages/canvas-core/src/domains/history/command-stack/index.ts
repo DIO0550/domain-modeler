@@ -13,6 +13,7 @@ export const CommandStack = {
    * @returns コマンドを持たないスタック。
    */
   empty: (): CommandStack => [],
+
   /**
    * 文書コマンドをスタックの末尾へ積む。
    * @param stack コマンドを積む前のスタック。
@@ -21,6 +22,7 @@ export const CommandStack = {
    */
   push: (stack: CommandStack, command: DocumentCommand): CommandStack =>
     [...stack, command].slice(-HISTORY_LIMIT),
+
   /**
    * スタックの末尾から文書コマンドを取り出す。
    * @param stack コマンドを取り出すスタック。
@@ -28,8 +30,11 @@ export const CommandStack = {
    */
   pop: (
     stack: CommandStack,
-  ): Option<Readonly<{ command: DocumentCommand; remaining: CommandStack }>> => {
+  ): Option<
+    Readonly<{ command: DocumentCommand; remaining: CommandStack }>
+  > => {
     const command = stack[stack.length - 1];
+
     return command === undefined
       ? OptionValue.none()
       : OptionValue.some({ command, remaining: stack.slice(0, -1) });

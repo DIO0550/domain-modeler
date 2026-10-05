@@ -137,8 +137,8 @@
 }
 
 .preview-data-card__type-name-button:not(
-  .preview-data-card__type-name--undefined
-) {
+    .preview-data-card__type-name--undefined
+  ) {
   text-decoration: underline;
   text-underline-offset: 3px;
 }

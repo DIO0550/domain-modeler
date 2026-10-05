@@ -20,18 +20,23 @@ const renderControls = (
   value: React.ComponentProps<typeof HistoryControls>["value"],
 ): HTMLDivElement => {
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
+
   act(() => {
     root.render(<HistoryControls value={value} />);
   });
   rendered.push({
     host,
+
     unmount: () => {
       act(() => root.unmount());
       host.remove();
     },
   });
+
   return host;
 };
 
@@ -60,12 +65,14 @@ test("実行できない履歴操作は無効なボタンになる", () => {
     redo: HistoryButton.disabled(),
   });
 
-  expect(host.querySelector<HTMLButtonElement>('button[aria-label="元に戻す"]')?.disabled).toBe(
-    true,
-  );
-  expect(host.querySelector<HTMLButtonElement>('button[aria-label="やり直す"]')?.disabled).toBe(
-    true,
-  );
+  expect(
+    host.querySelector<HTMLButtonElement>('button[aria-label="元に戻す"]')
+      ?.disabled,
+  ).toBe(true);
+  expect(
+    host.querySelector<HTMLButtonElement>('button[aria-label="やり直す"]')
+      ?.disabled,
+  ).toBe(true);
 });
 
 test("実行可能な履歴操作を押すと対象のハンドラを呼ぶ", () => {
@@ -76,8 +83,12 @@ test("実行可能な履歴操作を押すと対象のハンドラを呼ぶ", ()
   });
 
   act(() => {
-    host.querySelector<HTMLButtonElement>('button[aria-label="元に戻す"]')?.click();
-    host.querySelector<HTMLButtonElement>('button[aria-label="やり直す"]')?.click();
+    host
+      .querySelector<HTMLButtonElement>('button[aria-label="元に戻す"]')
+      ?.click();
+    host
+      .querySelector<HTMLButtonElement>('button[aria-label="やり直す"]')
+      ?.click();
   });
 
   expect(clicked).toEqual(["undo", "redo"]);

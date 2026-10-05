@@ -96,7 +96,9 @@ import type { Sticky } from "../../sticky";
       { x: 50, y: 60 },
       { width: 140, height: 100 },
     );
+
     expect(result.ok).toBe(true);
+
     const next = (result as { ok: true; value: Document }).value;
 
     expect(baseDocument.stickies).toHaveLength(2);
@@ -125,6 +127,7 @@ import type { Sticky } from "../../sticky";
 
   it("存在しない付箋IDを本文変更した場合は内容を維持する", () => {
     const next = Document.updateStickyText(baseDocument, idMissing, "updated");
+
     expect(next).toEqual(baseDocument);
   });
 
@@ -141,6 +144,7 @@ import type { Sticky } from "../../sticky";
 
   it("存在しない付箋IDを移動した場合は内容を維持する", () => {
     const next = Document.moveSticky(baseDocument, idMissing, { x: 1, y: 2 });
+
     expect(next).toEqual(baseDocument);
   });
 
@@ -149,7 +153,9 @@ import type { Sticky } from "../../sticky";
       width: 200,
       height: 110,
     });
+
     expect(result.ok).toBe(true);
+
     const next = (result as { ok: true; value: Document }).value;
 
     expect(baseDocument.stickies[0].size).toEqual({ width: 100, height: 80 });
@@ -182,24 +188,30 @@ import type { Sticky } from "../../sticky";
 
   it("存在しない付箋IDの種別変更は内容を維持する", () => {
     const next = Document.changeStickyType(baseDocument, idMissing, "policy");
+
     expect(next).toEqual(baseDocument);
   });
 
   it("付箋を前面化すると配列末尾へ移動する", () => {
     const next = Document.bringStickyToFront(baseDocument, idA);
 
-    expect(baseDocument.stickies.map((sticky) => sticky.id)).toEqual([idA, idB]);
+    expect(baseDocument.stickies.map((sticky) => sticky.id)).toEqual([
+      idA,
+      idB,
+    ]);
     expect(baseDocument).not.toBe(next);
     expect(next.stickies.map((sticky) => sticky.id)).toEqual([idB, idA]);
   });
 
   it("すでに最前面の付箋を前面化した場合は同一インスタンスを返す", () => {
     const next = Document.bringStickyToFront(baseDocument, idB);
+
     expect(next).toBe(baseDocument);
   });
 
   it("存在しない付箋IDを前面化した場合は同一インスタンスを返す", () => {
     const next = Document.bringStickyToFront(baseDocument, idMissing);
+
     expect(next).toBe(baseDocument);
   });
 
@@ -215,6 +227,7 @@ import type { Sticky } from "../../sticky";
 
   it("存在しない付箋IDを削除した場合は内容を維持する", () => {
     const next = Document.removeSticky(baseDocument, idMissing);
+
     expect(next).toEqual(baseDocument);
   });
 
@@ -253,10 +266,13 @@ it("Document.connectionByIdは一致する接続を返し、無ければnoneに�
     some: true,
     value: connectionDocument.connections[0],
   });
-  expect(Document.connectionById(connectionDocument, missingConnectionId)).toEqual({
+  expect(
+    Document.connectionById(connectionDocument, missingConnectionId),
+  ).toEqual({
     some: false,
   });
 });
+
 const connectionDocument = {
   ...Document.empty(),
   stickies: [
@@ -296,7 +312,9 @@ it("Document.addConnectionは接続を採番して追加し、入力を変更し
     connectionSourceId,
     "new",
   );
+
   expect(result.ok).toBe(true);
+
   const next = (result as { ok: true; value: Document }).value;
 
   expect(next.connections[1]).toEqual({
@@ -307,6 +325,7 @@ it("Document.addConnectionは接続を採番して追加し、入力を変更し
     note: "",
   });
   expect(connectionDocument.connections).toHaveLength(1);
+
   randomUUIDSpy.mockRestore();
 });
 
@@ -317,9 +336,10 @@ it("Document.addConnectionは自己参照と存在しない端点を拒否する
       connectionSourceId,
       connectionSourceId,
     ),
-  ).toMatchObject(
-    { ok: false, error: { code: "SELF_REFERENTIAL_CONNECTION" } },
-  );
+  ).toMatchObject({
+    ok: false,
+    error: { code: "SELF_REFERENTIAL_CONNECTION" },
+  });
   expect(
     Document.addConnection(
       connectionDocument,
@@ -348,10 +368,11 @@ it("Document.addConnectionは同一ペアの複数接続を許容する", () => 
     connectionSourceId,
     connectionTargetId,
   );
+
   expect(result.ok).toBe(true);
-  expect((result as { ok: true; value: Document }).value.connections).toHaveLength(
-    2,
-  );
+  expect(
+    (result as { ok: true; value: Document }).value.connections,
+  ).toHaveLength(2);
 });
 
 it("Document.updateConnectionLabelはラベルを変更する", () => {
@@ -360,6 +381,7 @@ it("Document.updateConnectionLabelはラベルを変更する", () => {
     connectionId,
     "updated",
   );
+
   expect(next.connections[0].label).toBe("updated");
   expect(connectionDocument.connections[0].label).toBe("old");
   expect(
@@ -378,11 +400,14 @@ it("Document.updateConnectionAnchorsはアンカーを指定および解除す�
     "right",
     "left",
   );
+
   expect(anchored.connections[0]).toMatchObject({
     fromAnchor: "right",
     toAnchor: "left",
   });
+
   const automatic = Document.updateConnectionAnchors(anchored, connectionId);
+
   expect(automatic.connections[0].fromAnchor).toBeUndefined();
   expect(automatic.connections[0].toAnchor).toBeUndefined();
   expect(
@@ -397,6 +422,7 @@ it("Document.updateConnectionAnchorsはアンカーを指定および解除す�
 
 it("Document.removeConnectionは接続を削除する", () => {
   const next = Document.removeConnection(connectionDocument, connectionId);
+
   expect(next.connections).toEqual([]);
   expect(connectionDocument.connections).toHaveLength(1);
   expect(

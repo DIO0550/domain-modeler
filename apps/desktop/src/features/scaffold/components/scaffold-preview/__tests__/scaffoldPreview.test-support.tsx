@@ -24,6 +24,7 @@ function Flow({ text }: Readonly<{ text: string }>) {
       onCancel={() => setState("キャンバス")}
     />
   );
+
   return state === "preview" ? preview : <p>{state}</p>;
 }
 
@@ -35,12 +36,16 @@ function Flow({ text }: Readonly<{ text: string }>) {
  */
 export function setupScaffoldPreview(text: string): HTMLElement {
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root = createRoot(host);
+
   act(() => root.render(<Flow text={text} />));
   cleanups.push(() => {
     act(() => root.unmount());
     host.remove();
   });
+
   return host;
 }

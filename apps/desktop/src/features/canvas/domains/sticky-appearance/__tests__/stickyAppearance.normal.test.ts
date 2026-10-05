@@ -8,7 +8,9 @@ test("種別の表示名は canvas-format の表示名と一致する", () => {
   expect(StickyAppearance.of(STICKY_TYPES.actor).caption).toBe("Actor");
   expect(StickyAppearance.of(STICKY_TYPES.aggregate).caption).toBe("Aggregate");
   expect(StickyAppearance.of(STICKY_TYPES.policy).caption).toBe("Policy");
-  expect(StickyAppearance.of(STICKY_TYPES.readModel).caption).toBe("Read Model");
+  expect(StickyAppearance.of(STICKY_TYPES.readModel).caption).toBe(
+    "Read Model",
+  );
   expect(StickyAppearance.of(STICKY_TYPES.externalSystem).caption).toBe(
     "External System",
   );
@@ -19,7 +21,9 @@ test("種別の色系統は canvas-ui の物理付箋の慣習と一致する", 
   expect(StickyAppearance.of(STICKY_TYPES.event).colorFamily).toBe("orange");
   expect(StickyAppearance.of(STICKY_TYPES.command).colorFamily).toBe("blue");
   expect(StickyAppearance.of(STICKY_TYPES.actor).colorFamily).toBe("yellow");
-  expect(StickyAppearance.of(STICKY_TYPES.aggregate).colorFamily).toBe("yellow");
+  expect(StickyAppearance.of(STICKY_TYPES.aggregate).colorFamily).toBe(
+    "yellow",
+  );
   expect(StickyAppearance.of(STICKY_TYPES.policy).colorFamily).toBe("purple");
   expect(StickyAppearance.of(STICKY_TYPES.readModel).colorFamily).toBe("green");
   expect(StickyAppearance.of(STICKY_TYPES.externalSystem).colorFamily).toBe(
@@ -98,17 +102,14 @@ test.each([
   { width: 120, height: 80, lineCount: 3 },
   { width: 200, height: 140, lineCount: 6 },
   { width: 60, height: 40, lineCount: 1 },
-])(
-  "高さ $height の付箋は本文を $lineCount 行まで表示する",
-  ({
-    width,
-    height,
-    lineCount,
-  }: {
-    width: number;
-    height: number;
-    lineCount: number;
-  }) => {
-    expect(StickyAppearance.bodyLineCount({ width, height })).toBe(lineCount);
-  },
-);
+])("高さ $height の付箋は本文を $lineCount 行まで表示する", ({
+  width,
+  height,
+  lineCount,
+}: {
+  width: number;
+  height: number;
+  lineCount: number;
+}) => {
+  expect(StickyAppearance.bodyLineCount({ width, height })).toBe(lineCount);
+});

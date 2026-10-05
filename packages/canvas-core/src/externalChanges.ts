@@ -16,9 +16,11 @@ export const ExternalChanges = {
    */
   apply: (history: HistoryType, json: string): ResultType<HistoryType> => {
     const parsed = Serialize.parse(json);
+
     if (!parsed.ok) {
       return parsed;
     }
+
     const replaced = History.execute(
       history,
       ReplaceDocumentCommand.create({
@@ -26,6 +28,7 @@ export const ExternalChanges = {
         next: parsed.value,
       }),
     );
+
     return Result.ok({
       ...replaced,
       current: { ...replaced.current, viewport: parsed.value.viewport },

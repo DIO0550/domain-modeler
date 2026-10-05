@@ -68,58 +68,73 @@ export function useStickyInteractions(
     stickies: interaction.workingDocument.stickies,
     hasUndo: StickyInteraction.hasUndo(interaction),
     hasRedo: StickyInteraction.hasRedo(interaction),
+
     selectType: (type) => {
       setInteraction((current) => StickyInteraction.selectType(current, type));
     },
+
     select: (stickyId) => {
       setInteraction((current) => StickyInteraction.select(current, stickyId));
     },
+
     clickAt: (point) => {
       setInteraction((current) => StickyInteraction.clickAt(current, point));
     },
+
     doubleClickAt: (point) => {
       setInteraction((current) =>
         StickyInteraction.doubleClickAt(current, point),
       );
     },
+
     changeDraft: (draftText) => {
       setInteraction((current) =>
         StickyInteraction.changeDraft(current, draftText),
       );
     },
+
     commitEdit: () => {
       setInteraction(StickyInteraction.commitEdit);
     },
+
     beginDrag: (stickyId, point) => {
       setInteraction((current) =>
         StickyInteraction.beginDrag(current, stickyId, point),
       );
     },
+
     beginResize: (corner, point) => {
       setInteraction((current) =>
         StickyInteraction.beginResize(current, corner, point),
       );
     },
+
     movePointer: (point) => {
       setInteraction((current) =>
         StickyInteraction.movePointer(current, point),
       );
     },
+
     commitManipulation: () => {
       setInteraction(StickyInteraction.commitManipulation);
     },
+
     cancelManipulation: () => {
       setInteraction(StickyInteraction.cancelManipulation);
     },
+
     pressEnter: () => {
       setInteraction(StickyInteraction.pressEnter);
     },
+
     pressEscape: () => {
       setInteraction(StickyInteraction.pressEscape);
     },
+
     undo: () => {
       setInteraction(StickyInteraction.undo);
     },
+
     redo: () => {
       setInteraction(StickyInteraction.redo);
     },
@@ -176,35 +191,45 @@ export function useConnectionInteractions(
       : ConnectionInteraction.fromHistory(initialHistory),
   );
   const interactionRef = useRef(interaction);
+
   interactionRef.current = interaction;
+
   const replaceInteraction = (
     advance: (current: typeof interaction) => typeof interaction,
     publishDraft = false,
   ): void => {
     const current = interactionRef.current;
     const next = advance(current);
+
     interactionRef.current = next;
     setInteraction(next);
+
     if (next.board.history !== current.board.history) {
       notifications.onHistoryChange?.(next.board.history);
     }
+
     if (publishDraft) {
       const pending = ConnectionInteraction.draftHistory(next);
+
       notifications.onDraftHistoryChange?.(
         pending.some ? pending.value : undefined,
       );
     }
   };
+
   const board = interaction.board;
   const draftHistory = useMemo(() => {
     const pending = ConnectionInteraction.draftHistory(interaction);
+
     return pending.some ? pending.value : undefined;
   }, [interaction]);
+
   const updateBoard = (
     advance: (current: typeof board) => typeof board,
   ): void => {
     replaceInteraction((current) => {
       const nextBoard = advance(current.board);
+
       return nextBoard === current.board
         ? current
         : ConnectionInteraction.withBoard(current, nextBoard);
@@ -223,28 +248,34 @@ export function useConnectionInteractions(
     connectionError: interaction.error,
     hasUndo: StickyInteraction.hasUndo(board),
     hasRedo: StickyInteraction.hasRedo(board),
+
     selectType: (type) => {
       updateBoard((current) => StickyInteraction.selectType(current, type));
     },
+
     select: (stickyId) => {
       updateBoard((current) => StickyInteraction.select(current, stickyId));
     },
+
     clickAt: (point) => {
       replaceInteraction((current) =>
         ConnectionInteraction.clickAt(current, point),
       );
     },
+
     doubleClickAt: (point) => {
       replaceInteraction((current) => {
         if (ConnectionSession.isCreating(current.session)) {
           return current;
         }
+
         return ConnectionInteraction.withBoard(
           current,
           StickyInteraction.doubleClickAt(current.board, point),
         );
       });
     },
+
     changeDraft: (draftText) => {
       replaceInteraction(
         (current) =>
@@ -255,101 +286,128 @@ export function useConnectionInteractions(
         true,
       );
     },
+
     commitEdit: () => {
       updateBoard(StickyInteraction.commitEdit);
     },
+
     beginDrag: (stickyId, point) => {
       updateBoard((current) =>
         StickyInteraction.beginDrag(current, stickyId, point),
       );
     },
+
     beginResize: (corner, point) => {
       updateBoard((current) =>
         StickyInteraction.beginResize(current, corner, point),
       );
     },
+
     movePointer: (point) => {
       updateBoard((current) => StickyInteraction.movePointer(current, point));
     },
+
     commitManipulation: () => {
       updateBoard(StickyInteraction.commitManipulation);
     },
+
     cancelManipulation: () => {
       updateBoard(StickyInteraction.cancelManipulation);
     },
+
     pressEnter: () => {
       replaceInteraction(ConnectionInteraction.pressEnter);
     },
+
     pressEscape: () => {
       replaceInteraction(ConnectionInteraction.pressEscape);
     },
+
     undo: () => {
       replaceInteraction(ConnectionInteraction.undo);
     },
+
     redo: () => {
       replaceInteraction(ConnectionInteraction.redo);
     },
+
     placeAt: (point) =>
       updateBoard((current) =>
         StickyInteraction.clickAt(current, point, "center"),
       ),
+
     selectAt: (point) =>
       replaceInteraction((current) =>
         ConnectionInteraction.selectAt(current, point),
       ),
+
     beginConnectionDrag: (endpoint) =>
       replaceInteraction((current) =>
         ConnectionInteraction.beginConnectionDrag(current, endpoint),
       ),
+
     moveConnectionDrag: (point) =>
       replaceInteraction((current) =>
         ConnectionInteraction.moveConnectionDrag(current, point),
       ),
+
     finishConnectionDrag: (point) =>
       replaceInteraction((current) =>
         ConnectionInteraction.finishConnectionDrag(current, point),
       ),
+
     cancelConnectionDrag: () =>
       replaceInteraction(ConnectionInteraction.cancelConnectionDrag),
+
     toggleConnectionMode: () => {
       replaceInteraction(ConnectionInteraction.toggleMode);
     },
+
     selectConnectionEndpoint: (stickyId) => {
       replaceInteraction((current) =>
         ConnectionInteraction.selectEndpoint(current, stickyId),
       );
     },
+
     selectConnection: (connectionId) => {
       replaceInteraction((current) =>
         ConnectionInteraction.select(current, connectionId),
       );
     },
+
     editConnection: (connectionId) => {
       replaceInteraction((current) =>
         ConnectionInteraction.edit(current, connectionId),
       );
     },
+
     changeConnectionDraft: (draftLabel) => {
       replaceInteraction(
         (current) => ConnectionInteraction.changeDraft(current, draftLabel),
         true,
       );
     },
+
     commitConnectionEdit: () => {
       replaceInteraction(ConnectionInteraction.commitEdit);
     },
+
     copy: () => {
       updateBoard(StickyInteraction.copy);
     },
+
     paste: () => {
       updateBoard(StickyInteraction.paste);
     },
+
     bringToFront: () => {
       updateBoard(StickyInteraction.bringToFront);
     },
+
     pressDelete: () => {
       replaceInteraction(ConnectionInteraction.pressDelete);
     },
+
     changeViewport: (change) => {
       replaceInteraction((current) => ({
         ...current,

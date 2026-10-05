@@ -18,19 +18,24 @@ export const openModelWorkspace = (
   files: Map<string, string>,
 ): Workspace => {
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
   const listeners = new Map<string, (event: FileWatchEvent) => void>();
   const fileWatchOperations: FileWatchOperations = {
     watch: async (watchedPath, onEvent) => {
       listeners.set(watchedPath, onEvent);
+
       return {
         type: "ok",
+
         stop: async () => {
           listeners.delete(watchedPath);
         },
       };
     },
+
     readFile: async (readPath) => ({
       type: "ok",
       value: files.get(readPath) ?? "",
@@ -39,8 +44,10 @@ export const openModelWorkspace = (
   const autoSaveOperations: AutoSaveOperations = {
     writeFile: async (writePath, contents) => {
       files.set(writePath, contents);
+
       return { type: "ok" };
     },
+
     now: () => performance.now(),
   };
   const tabsState = TabsState.reducer(TabsState.create(), {
@@ -48,6 +55,7 @@ export const openModelWorkspace = (
     path,
     documentType: "model",
   });
+
   act(() =>
     root.render(
       <DocumentWorkspace
@@ -58,15 +66,18 @@ export const openModelWorkspace = (
       />,
     ),
   );
+
   return {
     host,
     files,
+
     changed: async (changedPath) => {
       await act(async () => {
         listeners.get(changedPath)?.({ type: "changed", path: changedPath });
         await Promise.resolve();
       });
     },
+
     close: () => {
       act(() => root.unmount());
       host.remove();

@@ -13,5 +13,6 @@ test("空の始点・終点テキストでも A -> B 形式を保つ", () => {
 
 test("ちょうど20文字のテキストは切り詰めない", () => {
   const twenty = "あいうえおかきくけこさしすせそたちつてと";
+
   expect(Connection.buildNote(twenty, "x")).toBe(`${twenty} -> x`);
 });

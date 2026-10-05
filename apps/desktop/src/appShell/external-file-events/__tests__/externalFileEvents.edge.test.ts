@@ -24,10 +24,13 @@ const operationsRecording = (
   effects: Effect[],
 ): ExternalFileEventOperations => ({
   readFile: async () => readResult,
+
   hashContents: (contents) => `hash:${contents}`,
+
   dispatchTabs: (action) => {
     effects.push({ type: "tabAction", action });
   },
+
   notifyError: (error) => {
     effects.push({ type: "notification", error });
   },
@@ -53,6 +56,7 @@ test("外部変更の読み込みに失敗すると現在の文書を維持し�
   );
 
   const error = { kind: "readFailed", error: readError } as const;
+
   expect(result).toEqual({ status: "rejected", document, error });
   expect(effects).toEqual([{ type: "notification", error }]);
 });
@@ -69,10 +73,7 @@ test("不正なキャンバスの外部変更は現在の履歴を維持して�
       lastSavedHash: "hash:保存済み",
       document,
     },
-    operationsRecording(
-      { type: "ok", value: "{ invalid json" },
-      effects,
-    ),
+    operationsRecording({ type: "ok", value: "{ invalid json" }, effects),
   );
 
   expect(result).toMatchObject({
@@ -115,10 +116,7 @@ test("背景タブへの取り込み失敗では変更マークを付けない",
         history: History.create(Document.empty("編集中")),
       },
     },
-    operationsRecording(
-      { type: "ok", value: "{ invalid json" },
-      effects,
-    ),
+    operationsRecording({ type: "ok", value: "{ invalid json" }, effects),
   );
 
   expect(effects).not.toContainEqual({

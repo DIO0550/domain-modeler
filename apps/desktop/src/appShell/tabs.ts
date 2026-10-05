@@ -109,18 +109,22 @@ export const TabsState = {
         fileState: { status: "unsaved" },
         backgroundChangeState: { status: "unchanged" },
       };
+
       return { status: "active", tabs: [...state.tabs, tab], activePath: path };
     }
+
     if (action.type === "savedTab") {
       if (state.status === "empty") {
         return state;
       }
+
       const tabs = state.tabs.map(
         (tab): Tab =>
           tab.path === action.draftPath
             ? { ...tab, path: action.path, fileState: { status: "available" } }
             : tab,
       ) as [Tab, ...Tab[]];
+
       return {
         ...state,
         tabs,
@@ -130,8 +134,10 @@ export const TabsState = {
             : state.activePath,
       };
     }
+
     if (action.type === "openTab") {
       const existingTab = state.tabs.find((tab) => tab.path === action.path);
+
       if (existingTab !== undefined) {
         const tabs = state.tabs.map((tab) =>
           tab.path === action.path
@@ -141,6 +147,7 @@ export const TabsState = {
               }
             : tab,
         ) as [Tab, ...Tab[]];
+
         return { status: "active", tabs, activePath: action.path };
       }
 
@@ -151,6 +158,7 @@ export const TabsState = {
         backgroundChangeState: { status: "unchanged" },
       };
       const tabs = [...state.tabs, openedTab] as [Tab, ...Tab[]];
+
       return { status: "active", tabs, activePath: action.path };
     }
 
@@ -160,14 +168,17 @@ export const TabsState = {
 
     if (action.type === "activateTab") {
       const isOpen = state.tabs.some((tab) => tab.path === action.path);
+
       if (!isOpen) {
         return { ...state, tabs: [...state.tabs] };
       }
+
       const tabs = state.tabs.map((tab) =>
         tab.path === action.path
           ? { ...tab, backgroundChangeState: { status: "unchanged" } as const }
           : tab,
       ) as [Tab, ...Tab[]];
+
       return { status: "active", tabs, activePath: action.path };
     }
 
@@ -179,17 +190,22 @@ export const TabsState = {
       if (tab.path !== action.path) {
         return tab;
       }
+
       if (action.type === "markFileMissing") {
         return { ...tab, fileState: { status: "missing" } };
       }
+
       if (action.type === "clearFileMissing") {
         return { ...tab, fileState: { status: "available" } };
       }
+
       if (state.activePath === action.path) {
         return tab;
       }
+
       return { ...tab, backgroundChangeState: { status: "changed" } };
     }) as [Tab, ...Tab[]];
+
     return { status: "active", tabs, activePath: state.activePath };
   },
 
@@ -232,9 +248,11 @@ export const TabsState = {
    */
   activeTab(state: Extract<TabsState, { status: "active" }>): Tab {
     const found = state.tabs.find((tab) => tab.path === state.activePath);
+
     if (found !== undefined) {
       return found;
     }
+
     return state.tabs[0];
   },
 } as const;
@@ -253,12 +271,14 @@ const closeTab = (
   const index = state.tabs.findIndex(
     (tab) => tab.path === path || tab.sessionKey === path,
   );
+
   if (index < 0) {
     return state;
   }
 
   const closedPath = state.tabs[index].path;
   const remaining = state.tabs.filter((tab) => tab.path !== closedPath);
+
   if (remaining.length === 0) {
     return { status: "empty", tabs: [] };
   }
@@ -288,11 +308,14 @@ const nextActivePathAfterClose = (
   if (state.activePath !== closedPath) {
     return state.activePath;
   }
+
   const neighborIndex = Math.min(closedIndex, remaining.length - 1);
   const neighbor = remaining[neighborIndex];
+
   if (neighbor === undefined) {
     return remaining[0].path;
   }
+
   return neighbor.path;
 };
 
@@ -308,9 +331,11 @@ const POSIX_SEPARATOR = "/";
 const fileNameOf = (path: string): string => {
   const segments = pathSegments(displayFilePath(path));
   const last = segments[segments.length - 1];
+
   if (last === undefined) {
     return path;
   }
+
   return last;
 };
 
@@ -322,9 +347,11 @@ const fileNameOf = (path: string): string => {
  */
 const directorySegmentsOf = (path: string): readonly string[] => {
   const segments = pathSegments(displayFilePath(path));
+
   if (segments.length <= 1) {
     return [];
   }
+
   return segments.slice(0, -1);
 };
 
@@ -347,9 +374,11 @@ const pathSeparator = (
   path: string,
 ): typeof WINDOWS_SEPARATOR | typeof POSIX_SEPARATOR => {
   path = displayFilePath(path);
+
   if (path.includes(WINDOWS_SEPARATOR) && !path.includes(POSIX_SEPARATOR)) {
     return WINDOWS_SEPARATOR;
   }
+
   return POSIX_SEPARATOR;
 };
 
@@ -368,6 +397,7 @@ const parentDirectorySupplementOf = (
   const colliding = tabs.filter(
     (candidate) => fileNameOf(candidate.path) === fileName,
   );
+
   if (colliding.length <= 1) {
     return { status: "hidden" };
   }
@@ -380,9 +410,11 @@ const parentDirectorySupplementOf = (
   const depth = distinguishingDepth(colliding, maxDepth);
   const segments = directorySegmentsOf(tab.path);
   const shown = segments.slice(Math.max(0, segments.length - depth));
+
   if (shown.length === 0) {
     return { status: "hidden" };
   }
+
   return {
     status: "visible",
     directory: shown.join(pathSeparator(tab.path)),
@@ -402,9 +434,11 @@ const distinguishingDepth = (
 ): number => {
   const depths = Array.from({ length: maxDepth }, (_, index) => index + 1);
   const found = depths.find((depth) => areSuffixesUnique(colliding, depth));
+
   if (found === undefined) {
     return maxDepth;
   }
+
   return found;
 };
 
@@ -420,6 +454,7 @@ const areSuffixesUnique = (
   depth: number,
 ): boolean => {
   const suffixes = colliding.map((tab) => directorySuffix(tab.path, depth));
+
   return new Set(suffixes).size === suffixes.length;
 };
 
@@ -433,5 +468,6 @@ const areSuffixesUnique = (
 const directorySuffix = (path: string, depth: number): string => {
   const segments = directorySegmentsOf(path);
   const shown = segments.slice(Math.max(0, segments.length - depth));
+
   return shown.join(pathSeparator(path));
 };

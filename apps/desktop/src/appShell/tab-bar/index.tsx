@@ -1,8 +1,5 @@
 import type { KeyboardEvent } from "react";
-import {
-  HistoryControls,
-  type HistoryControlsValue,
-} from "@/features/canvas";
+import { HistoryControls, type HistoryControlsValue } from "@/features/canvas";
 import { displayFilePath } from "@/libs/file-path";
 import { ArrayEx } from "../../utils/ArrayEx";
 import {
@@ -40,6 +37,7 @@ const documentTypeLabelOf = (documentType: TabDocumentType): string => {
   if (documentType === "canvas") {
     return DocumentTypeLabel.Canvas;
   }
+
   return DocumentTypeLabel.Model;
 };
 
@@ -60,18 +58,23 @@ export function TabBar({
     if (tabsState.status !== "active") {
       return;
     }
+
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
       return;
     }
+
     event.preventDefault();
+
     const direction = event.key === "ArrowRight" ? 1 : -1;
     const currentIndex = views.findIndex(
       (view) => view.activation === "active",
     );
     const next = ArrayEx.atWrapped(views, currentIndex + direction);
+
     if (next === undefined) {
       return;
     }
+
     onActivate(next.tab.path);
   };
 
@@ -84,11 +87,7 @@ export function TabBar({
         onKeyDown={handleKeyDown}
       >
         {views.map((view) => (
-          <TabBarItem
-            key={view.tab.path}
-            view={view}
-            onActivate={onActivate}
-          />
+          <TabBarItem key={view.tab.path} view={view} onActivate={onActivate} />
         ))}
       </div>
       <HistoryControls value={historyControls} />
@@ -124,9 +123,7 @@ function TabBarItem({ view, onActivate }: TabBarItemProps) {
       <span className="tab-bar__file-name">{caption.fileName}</span>
       <ParentDirectoryLabel caption={caption} />
       <MissingWarningIcon fileState={tab.fileState} />
-      <BackgroundChangeMark
-        backgroundChangeState={tab.backgroundChangeState}
-      />
+      <BackgroundChangeMark backgroundChangeState={tab.backgroundChangeState} />
     </button>
   );
 }
@@ -145,6 +142,7 @@ function ParentDirectoryLabel({ caption }: ParentDirectoryLabelProps) {
   if (caption.parentDirectorySupplement.status !== "visible") {
     return null;
   }
+
   return (
     <span className="tab-bar__parent">
       {caption.parentDirectorySupplement.directory}
@@ -166,6 +164,7 @@ function MissingWarningIcon({ fileState }: MissingWarningIconProps) {
   if (fileState.status !== "missing") {
     return null;
   }
+
   return (
     <svg
       className="tab-bar__warning"
@@ -174,10 +173,7 @@ function MissingWarningIcon({ fileState }: MissingWarningIconProps) {
       height="14"
       aria-hidden="true"
     >
-      <path
-        d="M8 1.5 14.5 13h-13L8 1.5Z"
-        fill="currentColor"
-      />
+      <path d="M8 1.5 14.5 13h-13L8 1.5Z" fill="currentColor" />
       <rect x="7.25" y="6" width="1.5" height="4" fill="#fff" />
       <rect x="7.25" y="11" width="1.5" height="1.5" fill="#fff" />
     </svg>
@@ -200,6 +196,7 @@ function BackgroundChangeMark({
   if (backgroundChangeState.status !== "changed") {
     return null;
   }
+
   return <span className="tab-bar__change-mark" aria-hidden="true" />;
 }
 
@@ -241,6 +238,7 @@ function DocumentTypeIcon({ documentType }: DocumentTypeIconProps) {
       </svg>
     );
   }
+
   return (
     <svg
       className="tab-bar__type-icon"
@@ -273,11 +271,11 @@ function DocumentTypeIcon({ documentType }: DocumentTypeIconProps) {
  * @returns tab-bar__item と状態修飾。
  */
 const tabBarItemClassName = (activation: TabActivation, tab: Tab): string => {
-  const activeClass =
-    activation === "active" ? ["tab-bar__item--active"] : [];
+  const activeClass = activation === "active" ? ["tab-bar__item--active"] : [];
   const missingClass =
     tab.fileState.status === "missing" ? ["tab-bar__item--missing"] : [];
   const classNames = ["tab-bar__item", ...activeClass, ...missingClass];
+
   return classNames.join(" ");
 };
 
@@ -303,5 +301,6 @@ const tabAccessibleName = (tab: Tab, caption: TabCaption): string => {
     missing,
     changed,
   ].filter((part) => part.length > 0);
+
   return parts.join(" ");
 };

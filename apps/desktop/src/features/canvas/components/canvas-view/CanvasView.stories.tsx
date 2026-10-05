@@ -22,6 +22,7 @@ const meta: Meta<typeof CanvasView> = {
     ),
   ],
 };
+
 export default meta;
 
 type Story = StoryObj<typeof CanvasView>;
@@ -40,6 +41,7 @@ const SAMPLE_TEXT: Readonly<Record<StickyType, string>> = {
 const allStickies = StickyAppearance.all().map((appearance, index) => {
   const column = index % 4;
   const row = Math.floor(index / 4);
+
   return (
     <Sticky
       key={appearance.type}
@@ -66,6 +68,7 @@ export const AllTypes: Story = {
     viewport: { x: 0, y: 0, zoom: 1 },
     saveStatus: "saved",
   },
+
   render: (args) => <CanvasView {...args}>{allStickies}</CanvasView>,
 };
 
@@ -74,6 +77,7 @@ export const AllProps: Story = {
     viewport: { x: 0, y: 0, zoom: 1.5 },
     saveStatus: "saving",
   },
+
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Command" }));
   },
@@ -112,6 +116,7 @@ export const EdgeCases: Story = {
     viewport: { x: 0, y: 0, zoom: 0.1 },
     saveStatus: "failed",
   },
+
   play: async ({ canvas }) => {
     await userEvent.click(
       canvas.getByRole("button", { name: "External System" }),

@@ -48,6 +48,7 @@ fn 既定値は空のタブと未保存ウィンドウとsystemテーマであ�
 #[test]
 fn 壊れたjsonでも既定値が返る() {
     let workspace = TempWorkspace::create();
+
     fs::write(AppSettings::path_in(workspace.dir()), "{ not json")
         .expect("fixture should be written");
 
@@ -59,6 +60,7 @@ fn 壊れたjsonでも既定値が返る() {
 #[test]
 fn 空の設定ファイルでも既定値が返る() {
     let workspace = TempWorkspace::create();
+
     fs::write(AppSettings::path_in(workspace.dir()), "").expect("fixture should be written");
 
     let settings = AppSettings::read_from_config_dir(workspace.dir());
@@ -69,6 +71,7 @@ fn 空の設定ファイルでも既定値が返る() {
 #[test]
 fn utf8でない設定ファイルでも既定値が返る() {
     let workspace = TempWorkspace::create();
+
     fs::write(AppSettings::path_in(workspace.dir()), [0xff, 0xfe, 0xfd])
         .expect("fixture should be written");
 
@@ -80,6 +83,7 @@ fn utf8でない設定ファイルでも既定値が返る() {
 #[test]
 fn json配列の設定ファイルでも既定値が返る() {
     let workspace = TempWorkspace::create();
+
     fs::write(AppSettings::path_in(workspace.dir()), "[]").expect("fixture should be written");
 
     let settings = AppSettings::read_from_config_dir(workspace.dir());
@@ -131,6 +135,7 @@ fn 書いた設定を読むと内容が一致する() {
     let settings = sample_settings();
 
     settings.write_to_config_dir(workspace.dir());
+
     let loaded = AppSettings::read_from_config_dir(workspace.dir());
 
     assert_eq!(loaded, settings);
@@ -172,7 +177,9 @@ fn シリアライズはキャメルケースのjsonになる() {
 fn 書き込み失敗はjsonの値としてシリアライズされる() {
     let workspace = TempWorkspace::create();
     let blocking_file = workspace.path("not-a-dir");
+
     fs::write(&blocking_file, "file").expect("fixture should be written");
+
     let settings = sample_settings();
 
     let json = serde_json::to_value(settings.write_to_config_dir(&blocking_file))
@@ -204,7 +211,9 @@ fn 設定ディレクトリを解決できない失敗はjsonの値としてシ�
 fn 書き込みに失敗しても既存の設定ファイルは残る() {
     let workspace = TempWorkspace::create();
     let settings = sample_settings();
+
     settings.write_to_config_dir(workspace.dir());
+
     let original = fs::read_to_string(AppSettings::path_in(workspace.dir()))
         .expect("written settings should be readable");
 

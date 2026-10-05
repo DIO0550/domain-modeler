@@ -25,31 +25,38 @@ const parseNumberRange = (
   chunk: DeclChunk,
 ): Result<WithCursor<ParsedRange>, Diagnostic> => {
   const first = ChunkCursor.peek(cursor);
+
   if (first !== undefined && first.kind === TOKEN_KINDS.number) {
     const afterMin = ChunkCursor.advance(cursor);
     const min = Number(first.text);
     const dots = ChunkCursor.peek(afterMin.cursor);
+
     if (dots === undefined || dots.kind !== TOKEN_KINDS.rangeDots) {
       return Result.err(
         ExpectToken.errorAt("範囲には .. が必要です", first.range),
       );
     }
+
     const afterDots = ChunkCursor.advance(afterMin.cursor);
     const maxToken = ChunkCursor.peek(afterDots.cursor);
+
     if (maxToken !== undefined && maxToken.kind === TOKEN_KINDS.number) {
       const afterMax = ChunkCursor.advance(afterDots.cursor);
       const max = Number(maxToken.text);
       const range = SourceRange.span(first.range, maxToken.range);
+
       if (min > max) {
         return Result.err(
           ExpectToken.errorAt("範囲の下限が上限を超えています", range),
         );
       }
+
       return Result.ok({
         cursor: afterMax.cursor,
         value: { bounds: NumberRange.both(min, max), range },
       });
     }
+
     return Result.ok({
       cursor: afterDots.cursor,
       value: {
@@ -62,15 +69,15 @@ const parseNumberRange = (
   if (first !== undefined && first.kind === TOKEN_KINDS.rangeDots) {
     const afterDots = ChunkCursor.advance(cursor);
     const maxToken = ChunkCursor.peek(afterDots.cursor);
+
     if (maxToken === undefined || maxToken.kind !== TOKEN_KINDS.number) {
       return Result.err(
-        ExpectToken.errorAt(
-          "範囲には下限または上限が必要です",
-          first.range,
-        ),
+        ExpectToken.errorAt("範囲には下限または上限が必要です", first.range),
       );
     }
+
     const afterMax = ChunkCursor.advance(afterDots.cursor);
+
     return Result.ok({
       cursor: afterMax.cursor,
       value: {
@@ -115,6 +122,7 @@ const parseConstraintBody = (
 
   if (hasLength) {
     const afterLength = ChunkCursor.advance(cursor);
+
     if (primitive !== "string") {
       return Result.err(
         ExpectToken.errorAt(
@@ -123,10 +131,13 @@ const parseConstraintBody = (
         ),
       );
     }
+
     const parsed = parseNumberRange(afterLength.cursor, chunk);
+
     if (Result.isErr(parsed)) {
       return parsed;
     }
+
     return Result.ok({
       cursor: parsed.value.cursor,
       value: Constraint.length(
@@ -146,9 +157,11 @@ const parseConstraintBody = (
   }
 
   const parsed = parseNumberRange(cursor, chunk);
+
   if (Result.isErr(parsed)) {
     return parsed;
   }
+
   return Result.ok({
     cursor: parsed.value.cursor,
     value: Constraint.numeric(
@@ -170,9 +183,11 @@ const parseConstrainedTypeExpr = (
     chunk,
     "constrained が必要です",
   );
+
   if (Result.isErr(constrained)) {
     return constrained;
   }
+
   if (!Primitive.is(primitiveToken.text)) {
     return Result.err(
       ExpectToken.errorAt(
@@ -181,15 +196,18 @@ const parseConstrainedTypeExpr = (
       ),
     );
   }
+
   const constraint = parseConstraintBody(
     constrained.value.cursor,
     chunk,
     primitiveToken.text,
     constrained.value.value,
   );
+
   if (Result.isErr(constraint)) {
     return constraint;
   }
+
   return Result.ok({
     cursor: constraint.value.cursor,
     value: TypeExpr.value({
@@ -222,10 +240,13 @@ const collectJoinedTerms = (
   if (ChunkCursor.atEnd(cursor)) {
     return Result.ok({ cursor, value: { terms, connector } });
   }
+
   const token = ChunkCursor.peek(cursor);
+
   if (token === undefined || !isConnector(token)) {
     return Result.ok({ cursor, value: { terms, connector } });
   }
+
   if (connector !== undefined && connector !== token.text) {
     return Result.err(
       ExpectToken.errorAt(
@@ -234,11 +255,14 @@ const collectJoinedTerms = (
       ),
     );
   }
+
   const afterConnector = ChunkCursor.advance(cursor);
   const nextTerm = TypeTermParse.parse(afterConnector.cursor, chunk);
+
   if (Result.isErr(nextTerm)) {
     return nextTerm;
   }
+
   return collectJoinedTerms(
     nextTerm.value.cursor,
     chunk,
@@ -252,6 +276,7 @@ const parseJoinedTypeExpr = (
   chunk: DeclChunk,
 ): Result<WithCursor<TypeExpr>, Diagnostic> => {
   const firstTerm = TypeTermParse.parse(cursor, chunk);
+
   if (Result.isErr(firstTerm)) {
     return firstTerm;
   }
@@ -262,6 +287,7 @@ const parseJoinedTypeExpr = (
     [firstTerm.value.value],
     undefined,
   );
+
   if (Result.isErr(joined)) {
     return joined;
   }
@@ -276,17 +302,20 @@ const parseJoinedTypeExpr = (
       value: TypeExpr.alias(firstTerm.value.value, range),
     });
   }
+
   if (terms.length < 2) {
     return Result.err(
       ExpectToken.errorAt("連結には2つ以上の型参照が必要です", range),
     );
   }
+
   if (connector === RESERVED_WORDS.AND) {
     return Result.ok({
       cursor: joined.value.cursor,
       value: TypeExpr.record(terms, range),
     });
   }
+
   return Result.ok({
     cursor: joined.value.cursor,
     value: TypeExpr.choice(terms, range),
@@ -307,6 +336,7 @@ export const TypeExprParse = {
   ): Result<WithCursor<TypeExpr>, Diagnostic> => {
     const head = ChunkCursor.peekAt(cursor, 0);
     const next = ChunkCursor.peekAt(cursor, 1);
+
     if (
       head !== undefined &&
       head.kind === TOKEN_KINDS.identifier &&
@@ -317,6 +347,7 @@ export const TypeExprParse = {
     ) {
       return parseConstrainedTypeExpr(cursor, chunk, head);
     }
+
     return parseJoinedTypeExpr(cursor, chunk);
   },
 } as const;

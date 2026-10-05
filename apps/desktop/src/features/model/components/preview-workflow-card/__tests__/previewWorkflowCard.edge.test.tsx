@@ -48,7 +48,9 @@ test("error 節なしの workflow は ERR 行を出さない", () => {
   );
 
   expect(host.querySelector('[data-section="error"]')).toBeNull();
-  expect(host.querySelectorAll(".preview-workflow-card__section")).toHaveLength(2);
+  expect(host.querySelectorAll(".preview-workflow-card__section")).toHaveLength(
+    2,
+  );
 });
 
 test("プリミティブ型はボタンにせず未定義バッジも出さない", () => {
@@ -84,8 +86,12 @@ test("プリミティブ型はボタンにせず未定義バッジも出さな�
     new Set(["string", "int"]),
   );
 
-  expect(host.querySelector("button.preview-workflow-card__type-name")).toBeNull();
-  expect(host.querySelector(".preview-workflow-card__undefined-badge")).toBeNull();
+  expect(
+    host.querySelector("button.preview-workflow-card__type-name"),
+  ).toBeNull();
+  expect(
+    host.querySelector(".preview-workflow-card__undefined-badge"),
+  ).toBeNull();
   expect(
     host
       .querySelector(".preview-workflow-card__type-name")
@@ -140,7 +146,9 @@ test("未定義の型参照は点線下線と未定義バッジを表示する",
     ?.querySelector(".preview-workflow-card__type-name");
 
   expect(
-    errorName?.classList.contains("preview-workflow-card__type-name--undefined"),
+    errorName?.classList.contains(
+      "preview-workflow-card__type-name--undefined",
+    ),
   ).toBe(true);
   expect(
     host.querySelector(".preview-workflow-card__undefined-badge")?.textContent,
@@ -180,7 +188,9 @@ test("クリック通知が無いとき名前付き参照はボタンにしな�
     }),
   );
 
-  expect(host.querySelector("button.preview-workflow-card__type-name")).toBeNull();
+  expect(
+    host.querySelector("button.preview-workflow-card__type-name"),
+  ).toBeNull();
   expect(host.querySelector(".preview-workflow-card__type-name")?.tagName).toBe(
     "SPAN",
   );
@@ -227,15 +237,17 @@ test("IN の + は直後の型参照と同じまとまりになる", () => {
     '[data-section="input"] .preview-workflow-card__term:nth-child(2)',
   );
 
-  expect(groupedTerm?.querySelector(".preview-workflow-card__separator")?.textContent).toBe(
-    "+",
-  );
+  expect(
+    groupedTerm?.querySelector(".preview-workflow-card__separator")
+      ?.textContent,
+  ).toBe("+");
   expect(
     groupedTerm
       ?.querySelector(".preview-workflow-card__separator")
       ?.getAttribute("aria-hidden"),
   ).toBeNull();
-  expect(groupedTerm?.querySelector(".preview-workflow-card__type-name")?.textContent).toBe(
-    "在庫状況",
-  );
+  expect(
+    groupedTerm?.querySelector(".preview-workflow-card__type-name")
+      ?.textContent,
+  ).toBe("在庫状況");
 });

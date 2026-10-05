@@ -42,10 +42,7 @@ test("向かい合うアンカーを水平に結べる接続は直線経路に�
     "left",
   );
   const segment = Option.unwrap(
-    ConnectionSegment.create(
-      StickyIndex.create(document.stickies),
-      connection,
-    ),
+    ConnectionSegment.create(StickyIndex.create(document.stickies), connection),
   );
 
   expect(ConnectionSegment.toRoute(segment)).toEqual({
@@ -67,10 +64,7 @@ test("向かい合わないアンカーの接続は辺の法線方向へ出る�
     "top",
   );
   const segment = Option.unwrap(
-    ConnectionSegment.create(
-      StickyIndex.create(document.stickies),
-      connection,
-    ),
+    ConnectionSegment.create(StickyIndex.create(document.stickies), connection),
   );
 
   expect(ConnectionSegment.toRoute(segment)).toEqual({
@@ -103,18 +97,11 @@ test("曲線上の座標は接続線の許容距離内になる", () => {
     "top",
   );
   const segment = Option.unwrap(
-    ConnectionSegment.create(
-      StickyIndex.create(document.stickies),
-      connection,
-    ),
+    ConnectionSegment.create(StickyIndex.create(document.stickies), connection),
   );
 
   expect(
-    ConnectionSegment.contains(
-      segment,
-      { x: 120.625, y: 136.89046875 },
-      8,
-    ),
+    ConnectionSegment.contains(segment, { x: 120.625, y: 136.89046875 }, 8),
   ).toBe(true);
 });
 
@@ -130,13 +117,10 @@ test("曲線から離れた始点と終点を結ぶ直線上の座標は許容�
     "top",
   );
   const segment = Option.unwrap(
-    ConnectionSegment.create(
-      StickyIndex.create(document.stickies),
-      connection,
-    ),
+    ConnectionSegment.create(StickyIndex.create(document.stickies), connection),
   );
 
-  expect(
-    ConnectionSegment.contains(segment, { x: 145, y: 97.5 }, 8),
-  ).toBe(false);
+  expect(ConnectionSegment.contains(segment, { x: 145, y: 97.5 }, 8)).toBe(
+    false,
+  );
 });

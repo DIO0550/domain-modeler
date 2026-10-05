@@ -1,9 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import {
-  useDeclNameEdit,
-  type UseDeclNameEditResult,
-} from "..";
+import { useDeclNameEdit, type UseDeclNameEditResult } from "..";
 
 type RenderedHook = Readonly<{
   latest: { current: UseDeclNameEditResult | undefined };
@@ -27,11 +24,14 @@ export const createDeclNameEditRenderer = () => {
         current: undefined,
       };
       const host = document.createElement("div");
+
       document.body.append(host);
+
       const root: Root = createRoot(host);
 
       const Probe = () => {
         latest.current = useDeclNameEdit({ name, onRename });
+
         return null;
       };
 
@@ -41,6 +41,7 @@ export const createDeclNameEditRenderer = () => {
 
       rendered.push({
         latest,
+
         unmount: () => {
           act(() => {
             root.unmount();
@@ -48,8 +49,10 @@ export const createDeclNameEditRenderer = () => {
           host.remove();
         },
       });
+
       return latest;
     },
+
     unmountAll: () => {
       for (const entry of rendered.splice(0)) {
         entry.unmount();

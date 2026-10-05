@@ -46,8 +46,10 @@ export const ConnectionSession = {
     ) {
       return session.target;
     }
+
     return OptionValue.none();
   },
+
   /** 操作した辺の外側へ出てからポインターへ向かうプレビュー経路。 */
   previewPath(
     session: Extract<ConnectionSession, { status: "dragging" }>,
@@ -58,6 +60,7 @@ export const ConnectionSession = {
       bottom: { x: 0, y: 1 },
       left: { x: -1, y: 0 },
     };
+
     return ConnectionSegment.toRoute({
       from: session.target.some
         ? session.target.value.fromPoint
@@ -71,6 +74,7 @@ export const ConnectionSession = {
         : { x: 0, y: 0 },
     }).path;
   },
+
   /**
    * 始点または終点を選択中か判定する。
    *
@@ -104,9 +108,11 @@ export const ConnectionSession = {
     ) {
       return "plain";
     }
+
     if (session.connectionId !== connectionId) {
       return "plain";
     }
+
     return session.status;
   },
 

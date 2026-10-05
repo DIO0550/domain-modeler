@@ -28,7 +28,9 @@ const renderCanvasView = (props: {
   children?: ReactNode;
 }): HTMLDivElement => {
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
 
   act(() => {
@@ -44,6 +46,7 @@ const renderCanvasView = (props: {
 
   rendered.push({
     host,
+
     unmount: () => {
       act(() => {
         root.unmount();
@@ -51,6 +54,7 @@ const renderCanvasView = (props: {
       host.remove();
     },
   });
+
   return host;
 };
 
@@ -64,8 +68,10 @@ const renderCanvasView = (props: {
 const buttonNamed = (host: HTMLDivElement, name: string): HTMLButtonElement => {
   const found = Array.from(host.querySelectorAll("button")).find(
     (element) =>
-      element.getAttribute("aria-label") === name || element.textContent === name,
+      element.getAttribute("aria-label") === name ||
+      element.textContent === name,
   );
+
   return found instanceof HTMLButtonElement
     ? found
     : document.createElement("button");
@@ -85,7 +91,9 @@ test("付箋種別ボタンが8種すべて表示される", () => {
   ];
 
   expect(
-    captions.map((caption) => buttonNamed(host, caption).getAttribute("aria-label")),
+    captions.map((caption) =>
+      buttonNamed(host, caption).getAttribute("aria-label"),
+    ),
   ).toEqual(captions);
 });
 
@@ -118,7 +126,9 @@ test("Command を選ぶと Command が押下状態になり Domain Event は解�
     buttonNamed(host, "Command").click();
   });
 
-  expect(buttonNamed(host, "Command").getAttribute("aria-pressed")).toBe("true");
+  expect(buttonNamed(host, "Command").getAttribute("aria-pressed")).toBe(
+    "true",
+  );
   expect(buttonNamed(host, "Domain Event").getAttribute("aria-pressed")).toBe(
     "false",
   );
@@ -126,7 +136,9 @@ test("Command を選ぶと Command が押下状態になり Domain Event は解�
 
 test("キャンバス領域はスクロールバーを持たない面として置かれる", () => {
   const host = renderCanvasView({});
-  const surface = host.querySelector('[role="region"][aria-label="キャンバス"]');
+  const surface = host.querySelector(
+    '[role="region"][aria-label="キャンバス"]',
+  );
 
   expect(surface).not.toBeNull();
   expect(surface?.classList.contains("canvas-surface")).toBe(true);
@@ -137,10 +149,13 @@ test("子要素の付箋はキャンバス面上に置かれる", () => {
     children: <article data-sticky-type="event">注文が確定した</article>,
   });
 
-  const surface = host.querySelector('[role="region"][aria-label="キャンバス"]');
-  expect(surface?.querySelector('[data-sticky-type="event"]')?.textContent).toBe(
-    "注文が確定した",
+  const surface = host.querySelector(
+    '[role="region"][aria-label="キャンバス"]',
   );
+
+  expect(
+    surface?.querySelector('[data-sticky-type="event"]')?.textContent,
+  ).toBe("注文が確定した");
 });
 
 test("下限ズームは 10% と表示する", () => {

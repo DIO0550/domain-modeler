@@ -5,6 +5,7 @@ import { TypeTerm } from "..";
 
 test("修飾なしの識別子項を生成する", () => {
   const range = SourceRange.onLine(1, 10, 15);
+
   expect(
     TypeTerm.create({
       name: "注文ID",
@@ -22,6 +23,7 @@ test("修飾なしの識別子項を生成する", () => {
 
 test("プリミティブに list と option を重ねた項を生成する", () => {
   const range = SourceRange.onLine(3, 5, 24);
+
   expect(
     TypeTerm.create({
       name: "string",

@@ -5,8 +5,12 @@ import { EditorDiagnostic } from "..";
 
 test("正しい行はエラー背景も警告下線も無い", () => {
   const source = "data 注文ID = string";
+
   expect(
-    EditorDiagnostic.lineViews(source, AnalyzedModel.create(source).diagnostics),
+    EditorDiagnostic.lineViews(
+      source,
+      AnalyzedModel.create(source).diagnostics,
+    ),
   ).toEqual([
     {
       line: 1,
@@ -97,6 +101,7 @@ test("同じ行の複数エラーは出現順のメッセージを集める", ()
 
 test("パースエラーは読み上げ用の説明文と無効状態になる", () => {
   const source = "data 数量 = int constrained 10..1";
+
   expect(
     EditorDiagnostic.accessibleSummary(
       AnalyzedModel.create(source).diagnostics,
@@ -109,6 +114,7 @@ test("パースエラーは読み上げ用の説明文と無効状態になる",
 
 test("未定義参照は読み上げ用の説明文になり無効状態にはしない", () => {
   const source = "data 注文 = 未定義型";
+
   expect(
     EditorDiagnostic.accessibleSummary(
       AnalyzedModel.create(source).diagnostics,

@@ -140,8 +140,8 @@
 }
 
 .preview-workflow-card__type-name-button:not(
-  .preview-workflow-card__type-name--undefined
-) {
+    .preview-workflow-card__type-name--undefined
+  ) {
   text-decoration: underline;
   text-underline-offset: 3px;
 }

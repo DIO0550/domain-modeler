@@ -2,11 +2,7 @@ import type { Point } from "../point";
 import { Viewport } from "../viewport";
 import { Size, Sticky, StickyId, type StickyType } from "../sticky";
 import { StickyIndex } from "../sticky-index";
-import {
-  type Anchor,
-  Connection,
-  ConnectionId,
-} from "../connection";
+import { type Anchor, Connection, ConnectionId } from "../connection";
 import { CanvasError } from "../error";
 import { ConnectionSegment } from "../connection-segment";
 import { type Option, Option as OptionValue } from "../option";
@@ -61,6 +57,7 @@ export const Document = {
     stickies: [],
     connections: [],
   }),
+
   /**
    * 指定座標にある最前面の付箋を取得する。
    * @param doc 判定対象の文書。
@@ -75,6 +72,7 @@ export const Document = {
           : OptionValue.some(sticky),
       OptionValue.none(),
     ),
+
   /**
    * 指定した ID の付箋を取得する。
    * @param doc 検索対象の文書。
@@ -83,10 +81,10 @@ export const Document = {
    */
   stickyById: (doc: Document, stickyId: StickyId): Option<Sticky> => {
     const found = doc.stickies.find((sticky) => sticky.id === stickyId);
-    return found === undefined
-      ? OptionValue.none()
-      : OptionValue.some(found);
+
+    return found === undefined ? OptionValue.none() : OptionValue.some(found);
   },
+
   /**
    * 指定座標にある最後に追加された接続を取得する。
    * @param doc 判定対象の文書。
@@ -100,12 +98,15 @@ export const Document = {
     tolerance: number,
   ): Option<Connection> => {
     const stickyIndex = StickyIndex.create(doc.stickies);
+
     return doc.connections.reduceRight<Option<Connection>>(
       (hit, connection) => {
         if (hit.some) {
           return hit;
         }
+
         const segment = ConnectionSegment.create(stickyIndex, connection);
+
         return segment.some &&
           ConnectionSegment.contains(segment.value, point, tolerance)
           ? OptionValue.some(connection)
@@ -114,6 +115,7 @@ export const Document = {
       OptionValue.none(),
     );
   },
+
   /**
    * 指定した ID の接続を取得する。
    * @param doc 検索対象の文書。
@@ -127,10 +129,10 @@ export const Document = {
     const found = doc.connections.find(
       (connection) => connection.id === connectionId,
     );
-    return found === undefined
-      ? OptionValue.none()
-      : OptionValue.some(found);
+
+    return found === undefined ? OptionValue.none() : OptionValue.some(found);
   },
+
   /**
    * 付箋を追加する。
    * @param doc 付箋を追加する文書。
@@ -149,7 +151,10 @@ export const Document = {
   ): Result<Document> => {
     if (!Size.isValid(size)) {
       return Result.err(
-        CanvasError.create("INVALID_STICKY_SIZE", "Sticky size must be positive"),
+        CanvasError.create(
+          "INVALID_STICKY_SIZE",
+          "Sticky size must be positive",
+        ),
       );
     }
 
@@ -166,6 +171,7 @@ export const Document = {
       stickies: [...doc.stickies, sticky],
     });
   },
+
   /**
    * 付箋の本文を変更する。
    * @param doc 変更対象の文書。
@@ -173,12 +179,17 @@ export const Document = {
    * @param text 変更後の本文。
    * @returns 付箋の本文を変更した文書。
    */
-  updateStickyText: (doc: Document, stickyId: StickyId, text: string): Document => ({
+  updateStickyText: (
+    doc: Document,
+    stickyId: StickyId,
+    text: string,
+  ): Document => ({
     ...doc,
     stickies: doc.stickies.map((sticky) =>
       sticky.id === stickyId ? { ...sticky, text } : sticky,
     ),
   }),
+
   /**
    * 付箋を移動する。
    * @param doc 変更対象の文書。
@@ -196,6 +207,7 @@ export const Document = {
       },
       stickyId,
     ),
+
   /**
    * 指定付箋の接続を、現在の位置とサイズに対して最短の辺中央へ付け直す。
    * @param doc 位置・サイズを更新済みの文書。
@@ -204,17 +216,21 @@ export const Document = {
    */
   reconnectSticky: (doc: Document, stickyId: StickyId): Document => {
     const index = StickyIndex.create(doc.stickies);
+
     return {
       ...doc,
       connections: doc.connections.map((connection) => {
         if (connection.from !== stickyId && connection.to !== stickyId) {
           return connection;
         }
+
         const from = StickyIndex.get(index, connection.from);
         const to = StickyIndex.get(index, connection.to);
+
         if (!from.some || !to.some) {
           return connection;
         }
+
         return {
           ...connection,
           ...Connection.nearestAnchors({ from: from.value, to: to.value }),
@@ -222,6 +238,7 @@ export const Document = {
       }),
     };
   },
+
   /**
    * 付箋のサイズを変更する。
    * @param doc 変更対象の文書。
@@ -255,6 +272,7 @@ export const Document = {
       ),
     );
   },
+
   /**
    * 付箋の種別を変更する。
    * @param doc 変更対象の文書。
@@ -272,6 +290,7 @@ export const Document = {
       sticky.id === stickyId ? { ...sticky, type } : sticky,
     ),
   }),
+
   /**
    * 付箋を最前面へ移動する。
    * @param doc 変更対象の文書。
@@ -280,11 +299,13 @@ export const Document = {
    */
   bringStickyToFront: (doc: Document, stickyId: StickyId): Document => {
     const index = doc.stickies.findIndex((sticky) => sticky.id === stickyId);
+
     if (index < 0 || index === doc.stickies.length - 1) {
       return doc;
     }
 
     const sticky = doc.stickies[index];
+
     return {
       ...doc,
       stickies: [
@@ -294,6 +315,7 @@ export const Document = {
       ],
     };
   },
+
   /**
    * 付箋とその付箋に関連する接続を削除する。
    * @param doc 変更対象の文書。
@@ -304,9 +326,11 @@ export const Document = {
     ...doc,
     stickies: doc.stickies.filter((sticky) => sticky.id !== stickyId),
     connections: doc.connections.filter(
-      (connection) => connection.from !== stickyId && connection.to !== stickyId,
+      (connection) =>
+        connection.from !== stickyId && connection.to !== stickyId,
     ),
   }),
+
   /**
    * 始点と終点を検証して接続を追加する。
    * @param doc 接続を追加する文書。
@@ -329,6 +353,7 @@ export const Document = {
         ),
       );
     }
+
     if (!doc.stickies.some((sticky) => sticky.id === from)) {
       return Result.err(
         CanvasError.create(
@@ -337,6 +362,7 @@ export const Document = {
         ),
       );
     }
+
     if (!doc.stickies.some((sticky) => sticky.id === to)) {
       return Result.err(
         CanvasError.create(
@@ -359,6 +385,7 @@ export const Document = {
       connections: [...doc.connections, connection],
     });
   },
+
   /**
    * 接続のラベルを変更する。
    * @param doc 変更対象の文書。
@@ -374,6 +401,7 @@ export const Document = {
     const index = doc.connections.findIndex(
       (connection) => connection.id === connectionId,
     );
+
     if (index < 0) {
       return doc;
     }
@@ -387,6 +415,7 @@ export const Document = {
       ],
     };
   },
+
   /**
    * 接続のアンカーを指定する。省略したアンカーは自動配置に戻す。
    * @param doc 変更対象の文書。
@@ -404,6 +433,7 @@ export const Document = {
     const index = doc.connections.findIndex(
       (connection) => connection.id === connectionId,
     );
+
     if (index < 0) {
       return doc;
     }
@@ -417,6 +447,7 @@ export const Document = {
       ],
     };
   },
+
   /**
    * 接続を削除する。
    * @param doc 変更対象の文書。
@@ -427,6 +458,7 @@ export const Document = {
     const index = doc.connections.findIndex(
       (connection) => connection.id === connectionId,
     );
+
     if (index < 0) {
       return doc;
     }

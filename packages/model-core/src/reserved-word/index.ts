@@ -31,6 +31,7 @@ export type ReservedWord = ValueOf<typeof RESERVED_WORDS>;
  */
 const leadingWordLength = (text: string): number => {
   const matched = /^[^\s=./:]+/u.exec(text);
+
   return matched === null ? 0 : matched[0].length;
 };
 
@@ -44,6 +45,7 @@ export const ReservedWord = {
    */
   is: (value: string): value is ReservedWord =>
     Object.prototype.hasOwnProperty.call(RESERVED_WORDS, value),
+
   /**
    * 先頭から予約語として最長一致する文字数を返す。一致しなければ 0。
    * `input:` / `output:` / `error:` はコロン込みで照合する。
@@ -52,16 +54,21 @@ export const ReservedWord = {
    */
   matchedLength: (text: string): number => {
     const wordLength = leadingWordLength(text);
+
     if (wordLength > 0 && text[wordLength] === ":") {
       const candidate = text.slice(0, wordLength + 1);
+
       if (ReservedWord.is(candidate)) {
         return wordLength + 1;
       }
     }
+
     const withoutColon = text.slice(0, wordLength);
+
     if (ReservedWord.is(withoutColon)) {
       return wordLength;
     }
+
     return 0;
   },
 } as const;

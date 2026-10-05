@@ -38,7 +38,8 @@ export const createDmodelFile = (
   target: Readonly<{ path: string; contents: string }>,
 ): Promise<FileWriteResult> =>
   writeFileAsResult(
-    (path, contents) => invoke<FileWriteResult>("create_dmodel_file", { path, contents }),
+    (path, contents) =>
+      invoke<FileWriteResult>("create_dmodel_file", { path, contents }),
     target,
   );
 
@@ -52,6 +53,7 @@ const writeFailureMessage = (caught: unknown): string => {
   if (caught instanceof Error) {
     return caught.message;
   }
+
   return String(caught);
 };
 
@@ -61,9 +63,16 @@ const writeFailureMessage = (caught: unknown): string => {
  * @param contents 作成する文書の全文。
  * @returns 作成成功または書き込み失敗。
  */
-export const createFile = (path: string, contents: string): Promise<FileWriteResult> =>
+export const createFile = (
+  path: string,
+  contents: string,
+): Promise<FileWriteResult> =>
   writeFileAsResult(
-    (targetPath, text) => invoke<FileWriteResult>("create_file", { path: targetPath, contents: text }),
+    (targetPath, text) =>
+      invoke<FileWriteResult>("create_file", {
+        path: targetPath,
+        contents: text,
+      }),
     { path, contents },
   );
 
@@ -73,8 +82,15 @@ export const createFile = (path: string, contents: string): Promise<FileWriteRes
  * @param contents 文書の全文。
  * @returns 書き込み成功または失敗。
  */
-export const writeFile = (path: string, contents: string): Promise<FileWriteResult> =>
+export const writeFile = (
+  path: string,
+  contents: string,
+): Promise<FileWriteResult> =>
   writeFileAsResult(
-    (targetPath, text) => invoke<FileWriteResult>("write_file", { path: targetPath, contents: text }),
+    (targetPath, text) =>
+      invoke<FileWriteResult>("write_file", {
+        path: targetPath,
+        contents: text,
+      }),
     { path, contents },
   );

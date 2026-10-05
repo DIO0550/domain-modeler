@@ -39,14 +39,17 @@ export const StubInsertion = {
     params: StubInsertionParams,
   ): ResultType<StubInsertion, "invalid_identifier"> {
     const stub = Stub.generate(params.name);
+
     if (Result.isErr(stub)) {
       return stub;
     }
+
     const prefix =
       params.source.length > 0 && !endsWithLineBreak(params.source) ? "\n" : "";
     const replacement = `${prefix}${stub.value}`;
     const nextSource = `${params.source}${replacement}`;
     const offset = params.source.length + prefix.length;
+
     return Result.ok({
       edit: {
         start: params.source.length,

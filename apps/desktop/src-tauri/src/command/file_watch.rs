@@ -20,6 +20,7 @@ pub async fn start_file_watch<R: tauri::Runtime>(
 ) -> FileWatchResult {
     let failure_path = path.clone();
     let registry = app.state::<FileWatchRegistry>().inner().clone();
+
     tauri::async_runtime::spawn_blocking(move || {
         registry.start(&path, move |event: FileWatchEvent| {
             let _ = app.emit(FILE_WATCH_EVENT, &event);
@@ -44,6 +45,7 @@ pub async fn stop_file_watch<R: tauri::Runtime>(
 ) -> FileWatchResult {
     let failure_path = path.clone();
     let registry = app.state::<FileWatchRegistry>().inner().clone();
+
     tauri::async_runtime::spawn_blocking(move || registry.stop(&path))
         .await
         .unwrap_or_else(|error| watch_join_failed(failure_path, error.to_string()))

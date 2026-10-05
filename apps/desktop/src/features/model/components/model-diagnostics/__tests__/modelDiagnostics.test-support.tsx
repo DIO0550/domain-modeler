@@ -8,8 +8,13 @@ type RenderedDiagnostics = Readonly<{
 }>;
 
 type DiagnosticsRenderer = Readonly<{
-  render: (value: string, onChange?: (text: string) => void,
-    onHistoryControlsChange?: (controls: Readonly<{ undo?: () => void; redo?: () => void }>) => void) => HTMLDivElement;
+  render: (
+    value: string,
+    onChange?: (text: string) => void,
+    onHistoryControlsChange?: (
+      controls: Readonly<{ undo?: () => void; redo?: () => void }>,
+    ) => void,
+  ) => HTMLDivElement;
   unmountAll: () => void;
 }>;
 
@@ -19,28 +24,42 @@ type DiagnosticsRenderer = Readonly<{
  */
 export const createDiagnosticsRenderer = (): DiagnosticsRenderer => {
   const rendered: RenderedDiagnostics[] = [];
+
   return {
     render: (value, onChange = () => undefined, onHistoryControlsChange) => {
       const host = document.createElement("div");
+
       document.body.append(host);
+
       const root: Root = createRoot(host);
       let text = value;
+
       const handleChange = (next: string) => {
         text = next;
         onChange(next);
         act(() => {
           root.render(
-            <ModelDiagnostics value={text} onChange={handleChange} onHistoryControlsChange={onHistoryControlsChange} />,
+            <ModelDiagnostics
+              value={text}
+              onChange={handleChange}
+              onHistoryControlsChange={onHistoryControlsChange}
+            />,
           );
         });
       };
+
       act(() => {
         root.render(
-          <ModelDiagnostics value={text} onChange={handleChange} onHistoryControlsChange={onHistoryControlsChange} />,
+          <ModelDiagnostics
+            value={text}
+            onChange={handleChange}
+            onHistoryControlsChange={onHistoryControlsChange}
+          />,
         );
       });
       rendered.push({
         host,
+
         unmount: () => {
           act(() => {
             root.unmount();
@@ -48,8 +67,10 @@ export const createDiagnosticsRenderer = (): DiagnosticsRenderer => {
           host.remove();
         },
       });
+
       return host;
     },
+
     unmountAll: () => {
       for (const entry of rendered.splice(0)) {
         entry.unmount();

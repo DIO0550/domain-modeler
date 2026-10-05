@@ -15,15 +15,22 @@ const dragConnectedSticky = (): Readonly<{
 }> => {
   const host = renderEditor(documentWithConnection);
   const article = stickyArticleOf(host, documentWithConnection.stickies[0].id);
+
   article.setPointerCapture = () => {};
+
   const path = () =>
     host.querySelector(".connection-layer__path")?.getAttribute("d");
+
   const original = path();
+
   pointer(article, "pointerdown");
   pointer(article, "pointermove", { x: 310, y: 360 });
+
   const moved = path();
+
   expect(article.style.top).toBe("320px");
   expect(moved).not.toBe(original);
+
   return { article, original, moved };
 };
 
@@ -55,14 +62,17 @@ for (const completion of ["lostpointercapture", "pointerup"]) {
     pointer(article, completion);
     pointer(article, "lostpointercapture");
     pointer(article, "pointerup");
+
     expect(article.style.top).toBe("320px");
     expect(pathOf(article)).toBe(moved);
 
     history(article, "undo");
+
     expect(article.style.top).toBe("20px");
     expect(pathOf(article)).toBe(original);
 
     history(article, "redo");
+
     expect(article.style.top).toBe("320px");
     expect(pathOf(article)).toBe(moved);
   });

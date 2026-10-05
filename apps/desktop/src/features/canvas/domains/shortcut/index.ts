@@ -34,27 +34,37 @@ export const CanvasShortcut = {
     if (event.isComposing || event.keyCode === 229 || event.altKey) {
       return Option.none();
     }
+
     if (!event.ctrlKey && !event.metaKey) {
       return !event.shiftKey &&
         (event.key === "Delete" || event.key === "Backspace")
         ? Option.some(CANVAS_SHORTCUTS.delete)
         : Option.none();
     }
+
     // Shift による入力文字が別操作の記号になっても物理位置を優先する。
     switch (event.code) {
       case "Digit0":
         return Option.some(CANVAS_SHORTCUTS.fitAll);
+
       case "Equal":
         return Option.some(CANVAS_SHORTCUTS.zoomIn);
+
       case "Minus":
         return Option.some(CANVAS_SHORTCUTS.zoomOut);
+
       default:
         break;
     }
+
     const key = event.key.toLowerCase();
+
     if (key === "z") {
-      return Option.some(event.shiftKey ? CANVAS_SHORTCUTS.redo : CANVAS_SHORTCUTS.undo);
+      return Option.some(
+        event.shiftKey ? CANVAS_SHORTCUTS.redo : CANVAS_SHORTCUTS.undo,
+      );
     }
+
     // 記号は入力文字に加え US 配列の物理位置でも受け付ける。
     // AltGraph を要する配列でも Alt を押さない代替操作を提供する。
     if (
@@ -63,23 +73,30 @@ export const CanvasShortcut = {
     ) {
       return Option.some(CANVAS_SHORTCUTS.front);
     }
+
     if (key === "+" || key === "=") {
       return Option.some(CANVAS_SHORTCUTS.zoomIn);
     }
+
     if (key === "0") {
       return Option.some(CANVAS_SHORTCUTS.fitAll);
     }
+
     if (key === "-") {
       return Option.some(CANVAS_SHORTCUTS.zoomOut);
     }
+
     if (event.shiftKey) {
       return Option.none();
     }
+
     switch (key) {
       case "c":
         return Option.some(CANVAS_SHORTCUTS.copy);
+
       case "v":
         return Option.some(CANVAS_SHORTCUTS.paste);
+
       default:
         return Option.none();
     }

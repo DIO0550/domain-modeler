@@ -21,6 +21,7 @@ const meta: Meta<typeof CanvasEditor> = {
     ),
   ],
 };
+
 export default meta;
 
 type Story = StoryObj<typeof CanvasEditor>;
@@ -60,15 +61,13 @@ const documentWithTwoStickies = {
  */
 const clickSurfaceAt = async (
   canvas: {
-    getByRole: (
-      role: string,
-      options: { name: string },
-    ) => HTMLElement;
+    getByRole: (role: string, options: { name: string }) => HTMLElement;
   },
   point: Readonly<{ x: number; y: number }>,
 ): Promise<void> => {
   const surface = canvas.getByRole("region", { name: "キャンバス" });
   const rect = surface.getBoundingClientRect();
+
   await userEvent.pointer({
     keys: "[MouseLeft]",
     target: surface,
@@ -87,6 +86,7 @@ export const AllProps: Story = {
     saveStatus: "saving",
     initialDocument: documentWithEvent,
   },
+
   play: async ({ canvas }) => {
     await clickSurfaceAt(canvas, { x: 40, y: 40 });
   },
@@ -97,9 +97,11 @@ export const Editing: Story = {
     saveStatus: "saved",
     initialDocument: documentWithEvent,
   },
+
   play: async ({ canvas }) => {
     const surface = canvas.getByRole("region", { name: "キャンバス" });
     const rect = surface.getBoundingClientRect();
+
     await userEvent.pointer({
       keys: "[MouseLeft][MouseLeft]",
       target: surface,
@@ -113,6 +115,7 @@ export const CreatingConnection: Story = {
     saveStatus: "saved",
     initialDocument: documentWithTwoStickies,
   },
+
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "接続" }));
     await clickSurfaceAt(canvas, { x: 48, y: 48 });
@@ -128,6 +131,7 @@ export const EdgeCases: Story = {
       viewport: { x: 0, y: 0, zoom: 0.1 },
     },
   },
+
   play: async ({ canvas }) => {
     await userEvent.click(
       canvas.getByRole("button", { name: "External System" }),

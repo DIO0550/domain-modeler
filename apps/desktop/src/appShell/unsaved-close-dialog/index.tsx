@@ -13,11 +13,15 @@ export function UnsavedCloseDialog({
   onChoose: (choice: "save" | "discard" | "cancel") => void;
 }>) {
   const dialog = useRef<HTMLDialogElement>(null);
+
   useEffect(() => {
     const element = dialog.current;
+
     element?.showModal();
+
     return () => element?.close();
   }, []);
+
   return (
     <dialog
       ref={dialog}

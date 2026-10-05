@@ -10,21 +10,29 @@ import type { FileWatchEvent, FileWatchOperations } from "@/libs/file-watch";
  */
 export const autoSaveBlockingFirstWrite = (
   writes: string[],
-): Readonly<{ operations: AutoSaveOperations; finishFirstWrite: () => void }> => {
+): Readonly<{
+  operations: AutoSaveOperations;
+  finishFirstWrite: () => void;
+}> => {
   const pending = { finish: () => {} };
+
   return {
     operations: {
       writeFile: async (_path, contents) => {
         writes.push(contents);
+
         if (writes.length > 1) {
           return { type: "ok" };
         }
+
         return await new Promise((resolve) => {
           pending.finish = () => resolve({ type: "ok" });
         });
       },
+
       now: Date.now,
     },
+
     finishFirstWrite: () => pending.finish(),
   };
 };
@@ -48,24 +56,33 @@ export const fileWatchDeferringFirstRead = (
     finish: undefined,
   };
   let readCount = 0;
+
   return {
     operations: {
       watch: async (_path, onEvent) => {
         listener.notify = onEvent;
+
         return { type: "ok", stop: async () => {} };
       },
+
       readFile: async () => {
         readCount += 1;
+
         if (readCount > 1) {
           return { type: "ok", value: laterContents };
         }
+
         return await new Promise((resolve) => {
-          pending.finish = (contents) => resolve({ type: "ok", value: contents });
+          pending.finish = (contents) =>
+            resolve({ type: "ok", value: contents });
         });
       },
     },
+
     notify: (event) => listener.notify(event),
+
     finishFirstRead: (contents) => pending.finish?.(contents),
+
     isFirstReadPending: () => pending.finish !== undefined,
   };
 };
@@ -77,9 +94,11 @@ export const fileWatchDeferringFirstRead = (
  */
 export const undoCanvas = (host: HTMLDivElement): void => {
   const surface = host.querySelector(".canvas-surface");
+
   if (surface === null) {
     throw new Error("キャンバスがありません");
   }
+
   act(() =>
     surface.dispatchEvent(
       new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }),

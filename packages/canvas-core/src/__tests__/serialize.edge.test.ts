@@ -38,40 +38,46 @@ test.each([
   { version: "2.0", label: "major 不一致" },
   { version: "0.1", label: "major が小さい" },
   { version: "10.0", label: "major が大きい" },
-])(
-  "version の $label ($version) は VERSION_MAJOR_MISMATCH になる",
-  ({ version }: { version: string; label: string }) => {
-    const error = Result.unwrapErr(
-      Serialize.parse(
-        JSON.stringify({
-          ...baseDocument(),
-          version,
-        }),
-      ),
-    );
+])("version の $label ($version) は VERSION_MAJOR_MISMATCH になる", ({
+  version,
+}: {
+  version: string;
+  label: string;
+}) => {
+  const error = Result.unwrapErr(
+    Serialize.parse(
+      JSON.stringify({
+        ...baseDocument(),
+        version,
+      }),
+    ),
+  );
 
-    expect(error.code).toBe("VERSION_MAJOR_MISMATCH");
-  },
-);
+  expect(error.code).toBe("VERSION_MAJOR_MISMATCH");
+});
 
-test.each(["1", "1.0.0", "v1.0", "", "abc"])(
-  "version 形式が不正な %s は INVALID_VERSION になる",
-  (version: string) => {
-    const error = Result.unwrapErr(
-      Serialize.parse(
-        JSON.stringify({
-          ...baseDocument(),
-          version,
-        }),
-      ),
-    );
+test.each([
+  "1",
+  "1.0.0",
+  "v1.0",
+  "",
+  "abc",
+])("version 形式が不正な %s は INVALID_VERSION になる", (version: string) => {
+  const error = Result.unwrapErr(
+    Serialize.parse(
+      JSON.stringify({
+        ...baseDocument(),
+        version,
+      }),
+    ),
+  );
 
-    expect(error.code).toBe("INVALID_VERSION");
-  },
-);
+  expect(error.code).toBe("INVALID_VERSION");
+});
 
 test("付箋 ID が重複すると DUPLICATE_STICKY_ID になる", () => {
   const document = baseDocument();
+
   document.stickies = [
     {
       id: "stk_aaaaaaaaaaaa",
@@ -96,6 +102,7 @@ test("付箋 ID が重複すると DUPLICATE_STICKY_ID になる", () => {
 
 test("接続 ID が重複すると DUPLICATE_CONNECTION_ID になる", () => {
   const document = baseDocument();
+
   document.connections = [
     {
       id: "con_cccccccccccc",
@@ -120,6 +127,7 @@ test("接続 ID が重複すると DUPLICATE_CONNECTION_ID になる", () => {
 
 test("接続の from が存在しない付箋を指すと CONNECTION_SOURCE_NOT_FOUND になる", () => {
   const document = baseDocument();
+
   document.connections = [
     {
       id: "con_cccccccccccc",
@@ -137,6 +145,7 @@ test("接続の from が存在しない付箋を指すと CONNECTION_SOURCE_NOT_
 
 test("接続の to が存在しない付箋を指すと CONNECTION_TARGET_NOT_FOUND になる", () => {
   const document = baseDocument();
+
   document.connections = [
     {
       id: "con_cccccccccccc",
@@ -154,6 +163,7 @@ test("接続の to が存在しない付箋を指すと CONNECTION_TARGET_NOT_FO
 
 test("自己参照の接続は SELF_REFERENTIAL_CONNECTION になる", () => {
   const document = baseDocument();
+
   document.connections = [
     {
       id: "con_cccccccccccc",
@@ -171,6 +181,7 @@ test("自己参照の接続は SELF_REFERENTIAL_CONNECTION になる", () => {
 
 test("未知の付箋種別は INVALID_STICKY_TYPE になる", () => {
   const document = baseDocument();
+
   document.stickies = [
     {
       id: "stk_aaaaaaaaaaaa",
@@ -191,49 +202,57 @@ test.each([
   { width: -1, height: 10 },
   { width: 10, height: 0 },
   { width: 10, height: -5 },
-])(
-  "不正なサイズ width=$width height=$height は INVALID_STICKY_SIZE になる",
-  ({ width, height }: { width: number; height: number }) => {
-    const document = baseDocument();
-    document.stickies = [
-      {
-        id: "stk_aaaaaaaaaaaa",
-        type: "event",
-        text: "a",
-        position: { x: 0, y: 0 },
-        size: { width, height },
-      },
-    ];
+])("不正なサイズ width=$width height=$height は INVALID_STICKY_SIZE になる", ({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}) => {
+  const document = baseDocument();
 
-    const error = Result.unwrapErr(Serialize.parse(JSON.stringify(document)));
+  document.stickies = [
+    {
+      id: "stk_aaaaaaaaaaaa",
+      type: "event",
+      text: "a",
+      position: { x: 0, y: 0 },
+      size: { width, height },
+    },
+  ];
 
-    expect(error.code).toBe("INVALID_STICKY_SIZE");
-  },
-);
+  const error = Result.unwrapErr(Serialize.parse(JSON.stringify(document)));
+
+  expect(error.code).toBe("INVALID_STICKY_SIZE");
+});
 
 test.each([
   { field: "fromAnchor", value: "middle" },
   { field: "toAnchor", value: "center" },
-])(
-  "不正な $field=$value は INVALID_ANCHOR になる",
-  ({ field, value }: { field: string; value: string }) => {
-    const document = baseDocument();
-    document.connections = [
-      {
-        id: "con_cccccccccccc",
-        from: "stk_aaaaaaaaaaaa",
-        to: "stk_bbbbbbbbbbbb",
-        label: "",
-        note: "",
-        [field]: value,
-      },
-    ];
+])("不正な $field=$value は INVALID_ANCHOR になる", ({
+  field,
+  value,
+}: {
+  field: string;
+  value: string;
+}) => {
+  const document = baseDocument();
 
-    const error = Result.unwrapErr(Serialize.parse(JSON.stringify(document)));
+  document.connections = [
+    {
+      id: "con_cccccccccccc",
+      from: "stk_aaaaaaaaaaaa",
+      to: "stk_bbbbbbbbbbbb",
+      label: "",
+      note: "",
+      [field]: value,
+    },
+  ];
 
-    expect(error.code).toBe("INVALID_ANCHOR");
-  },
-);
+  const error = Result.unwrapErr(Serialize.parse(JSON.stringify(document)));
+
+  expect(error.code).toBe("INVALID_ANCHOR");
+});
 
 test("必須フィールド欠落は INVALID_DOCUMENT になる", () => {
   const error = Result.unwrapErr(
@@ -299,49 +318,52 @@ test("付箋テキストが20文字を超えると note は先頭20文字にな�
 test.each([
   { text: "行1\n行2", expected: "行1 行2" },
   { text: "行1\r\n行2", expected: "行1 行2" },
-])(
-  "付箋テキスト内の改行は note でスペースに置換される ($text)",
-  ({ text, expected }: { text: string; expected: string }) => {
-    const document = Result.unwrap(
-      Serialize.parse(
-        JSON.stringify({
-          ...baseDocument(),
-          stickies: [
-            {
-              id: "stk_aaaaaaaaaaaa",
-              type: "command",
-              text,
-              position: { x: 0, y: 0 },
-              size: { width: 10, height: 10 },
-            },
-            {
-              id: "stk_bbbbbbbbbbbb",
-              type: "event",
-              text: "b",
-              position: { x: 20, y: 0 },
-              size: { width: 10, height: 10 },
-            },
-          ],
-          connections: [
-            {
-              id: "con_cccccccccccc",
-              from: "stk_aaaaaaaaaaaa",
-              to: "stk_bbbbbbbbbbbb",
-              label: "",
-              note: "",
-            },
-          ],
-        }),
-      ),
-    );
+])("付箋テキスト内の改行は note でスペースに置換される ($text)", ({
+  text,
+  expected,
+}: {
+  text: string;
+  expected: string;
+}) => {
+  const document = Result.unwrap(
+    Serialize.parse(
+      JSON.stringify({
+        ...baseDocument(),
+        stickies: [
+          {
+            id: "stk_aaaaaaaaaaaa",
+            type: "command",
+            text,
+            position: { x: 0, y: 0 },
+            size: { width: 10, height: 10 },
+          },
+          {
+            id: "stk_bbbbbbbbbbbb",
+            type: "event",
+            text: "b",
+            position: { x: 20, y: 0 },
+            size: { width: 10, height: 10 },
+          },
+        ],
+        connections: [
+          {
+            id: "con_cccccccccccc",
+            from: "stk_aaaaaaaaaaaa",
+            to: "stk_bbbbbbbbbbbb",
+            label: "",
+            note: "",
+          },
+        ],
+      }),
+    ),
+  );
 
-    const parsed = JSON.parse(Serialize.stringify(document)) as {
-      connections: Array<{ note: string }>;
-    };
+  const parsed = JSON.parse(Serialize.stringify(document)) as {
+    connections: Array<{ note: string }>;
+  };
 
-    expect(parsed.connections[0]?.note).toBe(`${expected} -> b`);
-  },
-);
+  expect(parsed.connections[0]?.note).toBe(`${expected} -> b`);
+});
 
 test("片方アンカーのみの接続は存在するアンカーキーだけを書き出す", () => {
   const document = Result.unwrap(

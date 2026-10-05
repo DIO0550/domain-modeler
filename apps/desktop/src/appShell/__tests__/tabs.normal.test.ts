@@ -139,7 +139,9 @@ test("背景タブに外部変更が取り込まれると変更マークが付�
   });
 
   expect(changed.tabs[0]?.backgroundChangeState).toEqual({ status: "changed" });
-  expect(changed.tabs[1]?.backgroundChangeState).toEqual({ status: "unchanged" });
+  expect(changed.tabs[1]?.backgroundChangeState).toEqual({
+    status: "unchanged",
+  });
 });
 
 test("変更マークが付いた背景タブをアクティブにするとマークが消える", () => {

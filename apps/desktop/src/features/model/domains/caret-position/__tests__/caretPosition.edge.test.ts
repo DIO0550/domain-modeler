@@ -43,19 +43,19 @@ test("末尾改行の空行先頭は最終行になる", () => {
 });
 
 test("選択範囲の終端が開始位置より前なら値なしになる", () => {
-  expect(CaretPosition.selectionFromRange("abc", SourceRange.onLine(1, 3, 2))).toEqual(
-    Option.none(),
-  );
+  expect(
+    CaretPosition.selectionFromRange("abc", SourceRange.onLine(1, 3, 2)),
+  ).toEqual(Option.none());
 });
 
 test("選択範囲の行が文書外なら値なしになる", () => {
-  expect(CaretPosition.selectionFromRange("abc", SourceRange.onLine(2, 1, 2))).toEqual(
-    Option.none(),
-  );
+  expect(
+    CaretPosition.selectionFromRange("abc", SourceRange.onLine(2, 1, 2)),
+  ).toEqual(Option.none());
 });
 
 test("選択範囲の終端が文書の末尾を超えるなら値なしになる", () => {
-  expect(CaretPosition.selectionFromRange("abc", SourceRange.onLine(1, 1, 5))).toEqual(
-    Option.none(),
-  );
+  expect(
+    CaretPosition.selectionFromRange("abc", SourceRange.onLine(1, 1, 5)),
+  ).toEqual(Option.none());
 });

@@ -10,7 +10,9 @@ import { WorkflowDeclParse } from "..";
  */
 const materialize = (source: string) => {
   const chunks = DeclChunk.split(Tokenizer.tokenize(source));
+
   expect(chunks).toHaveLength(1);
+
   return WorkflowDeclParse.materialize(chunks[0]!);
 };
 

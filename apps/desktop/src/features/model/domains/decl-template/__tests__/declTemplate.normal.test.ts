@@ -26,7 +26,9 @@ test("workflow 雛形は input と output を持ち名前部分の範囲を持�
 test("空文書の先頭へ data 雛形を挿入し名前を選択する", () => {
   const template = DeclTemplate.data();
 
-  expect(DeclTemplate.insert(template, { source: "", start: 0, end: 0 })).toEqual({
+  expect(
+    DeclTemplate.insert(template, { source: "", start: 0, end: 0 }),
+  ).toEqual({
     edit: { start: 0, end: 0, replacement: "data 名前 = string" },
     nameStart: template.nameStart,
     nameEnd: template.nameEnd,

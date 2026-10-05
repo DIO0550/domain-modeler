@@ -12,34 +12,47 @@ export const setupFileActions = (selection: SavePathSelection) => {
   const files = new Map<string, string>();
   const errors: (OpenDocumentError | ExternalFileEventError)[] = [];
   let tabs = TabsState.create();
+
   const dispatchTabs = (action: TabsAction) => {
     tabs = TabsState.reducer(tabs, action);
   };
+
   const operations = {
     selectSavePath: async () => selection,
+
     createFile: async (
       path: string,
       contents: string,
     ): Promise<FileWriteResult> => {
       files.set(path, contents);
+
       return { type: "ok" };
     },
+
     sameFilePath: async (left: string, right: string) => left === right,
+
     readFile: async (path: string): Promise<FileReadResult> => {
       const value = files.get(path);
+
       if (value === undefined) {
         return { type: "err", error: { kind: "notFound", path } };
       }
+
       return { type: "ok", value };
     },
+
     openTab: (path: string, documentType: TabDocumentType) =>
       dispatchTabs({ type: "openTab", path, documentType }),
+
     dispatchTabs,
+
     notifyError: (error: OpenDocumentError | ExternalFileEventError) => {
       errors.push(error);
     },
+
     hashContents: (contents: string) => contents,
   };
+
   return { files, errors, operations, tabs: () => tabs };
 };
 
@@ -53,5 +66,6 @@ export const readContents = (result: FileReadResult): string => {
   if (result.type !== "ok") {
     throw new Error(`ファイルを読めません: ${JSON.stringify(result.error)}`);
   }
+
   return result.value;
 };

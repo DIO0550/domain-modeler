@@ -26,11 +26,14 @@ const renderAppShell = (): AppShellProbe => {
     current: undefined,
   };
   const host = document.createElement("div");
+
   document.body.append(host);
+
   const root: Root = createRoot(host);
 
   const Probe = () => {
     latest.current = useAppShell();
+
     return null;
   };
 
@@ -40,6 +43,7 @@ const renderAppShell = (): AppShellProbe => {
 
   const probe = {
     latest,
+
     unmount: () => {
       act(() => {
         root.unmount();
@@ -47,7 +51,9 @@ const renderAppShell = (): AppShellProbe => {
       host.remove();
     },
   };
+
   probes.push(probe);
+
   return probe;
 };
 

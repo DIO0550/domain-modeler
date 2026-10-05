@@ -124,14 +124,18 @@ const stubOrUnconverted = (
   dataNameRule: DataNameRule,
 ): ClassifiedSticky => {
   const identifier = Identifier.create(sticky.text);
+
   if (Option.isNone(identifier)) {
     return unconverted(sticky);
   }
+
   const dataName = dataNameRule.dataNameFromIdentifier(identifier.value);
   const stub = Stub.generate(dataName);
+
   if (Result.isErr(stub)) {
     return unconverted(sticky);
   }
+
   return {
     kind: "stub",
     identifier: dataName,
@@ -150,13 +154,16 @@ const classifySticky = (sticky: Sticky): ClassifiedSticky => {
   if (sticky.text.length === 0) {
     return unconverted(sticky);
   }
+
   switch (sticky.type) {
     case "event":
     case "aggregate":
     case "readModel":
       return stubOrUnconverted(sticky, IDENTIFIER_DATA_NAME);
+
     case "command":
       return stubOrUnconverted(sticky, COMMAND_INPUT_DATA_NAME);
+
     case "hotspot":
       return {
         kind: "hotspot",
@@ -165,14 +172,18 @@ const classifySticky = (sticky: Sticky): ClassifiedSticky => {
           text: sticky.text,
         }),
       };
+
     case "actor":
     case "externalSystem":
       return unconverted(sticky);
+
     case "policy": {
       const identifier = Identifier.create(sticky.text);
+
       if (Option.isNone(identifier)) {
         return unconverted(sticky);
       }
+
       return { kind: "policy", identifier: identifier.value, sticky };
     }
   }
@@ -194,16 +205,20 @@ const appendClassified = (
       const emitted = sections.emittedDeclarations.find(
         (declaration) => declaration.identifier === classified.identifier,
       );
+
       if (emitted !== undefined && emitted.nameSource !== "policy") {
         return appendClassified(sections, unconverted(classified.sticky));
       }
+
       const acceptedDeclarations = [
         ...sections.acceptedDeclarations,
         classified,
       ];
+
       if (emitted !== undefined) {
         return { ...sections, acceptedDeclarations };
       }
+
       const emittedDeclarations = [
         ...sections.emittedDeclarations,
         {
@@ -211,25 +226,31 @@ const appendClassified = (
           nameSource: "policy" as const,
         },
       ];
+
       return { ...sections, acceptedDeclarations, emittedDeclarations };
     }
+
     case "unconverted": {
       const unconvertedLines = [
         ...sections.unconvertedLines,
         ...classified.lines,
       ];
+
       return {
         ...sections,
         unconvertedLines,
       };
     }
+
     case "hotspot": {
       const dataLines = [...sections.dataLines, ...classified.lines];
+
       return {
         ...sections,
         dataLines,
       };
     }
+
     case "stub": {
       const workflowNames = CommandWorkflow.names(classified.sticky);
       const workflowCollision = workflowNames.some((name) =>
@@ -237,12 +258,15 @@ const appendClassified = (
           (stub) => stub.identifier === name && stub.nameSource !== "workflow",
         ),
       );
+
       if (workflowCollision) {
         return appendClassified(sections, unconverted(classified.sticky));
       }
+
       const emitted = sections.emittedDeclarations.find(
         (stub) => stub.identifier === classified.identifier,
       );
+
       if (emitted === undefined) {
         const dataLines = [...sections.dataLines, classified.line];
         const workflowDeclarations = workflowNames.map((identifier) => ({
@@ -257,6 +281,7 @@ const appendClassified = (
             nameSource: classified.nameSource,
           },
         ];
+
         return {
           ...sections,
           acceptedDeclarations: [...sections.acceptedDeclarations, classified],
@@ -265,17 +290,20 @@ const appendClassified = (
           emittedDeclarations,
         };
       }
+
       if (emitted.nameSource === classified.nameSource) {
         return {
           ...sections,
           acceptedDeclarations: [...sections.acceptedDeclarations, classified],
         };
       }
+
       const collision = unconverted(classified.sticky);
       const unconvertedLines = [
         ...sections.unconvertedLines,
         ...collision.lines,
       ];
+
       return {
         ...sections,
         unconvertedLines,
@@ -294,7 +322,9 @@ const sectionText = (header: string, lines: readonly string[]): string => {
   if (lines.length === 0) {
     return header;
   }
+
   const body = lines.join("\n");
+
   return `${header}\n\n${body}`;
 };
 
@@ -324,6 +354,7 @@ const formatDmodel = (
     UNCONVERTED_SECTION_HEADER,
     sections.unconvertedLines,
   );
+
   return `${header}\n\n${dataSection}\n\n${workflowSection}\n\n${unconvertedSection}\n`;
 };
 
@@ -361,15 +392,19 @@ export const Generate = {
           name: declaration.identifier,
           stickies: acceptedStickies,
         };
+
         if (declaration.nameSource === "workflow") {
           return [CommandWorkflow.toDmodelText(workflow, document)];
         }
+
         if (declaration.nameSource === "policy") {
           return [PolicyWorkflow.toDmodelText(workflow, document)];
         }
+
         return [];
       },
     );
+
     return formatDmodel(document.title, generatedOn, {
       ...sections,
       workflowLines,

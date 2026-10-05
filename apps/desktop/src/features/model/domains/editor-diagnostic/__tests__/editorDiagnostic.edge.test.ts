@@ -87,9 +87,11 @@ test("多数行の末尾にある未定義参照だけを警告セグメント�
   );
 
   expect(
-    views.slice(0, 40).every((view) =>
-      view.segments.every((segment) => segment.kind === "plain"),
-    ),
+    views
+      .slice(0, 40)
+      .every((view) =>
+        view.segments.every((segment) => segment.kind === "plain"),
+      ),
   ).toBe(true);
   expect(views[40]?.segments).toEqual([
     { kind: "plain", text: "data 注文 = " },

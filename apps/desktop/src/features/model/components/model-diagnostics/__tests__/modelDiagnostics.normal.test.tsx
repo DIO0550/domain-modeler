@@ -25,7 +25,9 @@ test("パースエラーはエディタの行末とプレビューのプレー�
 test("未定義参照はエディタの点線下線とプレビューの未定義バッジで穏やかに出る", () => {
   const host = diagnostics.render("data 注文 = 未定義型");
 
-  expect(host.querySelector(".model-editor__diagnostics-line--error")).toBeNull();
+  expect(
+    host.querySelector(".model-editor__diagnostics-line--error"),
+  ).toBeNull();
   expect(host.querySelector(".model-editor__diagnostics-message")).toBeNull();
   expect(
     host.querySelector(".model-editor__diagnostics-warning")?.textContent,
@@ -89,9 +91,7 @@ test("定義済みの型参照をクリックすると宣言先頭へキャレ�
 test("未定義バッジをクリックすると末尾にスタブを追記してその行へジャンプする", () => {
   const source = "data 注文 = 未定義型";
   const host = diagnostics.render(source);
-  const badge = host.querySelector(
-    "button.preview-data-card__undefined-badge",
-  );
+  const badge = host.querySelector("button.preview-data-card__undefined-badge");
   const badgeButton =
     badge instanceof HTMLButtonElement
       ? badge
@@ -117,9 +117,7 @@ test("未定義バッジをクリックすると末尾にスタブを追記し�
     stubOffset,
     stubOffset,
   ]);
-  expect(
-    host.querySelector('[data-decl-name="未定義型"]'),
-  ).not.toBeNull();
+  expect(host.querySelector('[data-decl-name="未定義型"]')).not.toBeNull();
 });
 
 test("カード名からリネームすると宣言名と参照を一括置換する", () => {
@@ -137,11 +135,13 @@ test("カード名からリネームすると宣言名と参照を一括置換�
   act(() => {
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+
   const nameField = host.querySelector('input[aria-label="新しい名前"]');
   const nameInput =
     nameField instanceof HTMLInputElement
       ? nameField
       : document.createElement("input");
+
   act(() => {
     nameInput.focus();
     nameInput.value = "商品ID";
@@ -152,9 +152,7 @@ test("カード名からリネームすると宣言名と参照を一括置換�
   });
 
   expect(input.value).toBe("data 商品ID = string\ndata 注文 = 商品ID");
-  expect(
-    host.querySelector('[data-decl-name="商品ID"]'),
-  ).not.toBeNull();
+  expect(host.querySelector('[data-decl-name="商品ID"]')).not.toBeNull();
 });
 
 test("data雛形をカーソル位置へ挿入し名前部分を選択する", () => {

@@ -24,6 +24,7 @@ export const ExpectToken = {
    */
   fallbackRange: (cursor: ChunkCursor, chunk: DeclChunk): Range => {
     const token = ChunkCursor.peek(cursor);
+
     return token?.range ?? chunk.range;
   },
 
@@ -42,14 +43,17 @@ export const ExpectToken = {
     message: string,
   ): Result<WithCursor<Token>, Diagnostic> => {
     const token = ChunkCursor.peek(cursor);
+
     if (
       token !== undefined &&
       token.kind === TOKEN_KINDS.reserved &&
       token.text === text
     ) {
       const advanced = ChunkCursor.advance(cursor);
+
       return Result.ok({ cursor: advanced.cursor, value: token });
     }
+
     return Result.err(
       ExpectToken.errorAt(message, ExpectToken.fallbackRange(cursor, chunk)),
     );
@@ -66,10 +70,13 @@ export const ExpectToken = {
     chunk: DeclChunk,
   ): Result<WithCursor<Token>, Diagnostic> => {
     const token = ChunkCursor.peek(cursor);
+
     if (token !== undefined && token.kind === TOKEN_KINDS.equals) {
       const advanced = ChunkCursor.advance(cursor);
+
       return Result.ok({ cursor: advanced.cursor, value: token });
     }
+
     return Result.err(
       ExpectToken.errorAt(
         "= が必要です",
@@ -91,19 +98,25 @@ export const ExpectToken = {
     declarationKind: DeclChunk["kind"],
   ): Result<WithCursor<Token>, Diagnostic> => {
     const token = ChunkCursor.peek(cursor);
+
     if (token !== undefined && token.kind === TOKEN_KINDS.identifier) {
       const advanced = ChunkCursor.advance(cursor);
+
       return Result.ok({ cursor: advanced.cursor, value: token });
     }
+
     const message = (() => {
       if (declarationKind === "data") {
         return "データ名の識別子が必要です";
       }
+
       if (declarationKind === "state-machine") {
         return "state-machine 名の識別子が必要です";
       }
+
       return "workflow 名の識別子が必要です";
     })();
+
     return Result.err(
       ExpectToken.errorAt(message, ExpectToken.fallbackRange(cursor, chunk)),
     );

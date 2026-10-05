@@ -51,15 +51,14 @@ export default defineConfig(() => ({
     coverage: {
       provider: "v8" as const,
       // frontend CI がリポジトリルートの coverage/ を拾えるようにする
-      reportsDirectory: fileURLToPath(new URL("../../coverage", import.meta.url)),
+      reportsDirectory: fileURLToPath(
+        new URL("../../coverage", import.meta.url),
+      ),
       // packages/* は apps/desktop の外なので、明示的に許可する
       allowExternal: true,
       reporter: ["text", "json-summary", "json"],
       reportOnFailure: true,
-      include: [
-        "src/**/*.{ts,tsx}",
-        "../../packages/**/src/**/*.{ts,tsx}",
-      ],
+      include: ["src/**/*.{ts,tsx}", "../../packages/**/src/**/*.{ts,tsx}"],
       exclude: [
         "src/**/*.test.{ts,tsx}",
         "src/**/*.stories.{ts,tsx}",

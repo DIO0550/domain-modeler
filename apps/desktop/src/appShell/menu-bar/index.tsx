@@ -66,6 +66,7 @@ export function MenuBar({ menuState, onCommand }: MenuBarProps) {
   const [openState, setOpenState] = useState<MenuBarOpenState>({
     status: "closed",
   });
+
   const close = (): void => {
     setOpenState({ status: "closed" });
   };
@@ -76,8 +77,10 @@ export function MenuBar({ menuState, onCommand }: MenuBarProps) {
   const handleToggle = (menuId: MenuGroupId): void => {
     if (openState.status === "open" && openState.menuId === menuId) {
       setOpenState({ status: "closed" });
+
       return;
     }
+
     setOpenState({ status: "open", menuId });
   };
 
@@ -85,6 +88,7 @@ export function MenuBar({ menuState, onCommand }: MenuBarProps) {
     if (menuState[commandId] === "disabled") {
       return;
     }
+
     onCommand(commandId);
     close();
   };
@@ -177,6 +181,7 @@ function MenuItemList({
   if (!isOpen) {
     return null;
   }
+
   return (
     <div className="menu-bar__menu" role="menu" aria-label={definition.label}>
       {definition.items.map((item) => (
@@ -212,6 +217,7 @@ function MenuCommandItem({
   onCommand,
 }: MenuCommandItemProps) {
   const isDisabled = availability === "disabled";
+
   return (
     <button
       type="button"
@@ -243,17 +249,23 @@ const useMenuBarDismiss = (
     if (!isOpen) {
       return;
     }
+
     const handlePointerDown = (event: PointerEvent): void => {
       const target = event.target;
+
       if (!(target instanceof Node)) {
         return;
       }
+
       if (rootRef.current?.contains(target) === true) {
         return;
       }
+
       onClose();
     };
+
     document.addEventListener("pointerdown", handlePointerDown);
+
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
     };
@@ -263,14 +275,18 @@ const useMenuBarDismiss = (
     if (!isOpen) {
       return;
     }
+
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== "Escape") {
         return;
       }
+
       event.preventDefault();
       onClose();
     };
+
     document.addEventListener("keydown", handleKeyDown);
+
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
@@ -298,6 +314,7 @@ const isGroupOpen = (
 const menuButtonClassName = (isOpen: boolean): string => {
   const openClass = isOpen ? ["menu-bar__menu-button--open"] : [];
   const classNames = ["menu-bar__menu-button", ...openClass];
+
   return classNames.join(" ");
 };
 
@@ -311,6 +328,7 @@ const menuItemClassName = (availability: MenuState[MenuCommandId]): string => {
   const disabledClass =
     availability === "disabled" ? ["menu-bar__item--disabled"] : [];
   const classNames = ["menu-bar__item", ...disabledClass];
+
   return classNames.join(" ");
 };
 
@@ -329,12 +347,16 @@ function useSaveShortcut(
       ) {
         return;
       }
+
       event.preventDefault();
+
       if (menuState.save === "enabled" && !event.repeat) {
         onCommand("save");
       }
     };
+
     document.addEventListener("keydown", handle);
+
     return () => document.removeEventListener("keydown", handle);
   }, [menuState, onCommand]);
 }

@@ -26,9 +26,11 @@ const avoidReservedWord = (text: string): string => {
   if (!ReservedWord.is(text)) {
     return text;
   }
+
   if (text.endsWith(":")) {
     return `${text.slice(0, -1)}${UNDERSCORE}:`;
   }
+
   return `${text}${UNDERSCORE}`;
 };
 
@@ -43,12 +45,16 @@ export const Identifier = {
     if (text.length === 0) {
       return Option.none();
     }
+
     const identifier = avoidReservedWord(replaceWhitespace(text));
+
     if (!DslIdentifier.isAcceptable(identifier)) {
       return Option.none();
     }
+
     return Option.some(identifier);
   },
+
   /**
    * 付箋テキスト列を識別子化する。変換できないものは除き、正規化後の同一識別子は先出順で1つに統合する。
    * @param texts 付箋テキスト列。
@@ -57,11 +63,14 @@ export const Identifier = {
   unify: (texts: readonly string[]): readonly string[] => {
     const identifiers = texts.flatMap((text) => {
       const identifier = Identifier.create(text);
+
       if (Option.isNone(identifier)) {
         return [];
       }
+
       return [identifier.value];
     });
+
     return [...new Set(identifiers)];
   },
 } as const;

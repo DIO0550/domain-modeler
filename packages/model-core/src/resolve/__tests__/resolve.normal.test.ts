@@ -86,10 +86,7 @@ data 注文ID = string`;
 
   expect(Resolve.resolve(document).references).toEqual({
     注文: [SourceRange.onLine(1, 6, 8)],
-    注文ID: [
-      SourceRange.onLine(1, 11, 15),
-      SourceRange.onLine(2, 6, 10),
-    ],
+    注文ID: [SourceRange.onLine(1, 11, 15), SourceRange.onLine(2, 6, 10)],
   });
 });
 

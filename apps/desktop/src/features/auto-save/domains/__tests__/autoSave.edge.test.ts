@@ -18,11 +18,13 @@ type WriteCall = Readonly<{ path: string; contents: string }>;
 const operationsFailing = (writes: WriteCall[]): AutoSaveOperations => ({
   writeFile: async (path, contents) => {
     writes.push({ path, contents });
+
     return {
       type: "err",
       error: { kind: "writeFailed", path, message: "disk full" },
     };
   },
+
   now: () => Date.now(),
 });
 
@@ -32,9 +34,11 @@ afterEach(() => {
 
 test("書き込み失敗後は再試行間隔の経過後に再度書き込む", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsFailing(writes);
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
+
   autoSave = AutoSave.notifyContentsChanged(
     autoSave,
     '{"version":1}',
@@ -43,15 +47,18 @@ test("書き込み失敗後は再試行間隔の経過後に再度書き込む",
 
   await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS);
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   expect(writes).toHaveLength(1);
   expect(autoSave.status).toBe("failed");
 
   await vi.advanceTimersByTimeAsync(AUTO_SAVE_RETRY_MS - 1);
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   expect(writes).toHaveLength(1);
 
   await vi.advanceTimersByTimeAsync(1);
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":1}' },
     { path: "/documents/context.dcanvas", contents: '{"version":1}' },
@@ -60,9 +67,11 @@ test("書き込み失敗後は再試行間隔の経過後に再度書き込む",
 
 test("書き込み失敗後もトランザクション中は再試行しない", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsFailing(writes);
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
+
   autoSave = AutoSave.notifyContentsChanged(
     autoSave,
     '{"version":1}',
@@ -81,9 +90,11 @@ test("書き込み失敗後もトランザクション中は再試行しない",
 
 test("書き込み失敗中の編集は failed のまま再試行間隔を維持する", async () => {
   vi.useFakeTimers();
+
   const writes: WriteCall[] = [];
   const operations = operationsFailing(writes);
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
+
   autoSave = AutoSave.notifyContentsChanged(
     autoSave,
     '{"version":1}',
@@ -97,6 +108,7 @@ test("書き込み失敗中の編集は failed のまま再試行間隔を維持
     '{"version":2}',
     Date.now(),
   );
+
   expect(autoSave).toMatchObject({
     status: "failed",
     pendingContents: '{"version":2}',
@@ -105,10 +117,12 @@ test("書き込み失敗中の編集は failed のまま再試行間隔を維持
 
   await vi.advanceTimersByTimeAsync(AUTO_SAVE_RETRY_MS - 1);
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   expect(writes).toHaveLength(1);
 
   await vi.advanceTimersByTimeAsync(1);
   autoSave = await AutoSave.saveIfDue(autoSave, operations);
+
   expect(writes).toEqual([
     { path: "/documents/context.dcanvas", contents: '{"version":1}' },
     { path: "/documents/context.dcanvas", contents: '{"version":2}' },
@@ -117,14 +131,17 @@ test("書き込み失敗中の編集は failed のまま再試行間隔を維持
 
 test("writeFile が失敗結果を返すと saveIfDue は failed になる", async () => {
   vi.useFakeTimers();
+
   const operations: AutoSaveOperations = {
     writeFile: async (path) => ({
       type: "err",
       error: { kind: "writeFailed", path, message: "disk full" },
     }),
+
     now: () => Date.now(),
   };
   let autoSave = AutoSave.create("/documents/context.dcanvas", "{}");
+
   autoSave = AutoSave.notifyContentsChanged(
     autoSave,
     '{"version":1}',

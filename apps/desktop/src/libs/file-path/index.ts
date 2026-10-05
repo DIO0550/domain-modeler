@@ -7,7 +7,9 @@ export const displayFilePath = (path: string): string => {
   if (!path.startsWith(ENCODED_PATH_PREFIX)) {
     return path;
   }
+
   const separator = path.indexOf("|");
+
   return separator < 0 ? path : path.slice(separator + 1);
 };
 

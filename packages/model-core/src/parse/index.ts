@@ -27,12 +27,15 @@ const materializeChunk = (chunk: DeclChunk): MaterializedDecl => {
   if (chunk.kind === "data") {
     return DataDeclParse.materialize(chunk);
   }
+
   if (chunk.kind === "workflow") {
     return WorkflowDeclParse.materialize(chunk);
   }
+
   if (chunk.kind === "state-machine") {
     return StateMachineDeclParse.materialize(chunk);
   }
+
   return {
     declaration: ErrorDecl.create(chunk.range),
     diagnostics: [
@@ -55,6 +58,7 @@ export const Parse = {
   parse: (source: string): ParseResult => {
     const tokens = Tokenizer.tokenize(source);
     const materialized = DeclChunk.split(tokens).map(materializeChunk);
+
     return {
       document: Document.create(
         materialized.map((item) => item.declaration),

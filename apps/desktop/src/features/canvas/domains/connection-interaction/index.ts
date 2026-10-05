@@ -34,12 +34,15 @@ export const ConnectionInteraction = {
     if (ConnectionSession.isCreating(interaction.session)) {
       return ConnectionInteraction.clickAt(interaction, point);
     }
+
     const hit = Document.stickyAt(interaction.board.workingDocument, point);
     const board = hit.some
       ? StickyInteractionValue.select(interaction.board, hit.value.id)
       : StickyInteractionValue.deselect(interaction.board);
+
     return ConnectionInteraction.withBoard(interaction, board);
   },
+
   /** 選択した付箋の指定辺から接続を開始する。 */
   beginConnectionDrag(
     interaction: ConnectionInteraction,
@@ -49,6 +52,7 @@ export const ConnectionInteraction = {
       interaction.board.workingDocument,
       endpoint.stickyId,
     );
+
     if (
       !source.some ||
       interaction.board.session.status !== "selected" ||
@@ -56,7 +60,9 @@ export const ConnectionInteraction = {
     ) {
       return interaction;
     }
+
     const origin = Sticky.anchorPoint(source.value, endpoint.anchor);
+
     return {
       ...interaction,
       session: {
@@ -79,11 +85,13 @@ export const ConnectionInteraction = {
     if (interaction.session.status !== "dragging") {
       return interaction;
     }
+
     const target = ConnectionTarget.find(
       interaction.board.workingDocument.stickies,
       interaction.session.sourceId,
       { point, zoom: interaction.board.workingDocument.viewport.zoom },
     );
+
     return {
       ...interaction,
       session: { ...interaction.session, point, target },
@@ -98,6 +106,7 @@ export const ConnectionInteraction = {
     if (interaction.session.status !== "dragging") {
       return interaction;
     }
+
     const idle: ConnectionInteraction = {
       ...interaction,
       session: { status: "idle" },
@@ -107,28 +116,35 @@ export const ConnectionInteraction = {
       interaction.session.sourceId,
       { point, zoom: interaction.board.workingDocument.viewport.zoom },
     );
+
     if (!target.some) {
       return idle;
     }
+
     const added = Document.addConnection(
       interaction.board.workingDocument,
       interaction.session.sourceId,
       target.value.stickyId,
     );
+
     if (!added.ok) {
       return { ...idle, error: OptionValue.some(added.error) };
     }
+
     const connection =
       added.value.connections[added.value.connections.length - 1];
+
     if (connection === undefined) {
       return idle;
     }
+
     const document = Document.updateConnectionAnchors(
       added.value,
       connection.id,
       target.value.fromAnchor,
       target.value.anchor,
     );
+
     return {
       ...idle,
       board: StickyInteractionValue.withDocument(interaction.board, document),
@@ -142,6 +158,7 @@ export const ConnectionInteraction = {
     if (interaction.session.status !== "dragging") {
       return interaction;
     }
+
     return {
       ...interaction,
       session: { status: "idle" },
@@ -210,6 +227,7 @@ export const ConnectionInteraction = {
         error: OptionValue.none(),
       };
     }
+
     return {
       board: StickyInteractionValue.deselect(interaction.board),
       session: { status: "selectingSource" },
@@ -234,7 +252,9 @@ export const ConnectionInteraction = {
         StickyInteractionValue.clickAt(interaction.board, point),
       );
     }
+
     const sticky = Document.stickyAt(interaction.board.workingDocument, point);
+
     return sticky.some
       ? ConnectionInteraction.selectEndpoint(interaction, sticky.value.id)
       : interaction;
@@ -258,22 +278,28 @@ export const ConnectionInteraction = {
         error: OptionValue.none(),
       };
     }
+
     if (interaction.session.status !== "selectingTarget") {
       return interaction;
     }
+
     const added = Document.addConnection(
       interaction.board.workingDocument,
       interaction.session.sourceId,
       stickyId,
     );
+
     if (!added.ok) {
       return { ...interaction, error: OptionValue.some(added.error) };
     }
+
     const connection =
       added.value.connections[added.value.connections.length - 1];
+
     if (connection === undefined) {
       return interaction;
     }
+
     return {
       board: executeDocumentChange(interaction.board, added.value),
       session: { status: "selected", connectionId: connection.id },
@@ -296,9 +322,11 @@ export const ConnectionInteraction = {
       interaction.board.workingDocument,
       connectionId,
     );
+
     if (!connection.some) {
       return interaction;
     }
+
     return {
       board: StickyInteractionValue.deselect(interaction.board),
       session: { status: "selected", connectionId },
@@ -321,9 +349,11 @@ export const ConnectionInteraction = {
       interaction.board.workingDocument,
       connectionId,
     );
+
     if (!connection.some) {
       return interaction;
     }
+
     return {
       board: StickyInteractionValue.deselect(interaction.board),
       session: {
@@ -350,6 +380,7 @@ export const ConnectionInteraction = {
     if (interaction.session.status !== "editing") {
       return interaction;
     }
+
     return {
       ...interaction,
       session: { ...interaction.session, draftLabel },
@@ -366,6 +397,7 @@ export const ConnectionInteraction = {
     if (interaction.session.status !== "editing") {
       return interaction;
     }
+
     const selected: ConnectionInteraction = {
       ...interaction,
       session: {
@@ -373,14 +405,17 @@ export const ConnectionInteraction = {
         connectionId: interaction.session.connectionId,
       },
     };
+
     if (interaction.session.draftLabel === interaction.session.originalLabel) {
       return selected;
     }
+
     const document = Document.updateConnectionLabel(
       interaction.board.workingDocument,
       interaction.session.connectionId,
       interaction.session.draftLabel,
     );
+
     return {
       ...selected,
       board: executeDocumentChange(interaction.board, document),
@@ -398,6 +433,7 @@ export const ConnectionInteraction = {
     const board = StickyInteractionValue.commitManipulation(
       StickyInteractionValue.commitEdit(connectionCommitted.board),
     );
+
     return board === connectionCommitted.board
       ? connectionCommitted
       : { ...connectionCommitted, board };
@@ -411,6 +447,7 @@ export const ConnectionInteraction = {
    */
   draftHistory(interaction: ConnectionInteraction): Option<History> {
     const committed = ConnectionInteraction.commitDrafts(interaction);
+
     return committed.board.history === interaction.board.history
       ? OptionValue.none()
       : OptionValue.some(committed.board.history);
@@ -429,9 +466,11 @@ export const ConnectionInteraction = {
         interaction.session.connectionId,
       );
     }
+
     if (interaction.session.status !== "idle") {
       return interaction;
     }
+
     return {
       ...interaction,
       board: StickyInteractionValue.pressEnter(interaction.board),
@@ -448,6 +487,7 @@ export const ConnectionInteraction = {
     if (interaction.session.status === "editing") {
       return ConnectionInteraction.commitEdit(interaction);
     }
+
     if (interaction.session.status !== "idle") {
       return {
         ...interaction,
@@ -455,6 +495,7 @@ export const ConnectionInteraction = {
         error: OptionValue.none(),
       };
     }
+
     return {
       ...interaction,
       board: StickyInteractionValue.pressEscape(interaction.board),
@@ -474,20 +515,25 @@ export const ConnectionInteraction = {
         board: StickyInteractionValue.pressDelete(interaction.board),
       };
     }
+
     if (interaction.session.status !== "selected") {
       return interaction;
     }
+
     const connection = Document.connectionById(
       interaction.board.workingDocument,
       interaction.session.connectionId,
     );
+
     if (!connection.some) {
       return { ...interaction, session: { status: "idle" } };
     }
+
     const document = Document.removeConnection(
       interaction.board.workingDocument,
       connection.value.id,
     );
+
     return {
       board: executeDocumentChange(interaction.board, document),
       session: { status: "idle" },
@@ -501,6 +547,7 @@ export const ConnectionInteraction = {
       ConnectionInteraction.commitEdit(interaction),
     );
     const board = StickyInteractionValue.undo(committed.board);
+
     return withExistingConnectionSession({ ...committed, board });
   },
 
@@ -510,6 +557,7 @@ export const ConnectionInteraction = {
       ConnectionInteraction.commitEdit(interaction),
     );
     const board = StickyInteractionValue.redo(committed.board);
+
     return withExistingConnectionSession({ ...committed, board });
   },
 } as const;
@@ -522,6 +570,7 @@ const executeDocumentChange = (
   if (document === board.workingDocument) {
     return board;
   }
+
   return {
     ...StickyInteractionValue.withDocument(board, document),
     session: { status: "idle" },
@@ -537,6 +586,7 @@ const withExistingConnectionSession = (
       interaction.board.workingDocument,
       interaction.session.sourceId,
     );
+
     return source.some
       ? interaction
       : {
@@ -545,16 +595,19 @@ const withExistingConnectionSession = (
           error: OptionValue.none(),
         };
   }
+
   if (
     interaction.session.status !== "selected" &&
     interaction.session.status !== "editing"
   ) {
     return interaction;
   }
+
   const connection = Document.connectionById(
     interaction.board.workingDocument,
     interaction.session.connectionId,
   );
+
   return connection.some
     ? interaction
     : { ...interaction, session: { status: "idle" } };

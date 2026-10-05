@@ -32,9 +32,7 @@ const setupDocument = (): Document => ({
       { width: 100, height: 60 },
     ),
   ],
-  connections: [
-    Connection.create(connectionId, backId, frontId, "", ""),
-  ],
+  connections: [Connection.create(connectionId, backId, frontId, "", "")],
 });
 
 test("付箋: 境界を含む矩形内では最前面の付箋を取得する", () => {
@@ -117,7 +115,11 @@ test("接続線: 複数の接続が許容距離内にある場合は最後に追
   const tolerance = screenTolerance / zoom;
 
   expect(
-    HitTest.connectionAt(docWithOverlappingConnections, { x: 75, y: 50 }, tolerance),
+    HitTest.connectionAt(
+      docWithOverlappingConnections,
+      { x: 75, y: 50 },
+      tolerance,
+    ),
   ).toEqual({ some: true, value: frontConnection });
 });
 
@@ -129,9 +131,11 @@ test("接続線: 接続先の付箋が存在しない接続は判定対象にし
   const zoom = 1;
   const tolerance = screenTolerance / zoom;
 
-  expect(HitTest.connectionAt(invalidDoc, { x: 75, y: 50 }, tolerance)).toEqual({
-    some: false,
-  });
+  expect(HitTest.connectionAt(invalidDoc, { x: 75, y: 50 }, tolerance)).toEqual(
+    {
+      some: false,
+    },
+  );
 });
 
 test("アンカー: 明示したアンカーは自動アンカーより優先する", () => {
@@ -214,7 +218,9 @@ test("距離計算: 接続線が生成できない場合は値なし", () => {
     "",
   );
 
-  expect(HitTest.distanceToConnection(doc, invalidConnection, { x: 0, y: 0 })).toEqual({
+  expect(
+    HitTest.distanceToConnection(doc, invalidConnection, { x: 0, y: 0 }),
+  ).toEqual({
     some: false,
   });
 });

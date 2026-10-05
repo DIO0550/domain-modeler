@@ -70,10 +70,13 @@ const collectTerms = (
   state: TermsParseState,
 ): Result<WithCursor<ParsedTerms>, Diagnostic> => {
   const token = ChunkCursor.peek(state.cursor);
+
   if (token === undefined || !isConnector(token)) {
     return Result.ok({ cursor: state.cursor, value: state.parsed });
   }
+
   const connector = connectorFor(kind);
+
   if (token.text !== connector) {
     return Result.err(
       ExpectToken.errorAt(
@@ -82,11 +85,14 @@ const collectTerms = (
       ),
     );
   }
+
   const afterConnector = ChunkCursor.advance(state.cursor);
   const term = TypeTermParse.parse(afterConnector.cursor, chunk);
+
   if (Result.isErr(term)) {
     return term;
   }
+
   return collectTerms(chunk, kind, {
     cursor: term.value.cursor,
     parsed: {
@@ -115,13 +121,17 @@ const parseSection = (
     chunk,
     `${markerText} が必要です`,
   );
+
   if (Result.isErr(marker)) {
     return marker;
   }
+
   const firstTerm = TypeTermParse.parse(marker.value.cursor, chunk);
+
   if (Result.isErr(firstTerm)) {
     return firstTerm;
   }
+
   const parsedTerms = collectTerms(chunk, kind, {
     cursor: firstTerm.value.cursor,
     parsed: {
@@ -129,9 +139,11 @@ const parseSection = (
       endRange: firstTerm.value.value.range,
     },
   });
+
   if (Result.isErr(parsedTerms)) {
     return parsedTerms;
   }
+
   return Result.ok({
     cursor: parsedTerms.value.cursor,
     value: {
@@ -159,6 +171,7 @@ const parseErrorClause = (
   outputRange: WorkflowSection["range"],
 ): Result<WithCursor<ParsedErrorClause>, Diagnostic> => {
   const next = ChunkCursor.peek(cursor);
+
   if (next === undefined || next.text !== RESERVED_WORDS["error:"]) {
     return Result.ok({
       cursor,
@@ -168,10 +181,13 @@ const parseErrorClause = (
       },
     });
   }
+
   const error = parseSection(cursor, chunk, "error");
+
   if (Result.isErr(error)) {
     return error;
   }
+
   return Result.ok({
     cursor: error.value.cursor,
     value: {
@@ -199,37 +215,49 @@ const parseWorkflowChunk = (
     chunk,
     "workflow が必要です",
   );
+
   if (Result.isErr(keyword)) {
     return keyword;
   }
+
   const name = ExpectToken.declarationName(
     keyword.value.cursor,
     chunk,
     "workflow",
   );
+
   if (Result.isErr(name)) {
     return name;
   }
+
   const equals = ExpectToken.equals(name.value.cursor, chunk);
+
   if (Result.isErr(equals)) {
     return equals;
   }
+
   const input = parseSection(equals.value.cursor, chunk, "input");
+
   if (Result.isErr(input)) {
     return input;
   }
+
   const output = parseSection(input.value.cursor, chunk, "output");
+
   if (Result.isErr(output)) {
     return output;
   }
+
   const error = parseErrorClause(
     output.value.cursor,
     chunk,
     output.value.value.section.range,
   );
+
   if (Result.isErr(error)) {
     return error;
   }
+
   if (!ChunkCursor.atEnd(error.value.cursor)) {
     return Result.err(
       ExpectToken.errorAt(
@@ -238,6 +266,7 @@ const parseWorkflowChunk = (
       ),
     );
   }
+
   return Result.ok(
     WorkflowDecl.create({
       name: name.value.value.text,
@@ -262,10 +291,13 @@ export const WorkflowDeclParse = {
    */
   materialize: (chunk: DeclChunk): MaterializedDecl => {
     const parsed = parseWorkflowChunk(chunk);
+
     if (Result.isOk(parsed)) {
       return { declaration: parsed.value, diagnostics: [] };
     }
+
     const declaration: Declaration = ErrorDecl.create(chunk.range);
+
     return { declaration, diagnostics: [parsed.error] };
   },
 } as const;

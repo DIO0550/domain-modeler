@@ -16,12 +16,14 @@ export const WheelEventEx = {
     if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
       return { x: event.deltaX * 16, y: event.deltaY * 16 };
     }
+
     if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
       return {
         x: event.deltaX * page.clientWidth,
         y: event.deltaY * page.clientHeight,
       };
     }
+
     return { x: event.deltaX, y: event.deltaY };
   },
 } as const;

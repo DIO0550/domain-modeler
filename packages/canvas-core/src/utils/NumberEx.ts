@@ -8,6 +8,7 @@ export const NumberEx = {
    */
   isFinite: (value: unknown): value is number =>
     typeof value === "number" && Number.isFinite(value),
+
   /**
    * 数値を指定した小数桁に丸める。
    * @param value 丸める数値。
@@ -16,6 +17,7 @@ export const NumberEx = {
    */
   round: (value: number, decimalPlaces: number): number => {
     const scale = 10 ** decimalPlaces;
+
     return Math.round(value * scale) / scale;
   },
 } as const;

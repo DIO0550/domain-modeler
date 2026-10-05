@@ -80,6 +80,7 @@ export const WorkflowCardPreview = {
   ): WorkflowCardPreview {
     const input = inputSection(decl.input.terms, undefinedTypeNames);
     const output = outputSection(decl.output.terms, undefinedTypeNames);
+
     if (!WorkflowDecl.hasError(decl)) {
       return {
         kind: WORKFLOW_CARD_KIND,
@@ -87,6 +88,7 @@ export const WorkflowCardPreview = {
         sections: [input, output],
       };
     }
+
     return {
       kind: WORKFLOW_CARD_KIND,
       name: decl.name,

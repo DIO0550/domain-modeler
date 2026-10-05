@@ -7,6 +7,7 @@ test("壊れたヘッダーをエラー宣言にして後続の宣言を解析�
 data ID = string
 state-machine 正常 =
   state: 完了`);
+
   expect(result.document.declarations).toMatchObject([
     { kind: "error", range: { startLine: 1, endLine: 2 } },
     { kind: "data", name: "ID" },
@@ -32,6 +33,7 @@ state: 不正
 workflow 通知 =
   input: ID
   output: ID`);
+
   expect(result.document.declarations).toMatchObject([
     {
       kind: "state-machine",
@@ -67,6 +69,7 @@ test("予約語やプリミティブの名前と余分なトークンを診断�
   state: 待機 terminal 余剰
   transition: 待機 -> 完了 on data
   state: 待機`);
+
   expect(result.document.declarations[0]).toMatchObject({
     kind: "state-machine",
     initials: [],
@@ -83,6 +86,7 @@ test("改行をまたいで欠けた遷移先を補わず行末に診断を付�
   transition: 開始 ->
   state: 完了
   initial: 完了`);
+
   expect(result.document.declarations[0]).toMatchObject({
     kind: "state-machine",
     transitions: [],
@@ -96,6 +100,7 @@ test("改行をまたいで欠けた遷移先を補わず行末に診断を付�
 test("不完全なヘッダーの名前と余剰を該当行の範囲で診断する", () => {
   const missing = Parse.parse("state-machine\ndata ID = string");
   const extra = Parse.parse("state-machine 注文 = 余剰\ndata ID = string");
+
   expect(missing.document.declarations.map((decl) => decl.kind)).toEqual([
     "error",
     "data",

@@ -45,11 +45,14 @@ export const PreviewTypeRef = {
     if (!TypeTerm.isResolvable(term)) {
       return { resolution: PREVIEW_TYPE_RESOLUTIONS.primitive, term };
     }
+
     if (undefinedTypeNames.has(term.name)) {
       return { resolution: PREVIEW_TYPE_RESOLUTIONS.undefined, term };
     }
+
     return { resolution: PREVIEW_TYPE_RESOLUTIONS.defined, term };
   },
+
   /**
    * 型参照項の列をプレビュー用の型参照にする。
    * @param terms 型参照項の列。
@@ -62,6 +65,7 @@ export const PreviewTypeRef = {
   ): readonly PreviewTypeRef[] {
     return terms.map((term) => PreviewTypeRef.create(term, undefinedTypeNames));
   },
+
   /**
    * 未定義バッジの対象か判定する。
    * @param typeRef プレビュー用の型参照。
@@ -69,6 +73,7 @@ export const PreviewTypeRef = {
    */
   isUndefined: (typeRef: PreviewTypeRef): boolean =>
     typeRef.resolution === PREVIEW_TYPE_RESOLUTIONS.undefined,
+
   /**
    * 定義済みの名前付き参照か判定する。
    * @param typeRef プレビュー用の型参照。
@@ -76,6 +81,7 @@ export const PreviewTypeRef = {
    */
   isDefined: (typeRef: PreviewTypeRef): boolean =>
     typeRef.resolution === PREVIEW_TYPE_RESOLUTIONS.defined,
+
   /**
    * プリミティブ型の参照か判定する。
    * @param typeRef プレビュー用の型参照。

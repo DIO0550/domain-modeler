@@ -26,6 +26,7 @@ export const CommandWorkflow = {
     if (sticky.type !== "command") {
       return [];
     }
+
     return Identifier.unify([sticky.text]);
   },
 
@@ -51,13 +52,16 @@ export const CommandWorkflow = {
         const sticky = document.stickies.find(
           (candidate) => candidate.id === connection.to,
         );
+
         if (sticky === undefined) {
           return [];
         }
+
         const identifier = Identifier.create(sticky.text);
         const accepted = workflow.stickies.some(
           (candidate) => candidate.id === sticky.id,
         );
+
         if (sticky.type === "event" && accepted && Option.isSome(identifier)) {
           return [
             {
@@ -67,6 +71,7 @@ export const CommandWorkflow = {
             },
           ];
         }
+
         return [
           {
             kind: "comment",
@@ -82,6 +87,7 @@ export const CommandWorkflow = {
     const events = targets.filter((target) => target.kind === "event");
     const output = CommandWorkflow.outputText(events);
     const declaration = `workflow ${workflow.name} =\n  input: ${CommandWorkflow.inputName(workflow.name)}\n${output}`;
+
     return [...comments, declaration].join("\n");
   },
 

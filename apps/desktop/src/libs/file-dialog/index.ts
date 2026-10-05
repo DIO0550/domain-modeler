@@ -16,11 +16,16 @@ export const selectSavePath = async (
 ): Promise<SavePathSelection> => {
   try {
     const path = await invoke<string | null>("save_file_dialog", { kind });
+
     if (path === null) {
       return { status: "cancelled" };
     }
+
     return { status: "selected", path };
   } catch (caught) {
-    return { status: "dialogFailed", message: caught instanceof Error ? caught.message : String(caught) };
+    return {
+      status: "dialogFailed",
+      message: caught instanceof Error ? caught.message : String(caught),
+    };
   }
 };

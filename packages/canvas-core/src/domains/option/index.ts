@@ -20,23 +20,27 @@ export const Option = {
    * @returns 値を持つ `Option`。
    */
   some: <T>(value: T): Some<T> => ({ some: true, value }),
+
   /**
    * 値を持たない `Option` を生成する。
    * @returns 値を持たない `Option`。
    */
   none: (): None => ({ some: false }),
+
   /**
    * `Option` が値を持つか判定する。
    * @param option 判定する `Option`。
    * @returns 値を持つ場合は `true`。
    */
   isSome: <T>(option: Option<T>): option is Some<T> => option.some,
+
   /**
    * `Option` が値を持たないか判定する。
    * @param option 判定する `Option`。
    * @returns 値を持たない場合は `true`。
    */
   isNone: <T>(option: Option<T>): option is None => !option.some,
+
   /**
    * 値を取り出す。値がない場合は例外を投げる(テスト専用)。
    * @param option 取り出し対象の `Option`。
@@ -47,6 +51,7 @@ export const Option = {
     if (option.some) {
       return option.value;
     }
+
     throw new Error("Tried to unwrap None");
   },
 };

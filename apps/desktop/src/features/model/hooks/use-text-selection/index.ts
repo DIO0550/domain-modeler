@@ -20,6 +20,7 @@ export function useTextSelection(value: string) {
 
   const rememberSelection = (event: SyntheticEvent<HTMLTextAreaElement>) => {
     const input = event.currentTarget;
+
     selection.current = {
       start: input.selectionStart,
       end: input.selectionEnd,
@@ -29,9 +30,11 @@ export function useTextSelection(value: string) {
 
   const rememberCurrentSelection = () => {
     const input = inputRef.current;
+
     if (input === null) {
       return;
     }
+
     selection.current = {
       start: input.selectionStart,
       end: input.selectionEnd,
@@ -39,16 +42,21 @@ export function useTextSelection(value: string) {
     };
   };
 
-  const select = (range: Readonly<{ start: number; end: number; line: number }>) => {
+  const select = (
+    range: Readonly<{ start: number; end: number; line: number }>,
+  ) => {
     selection.current = {
       start: range.start,
       end: range.end,
       direction: "forward",
     };
+
     const input = inputRef.current;
+
     if (input === null) {
       return;
     }
+
     TextInput.select(input, range);
   };
 
@@ -62,21 +70,26 @@ export function useTextSelection(value: string) {
 
   const restore = () => {
     const saved = selection.current;
+
     select({ start: saved.start, end: saved.end, line: 1 });
   };
 
   useLayoutEffect(() => {
     const input = inputRef.current;
+
     if (input === null || composing.current) {
       return;
     }
+
     const saved = selection.current;
     // 全文の置換で元の選択位置が失われた場合は文書先頭に戻す。
     const fits = saved.end <= input.value.length;
     const next = fits
       ? saved
       : { start: 0, end: 0, direction: "none" as const };
+
     selection.current = next;
+
     if (
       input.selectionStart !== next.start ||
       input.selectionEnd !== next.end ||
@@ -93,9 +106,11 @@ export function useTextSelection(value: string) {
     moveTo,
     select,
     restore,
+
     onCompositionStart: () => {
       composing.current = true;
     },
+
     onCompositionEnd: (event: SyntheticEvent<HTMLTextAreaElement>) => {
       composing.current = false;
       rememberSelection(event);

@@ -13,14 +13,18 @@ test("同じ名前の確定ではリネームを通知しない", () => {
   const host = names.render("注文ID", (nextName) => {
     renamed.push(nextName);
   });
-  const button = host.querySelector('button[aria-label="「注文ID」をリネーム"]');
+  const button = host.querySelector(
+    'button[aria-label="「注文ID」をリネーム"]',
+  );
 
   act(() => {
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+
   const input = host.querySelector('input[aria-label="新しい名前"]');
   const nameInput =
     input instanceof HTMLInputElement ? input : document.createElement("input");
+
   act(() => {
     nameInput.form?.dispatchEvent(
       new Event("submit", { bubbles: true, cancelable: true }),
@@ -36,14 +40,18 @@ test("Escape ではリネームせず編集を終える", () => {
   const host = names.render("注文ID", (nextName) => {
     renamed.push(nextName);
   });
-  const button = host.querySelector('button[aria-label="「注文ID」をリネーム"]');
+  const button = host.querySelector(
+    'button[aria-label="「注文ID」をリネーム"]',
+  );
 
   act(() => {
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+
   const input = host.querySelector('input[aria-label="新しい名前"]');
   const nameInput =
     input instanceof HTMLInputElement ? input : document.createElement("input");
+
   act(() => {
     nameInput.value = "商品ID";
     nameInput.dispatchEvent(new Event("input", { bubbles: true }));
@@ -61,14 +69,18 @@ test("確定後の blur ではリネームを二重に通知しない", () => {
   const host = names.render("注文ID", (nextName) => {
     renamed.push(nextName);
   });
-  const button = host.querySelector('button[aria-label="「注文ID」をリネーム"]');
+  const button = host.querySelector(
+    'button[aria-label="「注文ID」をリネーム"]',
+  );
 
   act(() => {
     button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+
   const input = host.querySelector('input[aria-label="新しい名前"]');
   const nameInput =
     input instanceof HTMLInputElement ? input : document.createElement("input");
+
   act(() => {
     nameInput.value = "商品ID";
     nameInput.dispatchEvent(new Event("input", { bubbles: true }));
