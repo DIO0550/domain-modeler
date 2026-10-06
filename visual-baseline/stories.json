@@ -298,5 +298,40 @@
     "id": "model-modeleditor--undefined-reference",
     "title": "Model/ModelEditor",
     "name": "Undefined Reference"
+  },
+  {
+    "id": "model-statemachine--created-machine",
+    "title": "Model/StateMachine",
+    "name": "作成したマシンへ切り替えて状態を追加"
+  },
+  {
+    "id": "model-statemachine--duplicate-data-name",
+    "title": "Model/StateMachine",
+    "name": "dataと同名なら作成前にエラー"
+  },
+  {
+    "id": "model-statemachine--duplicate-machine-name",
+    "title": "Model/StateMachine",
+    "name": "state-machineと同名なら作成前にエラー"
+  },
+  {
+    "id": "model-statemachine--duplicate-workflow-name",
+    "title": "Model/StateMachine",
+    "name": "workflowと同名なら作成前にエラー"
+  },
+  {
+    "id": "model-statemachine--existing-machines",
+    "title": "Model/StateMachine",
+    "name": "既存マシンから追加できる"
+  },
+  {
+    "id": "model-statemachine--first-machine",
+    "title": "Model/StateMachine",
+    "name": "マシンが無い文書の作成フォーム"
+  },
+  {
+    "id": "model-statemachine--new-machine-form",
+    "title": "Model/StateMachine",
+    "name": "新しいマシンの作成フォーム"
   }
 ]
