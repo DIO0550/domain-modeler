@@ -160,3 +160,83 @@ export const CreatedMachine: Story = {
     ).toBeVisible();
   },
 };
+
+const symbolSource = `state-machine 注文 =
+  initial: 待機
+  state: 待機
+  state: 完了 terminal
+  state: 重複
+  state: 重複
+  transition: 待機 -> 完了 on 確定
+  transition: 待機 -> 未定義 on 保留`;
+
+export const StateSymbols: Story = {
+  name: "初期・終端・未解決・エラーと凡例",
+  args: { value: symbolSource },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      canvas.getByRole("list", { name: "状態遷移図の凡例" }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "待機 initial" }),
+    ).toBeVisible();
+    await expect(
+      canvas
+        .getByRole("button", { name: "完了 terminal" })
+        .querySelectorAll("rect"),
+    ).toHaveLength(2);
+    await expect(
+      canvas.getByRole("button", { name: "未定義 unresolved" }),
+    ).toHaveAttribute("data-appearance", "unresolved");
+    await expect(
+      canvas.getByRole("button", { name: "重複 normal" }),
+    ).toHaveAttribute("data-status", "error");
+  },
+};
+
+export const SelectedStateSymbols: Story = {
+  name: "選択を切り替えても初期・終端の記号を保持",
+  args: { value: symbolSource },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const initial = canvas.getByRole("button", { name: "待機 initial" });
+    const terminal = canvas.getByRole("button", { name: "完了 terminal" });
+    const initialOutline = initial.querySelector("rect")!;
+    const normalStroke = getComputedStyle(initialOutline).stroke;
+
+    await userEvent.click(initial);
+
+    await expect(initial).toHaveAttribute("data-selected", "true");
+    await expect(getComputedStyle(initialOutline).stroke).not.toBe(
+      normalStroke,
+    );
+
+    await userEvent.click(terminal);
+
+    await expect(initial).toHaveAttribute("data-selected", "false");
+    await expect(getComputedStyle(initialOutline).stroke).toBe(normalStroke);
+    await expect(initial.querySelector("circle")).toBeInTheDocument();
+    await expect(terminal).toHaveAttribute("data-selected", "true");
+    await expect(terminal.querySelectorAll("rect")).toHaveLength(2);
+  },
+};
+
+export const InitialTerminalState: Story = {
+  name: "初期かつ終端の状態",
+  args: {
+    value: "state-machine 即完了 =\n  initial: 完了\n  state: 完了 terminal",
+  },
+  play: async ({ canvasElement }) => {
+    const node = within(canvasElement).getByRole("button", {
+      name: "完了 initial-terminal",
+    });
+
+    await userEvent.click(node);
+
+    await expect(node.querySelector("circle")).toBeInTheDocument();
+    await expect(node.querySelectorAll("rect")).toHaveLength(2);
+    await expect(node).toHaveAttribute("data-selected", "true");
+  },
+};
