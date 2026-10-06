@@ -84,6 +84,18 @@ function renderStateMachine(initialSource: string, initialMachineIndex = 0) {
 
     enterText,
 
+    openMachineCreation: () =>
+      act(() => {
+        const button = [
+          ...host.querySelectorAll<HTMLButtonElement>(
+            ".state-machine-screen__toolbar button",
+          ),
+        ].find((element) => element.textContent === "＋ 新しいマシン");
+
+        button!.focus();
+        button!.click();
+      }),
+
     clickInspectorButton: (label: string) =>
       act(() => {
         const button = [

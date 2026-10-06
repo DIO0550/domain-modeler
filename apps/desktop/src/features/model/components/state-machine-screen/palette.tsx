@@ -20,7 +20,9 @@ export function StateMachinePalette() {
       <h2>パーツ</h2>
       <button
         type="button"
-        aria-pressed={view.target.kind !== "part"}
+        aria-pressed={
+          view.target.kind !== "part" && view.target.kind !== "machine"
+        }
         onClick={view.clearSelection}
       >
         選択
