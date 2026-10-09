@@ -147,32 +147,52 @@
   color: var(--shell-text);
 }
 
-.state-machine-screen__node rect {
+:is(.state-machine-screen__node, .state-machine-screen__legend-symbol) rect {
   fill: var(--shell-bg);
   stroke: var(--shell-muted);
   stroke-width: 2;
 }
 
-.state-machine-screen__node[data-appearance*="initial"] rect {
-  stroke: var(--model-editor-focus);
-  stroke-width: 3;
+.state-machine-screen__initial-marker,
+.state-machine-screen__legend-symbol {
+  pointer-events: none;
 }
 
-.state-machine-screen__node[data-appearance*="terminal"] rect {
-  stroke-width: 4;
+.state-machine-screen__initial-dot {
+  fill: var(--shell-text);
 }
 
-.state-machine-screen__node[data-appearance="unresolved"] rect {
+.state-machine-screen__initial-arrow {
+  fill: none;
+  stroke: var(--shell-text);
+  stroke-width: 2;
+}
+
+:is(.state-machine-screen__node, .state-machine-screen__legend-symbol)
+  .state-machine-screen__terminal-outline {
+  fill: none;
+}
+
+:is(
+    .state-machine-screen__node,
+    .state-machine-screen__legend-symbol
+  )[data-appearance="unresolved"]
+  rect {
   stroke-dasharray: 5 4;
 }
 
-.state-machine-screen__node[data-status="error"] rect,
+:is(
+    .state-machine-screen__node,
+    .state-machine-screen__legend-symbol
+  )[data-status="error"]
+  rect,
 .state-machine-screen__edge[data-status="error"]
   .state-machine-screen__edge-line {
   stroke: var(--model-editor-error);
 }
 
-.state-machine-screen__node[data-selected="true"] rect,
+.state-machine-screen__node[data-selected="true"]
+  rect:not(.state-machine-screen__terminal-outline),
 .state-machine-screen__edge[data-selected="true"]
   .state-machine-screen__edge-line {
   stroke: var(--model-editor-focus);
@@ -184,10 +204,6 @@
   font-size: 14px;
   font-weight: 600;
   pointer-events: none;
-}
-
-.state-machine-screen__graph .state-machine-screen__badge {
-  fill: var(--model-editor-focus);
 }
 
 .state-machine-screen__edge-line {
@@ -351,7 +367,8 @@
   pointer-events: none;
 }
 
-.state-machine-screen__node[data-connection-candidate="true"] rect {
+.state-machine-screen__node[data-connection-candidate="true"]
+  rect:not(.state-machine-screen__terminal-outline) {
   stroke: var(--model-editor-focus);
   stroke-width: 5;
   stroke-dasharray: 6 3;
@@ -391,4 +408,35 @@
 .state-machine-screen__label-editor p {
   margin: 0;
   color: var(--model-editor-error);
+}
+
+.state-machine-screen__legend {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 8px 12px;
+  list-style: none;
+  border: 1px solid var(--model-editor-border);
+  border-radius: 8px;
+  background: var(--shell-bg);
+  color: var(--shell-text);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.state-machine-screen__legend li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.state-machine-screen__legend-symbol {
+  width: 40px;
+  height: 24px;
+  flex-shrink: 0;
 }

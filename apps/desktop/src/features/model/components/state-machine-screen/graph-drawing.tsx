@@ -1,6 +1,10 @@
 import { useId, type KeyboardEvent } from "react";
 import { StateMachineConnectionHandles } from "./connection-handles";
 import { StateMachineGraphLabelEditor } from "./graph-label-editor";
+import {
+  StateMachineGraphLegend,
+  StateMachineInitialSymbol,
+} from "./graph-symbols";
 import { StateMachineConnection } from "../../domains/state-machine-connection";
 import {
   StateMachineGraph,
@@ -169,6 +173,23 @@ export function StateMachineGraphDrawing({
                 selectOnKeyDown(event, { kind: "node", id: node.id })
               }
             >
+              {node.appearance.includes("initial") && (
+                <svg
+                  className="state-machine-screen__initial-marker"
+                  x={
+                    point.x -
+                    StateMachineLayout.nodeSize.width / 2 -
+                    StateMachineLayout.initialMarkerSize.width
+                  }
+                  y={point.y - StateMachineLayout.initialMarkerSize.height / 2}
+                  width={StateMachineLayout.initialMarkerSize.width}
+                  height={StateMachineLayout.initialMarkerSize.height}
+                  viewBox="0 0 56 20"
+                  aria-hidden="true"
+                >
+                  <StateMachineInitialSymbol />
+                </svg>
+              )}
               <rect
                 x={point.x - StateMachineLayout.nodeSize.width / 2}
                 y={point.y - StateMachineLayout.nodeSize.height / 2}
@@ -176,28 +197,20 @@ export function StateMachineGraphDrawing({
                 height={StateMachineLayout.nodeSize.height}
                 rx="12"
               />
+              {node.appearance.includes("terminal") && (
+                <rect
+                  className="state-machine-screen__terminal-outline"
+                  x={point.x - StateMachineLayout.nodeSize.width / 2 + 6}
+                  y={point.y - StateMachineLayout.nodeSize.height / 2 + 6}
+                  width={StateMachineLayout.nodeSize.width - 12}
+                  height={StateMachineLayout.nodeSize.height - 12}
+                  rx="7"
+                  aria-hidden="true"
+                />
+              )}
               <text x={point.x} y={point.y + 5} textAnchor="middle">
                 {node.name}
               </text>
-              {node.appearance.includes("initial") && (
-                <text
-                  x={point.x - StateMachineLayout.nodeSize.width / 2 + 15}
-                  y={point.y - 17}
-                  className="state-machine-screen__badge"
-                >
-                  ●
-                </text>
-              )}
-              {node.appearance.includes("terminal") && (
-                <circle
-                  cx={point.x + StateMachineLayout.nodeSize.width / 2 - 18}
-                  cy={point.y - 17}
-                  r="7"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-              )}
             </g>
           );
         })}
@@ -213,6 +226,7 @@ export function StateMachineGraphDrawing({
         )}
         <StateMachineGraphLabelEditor canvas={canvas} />
       </svg>
+      <StateMachineGraphLegend />
     </div>
   );
 }

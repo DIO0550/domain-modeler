@@ -16,6 +16,7 @@ export type StateMachineLayout = Readonly<{
 }>;
 
 const NODE_SIZE = { width: 160, height: 64 } as const;
+const INITIAL_MARKER_SIZE = { width: 56, height: 20 } as const;
 const COLUMN = 260;
 const ROW = 150;
 const MARGIN = 100;
@@ -23,6 +24,8 @@ const MARGIN = 100;
 /** 状態遷移の自動配置とノード寸法。 */
 export const StateMachineLayout = {
   nodeSize: NODE_SIZE,
+
+  initialMarkerSize: INITIAL_MARKER_SIZE,
 
   frame(
     size: Pick<StateMachineLayout, "left" | "top" | "width" | "height">,
@@ -215,7 +218,20 @@ export const StateMachineLayout = {
       };
     });
     const points = Object.values(nodes);
-    const left = Math.min(-MARGIN, ...points.map((point) => point.x - MARGIN));
+    const nodeLefts = graph.nodes.flatMap((node) => {
+      const point = nodes[node.id];
+
+      if (point === undefined) {
+        return [];
+      }
+
+      const markerWidth = node.appearance.includes("initial")
+        ? INITIAL_MARKER_SIZE.width
+        : 0;
+
+      return [point.x - MARGIN - markerWidth];
+    });
+    const left = Math.min(-MARGIN, ...nodeLefts);
     const top = Math.min(
       -MARGIN,
       ...points.map((point) => point.y - MARGIN),
