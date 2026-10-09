@@ -330,8 +330,23 @@
     "name": "マシンが無い文書の作成フォーム"
   },
   {
+    "id": "model-statemachine--initial-terminal-state",
+    "title": "Model/StateMachine",
+    "name": "初期かつ終端の状態"
+  },
+  {
     "id": "model-statemachine--new-machine-form",
     "title": "Model/StateMachine",
     "name": "新しいマシンの作成フォーム"
+  },
+  {
+    "id": "model-statemachine--selected-state-symbols",
+    "title": "Model/StateMachine",
+    "name": "選択を切り替えても初期・終端の記号を保持"
+  },
+  {
+    "id": "model-statemachine--state-symbols",
+    "title": "Model/StateMachine",
+    "name": "初期・終端・未解決・エラーと凡例"
   }
 ]
