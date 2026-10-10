@@ -43,6 +43,38 @@ jobs:
           rustup toolchain install stable --profile minimal
           rustup default stable
 
+      # compiler とビルド環境が変わった場合は依存成果物も再作成する。
+      - name: Identify Rust build environment
+        id: rust-environment
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from "node:crypto";
+          import { appendFileSync } from "node:fs";
+          import { execFileSync } from "node:child_process";
+
+          const compiler = execFileSync("rustc", ["-vV"], { encoding: "utf8" });
+          const environment = Object.entries(process.env)
+            .filter(([name]) => /^(CARGO|RUST|CC$|CXX$|CFLAGS|CXXFLAGS|CMAKE|MACOSX_DEPLOYMENT_TARGET|SDKROOT|ImageOS|ImageVersion)/.test(name))
+            .sort(([left], [right]) => left.localeCompare(right));
+          const fingerprint = createHash("sha256")
+            .update(JSON.stringify({ compiler, environment }))
+            .digest("hex");
+          appendFileSync(process.env.GITHUB_OUTPUT, `fingerprint=${fingerprint}\n`);
+          NODE
+
+      # OS・CPU・release・compiler・環境・lock・設定が完全一致する場合だけ復元する。
+      # 認証情報を含む ~/.cargo 全体は保存しない。
+      - name: Restore Rust dependencies
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/desktop/src-tauri/target
+          key: rust-v1-${{ runner.os }}-${{ runner.arch }}-release-${{ steps.rust-environment.outputs.fingerprint }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml', '**/.cargo/config', '**/.cargo/config.toml', '**/rust-toolchain', '**/rust-toolchain.toml', '.github/workflows/rust.yml') }}
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -54,3 +86,26 @@ jobs:
       - name: Rust unit tests (release profile)
         working-directory: apps/desktop/src-tauri
         run: cargo test --locked --release --all-targets
+
+      # アプリ本体は保存せず、次回もその時点のフロントエンドを埋め込んで検証する。
+      - name: Remove application build artifacts before caching
+        if: >-
+          steps.rust-cache.outputs.cache-hit != 'true'
+          && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        working-directory: apps/desktop/src-tauri
+        run: cargo clean --release --package app
+
+      # 成功した同一リポジトリの実行だけ保存する。PR のキャッシュは PR ref 内に隔離される。
+      # fork は復元のみとし、main のキャッシュへ書き込む権限も追加しない。
+      - name: Save Rust dependencies
+        if: >-
+          steps.rust-cache.outputs.cache-hit != 'true'
+          && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/desktop/src-tauri/target
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
