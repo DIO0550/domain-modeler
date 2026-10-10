@@ -36,12 +36,33 @@ export type FileWatchOperations = Readonly<{
   readFile: (path: string) => Promise<FileReadResult>;
 }>;
 
+const watchFailure = (path: string, caught: unknown) => ({
+  type: "err" as const,
+  error: {
+    kind: "watchFailed" as const,
+    path,
+    message: caught instanceof Error ? caught.message : String(caught),
+  },
+});
+
+const watchCommand = async (
+  command: "start_file_watch" | "stop_file_watch",
+  path: string,
+): Promise<FileWatchResult> => {
+  try {
+    return await invoke<FileWatchResult>(command, { path });
+  } catch (caught) {
+    return watchFailure(path, caught);
+  }
+};
+
 const watch = async (
   path: string,
   onEvent: (event: FileWatchEvent) => void,
 ): Promise<FileWatchSessionResult> => {
   try {
     let active = true;
+    let registrationReleased = false;
     let restart = Promise.resolve();
     const unlisten = await listen<FileWatchEvent>("file-watch", (event) => {
       if (event.payload.path !== path || !active) {
@@ -59,15 +80,27 @@ const watch = async (
           return;
         }
 
-        await invoke<FileWatchResult>("stop_file_watch", { path });
+        const stopped = registrationReleased
+          ? { type: "ok" as const }
+          : await watchCommand("stop_file_watch", path);
+        registrationReleased = stopped.type === "ok";
 
         if (!active) {
           return;
         }
 
-        const restarted = await invoke<FileWatchResult>("start_file_watch", {
-          path,
-        });
+        if (stopped.type === "err") {
+          onEvent({
+            type: "watchFailed",
+            path,
+            message: stopped.error.message,
+          });
+
+          return;
+        }
+
+        const restarted = await watchCommand("start_file_watch", path);
+        registrationReleased = restarted.type === "err";
 
         if (!active) {
           return;
@@ -87,9 +120,10 @@ const watch = async (
         onEvent({ type: "changed", path });
       });
     });
-    const result = await invoke<FileWatchResult>("start_file_watch", { path });
+    const result = await watchCommand("start_file_watch", path);
 
     if (result.type === "err") {
+      active = false;
       unlisten();
 
       return result;
@@ -102,18 +136,20 @@ const watch = async (
         active = false;
         unlisten();
         await restart;
-        await invoke<FileWatchResult>("stop_file_watch", { path });
+
+        // 再開失敗や停止待機中の終了で、他の購読の登録を減らさない。
+        if (registrationReleased) {
+          return;
+        }
+
+        const stopped = await invoke<FileWatchResult>("stop_file_watch", {
+          path,
+        });
+        registrationReleased = stopped.type === "ok";
       },
     };
   } catch (caught) {
-    return {
-      type: "err",
-      error: {
-        kind: "watchFailed",
-        path,
-        message: caught instanceof Error ? caught.message : String(caught),
-      },
-    };
+    return watchFailure(path, caught);
   }
 };
 
