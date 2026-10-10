@@ -8,7 +8,11 @@ export type SourceRange = Readonly<{
 
 /** ソース範囲を生成する関数群。 */
 export const SourceRange = {
-  /** 開始行・桁、終了行・桁の順に範囲を比較する。 */
+  /**
+   * 開始行・桁、終了行・桁の順に範囲を比較する。
+   * @param ranges 比較する範囲の組。left を right と比較する。
+   * @returns left が前なら負、同じなら 0、後なら正の数。
+   */
   compare: (
     ranges: Readonly<{ left: SourceRange; right: SourceRange }>,
   ): number => {
@@ -23,7 +27,11 @@ export const SourceRange = {
     return orders.find((order) => order !== 0) ?? 0;
   },
 
-  /** 指定範囲が、もう一方の範囲を包含するか判定する。 */
+  /**
+   * 指定範囲が、もう一方の範囲を包含するか判定する。
+   * @param ranges 包含する側の outer と、包含される側の inner の組。
+   * @returns outer が inner の開始・終了位置を含む場合は `true`。
+   */
   contains: (
     ranges: Readonly<{ outer: SourceRange; inner: SourceRange }>,
   ): boolean => {
