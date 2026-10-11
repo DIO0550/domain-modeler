@@ -8,6 +8,29 @@ import {
   setup,
 } from "./modelGraphLayout.test-support";
 
+test("小数寸法を累積した隣接列でも矢印は上部へ迂回せず列間を通る", () => {
+  const input = setup(
+    "data 注文 = 明細\ndata 明細 = 商品\ndata 商品 = 商品名\ndata 商品名 = string",
+  );
+  const sizes = new Map(
+    input.graph.nodes.map((node) => [node.id, { width: 229.4, height: 80.3 }]),
+  );
+  const layout = expectLayout({ ...input, sizes });
+
+  for (const edge of layout.edges) {
+    const from = layout.nodes.find((node) => node.id === edge.from)!;
+    const to = layout.nodes.find((node) => node.id === edge.to)!;
+    const centerYs = [from.y + from.height / 2, to.y + to.height / 2];
+
+    for (const point of edge.points) {
+      expect(point.y).toBeGreaterThanOrEqual(Math.min(...centerYs));
+      expect(point.y).toBeLessThanOrEqual(Math.max(...centerYs));
+    }
+  }
+
+  expectClearRoutes(layout);
+});
+
 test("長い日本語名と多数の項目を含む計測カードを重ねずに配置する", () => {
   const input = setup(mixedSource);
   const layout = expectLayout(input);

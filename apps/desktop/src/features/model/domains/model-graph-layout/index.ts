@@ -118,6 +118,7 @@ export const ModelGraphLayout = {
         {
           from: corridors.get(edge.from)!.right,
           to: corridors.get(edge.to)!.left,
+          adjacentColumns: levels.get(edge.to) === levels.get(edge.from)! + 1,
         },
         MARGIN + index * LANE_GAP,
       );
@@ -197,7 +198,11 @@ export const ModelGraphLayout = {
       from: ModelGraphLayout["nodes"][number];
       to: ModelGraphLayout["nodes"][number];
     }>,
-    corridors: Readonly<{ from: number; to: number }>,
+    corridors: Readonly<{
+      from: number;
+      to: number;
+      adjacentColumns: boolean;
+    }>,
     laneY: number,
   ): ModelGraphLayout["edges"][number]["points"] {
     const { from, to } = nodes;
@@ -217,7 +222,7 @@ export const ModelGraphLayout = {
 
     const end = { x: to.x, y: to.y + to.height / 2 };
 
-    if (corridors.to - corridors.from === COLUMN_GAP - 2 * LANE_GAP) {
+    if (corridors.adjacentColumns) {
       return [
         start,
         { x: corridors.from, y: start.y },
