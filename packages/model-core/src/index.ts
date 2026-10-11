@@ -27,3 +27,4 @@ export * from "./state-machine-resolution";
 export * from "./resolve-result";
 export * from "./resolve";
 export * from "./stub";
+export * from "./model-graph";
