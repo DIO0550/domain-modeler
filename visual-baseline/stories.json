@@ -240,6 +240,51 @@
     "name": "Long Text"
   },
   {
+    "id": "model-dependencyview--cycles",
+    "title": "Model/DependencyView",
+    "name": "Cycles"
+  },
+  {
+    "id": "model-dependencyview--empty",
+    "title": "Model/DependencyView",
+    "name": "Empty"
+  },
+  {
+    "id": "model-dependencyview--layout-failure",
+    "title": "Model/DependencyView",
+    "name": "Layout Failure"
+  },
+  {
+    "id": "model-dependencyview--long-content",
+    "title": "Model/DependencyView",
+    "name": "Long Content"
+  },
+  {
+    "id": "model-dependencyview--normal",
+    "title": "Model/DependencyView",
+    "name": "Normal"
+  },
+  {
+    "id": "model-dependencyview--partial-syntax-error",
+    "title": "Model/DependencyView",
+    "name": "Partial Syntax Error"
+  },
+  {
+    "id": "model-dependencyview--state-machine-only",
+    "title": "Model/DependencyView",
+    "name": "State Machine Only"
+  },
+  {
+    "id": "model-dependencyview--undefined",
+    "title": "Model/DependencyView",
+    "name": "Undefined"
+  },
+  {
+    "id": "model-dependencyview--workflow-roles",
+    "title": "Model/DependencyView",
+    "name": "Workflow Roles"
+  },
+  {
     "id": "model-modeldiagnostics--all-props",
     "title": "Model/ModelDiagnostics",
     "name": "All Props"
