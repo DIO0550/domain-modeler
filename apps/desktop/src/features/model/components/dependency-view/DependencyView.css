@@ -1,6 +1,6 @@
 .dependency-view {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   grid-template-rows: auto minmax(0, 1fr) auto;
   min-height: 0;
   min-width: 0;
@@ -219,4 +219,78 @@
     border-left: 0;
     border-top: 1px solid var(--model-editor-border);
   }
+}
+
+.dependency-view__node[data-related="true"] {
+  border-color: var(--model-editor-focus);
+  box-shadow: 0 0 0 1px var(--model-editor-focus);
+}
+
+.dependency-view__edges g[data-related="true"] {
+  color: var(--model-editor-focus);
+}
+
+.dependency-view__edges g[data-related="true"] > path {
+  stroke-width: 3;
+}
+
+.dependency-view__inspector section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--model-editor-border);
+}
+
+.dependency-view__inspector h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.dependency-view__inspector pre {
+  margin: 0 0 12px;
+  padding: 12px;
+  border-radius: 6px;
+  background: var(--canvas-surface-bg);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dependency-view__inspector button {
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--model-editor-border);
+  border-radius: 6px;
+  color: var(--shell-text);
+  background: var(--canvas-toolbar-bg);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.dependency-view__references {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dependency-view__references ul {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0 0 0 12px;
+  list-style: none;
+}
+
+.dependency-view__references ul button {
+  border-color: transparent;
+  background: transparent;
+  font-size: 12px;
+}
+
+.dependency-view__inspector [data-severity="error"] button {
+  color: var(--model-editor-error);
 }

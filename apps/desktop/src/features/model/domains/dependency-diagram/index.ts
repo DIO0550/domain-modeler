@@ -5,6 +5,7 @@ import { DependencyCard } from "../dependency-card";
 
 /** 現在の解析結果から導出したグラフとカード。 */
 export type DependencyDiagram = Readonly<{
+  source: string;
   graph: ModelGraph;
   cards: readonly DependencyCard[];
   diagnostics: AnalyzedModel["diagnostics"];
@@ -21,10 +22,41 @@ export const DependencyDiagram = {
     });
 
     return {
+      source: analyzed.source,
       graph,
       cards: graph.nodes.map(DependencyCard.create),
       diagnostics: analyzed.diagnostics,
     };
+  },
+
+  /** 選択IDに対応する現在のノードを返す。 */
+  selectedNode(
+    diagram: DependencyDiagram,
+    id: string,
+  ): Option<ModelGraph["nodes"][number]> {
+    const node = diagram.graph.nodes.find((item) => item.id === id);
+
+    return node === undefined ? Option.none() : Option.some(node);
+  },
+
+  /** 本文更新後は一意の名前と宣言種別で再特定し、重複名を推測しない。 */
+  currentNode(
+    diagram: DependencyDiagram,
+    previous: ModelGraph["nodes"][number],
+  ): Option<ModelGraph["nodes"][number]> {
+    if (diagram.graph.nodes.includes(previous)) {
+      return Option.some(previous);
+    }
+
+    if (previous.label !== previous.name) {
+      return Option.none();
+    }
+
+    const candidates = diagram.graph.nodes.filter(
+      (node) => node.name === previous.name && node.kind === previous.kind,
+    );
+
+    return candidates.length === 1 ? Option.some(candidates[0]) : Option.none();
   },
 
   selectedCard(

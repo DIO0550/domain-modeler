@@ -86,3 +86,25 @@ test("文書の切替と画面の破棄で以前の計測購読を解放する",
 
   expect(hook.subscriptionCount()).toBe(0);
 });
+
+test("削除された選択モデルと同じ名前が後で追加されても選択を復活させない", () => {
+  const hook = renderDependencyHook("data 注文 = string\n");
+
+  act(() => hook.view().select(hook.view().diagram.cards[0].id));
+  hook.render("data 商品 = string\n");
+  hook.render("data 注文 = string\n");
+
+  expect(hook.view().selected).toEqual(Option.none());
+  expect(hook.view().inspection).toEqual(Option.none());
+  hook.unmount();
+});
+
+test("描画されていない参照先への移動では現在の選択を変えない", () => {
+  const hook = renderDependencyHook("data 注文 = string\n");
+
+  act(() => hook.view().select(hook.view().diagram.cards[0].id));
+  act(() => hook.view().reveal("不存在"));
+
+  expect(Option.unwrap(hook.view().selected).name).toBe("注文");
+  hook.unmount();
+});

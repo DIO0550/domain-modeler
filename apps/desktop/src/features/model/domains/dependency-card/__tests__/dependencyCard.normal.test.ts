@@ -97,3 +97,14 @@ test("同名宣言を行番号付きの名前で区別する", () => {
   expect(DependencyCard.create(first).name).toBe("注文 (行 1)");
   expect(DependencyCard.create(second).name).toBe("注文 (行 2)");
 });
+
+test.each([
+  ["component", "構成要素"],
+  ["choice", "選択肢"],
+  ["alias", "別名"],
+  ["input", "入力"],
+  ["output", "出力"],
+  ["error", "エラー"],
+] as const)("参照役割%sを%sとして表示する", (role, label) => {
+  expect(DependencyCard.roleLabel(role)).toBe(label);
+});

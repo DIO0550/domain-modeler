@@ -1,15 +1,8 @@
 import { useId } from "react";
+import { Option } from "@/utils/Option";
+import { DependencyCard } from "../../../domains/dependency-card";
 import type { ModelGraph } from "@domain-modeler/model-core";
 import { ModelGraphLayout } from "../../../domains/model-graph-layout";
-
-const ROLE_LABELS = {
-  component: "構成要素",
-  choice: "選択肢",
-  alias: "別名",
-  input: "入力",
-  output: "出力",
-  error: "エラー",
-} as const;
 
 /**
  * 参照元から参照先への矢印と、集約された各役割を表示する。
@@ -19,7 +12,12 @@ const ROLE_LABELS = {
 export function DependencyEdges({
   graph,
   layout,
-}: Readonly<{ graph: ModelGraph; layout: ModelGraphLayout }>) {
+  neighborhood = Option.none(),
+}: Readonly<{
+  graph: ModelGraph;
+  layout: ModelGraphLayout;
+  neighborhood?: Option<Pick<ModelGraph, "nodes" | "edges">>;
+}>) {
   const arrowId = useId();
 
   return (
@@ -50,11 +48,11 @@ export function DependencyEdges({
         const roles = [
           ...new Set(edge.references.map((reference) => reference.role)),
         ];
-        const labels = roles.map((role) => ROLE_LABELS[role]).join("・");
+        const labels = roles.map(DependencyCard.roleLabel).join("・");
         const unresolved = to.kind === "unresolved";
         const warning = unresolved ? "（未定義）" : "";
         const position = ModelGraphLayout.labelPosition(route);
-        const lines = roles.map((role) => ROLE_LABELS[role]);
+        const lines = roles.map(DependencyCard.roleLabel);
 
         return (
           <g
@@ -62,6 +60,10 @@ export function DependencyEdges({
             data-from={edge.from}
             data-to={edge.to}
             data-unresolved={unresolved}
+            data-related={
+              Option.isSome(neighborhood) &&
+              neighborhood.value.edges.some((item) => item.id === edge.id)
+            }
             aria-label={`${from.label} → ${to.label}: ${labels}${warning}`}
           >
             <title>{`${from.label} → ${to.label}: ${labels}${warning}`}</title>
