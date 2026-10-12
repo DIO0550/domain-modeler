@@ -16,7 +16,11 @@ export type ModelGraphLayout = Readonly<{
     id: string;
     from: string;
     to: string;
-    points: readonly Readonly<{ x: number; y: number }>[];
+    points: readonly [
+      Readonly<{ x: number; y: number }>,
+      Readonly<{ x: number; y: number }>,
+      ...Readonly<{ x: number; y: number }>[],
+    ];
     path: string;
   }>[];
 }>;
@@ -28,6 +32,34 @@ const LANE_GAP = 24;
 
 /** 可変寸法のモデルカードを配置する。本文・意味的グラフは変更しない。 */
 export const ModelGraphLayout = {
+  /** カードの始点へ集中する役割ラベルを、経路の最長区間へ分散する。 */
+  labelPosition(
+    edge: ModelGraphLayout["edges"][number],
+  ): Readonly<{ x: number; y: number; anchor: "start" | "middle" }> {
+    const segments = edge.points.slice(1).map((end, index) => {
+      const start = edge.points[index];
+
+      return {
+        start,
+        end,
+        length: Math.abs(end.x - start.x) + Math.abs(end.y - start.y),
+      };
+    });
+    const first = { start: edge.points[0], end: edge.points[1], length: 0 };
+    const longest = segments.reduce(
+      (maximum, segment) =>
+        segment.length > maximum.length ? segment : maximum,
+      first,
+    );
+    const vertical = longest.start.x === longest.end.x;
+
+    return {
+      x: (longest.start.x + longest.end.x) / 2 + (vertical ? 8 : 0),
+      y: (longest.start.y + longest.end.y) / 2 - 10,
+      anchor: vertical ? "start" : "middle",
+    };
+  },
+
   /**
    * 参照元から参照先へ列を割り当て、計測寸法を使ってノードと矢印を配置する。
    * @param graph 同一リビジョンの意味的グラフ。

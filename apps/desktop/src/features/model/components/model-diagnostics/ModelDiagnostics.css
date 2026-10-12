@@ -132,6 +132,7 @@
 
 .model-diagnostics-workspace__modes {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 6px 12px;
   background: var(--canvas-toolbar-bg);
@@ -158,6 +159,7 @@
 }
 
 .model-diagnostics-workspace > .model-diagnostics,
+.model-diagnostics-workspace > .dependency-view,
 .model-diagnostics-workspace > .state-machine-screen {
   flex: 1 1 0;
   height: 0;

@@ -9,11 +9,18 @@ import type { SourceRange } from "@domain-modeler/model-core";
 import type { TextEditing } from "../use-text-editing";
 
 type Mode = "model" | "state-machine";
+type ModelView = "definition" | "dependency";
 
-type NavigationState = Readonly<{ mode: Mode; selectedMachineIndex: number }>;
+type NavigationState = Readonly<{
+  mode: Mode;
+  modelView: ModelView;
+  selectedMachineIndex: number;
+}>;
 
 type NavigationAction =
   | Readonly<{ type: "modelOpened" }>
+  | Readonly<{ type: "definitionOpened" }>
+  | Readonly<{ type: "dependencyOpened" }>
   | Readonly<{ type: "stateMachineOpened"; index?: number }>
   | Readonly<{ type: "machineSelected"; index: number }>;
 
@@ -25,8 +32,15 @@ const reduceNavigation = (
     case "modelOpened":
       return { ...state, mode: "model" };
 
+    case "definitionOpened":
+      return { ...state, mode: "model", modelView: "definition" };
+
+    case "dependencyOpened":
+      return { ...state, mode: "model", modelView: "dependency" };
+
     case "stateMachineOpened":
       return {
+        ...state,
         mode: "state-machine",
         selectedMachineIndex: action.index ?? state.selectedMachineIndex,
       };
@@ -40,9 +54,12 @@ type UseModelModeNavigationParams = Readonly<{ editing: TextEditing }>;
 
 type UseModelModeNavigationResult = Readonly<{
   mode: Mode;
+  modelView: ModelView;
   selectedMachineIndex: number;
   previewRef: RefObject<HTMLElement | null>;
   openModel: (range?: SourceRange) => void;
+  openModelMode: () => void;
+  openDependency: () => void;
   openStateMachine: (index?: number) => void;
   selectMachine: (index: number) => void;
 }>;
@@ -53,6 +70,7 @@ export function useModelModeNavigation({
 }: UseModelModeNavigationParams): UseModelModeNavigationResult {
   const [navigation, dispatch] = useReducer(reduceNavigation, {
     mode: "model",
+    modelView: "definition",
     selectedMachineIndex: 0,
   });
   const previewRef = useRef<HTMLElement>(null);
@@ -60,8 +78,8 @@ export function useModelModeNavigation({
   const hasModelSnapshot = useRef(false);
   const pendingSourceRange = useRef<SourceRange | null>(null);
 
-  const openStateMachine = (index?: number) => {
-    if (navigation.mode === "model") {
+  const rememberModelView = () => {
+    if (navigation.mode === "model" && navigation.modelView === "definition") {
       const input = editing.inputRef.current;
 
       editing.rememberCurrentSelection();
@@ -72,13 +90,32 @@ export function useModelModeNavigation({
       };
       hasModelSnapshot.current = true;
     }
+  };
+
+  const openStateMachine = (index?: number) => {
+    rememberModelView();
 
     dispatch({ type: "stateMachineOpened", index });
   };
 
   const openModel = (range?: SourceRange) => {
+    if (
+      range !== undefined &&
+      navigation.mode === "model" &&
+      navigation.modelView === "definition"
+    ) {
+      editing.selectRange(range);
+
+      return;
+    }
+
     pendingSourceRange.current = range ?? null;
-    dispatch({ type: "modelOpened" });
+    dispatch({ type: "definitionOpened" });
+  };
+
+  const openDependency = () => {
+    rememberModelView();
+    dispatch({ type: "dependencyOpened" });
   };
 
   const restoreModelView = useEffectEvent(() => {
@@ -113,16 +150,19 @@ export function useModelModeNavigation({
   });
 
   useLayoutEffect(() => {
-    if (navigation.mode === "model") {
+    if (navigation.mode === "model" && navigation.modelView === "definition") {
       restoreModelView();
     }
-  }, [navigation.mode]);
+  }, [navigation.mode, navigation.modelView]);
 
   return {
     mode: navigation.mode,
+    modelView: navigation.modelView,
     selectedMachineIndex: navigation.selectedMachineIndex,
     previewRef,
     openModel,
+    openModelMode: () => dispatch({ type: "modelOpened" }),
+    openDependency,
     openStateMachine,
 
     selectMachine: (index) => dispatch({ type: "machineSelected", index }),

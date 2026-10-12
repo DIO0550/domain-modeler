@@ -1,4 +1,10 @@
-import { useEffect, useEffectEvent, useRef, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  type KeyboardEvent,
+} from "react";
 import {
   Declaration,
   Result,
@@ -24,6 +30,7 @@ import { PreviewDataCard } from "../preview-data-card";
 import { PreviewErrorPlaceholder } from "../preview-error-placeholder";
 import { PreviewWorkflowCard } from "../preview-workflow-card";
 import { StateMachine } from "../state-machine-screen";
+import { DependencyView } from "../dependency-view";
 import "./ModelDiagnostics.css";
 
 type ModelDiagnosticsProps = Readonly<{
@@ -58,7 +65,10 @@ export function ModelDiagnostics({
     openModel,
     openStateMachine,
   } = navigation;
-  const analyzed = AnalyzedModel.create(editing.value);
+  const analyzed = useMemo(
+    () => AnalyzedModel.create(editing.value),
+    [editing.value],
+  );
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   const notifyHistoryControlsChange = useEffectEvent(() => {
@@ -234,7 +244,7 @@ export function ModelDiagnostics({
         <button
           type="button"
           aria-current={mode === "model" ? "page" : undefined}
-          onClick={() => openModel()}
+          onClick={navigation.openModelMode}
         >
           モデル
         </button>
@@ -246,6 +256,31 @@ export function ModelDiagnostics({
           ステートマシン
         </button>
       </nav>
+      {mode === "model" && (
+        <nav
+          className="model-diagnostics-workspace__modes"
+          aria-label="モデルの表示"
+        >
+          <button
+            type="button"
+            aria-current={
+              navigation.modelView === "definition" ? "page" : undefined
+            }
+            onClick={() => openModel()}
+          >
+            定義＋プレビュー
+          </button>
+          <button
+            type="button"
+            aria-current={
+              navigation.modelView === "dependency" ? "page" : undefined
+            }
+            onClick={navigation.openDependency}
+          >
+            依存図
+          </button>
+        </nav>
+      )}
       {mode === "state-machine" ? (
         <StateMachine.Root
           value={value}
@@ -259,57 +294,71 @@ export function ModelDiagnostics({
           <StateMachine.Inspector />
         </StateMachine.Root>
       ) : (
-        <div className="model-diagnostics">
-          <div className="model-diagnostics__editor-heading">モデル定義</div>
-          <div
-            className="model-diagnostics__toolbar"
-            role="toolbar"
-            aria-label="編集支援"
-          >
-            <span className="model-diagnostics__preview-heading">
-              プレビュー
-            </span>
-            <div className="model-diagnostics__actions">
-              <button
-                type="button"
-                className="model-diagnostics__toolbar-button"
-                onClick={() => insertTemplate(DeclTemplate.data())}
+        <>
+          {navigation.modelView === "dependency" && (
+            <DependencyView.Root analyzed={analyzed} onEditSource={openModel}>
+              <DependencyView.Legend />
+              <DependencyView.Graph />
+              <DependencyView.Inspector />
+              <DependencyView.Diagnostics />
+            </DependencyView.Root>
+          )}
+          {navigation.modelView === "definition" && (
+            <div className="model-diagnostics">
+              <div className="model-diagnostics__editor-heading">
+                モデル定義
+              </div>
+              <div
+                className="model-diagnostics__toolbar"
+                role="toolbar"
+                aria-label="編集支援"
               >
-                ＋ data
-              </button>
-              <button
-                type="button"
-                className="model-diagnostics__toolbar-button"
-                onClick={() => insertTemplate(DeclTemplate.workflow())}
+                <span className="model-diagnostics__preview-heading">
+                  プレビュー
+                </span>
+                <div className="model-diagnostics__actions">
+                  <button
+                    type="button"
+                    className="model-diagnostics__toolbar-button"
+                    onClick={() => insertTemplate(DeclTemplate.data())}
+                  >
+                    ＋ data
+                  </button>
+                  <button
+                    type="button"
+                    className="model-diagnostics__toolbar-button"
+                    onClick={() => insertTemplate(DeclTemplate.workflow())}
+                  >
+                    ＋ workflow
+                  </button>
+                </div>
+              </div>
+              <section
+                className="model-diagnostics__editor"
+                aria-label="テキストエディタ"
               >
-                ＋ workflow
-              </button>
+                <ModelEditorDisplay editing={editing} />
+              </section>
+              <section
+                ref={previewRef}
+                className="model-diagnostics__preview"
+                aria-label="構造化プレビュー"
+              >
+                {analyzed.document.declarations.map((decl) => (
+                  <PreviewDeclItem
+                    key={declarationKey(decl)}
+                    decl={decl}
+                    analyzed={analyzed}
+                    onTypeRefClick={handleTypeRefClick}
+                    onUndefinedBadgeClick={handleUndefinedBadgeClick}
+                    onRename={renameDeclaration}
+                    onOpenStateMachine={(index) => openStateMachine(index)}
+                  />
+                ))}
+              </section>
             </div>
-          </div>
-          <section
-            className="model-diagnostics__editor"
-            aria-label="テキストエディタ"
-          >
-            <ModelEditorDisplay editing={editing} />
-          </section>
-          <section
-            ref={previewRef}
-            className="model-diagnostics__preview"
-            aria-label="構造化プレビュー"
-          >
-            {analyzed.document.declarations.map((decl) => (
-              <PreviewDeclItem
-                key={declarationKey(decl)}
-                decl={decl}
-                analyzed={analyzed}
-                onTypeRefClick={handleTypeRefClick}
-                onUndefinedBadgeClick={handleUndefinedBadgeClick}
-                onRename={renameDeclaration}
-                onOpenStateMachine={(index) => openStateMachine(index)}
-              />
-            ))}
-          </section>
-        </div>
+          )}
+        </>
       )}
     </div>
   );
