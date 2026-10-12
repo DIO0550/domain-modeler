@@ -219,5 +219,6 @@ return [...propErrors, ...childErrors, ...refErrors];
 
 ## 禁止事項
 
+- 列の隣接など、グラフの構造から判定できる関係を、計測寸法や累積座標の浮動小数点の完全一致で判定しない。列番号など元の構造情報を使う。
 - `any` の使用
 - `domains/` `services/` での I/O(console, fs, localStorage, fetch, Tauri API 等)— I/O は `libs/` のみ
