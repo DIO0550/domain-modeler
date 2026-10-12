@@ -1,0 +1,222 @@
+.dependency-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  min-width: 0;
+  color: var(--shell-text);
+  background: var(--shell-bg);
+  height: 100%;
+}
+
+.dependency-view-story {
+  box-sizing: border-box;
+  width: 100vw;
+  height: 100vh;
+  padding: 16px;
+}
+
+.dependency-view__legend {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--model-editor-border);
+  background: var(--canvas-toolbar-bg);
+  font-size: 12px;
+}
+
+.dependency-view__legend strong {
+  flex-basis: 100%;
+  font-size: 13px;
+}
+
+.dependency-view__canvas {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--canvas-surface-bg);
+}
+
+.dependency-view__measure {
+  position: absolute;
+  width: 280px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.dependency-view__drawing {
+  position: relative;
+}
+
+.dependency-view__card {
+  box-sizing: border-box;
+  display: block;
+  width: 280px;
+  padding: 16px;
+  border: 1px solid var(--preview-card-border);
+  border-radius: 10px;
+  background: var(--preview-card-bg);
+  color: var(--shell-text);
+  text-align: left;
+  font: inherit;
+  box-shadow: var(--preview-card-shadow);
+  overflow-wrap: anywhere;
+}
+
+.dependency-view__node {
+  position: absolute;
+  cursor: pointer;
+}
+
+.dependency-view__node[aria-pressed="true"],
+.dependency-view__node:focus-visible {
+  outline: 3px solid var(--model-editor-focus);
+  outline-offset: 3px;
+}
+
+.dependency-view__card[data-kind="未定義"] {
+  border: 2px dashed var(--preview-card-undefined);
+}
+
+.dependency-view__kind {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--preview-card-kind);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dependency-view__name {
+  display: block;
+  font-size: 16px;
+}
+
+.dependency-view__rows {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.dependency-view__rows > div {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.dependency-view__rows dt {
+  color: var(--preview-card-kind);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dependency-view__rows dd {
+  margin: 0;
+}
+
+.dependency-view__edges {
+  display: block;
+  color: var(--connection-line);
+}
+
+.dependency-view__edges g > path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+.dependency-view__edges g[data-unresolved="true"] {
+  color: var(--preview-card-undefined);
+}
+
+.dependency-view__edges g[data-unresolved="true"] > path {
+  stroke-dasharray: 6 4;
+}
+
+.dependency-view__edges text {
+  fill: var(--connection-label-text);
+  stroke: var(--connection-label-bg);
+  stroke-width: 5px;
+  paint-order: stroke;
+  font-size: 12px;
+}
+
+.dependency-view__inspector {
+  min-width: 0;
+  min-height: 0;
+  padding: 20px;
+  border-left: 1px solid var(--model-editor-border);
+  background: var(--model-editor-bg);
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.dependency-view__inspector h2 {
+  margin: 0 0 20px;
+  font-size: 14px;
+}
+
+.dependency-view__inspector p {
+  color: var(--shell-muted);
+}
+
+.dependency-view__diagnostics {
+  grid-column: 1 / -1;
+  max-height: 160px;
+  overflow: auto;
+  padding: 12px 16px;
+  border-top: 1px solid var(--model-editor-border);
+  background: var(--model-editor-bg);
+}
+
+.dependency-view__diagnostics summary {
+  cursor: pointer;
+}
+
+.dependency-view__diagnostics button {
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.dependency-view__diagnostics [data-severity="error"] button {
+  color: var(--model-editor-error);
+}
+
+.dependency-view__message {
+  padding: 32px;
+}
+
+.dependency-view__message button,
+.dependency-view__diagnostics button {
+  margin: 4px;
+  padding: 6px 10px;
+  color: var(--shell-text);
+  font: inherit;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.dependency-view__message button {
+  border: 1px solid var(--model-editor-border);
+  border-radius: 6px;
+  background: var(--canvas-toolbar-bg);
+}
+
+.dependency-view button:focus-visible {
+  outline: 2px solid var(--model-editor-focus);
+}
+
+@media (max-width: 800px) {
+  .dependency-view {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(180px, 1fr) minmax(100px, 30%) auto;
+  }
+
+  .dependency-view__inspector {
+    border-left: 0;
+    border-top: 1px solid var(--model-editor-border);
+  }
+}
