@@ -96,3 +96,29 @@ test("本文更新後に以前のカードを最新本文の図として残さ�
   expect(screen.host.querySelector("details")!.textContent).toContain("行 1");
   screen.unmount();
 });
+
+test("先頭の診断が解消されても残った診断のフォーカスと移動先を保つ", () => {
+  const opened: (SourceRange | undefined)[] = [];
+  const screen = renderDependency(
+    "data 注文 = 未定義注文\ndata 数量 = 未定義数量\n",
+    {
+      onEditSource: (range) => opened.push(range),
+    },
+  );
+  const quantity =
+    screen.host.querySelectorAll<HTMLButtonElement>("details button")[1];
+
+  quantity.focus();
+  screen.render("data 注文 = string\ndata 数量 = 未定義数量\n");
+
+  const remaining =
+    screen.host.querySelector<HTMLButtonElement>("details button")!;
+
+  expect(document.activeElement).toBe(remaining);
+  expect(remaining.textContent).toContain("未定義数量");
+
+  act(() => remaining.click());
+
+  expect(opened[0]?.startLine).toBe(2);
+  screen.unmount();
+});

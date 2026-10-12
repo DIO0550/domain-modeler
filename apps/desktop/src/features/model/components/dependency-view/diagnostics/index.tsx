@@ -22,8 +22,18 @@ export function DependencyDiagnostics() {
     <details className="dependency-view__diagnostics" open>
       <summary>診断 {view.diagram.diagnostics.length}件</summary>
       <ul>
-        {view.diagram.diagnostics.map((diagnostic, index) => (
-          <li key={index} data-severity={diagnostic.severity}>
+        {view.diagram.diagnostics.map((diagnostic) => (
+          <li
+            key={JSON.stringify([
+              diagnostic.severity,
+              diagnostic.message,
+              diagnostic.range.startLine,
+              diagnostic.range.startColumn,
+              diagnostic.range.endLine,
+              diagnostic.range.endColumn,
+            ])}
+            data-severity={diagnostic.severity}
+          >
             <button
               type="button"
               onClick={() => onEditSource(diagnostic.range)}
