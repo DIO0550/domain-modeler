@@ -1,8 +1,10 @@
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { AnalyzedModel } from "../../../domains/analyzed-model";
 import type { ElementSize } from "@/libs/element-size";
 import type { SourceRange } from "@domain-modeler/model-core";
+import { DependencyDiagram } from "../../../domains/dependency-diagram";
+import { expectLayout } from "../../../domains/model-graph-layout/__tests__/modelGraphLayout.test-support";
 import { DependencyView } from "../index";
 
 /** ブラウザの寸法計測境界だけを固定寸法に置き換える。 */
@@ -43,6 +45,7 @@ export function renderDependency(
   options: Readonly<{
     observeSizes?: typeof ElementSize.observe;
     onEditSource?: (range?: SourceRange) => void;
+    children?: ReactNode;
   }> = {},
 ) {
   const host = document.createElement("div");
@@ -58,10 +61,14 @@ export function renderDependency(
           onEditSource={options.onEditSource ?? (() => undefined)}
           observeSizes={options.observeSizes ?? fixedSizes}
         >
-          <DependencyView.Legend />
-          <DependencyView.Graph />
-          <DependencyView.Inspector />
-          <DependencyView.Diagnostics />
+          {options.children ?? (
+            <>
+              <DependencyView.Legend />
+              <DependencyView.Graph />
+              <DependencyView.Inspector />
+              <DependencyView.Diagnostics />
+            </>
+          )}
         </DependencyView.Root>,
       ),
     );
@@ -78,3 +85,37 @@ export function renderDependency(
     },
   };
 }
+
+/** Contextの外の部品や複数の独立したRootを描画する。 */
+export function renderContent(content: ReactNode) {
+  const host = document.createElement("div");
+
+  document.body.append(host);
+
+  const root = createRoot(host);
+
+  act(() => root.render(content));
+
+  return {
+    host,
+    render: (next: ReactNode) => act(() => root.render(next)),
+    unmount: () => {
+      act(() => root.unmount());
+      host.remove();
+    },
+  };
+}
+
+/** 実DSLの参照関係と、固定したDOM寸法による描画入力を準備する。 */
+export function createDependencyLayout(source: string) {
+  const diagram = DependencyDiagram.create(AnalyzedModel.create(source));
+  const sizes = new Map(
+    diagram.graph.nodes.map((node) => [node.id, { width: 280, height: 180 }]),
+  );
+  const layout = expectLayout({ graph: diagram.graph, sizes });
+
+  return { diagram, layout };
+}
+
+/** 計測の完了前を維持するDOM境界。 */
+export const waitingSizes: typeof ElementSize.observe = () => () => undefined;

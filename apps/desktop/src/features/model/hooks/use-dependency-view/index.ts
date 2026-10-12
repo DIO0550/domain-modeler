@@ -39,9 +39,19 @@ export function useDependencyView({
       return;
     }
 
-    return observeSizes(container, (sizes) =>
-      setMeasurement(Option.some({ diagram, sizes })),
-    );
+    let active = true;
+    const stop = observeSizes(container, (sizes) => {
+      if (!active) {
+        return;
+      }
+
+      setMeasurement(Option.some({ diagram, sizes }));
+    });
+
+    return () => {
+      active = false;
+      stop();
+    };
   }, [diagram, observeSizes, attempt]);
 
   const layout = useMemo(() => {
