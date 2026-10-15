@@ -245,6 +245,11 @@
     "name": "Cycles"
   },
   {
+    "id": "model-dependencyview--duplicate-names",
+    "title": "Model/DependencyView",
+    "name": "Duplicate Names"
+  },
+  {
     "id": "model-dependencyview--empty",
     "title": "Model/DependencyView",
     "name": "Empty"

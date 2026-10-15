@@ -1,4 +1,4 @@
-import{a as e,n as t}from"./chunk-BneVvdWh.js";import{t as n}from"./iframe-IWean2cm.js";import{t as r}from"./jsx-runtime-DXFqSddf.js";import{n as i,t as a}from"./analyzed-model-cBcx9bky.js";import{n as o,t as s}from"./dependency-view-Bqb-FOjM.js";function c({source:e,measurement:t=`normal`}){let n=(0,l.useMemo)(()=>a.create(e),[e]);return(0,u.jsx)(`div`,{className:`dependency-view-story`,children:(0,u.jsxs)(s.Root,{analyzed:n,onEditSource:()=>void 0,observeSizes:t===`failure`?d:void 0,children:[(0,u.jsx)(s.Legend,{}),(0,u.jsx)(s.Graph,{}),(0,u.jsx)(s.Inspector,{}),(0,u.jsx)(s.Diagnostics,{})]})})}var l,u,d,f,p,m,h,g,_,v,y,b,x,S;t((()=>{l=e(n(),1),i(),o(),u=r(),d=(e,t)=>(t(new Map),()=>void 0),f={component:c,title:`Model/DependencyView`,parameters:{layout:`fullscreen`}},p={args:{source:`data 注文ID = string
+import{a as e,n as t}from"./chunk-BneVvdWh.js";import{t as n}from"./iframe-DUWZN8-i.js";import{t as r}from"./jsx-runtime-DXFqSddf.js";import{n as i,t as a}from"./analyzed-model-cBcx9bky.js";import{n as o,t as s}from"./dependency-view-D3suI7ab.js";function c({source:e,measurement:t=`normal`}){let n=(0,l.useMemo)(()=>a.create(e),[e]);return(0,u.jsx)(`div`,{className:`dependency-view-story`,children:(0,u.jsxs)(s.Root,{analyzed:n,onEditSource:()=>void 0,observeSizes:t===`failure`?d:void 0,children:[(0,u.jsx)(s.Legend,{}),(0,u.jsx)(s.Graph,{}),(0,u.jsx)(s.Inspector,{}),(0,u.jsx)(s.Diagnostics,{})]})})}var l,u,d,f,p,m,h,g,_,v,y,b,x,S,C;t((()=>{l=e(n(),1),i(),o(),u=r(),d=(e,t)=>(t(new Map),()=>void 0),f={component:c,title:`Model/DependencyView`,parameters:{layout:`fullscreen`}},p={args:{source:`data 注文ID = string
 data 数量 = int constrained 1..100
 data 注文 = 注文ID AND 数量
 data 結果 = 注文 OR string
@@ -26,6 +26,11 @@ data 孤立 = string
 `}},x={args:{source:`data とても長い名前を持つ注文に関連する詳細情報 = string
 data 商品名 = string constrained length 1..80
 data 注文 = とても長い名前を持つ注文に関連する詳細情報 list option AND 商品名 option list
+`}},S={args:{source:`data 注文 = string
+data 注文 = int
+workflow 更新 =
+  input: 注文
+  output: 注文
 `}},p.parameters={...p.parameters,docs:{...p.parameters?.docs,source:{originalSource:`{
   args: {
     source: \`data 注文ID = string
@@ -82,4 +87,8 @@ data 商品名 = string constrained length 1..80
 data 注文 = とても長い名前を持つ注文に関連する詳細情報 list option AND 商品名 option list
 \`
   }
-}`,...x.parameters?.docs?.source}}},S=[`Normal`,`WorkflowRoles`,`Empty`,`StateMachineOnly`,`PartialSyntaxError`,`Undefined`,`LayoutFailure`,`Cycles`,`LongContent`]}))();export{b as Cycles,h as Empty,y as LayoutFailure,x as LongContent,p as Normal,_ as PartialSyntaxError,g as StateMachineOnly,v as Undefined,m as WorkflowRoles,S as __namedExportsOrder,f as default};
+}`,...x.parameters?.docs?.source}}},S.parameters={...S.parameters,docs:{...S.parameters?.docs,source:{originalSource:`{
+  args: {
+    source: "data 注文 = string\\ndata 注文 = int\\nworkflow 更新 =\\n  input: 注文\\n  output: 注文\\n"
+  }
+}`,...S.parameters?.docs?.source}}},C=[`Normal`,`WorkflowRoles`,`Empty`,`StateMachineOnly`,`PartialSyntaxError`,`Undefined`,`LayoutFailure`,`Cycles`,`LongContent`,`DuplicateNames`]}))();export{b as Cycles,S as DuplicateNames,h as Empty,y as LayoutFailure,x as LongContent,p as Normal,_ as PartialSyntaxError,g as StateMachineOnly,v as Undefined,m as WorkflowRoles,C as __namedExportsOrder,f as default};
