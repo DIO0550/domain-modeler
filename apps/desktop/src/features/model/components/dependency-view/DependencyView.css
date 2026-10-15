@@ -1,7 +1,7 @@
 .dependency-view {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   min-height: 0;
   min-width: 0;
   color: var(--shell-text);
@@ -30,6 +30,49 @@
 .dependency-view__legend strong {
   flex-basis: 100%;
   font-size: 13px;
+}
+
+.dependency-view__toolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--model-editor-border);
+  background: var(--canvas-toolbar-bg);
+}
+
+.dependency-view__toolbar [role="group"] {
+  display: flex;
+  gap: 4px;
+}
+
+.dependency-view__toolbar button {
+  padding: 6px 12px;
+  border: 1px solid var(--model-editor-border);
+  border-radius: 6px;
+  color: var(--shell-text);
+  background: var(--model-editor-bg);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dependency-view__toolbar button[aria-pressed="true"] {
+  border-color: var(--model-editor-focus);
+  box-shadow: inset 0 0 0 1px var(--model-editor-focus);
+}
+
+.dependency-view__toolbar button[aria-disabled="true"] {
+  color: var(--shell-muted);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.dependency-view__toolbar [aria-live] {
+  color: var(--shell-muted);
+  font-size: 12px;
 }
 
 .dependency-view__canvas {
@@ -212,7 +255,7 @@
 @media (max-width: 800px) {
   .dependency-view {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(180px, 1fr) minmax(100px, 30%) auto;
+    grid-template-rows: auto auto minmax(180px, 1fr) minmax(100px, 30%) auto;
   }
 
   .dependency-view__inspector {

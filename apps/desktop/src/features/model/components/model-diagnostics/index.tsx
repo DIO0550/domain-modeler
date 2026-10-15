@@ -298,6 +298,7 @@ export function ModelDiagnostics({
           {navigation.modelView === "dependency" && (
             <DependencyView.Root analyzed={analyzed} onEditSource={openModel}>
               <DependencyView.Legend />
+              <DependencyView.Toolbar />
               <DependencyView.Graph />
               <DependencyView.Inspector />
               <DependencyView.Diagnostics />

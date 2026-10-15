@@ -64,7 +64,7 @@ function DependencyDrawing() {
   }
 
   const { view, onEditSource } = context.value;
-  const { diagram, layout, selected } = view;
+  const { diagram, visibleDiagram, layout, selected } = view;
 
   if (diagram.cards.length === 0) {
     return (
@@ -105,12 +105,12 @@ function DependencyDrawing() {
       onClick={view.clearSelection}
     >
       <DependencyEdges
-        graph={diagram.graph}
+        graph={visibleDiagram.graph}
         layout={placed}
         neighborhood={view.neighborhood}
       />
-      {diagram.cards.map((card, index) => {
-        const position = placed.nodes[index];
+      {visibleDiagram.cards.map((card) => {
+        const position = placed.nodes.find((node) => node.id === card.id)!;
 
         return (
           <div
