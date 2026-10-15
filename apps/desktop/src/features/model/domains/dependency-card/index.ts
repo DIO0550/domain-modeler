@@ -104,6 +104,20 @@ export const DependencyCard = {
     }
   },
 
+  /** カード・矢印・参照一覧で共通の役割名を表示する。 */
+  roleLabel(role: ModelGraph["references"][number]["role"]): string {
+    const labels = {
+      component: "構成要素",
+      choice: "選択肢",
+      alias: "別名",
+      input: "入力",
+      output: "出力",
+      error: "エラー",
+    } as const;
+
+    return labels[role];
+  },
+
   termText(term: TypeTerm): string {
     return [term.name, ...term.modifiers].join(" ");
   },

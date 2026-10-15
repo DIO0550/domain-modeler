@@ -19,7 +19,21 @@ export function DependencyGraph() {
   const { diagram } = view;
 
   return (
-    <section className="dependency-view__canvas" aria-label="モデル依存図">
+    <section
+      className="dependency-view__canvas"
+      aria-label="モデル依存図"
+      onClick={view.clearSelection}
+      onKeyDown={(event) => {
+        if (event.nativeEvent.isComposing) {
+          return;
+        }
+
+        if (event.key === "Escape") {
+          event.preventDefault();
+          view.clearSelection();
+        }
+      }}
+    >
       <div
         ref={view.measureRef}
         className="dependency-view__measure"
@@ -90,12 +104,25 @@ function DependencyDrawing() {
       style={{ width: placed.width, height: placed.height }}
       onClick={view.clearSelection}
     >
-      <DependencyEdges graph={diagram.graph} layout={placed} />
+      <DependencyEdges
+        graph={diagram.graph}
+        layout={placed}
+        neighborhood={view.neighborhood}
+      />
       {diagram.cards.map((card, index) => {
         const position = placed.nodes[index];
 
         return (
           <div
+            ref={(element) => {
+              if (element === null) {
+                view.nodeElements.current.delete(card.id);
+
+                return;
+              }
+
+              view.nodeElements.current.set(card.id, element);
+            }}
             role="button"
             tabIndex={0}
             key={card.id}
@@ -106,6 +133,10 @@ function DependencyDrawing() {
             }
             data-node-id={card.id}
             data-kind={card.kind}
+            data-related={
+              Option.isSome(view.neighborhood) &&
+              view.neighborhood.value.nodes.some((node) => node.id === card.id)
+            }
             style={{
               left: position.x,
               top: position.y,

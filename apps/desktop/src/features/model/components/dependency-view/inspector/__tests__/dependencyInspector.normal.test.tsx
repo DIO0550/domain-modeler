@@ -12,7 +12,7 @@ test("未選択ではモデル選択の案内を表示する", () => {
   });
 
   expect(screen.host.querySelector("aside")!.textContent).toContain(
-    "モデルを選択すると種類と構成を確認できます",
+    "モデルを選択すると定義と参照関係を確認できます",
   );
   screen.unmount();
 });

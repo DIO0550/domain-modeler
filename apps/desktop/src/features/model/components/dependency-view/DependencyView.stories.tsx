@@ -104,3 +104,10 @@ data 注文 = とても長い名前を持つ注文に関連する詳細情報 li
 `,
   },
 };
+
+export const DuplicateNames: Story = {
+  args: {
+    source:
+      "data 注文 = string\ndata 注文 = int\nworkflow 更新 =\n  input: 注文\n  output: 注文\n",
+  },
+};

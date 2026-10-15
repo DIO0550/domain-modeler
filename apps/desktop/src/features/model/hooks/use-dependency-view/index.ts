@@ -1,4 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ModelGraph } from "@domain-modeler/model-core";
+import { ElementNavigation } from "@/libs/element-navigation";
+import { DependencyInspection } from "../../domains/dependency-inspection";
 import type { AnalyzedModel } from "../../domains/analyzed-model";
 import { DependencyDiagram } from "../../domains/dependency-diagram";
 import { ModelGraphLayout } from "../../domains/model-graph-layout";
@@ -22,7 +25,31 @@ export function useDependencyView({
   const diagram = useMemo(() => DependencyDiagram.create(analyzed), [analyzed]);
   const measureRef = useRef<HTMLDivElement>(null);
   const [attempt, setAttempt] = useState(0);
-  const [selected, setSelected] = useState<Option<string>>(Option.none());
+  const nodeElements = useRef(new Map<string, HTMLDivElement>());
+  const [selection, setSelection] = useState<
+    Readonly<{
+      diagram: DependencyDiagram;
+      node: Option<ModelGraph["nodes"][number]>;
+    }>
+  >({ diagram, node: Option.none() });
+  const selectedNode = Option.isNone(selection.node)
+    ? Option.none()
+    : DependencyDiagram.currentNode(diagram, selection.node.value);
+
+  // 別の本文へ移った時点で再特定する。削除後に同名が復活しても選択を復活させない。
+  if (selection.diagram !== diagram) {
+    setSelection({ diagram, node: selectedNode });
+  }
+
+  const selectedId = Option.isSome(selectedNode)
+    ? Option.some(selectedNode.value.id)
+    : Option.none();
+  const select = (id: string) => {
+    setSelection({
+      diagram,
+      node: DependencyDiagram.selectedNode(diagram, id),
+    });
+  };
   const [measurement, setMeasurement] = useState<
     Option<
       Readonly<{
@@ -72,9 +99,26 @@ export function useDependencyView({
     diagram,
     measureRef,
     layout,
-    selected: DependencyDiagram.selectedCard(diagram, selected),
-    select: (id: string) => setSelected(Option.some(id)),
-    clearSelection: () => setSelected(Option.none()),
+    selected: DependencyDiagram.selectedCard(diagram, selectedId),
+    inspection: Option.isSome(selectedId)
+      ? DependencyInspection.create(diagram, selectedId.value)
+      : Option.none(),
+    neighborhood: Option.isSome(selectedId)
+      ? Option.some(ModelGraph.neighborhood(diagram.graph, selectedId.value))
+      : Option.none(),
+    nodeElements,
+    select,
+    reveal: (id: string) => {
+      const element = nodeElements.current.get(id);
+
+      if (element === undefined) {
+        return;
+      }
+
+      select(id);
+      ElementNavigation.reveal(element);
+    },
+    clearSelection: () => setSelection({ diagram, node: Option.none() }),
     retry: () => setAttempt((current) => current + 1),
   };
 }
