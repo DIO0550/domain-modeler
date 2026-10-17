@@ -1,5 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { SourceRange } from "@domain-modeler/model-core";
+import { DiagramSurface } from "@/libs/diagram-surface";
 import { ElementSize } from "@/libs/element-size";
 import { Option } from "@/utils/Option";
 import type { AnalyzedModel } from "../../../domains/analyzed-model";
@@ -32,13 +33,15 @@ export function DependencyRoot({
   onEditSource,
   observeSizes = ElementSize.observe,
   children,
+  observeSurface,
 }: Readonly<{
   analyzed: AnalyzedModel;
   onEditSource: (range?: SourceRange) => void;
   observeSizes?: typeof ElementSize.observe;
+  observeSurface?: typeof DiagramSurface.observe;
   children: ReactNode;
 }>) {
-  const view = useDependencyView({ analyzed, observeSizes });
+  const view = useDependencyView({ analyzed, observeSizes, observeSurface });
 
   return (
     <DependencyContext.Provider value={Option.some({ view, onEditSource })}>

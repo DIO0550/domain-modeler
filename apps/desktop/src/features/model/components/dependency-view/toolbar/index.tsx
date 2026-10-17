@@ -2,8 +2,8 @@ import { Option } from "@/utils/Option";
 import { useDependencyContext } from "../context";
 
 /**
- * 選択モデルに合わせて全体と直接の関連だけの表示を切り替える。
- * @returns キーボードでも操作できる図の表示範囲切替。
+ * 表示範囲・倍率・フィット・再配置の閲覧操作を提供する。
+ * @returns キーボードでも操作できる依存図のツールバー。
  */
 export function DependencyToolbar() {
   const context = useDependencyContext();
@@ -46,6 +46,37 @@ export function DependencyToolbar() {
       <span aria-live="polite">
         {graph.nodes.length}モデル・{graph.edges.length}接続
       </span>
+      <div role="group" aria-label="依存図のズーム">
+        <button
+          type="button"
+          aria-label="縮小"
+          disabled={!view.canNavigate || view.viewport.zoom <= 0.1}
+          onClick={() => view.zoomBy(1 / 1.2)}
+        >
+          −
+        </button>
+        <output aria-label="倍率">
+          {Math.round(view.viewport.zoom * 100)}%
+        </output>
+        <button
+          type="button"
+          aria-label="拡大"
+          disabled={!view.canNavigate || view.viewport.zoom >= 4}
+          onClick={() => view.zoomBy(1.2)}
+        >
+          ＋
+        </button>
+      </div>
+      <button type="button" disabled={!view.canNavigate} onClick={view.fit}>
+        全体に合わせる
+      </button>
+      <button
+        type="button"
+        disabled={!view.canNavigate}
+        onClick={view.rearrange}
+      >
+        再配置
+      </button>
     </div>
   );
 }
