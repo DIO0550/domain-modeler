@@ -281,6 +281,17 @@ export function ModelDiagnostics({
           </button>
         </nav>
       )}
+      <DependencyView.Root
+        analyzed={analyzed}
+        onEditSource={openModel}
+        isVisible={mode === "model" && navigation.modelView === "dependency"}
+      >
+        <DependencyView.Legend />
+        <DependencyView.Toolbar />
+        <DependencyView.Graph />
+        <DependencyView.Inspector />
+        <DependencyView.Diagnostics />
+      </DependencyView.Root>
       {mode === "state-machine" ? (
         <StateMachine.Root
           value={value}
@@ -295,15 +306,6 @@ export function ModelDiagnostics({
         </StateMachine.Root>
       ) : (
         <>
-          {navigation.modelView === "dependency" && (
-            <DependencyView.Root analyzed={analyzed} onEditSource={openModel}>
-              <DependencyView.Legend />
-              <DependencyView.Toolbar />
-              <DependencyView.Graph />
-              <DependencyView.Inspector />
-              <DependencyView.Diagnostics />
-            </DependencyView.Root>
-          )}
           {navigation.modelView === "definition" && (
             <div className="model-diagnostics">
               <div className="model-diagnostics__editor-heading">

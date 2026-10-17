@@ -17,6 +17,7 @@ type UseDependencySurfaceParams = Readonly<{
   observeSurface: typeof DiagramSurface.observe;
   panBy: (delta: Point) => void;
   zoomBy: (factor: number, anchor: Point) => void;
+  isVisible?: boolean;
 }>;
 
 /**
@@ -28,6 +29,7 @@ export function useDependencySurface({
   panBy,
   zoomBy,
   observeSurface,
+  isVisible = true,
 }: UseDependencySurfaceParams) {
   const surfaceRef = useRef<HTMLElement>(null);
   const [size, setSize] = useState<
@@ -40,17 +42,17 @@ export function useDependencySurface({
   useLayoutEffect(() => {
     const surface = surfaceRef.current;
 
-    if (surface === null) {
+    if (!isVisible || surface === null) {
       return;
     }
 
     return observeSurface(surface, (next) => setSize(Option.some(next)));
-  }, [observeSurface]);
+  }, [observeSurface, isVisible]);
 
   useEffect(() => {
     const surface = surfaceRef.current;
 
-    if (surface === null) {
+    if (!isVisible || surface === null) {
       return;
     }
 
@@ -88,7 +90,7 @@ export function useDependencySurface({
         DiagramSurface.release(surface, current.pointerId);
       }
     };
-  }, [panBy, zoomBy]);
+  }, [panBy, zoomBy, isVisible]);
 
   const finish = (event: PointerEvent<HTMLElement>) => {
     const current = pointer.current;

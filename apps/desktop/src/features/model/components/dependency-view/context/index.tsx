@@ -24,8 +24,8 @@ export function useDependencyContext(): Option<DependencyContextValue> {
 }
 
 /**
- * 図とインスペクターで計測結果・選択状態を共有する。
- * @param props 解析結果、定義画面への移動、子要素と計測境界。
+ * 図とインスペクターで状態を共有し、非表示中も本文との対応を保つ。
+ * @param props 解析結果、定義画面への移動、表示状態、子要素と計測境界。
  * @returns モデル依存図の画面領域。
  */
 export function DependencyRoot({
@@ -34,18 +34,25 @@ export function DependencyRoot({
   observeSizes = ElementSize.observe,
   children,
   observeSurface,
+  isVisible = true,
 }: Readonly<{
   analyzed: AnalyzedModel;
   onEditSource: (range?: SourceRange) => void;
   observeSizes?: typeof ElementSize.observe;
   observeSurface?: typeof DiagramSurface.observe;
   children: ReactNode;
+  isVisible?: boolean;
 }>) {
-  const view = useDependencyView({ analyzed, observeSizes, observeSurface });
+  const view = useDependencyView({
+    analyzed,
+    observeSizes,
+    observeSurface,
+    isVisible,
+  });
 
   return (
     <DependencyContext.Provider value={Option.some({ view, onEditSource })}>
-      <div className="dependency-view">{children}</div>
+      {isVisible && <div className="dependency-view">{children}</div>}
     </DependencyContext.Provider>
   );
 }

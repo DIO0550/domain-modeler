@@ -1,6 +1,6 @@
 import { Viewport, type Point } from "@domain-modeler/canvas-core";
 import { Option } from "@/utils/Option";
-import type { DependencyDiagram } from "../dependency-diagram";
+import { DependencyDiagram } from "../dependency-diagram";
 import { DependencySelection } from "../dependency-selection";
 import type { ModelGraphLayout } from "../model-graph-layout";
 
@@ -122,11 +122,15 @@ export const DependencyNavigation = {
       return next;
     }
 
-    if (
-      previousTarget.mode === "related" &&
-      previousTarget.node.id === target.node.id
-    ) {
-      return next;
+    if (previousTarget.mode === "related") {
+      const current = DependencyDiagram.currentNode(
+        selection.diagram,
+        previousTarget.node,
+      );
+
+      if (Option.isSome(current) && current.value === target.node) {
+        return next;
+      }
     }
 
     const wholeViewport =
@@ -184,6 +188,19 @@ export const DependencyNavigation = {
         fitPending: false,
         camera: Option.some({ viewport, wholeViewport }),
       };
+    }
+
+    if (Option.isSome(navigation.frame)) {
+      const previous = navigation.frame.value;
+      const current = request.frame.value;
+
+      if (
+        previous.layout === current.layout &&
+        previous.size.width === current.size.width &&
+        previous.size.height === current.size.height
+      ) {
+        return next;
+      }
     }
 
     const selected = DependencySelection.selectedNode(selection);
