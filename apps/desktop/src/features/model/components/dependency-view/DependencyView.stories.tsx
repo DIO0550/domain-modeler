@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { expect, userEvent, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { AnalyzedModel } from "../../domains/analyzed-model";
 import type { ElementSize } from "@/libs/element-size";
@@ -24,6 +25,7 @@ function DependencyStory({
         observeSizes={measurement === "failure" ? EMPTY_SIZES : undefined}
       >
         <DependencyView.Legend />
+        <DependencyView.Toolbar />
         <DependencyView.Graph />
         <DependencyView.Inspector />
         <DependencyView.Diagnostics />
@@ -109,5 +111,40 @@ export const DuplicateNames: Story = {
   args: {
     source:
       "data 注文 = string\ndata 注文 = int\nworkflow 更新 =\n  input: 注文\n  output: 注文\n",
+  },
+};
+
+/** 直接近傍を選択した状態。全体へ戻す操作も試せる。 */
+export const DirectNeighborhood: Story = {
+  args: {
+    source: `data 注文ID = string
+data 顧客情報 = string
+data 商品ID = string
+data 数量 = int constrained 1..100
+data 注文明細 = 商品ID AND 数量
+data 注文 = 注文ID AND 顧客情報 AND 注文明細 list
+data 注文確定 = 注文ID
+data 検証エラー = string
+workflow 注文を確定する =
+  input: 注文
+  output: 注文確定
+  error: 検証エラー
+`,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "注文 RECORD" }),
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "関連のみ" }));
+
+    await expect(
+      canvas.getByRole("button", { name: "関連のみ" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(canvasElement.querySelectorAll("[data-node-id]")).toHaveLength(
+      5,
+    );
+    await expect(canvasElement.querySelectorAll("svg g")).toHaveLength(4);
   },
 };

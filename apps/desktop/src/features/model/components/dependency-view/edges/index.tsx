@@ -14,7 +14,7 @@ export function DependencyEdges({
   layout,
   neighborhood = Option.none(),
 }: Readonly<{
-  graph: ModelGraph;
+  graph: Pick<ModelGraph, "nodes" | "edges">;
   layout: ModelGraphLayout;
   neighborhood?: Option<Pick<ModelGraph, "nodes" | "edges">>;
 }>) {
@@ -41,8 +41,8 @@ export function DependencyEdges({
           <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
         </marker>
       </defs>
-      {graph.edges.map((edge, index) => {
-        const route = layout.edges[index];
+      {graph.edges.map((edge) => {
+        const route = layout.edges.find((item) => item.id === edge.id)!;
         const from = graph.nodes.find((node) => node.id === edge.from)!;
         const to = graph.nodes.find((node) => node.id === edge.to)!;
         const roles = [

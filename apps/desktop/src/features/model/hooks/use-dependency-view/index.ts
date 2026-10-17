@@ -1,9 +1,10 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ModelGraph } from "@domain-modeler/model-core";
 import { ElementNavigation } from "@/libs/element-navigation";
 import { DependencyInspection } from "../../domains/dependency-inspection";
 import type { AnalyzedModel } from "../../domains/analyzed-model";
 import { DependencyDiagram } from "../../domains/dependency-diagram";
+import { DependencySelection } from "../../domains/dependency-selection";
 import { ModelGraphLayout } from "../../domains/model-graph-layout";
 import { ElementSize } from "@/libs/element-size";
 import { Option } from "@/utils/Option";
@@ -14,9 +15,9 @@ type UseDependencyViewParams = Readonly<{
 }>;
 
 /**
- * 図の計測境界と選択・再試行操作を仲介する。
+ * 図の計測境界と選択・表示範囲・再試行操作を仲介する。
  * @param params 同一本文の解析結果と寸法計測の境界。
- * @returns 図、計測中または配置結果、選択と再試行操作。
+ * @returns 図、表示範囲、計測中または配置結果、選択・表示切替・再試行操作。
  */
 export function useDependencyView({
   analyzed,
@@ -26,30 +27,30 @@ export function useDependencyView({
   const measureRef = useRef<HTMLDivElement>(null);
   const [attempt, setAttempt] = useState(0);
   const nodeElements = useRef(new Map<string, HTMLDivElement>());
-  const [selection, setSelection] = useState<
-    Readonly<{
-      diagram: DependencyDiagram;
-      node: Option<ModelGraph["nodes"][number]>;
-    }>
-  >({ diagram, node: Option.none() });
-  const selectedNode = Option.isNone(selection.node)
-    ? Option.none()
-    : DependencyDiagram.currentNode(diagram, selection.node.value);
+  const [selection, dispatch] = useReducer(
+    DependencySelection.reduce,
+    diagram,
+    DependencySelection.create,
+  );
+  const current =
+    selection.diagram === diagram
+      ? selection
+      : DependencySelection.synchronize(selection, diagram);
+  const selectedNode = DependencySelection.selectedNode(current);
 
   // 別の本文へ移った時点で再特定する。削除後に同名が復活しても選択を復活させない。
   if (selection.diagram !== diagram) {
-    setSelection({ diagram, node: selectedNode });
+    dispatch({ type: "synchronize", diagram });
   }
 
   const selectedId = Option.isSome(selectedNode)
     ? Option.some(selectedNode.value.id)
     : Option.none();
-  const select = (id: string) => {
-    setSelection({
-      diagram,
-      node: DependencyDiagram.selectedNode(diagram, id),
-    });
-  };
+  const select = (id: string) => dispatch({ type: "select", id });
+  const visibleDiagram = useMemo(
+    () => DependencySelection.visibleDiagram(current),
+    [current],
+  );
   const [measurement, setMeasurement] = useState<
     Option<
       Readonly<{
@@ -97,6 +98,10 @@ export function useDependencyView({
 
   return {
     diagram,
+    visibleDiagram,
+    mode: current.target.mode,
+    setMode: (mode: DependencySelection["target"]["mode"]) =>
+      dispatch({ type: "set-mode", mode }),
     measureRef,
     layout,
     selected: DependencyDiagram.selectedCard(diagram, selectedId),
@@ -118,7 +123,7 @@ export function useDependencyView({
       select(id);
       ElementNavigation.reveal(element);
     },
-    clearSelection: () => setSelection({ diagram, node: Option.none() }),
+    clearSelection: () => dispatch({ type: "clear" }),
     retry: () => setAttempt((current) => current + 1),
   };
 }

@@ -64,6 +64,7 @@ export function renderDependency(
           {options.children ?? (
             <>
               <DependencyView.Legend />
+              <DependencyView.Toolbar />
               <DependencyView.Graph />
               <DependencyView.Inspector />
               <DependencyView.Diagnostics />
@@ -119,3 +120,35 @@ export function createDependencyLayout(source: string) {
 
 /** 計測の完了前を維持するDOM境界。 */
 export const waitingSizes: typeof ElementSize.observe = () => () => undefined;
+
+/** 表示範囲の切替ボタンを表示名で取得する。 */
+export function scopeButton(host: HTMLElement, name: "全体" | "関連のみ") {
+  return [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      '[aria-label="依存図の表示範囲"] button',
+    ),
+  ].find((button) => button.textContent === name)!;
+}
+
+/** 計測用カードを除いた表示中のモデルカードを取得する。 */
+export function modelNode(host: HTMLElement, name: string) {
+  return [...host.querySelectorAll<HTMLElement>("[data-node-id]")].find(
+    (node) =>
+      node.querySelector(".dependency-view__name")!.textContent === name,
+  )!;
+}
+
+/** 実際に表示されるカード名を順番に取得する。 */
+export function visibleNames(host: HTMLElement) {
+  return [
+    ...host.querySelectorAll("[data-node-id] .dependency-view__name"),
+  ].map((node) => node.textContent);
+}
+
+/** 表示されている辺のラベルと経路を取得する。 */
+export function visibleRoutes(host: HTMLElement) {
+  return [...host.querySelectorAll<SVGGElement>("svg g")].map((edge) => ({
+    label: edge.getAttribute("aria-label"),
+    path: edge.querySelector("path")!.getAttribute("d"),
+  }));
+}
