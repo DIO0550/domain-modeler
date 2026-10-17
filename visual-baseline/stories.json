@@ -275,6 +275,11 @@
     "name": "Normal"
   },
   {
+    "id": "model-dependencyview--pan-zoom",
+    "title": "Model/DependencyView",
+    "name": "Pan Zoom"
+  },
+  {
     "id": "model-dependencyview--partial-syntax-error",
     "title": "Model/DependencyView",
     "name": "Partial Syntax Error"
