@@ -245,6 +245,11 @@
     "name": "Cycles"
   },
   {
+    "id": "model-dependencyview--direct-neighborhood",
+    "title": "Model/DependencyView",
+    "name": "Direct Neighborhood"
+  },
+  {
     "id": "model-dependencyview--duplicate-names",
     "title": "Model/DependencyView",
     "name": "Duplicate Names"
