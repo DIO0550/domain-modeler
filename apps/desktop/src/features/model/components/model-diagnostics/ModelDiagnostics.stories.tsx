@@ -70,6 +70,21 @@ export const Empty: Story = {
   },
 };
 
+/** 本文編集・図の選択・表示モード往復・履歴の同期を確認する。 */
+export const DependencySynchronization: Story = {
+  args: {
+    value: `data 注文 = 商品
+data 商品 = string
+data 独立 = int
+state-machine 注文処理 =
+  initial: 待機
+  state: 待機
+  state: 完了 terminal
+  transition: 待機 -> 完了 on 確定
+`,
+  },
+};
+
 export const StateMachineEditing: Story = {
   args: {
     value: `state-machine 注文 =
