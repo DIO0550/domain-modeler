@@ -6,7 +6,7 @@ import { DependencyEdges } from "../edges";
 
 /**
  * 寸法を計測し、配置済みのカードと矢印、空・異常状態を表示する。
- * @returns スクロールして全カードを読める図。
+ * @returns パン・ズームで全カードを読める図。
  */
 export function DependencyGraph() {
   const context = useDependencyContext();
@@ -20,8 +20,11 @@ export function DependencyGraph() {
 
   return (
     <section
+      ref={view.surface.surfaceRef}
       className="dependency-view__canvas"
       aria-label="モデル依存図"
+      data-panning={view.surface.isPanning}
+      {...view.surface.handlers}
       onClick={view.clearSelection}
       onKeyDown={(event) => {
         if (event.nativeEvent.isComposing) {
@@ -101,7 +104,11 @@ function DependencyDrawing() {
   return (
     <div
       className="dependency-view__drawing"
-      style={{ width: placed.width, height: placed.height }}
+      style={{
+        width: placed.width,
+        height: placed.height,
+        transform: `translate(${view.viewport.x}px, ${view.viewport.y}px) scale(${view.viewport.zoom})`,
+      }}
       onClick={view.clearSelection}
     >
       <DependencyEdges
@@ -147,6 +154,7 @@ function DependencyDrawing() {
               event.stopPropagation();
               view.select(card.id);
             }}
+            onFocus={() => view.ensureVisible(card.id)}
             onKeyDown={(event) => {
               if (event.nativeEvent.isComposing) {
                 return;

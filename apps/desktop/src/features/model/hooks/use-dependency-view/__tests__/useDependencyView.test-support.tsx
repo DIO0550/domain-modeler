@@ -1,5 +1,6 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import type { DiagramSurface } from "@/libs/diagram-surface";
 import type { ElementSize } from "@/libs/element-size";
 import { Option } from "@/utils/Option";
 import { AnalyzedModel } from "../../../domains/analyzed-model";
@@ -8,7 +9,10 @@ import { useDependencyView } from "..";
 /** 計測完了を任意の順序で返すDOM境界で、実物のフックを描画する。 */
 export function renderDependencyHook(
   source: string,
-  options: Readonly<{ attachMeasurement?: boolean }> = {},
+  options: Readonly<{
+    attachMeasurement?: boolean;
+    surfaceSize?: Readonly<{ width: number; height: number }>;
+  }> = {},
 ) {
   const activeSubscriptions = new Set<number>();
   const frames: Readonly<{
@@ -34,21 +38,32 @@ export function renderDependencyHook(
       activeSubscriptions.delete(subscription);
     };
   };
+  const observeSurface: typeof DiagramSurface.observe = (_element, report) => {
+    if (options.surfaceSize !== undefined) {
+      report(options.surfaceSize);
+    }
+
+    return () => undefined;
+  };
   let latest: Option<ReturnType<typeof useDependencyView>> = Option.none();
 
   function Probe({ analyzed }: Readonly<{ analyzed: AnalyzedModel }>) {
-    const view = useDependencyView({ analyzed, observeSizes });
+    const view = useDependencyView({ analyzed, observeSizes, observeSurface });
 
     latest = Option.some(view);
 
     return (
-      <div
-        ref={options.attachMeasurement === false ? undefined : view.measureRef}
-      >
-        {view.diagram.cards.map((card) => (
-          <div key={card.id} data-measure-node={card.id} />
-        ))}
-      </div>
+      <section ref={view.surface.surfaceRef} {...view.surface.handlers}>
+        <div
+          ref={
+            options.attachMeasurement === false ? undefined : view.measureRef
+          }
+        >
+          {view.diagram.cards.map((card) => (
+            <div key={card.id} data-measure-node={card.id} />
+          ))}
+        </div>
+      </section>
     );
   }
 
@@ -63,6 +78,7 @@ export function renderDependencyHook(
   render(source);
 
   return {
+    host,
     subscriptionCount: () => activeSubscriptions.size,
     view: () => Option.unwrap(latest),
     render,

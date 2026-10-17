@@ -1,6 +1,7 @@
 import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { AnalyzedModel } from "../../../domains/analyzed-model";
+import type { DiagramSurface } from "@/libs/diagram-surface";
 import type { ElementSize } from "@/libs/element-size";
 import type { SourceRange } from "@domain-modeler/model-core";
 import { DependencyDiagram } from "../../../domains/dependency-diagram";
@@ -44,6 +45,7 @@ export function renderDependency(
   source: string,
   options: Readonly<{
     observeSizes?: typeof ElementSize.observe;
+    observeSurface?: typeof DiagramSurface.observe;
     onEditSource?: (range?: SourceRange) => void;
     children?: ReactNode;
   }> = {},
@@ -60,6 +62,7 @@ export function renderDependency(
           analyzed={AnalyzedModel.create(value)}
           onEditSource={options.onEditSource ?? (() => undefined)}
           observeSizes={options.observeSizes ?? fixedSizes}
+          observeSurface={options.observeSurface}
         >
           {options.children ?? (
             <>
@@ -151,4 +154,51 @@ export function visibleRoutes(host: HTMLElement) {
     label: edge.getAttribute("aria-label"),
     path: edge.querySelector("path")!.getAttribute("d"),
   }));
+}
+
+/** 画面寸法だけを固定するDOM計測境界。 */
+export const fixedSurface: typeof DiagramSurface.observe = (
+  _element,
+  report,
+) => {
+  report({ width: 900, height: 600 });
+
+  return () => undefined;
+};
+
+/** 表示名または読み上げ名で図の操作ボタンを取得する。 */
+export function diagramButton(host: HTMLElement, name: string) {
+  return [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      ".dependency-view__toolbar button",
+    ),
+  ].find(
+    (button) =>
+      (button.getAttribute("aria-label") ?? button.textContent) === name,
+  )!;
+}
+
+/** 実際に描画された図の変換を読む。 */
+export function drawingTransform(host: HTMLElement) {
+  return host.querySelector<HTMLElement>(".dependency-view__drawing")!.style
+    .transform;
+}
+
+/** happy-domが省略するwheelの修飾キーだけを補って通知する。 */
+export function diagramWheel(element: Element, options: WheelEventInit) {
+  const event = new WheelEvent("wheel", {
+    bubbles: true,
+    cancelable: true,
+    ...options,
+  });
+
+  Object.defineProperties(event, {
+    ctrlKey: { value: options.ctrlKey ?? false },
+    metaKey: { value: options.metaKey ?? false },
+    clientX: { value: options.clientX ?? 0 },
+    clientY: { value: options.clientY ?? 0 },
+  });
+  act(() => element.dispatchEvent(event));
+
+  return event;
 }

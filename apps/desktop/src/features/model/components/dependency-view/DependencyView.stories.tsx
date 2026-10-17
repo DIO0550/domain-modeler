@@ -148,3 +148,28 @@ workflow 注文を確定する =
     await expect(canvasElement.querySelectorAll("svg g")).toHaveLength(4);
   },
 };
+
+/** 関連表示へのフィットと全体viewportの復元を確認する。 */
+export const PanZoom: Story = {
+  args: DirectNeighborhood.args,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const drawing = () =>
+      canvasElement.querySelector<HTMLElement>(".dependency-view__drawing")!;
+
+    await canvas.findByRole("button", { name: "注文 RECORD" });
+    await userEvent.click(canvas.getByRole("button", { name: "拡大" }));
+    const wholeTransform = drawing().style.transform;
+    await userEvent.click(canvas.getByRole("button", { name: "注文 RECORD" }));
+    await userEvent.click(canvas.getByRole("button", { name: "関連のみ" }));
+    await userEvent.click(
+      canvas.getByRole("button", { name: "全体に合わせる" }),
+    );
+    await userEvent.click(canvas.getByRole("button", { name: /^全体$/ }));
+
+    await expect(drawing().style.transform).toBe(wholeTransform);
+    await expect(
+      canvas.getByRole("button", { name: "注文 RECORD" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  },
+};
