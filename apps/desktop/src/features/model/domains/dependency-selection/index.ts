@@ -80,7 +80,10 @@ export const DependencySelection = {
   },
 
   /** 全文書の配置を維持したまま、表示するカードと直接接続だけを抽出する。 */
-  visibleDiagram(selection: DependencySelection) {
+  visibleDiagram(selection: DependencySelection): Readonly<{
+    cards: DependencyDiagram["cards"];
+    graph: Pick<ModelGraph, "nodes" | "edges">;
+  }> {
     const { diagram, target } = selection;
 
     if (target.mode === "all") {
