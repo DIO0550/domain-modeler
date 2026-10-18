@@ -16,7 +16,7 @@ import { DependencyInspection } from "../../domains/dependency-inspection";
 import type { AnalyzedModel } from "../../domains/analyzed-model";
 import { DependencyDiagram } from "../../domains/dependency-diagram";
 import { DependencySelection } from "../../domains/dependency-selection";
-import { ModelGraphLayout } from "../../domains/model-graph-layout";
+import { DependencyPlacement } from "../../domains/dependency-placement";
 import { ElementSize } from "@/libs/element-size";
 import { Option } from "@/utils/Option";
 
@@ -24,6 +24,7 @@ type UseDependencyViewParams = Readonly<{
   analyzed: AnalyzedModel;
   observeSizes: typeof ElementSize.observe;
   observeSurface?: typeof DiagramSurface.observe;
+  isVisible?: boolean;
 }>;
 
 /**
@@ -35,15 +36,19 @@ export function useDependencyView({
   analyzed,
   observeSizes,
   observeSurface = DiagramSurface.observe,
+  isVisible = true,
 }: UseDependencyViewParams) {
-  const diagram = useMemo(() => DependencyDiagram.create(analyzed), [analyzed]);
-  const measureRef = useRef<HTMLDivElement>(null);
-  const nodeElements = useRef(new Map<string, HTMLDivElement>());
   const [navigation, dispatch] = useReducer(
     DependencyNavigation.reduce,
-    diagram,
-    DependencyNavigation.create,
+    analyzed,
+    (model) => DependencyNavigation.create(DependencyDiagram.create(model)),
   );
+  const diagram = useMemo(
+    () => DependencyDiagram.synchronize(navigation.selection.diagram, analyzed),
+    [navigation.selection.diagram, analyzed],
+  );
+  const measureRef = useRef<HTMLDivElement>(null);
+  const nodeElements = useRef(new Map<string, HTMLDivElement>());
   const panBy = useCallback(
     (delta: Point) => dispatch({ type: "pan", delta }),
     [],
@@ -57,21 +62,16 @@ export function useDependencyView({
     panBy,
     zoomBy: zoomAt,
     observeSurface,
+    isVisible,
   });
-  const [measurement, setMeasurement] = useState<
-    Option<
-      Readonly<{
-        diagram: DependencyDiagram;
-        attempt: number;
-        sizes: Parameters<typeof ModelGraphLayout.create>[1];
-      }>
-    >
-  >(Option.none());
+  const [placement, setPlacement] = useState<Option<DependencyPlacement>>(
+    Option.none(),
+  );
 
   useLayoutEffect(() => {
     const container = measureRef.current;
 
-    if (container === null) {
+    if (!isVisible || container === null) {
       return;
     }
 
@@ -81,8 +81,13 @@ export function useDependencyView({
         return;
       }
 
-      setMeasurement(
-        Option.some({ diagram, sizes, attempt: navigation.attempt }),
+      setPlacement((previous) =>
+        Option.some(
+          DependencyPlacement.create(
+            { diagram, sizes, attempt: navigation.attempt },
+            previous,
+          ),
+        ),
       );
     });
 
@@ -90,21 +95,22 @@ export function useDependencyView({
       active = false;
       stop();
     };
-  }, [diagram, observeSizes, navigation.attempt]);
+  }, [diagram, observeSizes, navigation.attempt, isVisible]);
 
   const layout = useMemo(() => {
-    if (Option.isNone(measurement)) {
+    if (Option.isNone(placement)) {
       return Option.none();
     }
 
-    if (measurement.value.diagram !== diagram) {
+    if (
+      placement.value.diagram !== diagram ||
+      placement.value.attempt !== navigation.attempt
+    ) {
       return Option.none();
     }
 
-    return Option.some(
-      ModelGraphLayout.create(diagram.graph, measurement.value.sizes),
-    );
-  }, [diagram, measurement]);
+    return Option.some(placement.value.result);
+  }, [diagram, placement, navigation.attempt]);
 
   const frame = useMemo(() => {
     if (Option.isNone(layout) || Option.isNone(surface.size)) {
@@ -118,9 +124,9 @@ export function useDependencyView({
     return Option.some({
       layout: layout.value.value,
       size: surface.size.value,
-      attempt: Option.unwrap(measurement).attempt,
+      attempt: Option.unwrap(placement).attempt,
     });
-  }, [layout, surface.size, measurement]);
+  }, [layout, surface.size, placement]);
   const current = DependencyNavigation.synchronize(navigation, {
     diagram,
     frame,

@@ -13,9 +13,9 @@ export type DependencyDiagram = Readonly<{
 
 /** 図の意味とカード表示を同一の解析結果から組み立てる。 */
 export const DependencyDiagram = {
-  create(analyzed: AnalyzedModel): DependencyDiagram {
+  create(analyzed: AnalyzedModel, revision = 0): DependencyDiagram {
     const graph = ModelGraph.create({
-      revision: 0,
+      revision,
       document: analyzed.document,
       resolution: analyzed,
       diagnostics: analyzed.diagnostics,
@@ -27,6 +27,18 @@ export const DependencyDiagram = {
       cards: graph.nodes.map(DependencyCard.create),
       diagnostics: analyzed.diagnostics,
     };
+  },
+
+  /** 本文が変わったときだけ、次のリビジョンの解析・図を採用する。 */
+  synchronize(
+    diagram: DependencyDiagram,
+    analyzed: AnalyzedModel,
+  ): DependencyDiagram {
+    if (diagram.source === analyzed.source) {
+      return diagram;
+    }
+
+    return DependencyDiagram.create(analyzed, diagram.graph.revision + 1);
   },
 
   /** 選択IDに対応する現在のノードを返す。 */
@@ -52,9 +64,14 @@ export const DependencyDiagram = {
       return Option.none();
     }
 
-    const candidates = diagram.graph.nodes.filter(
-      (node) => node.name === previous.name && node.kind === previous.kind,
-    );
+    const candidates = diagram.graph.nodes.filter((node) => {
+      if (node.name !== previous.name || node.label !== node.name) {
+        return false;
+      }
+
+      // 未定義名に一意な定義が追加されたときだけ、種類をまたいで引き継ぐ。
+      return previous.kind === "unresolved" || node.kind === previous.kind;
+    });
 
     return candidates.length === 1 ? Option.some(candidates[0]) : Option.none();
   },

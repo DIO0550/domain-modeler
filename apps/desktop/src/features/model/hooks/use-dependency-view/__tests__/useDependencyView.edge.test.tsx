@@ -108,3 +108,24 @@ test("描画されていない参照先への移動では現在の選択を変�
   expect(Option.unwrap(hook.view().selected).name).toBe("注文");
   hook.unmount();
 });
+
+test("本文が元と同じ内容へ戻っても以前の世代の計測を採用しない", () => {
+  const source = "data A = string\n";
+  const hook = renderDependencyHook(source);
+
+  hook.publish();
+  hook.render("data B = int\n");
+  hook.render(source);
+  hook.publish({ frame: 0 });
+
+  expect(hook.view().layout).toEqual(Option.none());
+  expect(hook.view().diagram.graph.revision).toBe(2);
+
+  hook.publish();
+
+  expect(Option.unwrap(hook.view().layout)).toMatchObject({
+    ok: true,
+    value: { revision: 2 },
+  });
+  hook.unmount();
+});
