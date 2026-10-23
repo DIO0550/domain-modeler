@@ -158,3 +158,78 @@ export const StateMachineAfterEdit: Story = {
     name.form?.requestSubmit();
   },
 };
+
+/** UI-07: 最初のフォーカス以降はTab・Enter・Spaceだけで図と定義を往復する。 */
+export const DependencyKeyboard: Story = {
+  args: {
+    value: "data 注文 = 商品\ndata 商品 = string\ndata 独立 = int\n",
+  },
+  play: async ({ canvasElement }) => {
+    const { expect, userEvent, within } = await import("storybook/test");
+    const canvas = within(canvasElement);
+    const diagramButton = canvas.getByRole("button", { name: /^依存図$/ });
+    diagramButton.focus();
+    await userEvent.keyboard("{Enter}");
+    await canvas.findByRole("button", { name: "注文 ALIAS" });
+
+    // 未選択の「関連のみ」はTab順に含まれない。
+    for (let step = 0; step < 6; step += 1) {
+      await userEvent.tab();
+    }
+
+    await expect(
+      canvas.getByRole("button", { name: "注文 ALIAS" }),
+    ).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+
+    for (let step = 0; step < 5; step += 1) {
+      await userEvent.tab({ shift: true });
+    }
+
+    await expect(
+      canvas.getByRole("button", { name: "関連のみ" }),
+    ).toHaveFocus();
+    await userEvent.keyboard(" ");
+    await expect(canvasElement.querySelectorAll("[data-node-id]")).toHaveLength(
+      2,
+    );
+
+    for (let step = 0; step < 6; step += 1) {
+      await userEvent.tab();
+    }
+
+    await expect(
+      canvas.getByRole("button", { name: "商品 ALIAS" }),
+    ).toHaveFocus();
+    await userEvent.keyboard(" ");
+    await expect(
+      canvas.getByRole("button", { name: "商品 ALIAS" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    for (let step = 0; step < 3; step += 1) {
+      await userEvent.tab();
+    }
+
+    await expect(
+      canvas.getByRole("button", { name: "定義を編集" }),
+    ).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    const editor = canvas.getByRole("textbox");
+    await expect(editor).toHaveFocus();
+    const input = canvasElement.querySelector("textarea")!;
+    await expect(
+      input.value.slice(input.selectionStart, input.selectionEnd),
+    ).toBe("data 商品 = string");
+
+    // エディタの前にある雛形挿入ボタン2個もTab順で通過する。
+    for (let step = 0; step < 3; step += 1) {
+      await userEvent.tab({ shift: true });
+    }
+
+    await expect(diagramButton).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await expect(
+      await canvas.findByRole("button", { name: "商品 ALIAS" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  },
+};

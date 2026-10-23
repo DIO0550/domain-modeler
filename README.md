@@ -57,6 +57,17 @@ pnpm --filter @domain-modeler/desktop exec vitest run src/appShell/__tests__/mod
 
 Vitest の設定は `apps/desktop/vite.config.ts` にあり、`packages/` のテストも収集します。結合テストではファイルI/Oをメモリ上の実装に差し替え、パーサー・履歴・タブ状態は実物を通します。OSのダイアログ・実ファイル監視・WebViewの通し動作は Tauri で別途確認してください。
 
+## モデル依存図の使い方
+
+1. `.dmodel` を新規作成または開き、「モデル」→「依存図」を選びます。
+2. カードを選ぶと、右側で定義・依存先・参照元を確認できます。矢印は参照元から参照先へ向き、workflowの入力も同じ向きです。
+3. 「関連のみ」で選択モデルの直接の依存先・参照元へ絞り、「全体」で戻します。参照一覧から別モデルも選べます。
+4. 「定義を編集」で該当範囲へ移動します。表示操作は本文を変えず、選択や表示位置は同じタブ内で保持します。閉じて開き直すと「定義＋プレビュー」へ戻ります。
+
+空白のドラッグ・通常のホイールはパン、Ctrl/⌘付きホイールはズームです。拡大・縮小・全体に合わせる・再配置も使えます。キーボードはTab / Shift+Tabで移動、Enter / Spaceで選択・ボタン操作、Escapeで図の選択解除ができます。
+
+受入条件とテストの対応、性能の測定方法、未確認の表示・Tauri実機項目は[依存図の検証記録](docs/domain-modeler/model-dependency-view/verification.md)を参照してください。ブラウザ確認用のStorybookには`Model/DependencyView`と、定義への往復を含む`Model/ModelDiagnostics/DependencyKeyboard`があります。
+
 ## 仕様と実装規約
 
 - [仕様書一覧](docs/domain-modeler/index.md)
