@@ -66,3 +66,13 @@ test("error 節より前に output 節が無いと行順序違反になる", () 
     diagnostics: [{ message: "output: が必要です" }],
   });
 });
+
+test("節内に大量の連結項があってもコールスタック上限に達せず解析できる", () => {
+  const terms = Array.from({ length: 5000 }, (_, index) => `入力${index}`);
+  const source = `workflow 確定する =\n  input: ${terms.join(" AND ")}\n  output: 確定イベント`;
+
+  expect(materialize(source)).toMatchObject({
+    declaration: { kind: "workflow", name: "確定する" },
+    diagnostics: [],
+  });
+});

@@ -75,3 +75,17 @@ test("int 制約に length があるとエラーになる", () => {
     },
   });
 });
+
+test("大量の AND 連結でもコールスタック上限に達せず解析できる", () => {
+  const terms = Array.from({ length: 5000 }, (_, index) => `項目${index}`);
+  const result = parseTypeExpr(terms.join(" AND "));
+
+  expect(result).toMatchObject({
+    ok: true,
+    value: {
+      value: {
+        form: "record",
+      },
+    },
+  });
+});
