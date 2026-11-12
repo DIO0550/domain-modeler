@@ -232,43 +232,43 @@ type JoinedTerms = Readonly<{
 }>;
 
 const collectJoinedTerms = (
-  cursor: ChunkCursor,
+  initialCursor: ChunkCursor,
   chunk: DeclChunk,
-  terms: readonly TypeTerm[],
-  connector: Connector | undefined,
+  initialTerms: readonly TypeTerm[],
 ): Result<WithCursor<JoinedTerms>, Diagnostic> => {
-  if (ChunkCursor.atEnd(cursor)) {
-    return Result.ok({ cursor, value: { terms, connector } });
+  const terms: TypeTerm[] = [...initialTerms];
+  let cursor = initialCursor;
+  let connector: Connector | undefined;
+
+  while (!ChunkCursor.atEnd(cursor)) {
+    const token = ChunkCursor.peek(cursor);
+
+    if (token === undefined || !isConnector(token)) {
+      break;
+    }
+
+    if (connector !== undefined && connector !== token.text) {
+      return Result.err(
+        ExpectToken.errorAt(
+          "AND と OR を同じ宣言内で混在させることはできません",
+          token.range,
+        ),
+      );
+    }
+
+    const afterConnector = ChunkCursor.advance(cursor);
+    const nextTerm = TypeTermParse.parse(afterConnector.cursor, chunk);
+
+    if (Result.isErr(nextTerm)) {
+      return nextTerm;
+    }
+
+    terms.push(nextTerm.value.value);
+    cursor = nextTerm.value.cursor;
+    connector = connector ?? token.text;
   }
 
-  const token = ChunkCursor.peek(cursor);
-
-  if (token === undefined || !isConnector(token)) {
-    return Result.ok({ cursor, value: { terms, connector } });
-  }
-
-  if (connector !== undefined && connector !== token.text) {
-    return Result.err(
-      ExpectToken.errorAt(
-        "AND と OR を同じ宣言内で混在させることはできません",
-        token.range,
-      ),
-    );
-  }
-
-  const afterConnector = ChunkCursor.advance(cursor);
-  const nextTerm = TypeTermParse.parse(afterConnector.cursor, chunk);
-
-  if (Result.isErr(nextTerm)) {
-    return nextTerm;
-  }
-
-  return collectJoinedTerms(
-    nextTerm.value.cursor,
-    chunk,
-    [...terms, nextTerm.value.value],
-    connector ?? token.text,
-  );
+  return Result.ok({ cursor, value: { terms, connector } });
 };
 
 const parseJoinedTypeExpr = (
@@ -281,12 +281,9 @@ const parseJoinedTypeExpr = (
     return firstTerm;
   }
 
-  const joined = collectJoinedTerms(
-    firstTerm.value.cursor,
-    chunk,
-    [firstTerm.value.value],
-    undefined,
-  );
+  const joined = collectJoinedTerms(firstTerm.value.cursor, chunk, [
+    firstTerm.value.value,
+  ]);
 
   if (Result.isErr(joined)) {
     return joined;

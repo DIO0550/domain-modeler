@@ -69,37 +69,40 @@ const collectTerms = (
   kind: SectionKind,
   state: TermsParseState,
 ): Result<WithCursor<ParsedTerms>, Diagnostic> => {
-  const token = ChunkCursor.peek(state.cursor);
-
-  if (token === undefined || !isConnector(token)) {
-    return Result.ok({ cursor: state.cursor, value: state.parsed });
-  }
-
   const connector = connectorFor(kind);
+  const terms: TypeTerm[] = [...state.parsed.terms];
+  let cursor = state.cursor;
+  let endRange = state.parsed.endRange;
 
-  if (token.text !== connector) {
-    return Result.err(
-      ExpectToken.errorAt(
-        `${kind}: では ${token.text} を使用できません`,
-        token.range,
-      ),
-    );
+  while (!ChunkCursor.atEnd(cursor)) {
+    const token = ChunkCursor.peek(cursor);
+
+    if (token === undefined || !isConnector(token)) {
+      break;
+    }
+
+    if (token.text !== connector) {
+      return Result.err(
+        ExpectToken.errorAt(
+          `${kind}: では ${token.text} を使用できません`,
+          token.range,
+        ),
+      );
+    }
+
+    const afterConnector = ChunkCursor.advance(cursor);
+    const term = TypeTermParse.parse(afterConnector.cursor, chunk);
+
+    if (Result.isErr(term)) {
+      return term;
+    }
+
+    terms.push(term.value.value);
+    endRange = term.value.value.range;
+    cursor = term.value.cursor;
   }
 
-  const afterConnector = ChunkCursor.advance(state.cursor);
-  const term = TypeTermParse.parse(afterConnector.cursor, chunk);
-
-  if (Result.isErr(term)) {
-    return term;
-  }
-
-  return collectTerms(chunk, kind, {
-    cursor: term.value.cursor,
-    parsed: {
-      terms: [...state.parsed.terms, term.value.value],
-      endRange: term.value.value.range,
-    },
-  });
+  return Result.ok({ cursor, value: { terms, endRange } });
 };
 
 /**
