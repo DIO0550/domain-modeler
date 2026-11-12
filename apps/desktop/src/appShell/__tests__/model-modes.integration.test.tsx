@@ -241,15 +241,11 @@ test("複数マシンの切替と未定義参照、構文エラーの表示中�
 
   const picker = host.querySelector<HTMLSelectElement>(
     ".state-machine-screen__toolbar select",
-  );
+  )!;
 
-  expect(picker?.options).toHaveLength(2);
+  expect(picker.options).toHaveLength(2);
 
   await act(async () => {
-    if (picker === null) {
-      return;
-    }
-
     picker.value = "1";
     picker.dispatchEvent(new Event("change", { bubbles: true }));
   });

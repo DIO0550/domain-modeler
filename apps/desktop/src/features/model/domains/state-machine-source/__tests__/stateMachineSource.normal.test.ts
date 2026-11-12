@@ -9,30 +9,22 @@ test("別の宣言の前へ状態を追加して DSL とグラフを同期する
   state: 待機
 
 data ID = string`;
-  const resolution = AnalyzedModel.create(source).stateMachines[0];
+  const resolution = AnalyzedModel.create(source).stateMachines[0]!;
 
   expect(resolution).toBeDefined();
 
-  if (resolution === undefined) {
-    return;
-  }
+  const updated = Result.unwrap(
+    StateMachineSource.add(source, resolution, {
+      part: "state",
+      name: "完了",
+      initial: false,
+      terminal: true,
+    }),
+  );
 
-  const result = StateMachineSource.add(source, resolution, {
-    part: "state",
-    name: "完了",
-    initial: false,
-    terminal: true,
-  });
-
-  expect(Result.isOk(result)).toBe(true);
-
-  if (Result.isErr(result)) {
-    return;
-  }
-
-  expect(result.value).toContain("  state: 完了 terminal\n\ndata ID");
+  expect(updated).toContain("  state: 完了 terminal\n\ndata ID");
   expect(
-    AnalyzedModel.create(result.value).stateMachines[0]?.machine.states.map(
+    AnalyzedModel.create(updated).stateMachines[0]?.machine.states.map(
       (state) => state.name,
     ),
   ).toEqual(["待機", "完了"]);
@@ -43,13 +35,9 @@ test("不正な識別子と重複遷移は文書を変更しない", () => {
   initial: 待機
   state: 待機
   transition: 待機 -> 待機 on 再試行`;
-  const resolution = AnalyzedModel.create(source).stateMachines[0];
+  const resolution = AnalyzedModel.create(source).stateMachines[0]!;
 
   expect(resolution).toBeDefined();
-
-  if (resolution === undefined) {
-    return;
-  }
 
   expect(
     Result.isErr(
