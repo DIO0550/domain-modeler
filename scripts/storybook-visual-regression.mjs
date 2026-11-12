@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, extname, join } from "node:path";
+import { basename, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ODiffServer } from "odiff-bin";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -62,14 +62,32 @@ const contentType = (path) => {
   return map[extname(path)] ?? "application/octet-stream";
 };
 
+const isPathInsideRoot = (resolvedRoot, target) => {
+  const rel = relative(resolvedRoot, target);
+
+  return rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+};
+
 const serveStatic = async (root) => {
+  const resolvedRoot = resolve(root);
   const server = createServer((request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
-    const decoded = decodeURIComponent(url.pathname);
-    const target = join(root, decoded === "/" ? "index.html" : decoded);
+    let decoded;
+
+    try {
+      decoded = decodeURIComponent(url.pathname);
+    } catch {
+      response.writeHead(400);
+      response.end("bad request");
+
+      return;
+    }
+
+    const relativeRequestPath = decoded === "/" ? "index.html" : `.${decoded}`;
+    const target = resolve(resolvedRoot, relativeRequestPath);
 
     if (
-      !target.startsWith(root) ||
+      !isPathInsideRoot(resolvedRoot, target) ||
       !existsSync(target) ||
       statSync(target).isDirectory()
     ) {
