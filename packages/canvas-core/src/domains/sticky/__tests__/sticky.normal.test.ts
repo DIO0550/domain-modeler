@@ -12,8 +12,14 @@ const sticky = Sticky.create(
 test("既知の付箋種別とアンカーだけを受け付ける", () => {
   expect(StickyType.is("event")).toBe(true);
   expect(StickyType.is("unknown")).toBe(false);
+  expect(StickyType.is("constructor")).toBe(false);
+  expect(StickyType.is("toString")).toBe(false);
+  expect(StickyType.is("__proto__")).toBe(false);
   expect(Anchor.is("left")).toBe(true);
   expect(Anchor.is("center")).toBe(false);
+  expect(Anchor.is("constructor")).toBe(false);
+  expect(Anchor.is("toString")).toBe(false);
+  expect(Anchor.is("__proto__")).toBe(false);
 });
 
 test("幅と高さが正のサイズだけを有効とする", () => {
