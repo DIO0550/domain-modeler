@@ -145,7 +145,8 @@ const transitionDiagnosticsOf = (
       name: transition.to,
       range: transition.toRange,
     }),
-    ...(definitions[transition.from]?.terminal
+    ...(hasState(definitions, transition.from) &&
+    definitions[transition.from]?.terminal
       ? [
           Diagnostic.create(
             DIAGNOSTIC_SEVERITIES.error,

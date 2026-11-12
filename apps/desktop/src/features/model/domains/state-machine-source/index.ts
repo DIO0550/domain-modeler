@@ -542,8 +542,15 @@ export const StateMachineSource = {
     const replacements: (SourceReplacement | null)[] = [];
 
     if (input.name !== oldName) {
+      const referenceRanges = Object.prototype.hasOwnProperty.call(
+        resolution.references,
+        oldName,
+      )
+        ? (resolution.references[oldName] ?? [])
+        : [];
+
       replacements.push(
-        ...(resolution.references[oldName] ?? [])
+        ...referenceRanges
           .filter((range) => {
             if (input.initial) {
               return true;

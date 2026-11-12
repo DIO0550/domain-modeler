@@ -199,7 +199,9 @@ const StateMachineGraphNode = {
     const definition = Object.prototype.hasOwnProperty.call(definitions, name)
       ? definitions[name]
       : undefined;
-    const occurrences = references[name] ?? [];
+    const occurrences = Object.prototype.hasOwnProperty.call(references, name)
+      ? (references[name] ?? [])
+      : [];
 
     if (definition === undefined) {
       const range = [...occurrences].sort(compareRange)[0] ?? machine.nameRange;
