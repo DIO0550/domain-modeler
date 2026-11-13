@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use tauri_plugin_dialog::FilePath;
@@ -52,6 +52,16 @@ pub fn open_dialog_filters() -> &'static [DialogFilter] {
         name: "キャンバス / ドメインモデル",
         extensions: &["dcanvas", "dmodel"],
     }]
+}
+
+/// パスがアプリ対象文書(`.dcanvas` または `.dmodel`)の拡張子を持つか判定する。
+pub fn is_document_path(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            extension.eq_ignore_ascii_case(DocumentKind::Canvas.extension())
+                || extension.eq_ignore_ascii_case(DocumentKind::Model.extension())
+        })
 }
 
 /// ダイアログで選ばれたパスを IPC の戻り値にする。
