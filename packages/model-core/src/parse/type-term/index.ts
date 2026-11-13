@@ -19,32 +19,35 @@ type ModifiersParse = Readonly<{
 
 /**
  * 後置修飾をすべて消費する。
- * @param cursor 型名の直後にあるカーソル。
- * @param endRange 直前に消費したトークンの範囲。
- * @param modifiers 収集済みの後置修飾。
+ * @param initialCursor 型名の直後にあるカーソル。
+ * @param initialEndRange 直前に消費したトークンの範囲。
  * @returns 後置修飾と消費後カーソル。
  */
 const collectModifiers = (
-  cursor: ChunkCursor,
-  endRange: Range,
-  modifiers: readonly Modifier[],
+  initialCursor: ChunkCursor,
+  initialEndRange: Range,
 ): WithCursor<ModifiersParse> => {
-  const modifierToken = ChunkCursor.peek(cursor);
+  const modifiers: Modifier[] = [];
+  let cursor = initialCursor;
+  let endRange = initialEndRange;
 
-  if (
-    modifierToken === undefined ||
-    modifierToken.kind !== TOKEN_KINDS.reserved ||
-    !TypeModifier.is(modifierToken.text)
-  ) {
-    return { cursor, value: { modifiers, endRange } };
+  while (true) {
+    const modifierToken = ChunkCursor.peek(cursor);
+
+    if (
+      modifierToken === undefined ||
+      modifierToken.kind !== TOKEN_KINDS.reserved ||
+      !TypeModifier.is(modifierToken.text)
+    ) {
+      return { cursor, value: { modifiers, endRange } };
+    }
+
+    const advanced = ChunkCursor.advance(cursor);
+
+    modifiers.push(modifierToken.text);
+    endRange = modifierToken.range;
+    cursor = advanced.cursor;
   }
-
-  const advanced = ChunkCursor.advance(cursor);
-
-  return collectModifiers(advanced.cursor, modifierToken.range, [
-    ...modifiers,
-    modifierToken.text,
-  ]);
 };
 
 /** 型参照項を解析する関数群。 */
@@ -75,7 +78,7 @@ export const TypeTermParse = {
     }
 
     const afterName = ChunkCursor.advance(cursor);
-    const collected = collectModifiers(afterName.cursor, token.range, []);
+    const collected = collectModifiers(afterName.cursor, token.range);
 
     return Result.ok({
       cursor: collected.cursor,
