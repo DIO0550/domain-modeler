@@ -85,15 +85,11 @@ test("選択対象を一つの検査結果へ解決し、DSL更新で消えた�
   state: 待機
   state: 完了 terminal
   transition: 待機 -> 完了 on 確定`);
-  const node = graph.nodes.find((item) => item.name === "待機");
-  const edge = graph.edges[0];
+  const node = graph.nodes.find((item) => item.name === "待機")!;
+  const edge = graph.edges[0]!;
 
   expect(node).toBeDefined();
   expect(edge).toBeDefined();
-
-  if (node === undefined || edge === undefined) {
-    return;
-  }
 
   expect(
     StateMachineGraph.inspect(graph, { kind: "node", id: node.id }),

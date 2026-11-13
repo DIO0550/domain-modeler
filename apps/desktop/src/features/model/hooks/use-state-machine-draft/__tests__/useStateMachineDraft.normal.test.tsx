@@ -15,13 +15,9 @@ state-machine 返金 =
   state: 申請`;
 
 test("不正な状態名から修正すると対象マシンの DSL を1回更新する", () => {
-  const resolution = AnalyzedModel.create(source).stateMachines[0];
+  const resolution = AnalyzedModel.create(source).stateMachines[0]!;
 
   expect(resolution).toBeDefined();
-
-  if (resolution === undefined) {
-    return;
-  }
 
   const draft = drafts.render(source, {
     kind: "part",

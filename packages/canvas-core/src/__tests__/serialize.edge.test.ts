@@ -179,13 +179,18 @@ test("自己参照の接続は SELF_REFERENTIAL_CONNECTION になる", () => {
   expect(error.code).toBe("SELF_REFERENTIAL_CONNECTION");
 });
 
-test("未知の付箋種別は INVALID_STICKY_TYPE になる", () => {
+test.each([
+  "unknownType",
+  "constructor",
+  "toString",
+  "__proto__",
+])("未知または Object.prototype 由来の付箋種別 %s は INVALID_STICKY_TYPE になる", (type: string) => {
   const document = baseDocument();
 
   document.stickies = [
     {
       id: "stk_aaaaaaaaaaaa",
-      type: "unknownType",
+      type,
       text: "a",
       position: { x: 0, y: 0 },
       size: { width: 10, height: 10 },
@@ -229,6 +234,9 @@ test.each([
 test.each([
   { field: "fromAnchor", value: "middle" },
   { field: "toAnchor", value: "center" },
+  { field: "fromAnchor", value: "constructor" },
+  { field: "toAnchor", value: "toString" },
+  { field: "fromAnchor", value: "__proto__" },
 ])("不正な $field=$value は INVALID_ANCHOR になる", ({
   field,
   value,

@@ -12,3 +12,8 @@ test("err は失敗値を保持する", () => {
   expect(Result.isErr(Result.err("失敗"))).toBe(true);
   expect(Result.isOk(Result.err("失敗"))).toBe(false);
 });
+
+test("unwrap は成功値を返し、失敗時は例外を投げる", () => {
+  expect(Result.unwrap(Result.ok("値"))).toBe("値");
+  expect(() => Result.unwrap(Result.err("失敗"))).toThrow();
+});

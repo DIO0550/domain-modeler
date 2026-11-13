@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { Declaration } from "../../document";
 import { Parse } from "../../parse";
 import { SourceRange } from "../../source-range";
 import { StateMachineDecl, TransitionDecl } from "../../state-machine-decl";
@@ -173,11 +174,11 @@ test("AST上の空イベント名も意味診断に残す", () => {
   const parsed = Parse.parse(`state-machine 注文 =
   initial: 開始
   state: 開始`);
-  const machine = parsed.document.declarations[0];
+  const machine = parsed.document.declarations.find(
+    Declaration.isStateMachine,
+  )!;
 
-  if (machine?.kind !== "state-machine") {
-    throw new Error("テスト入力のマシンが解析されませんでした");
-  }
+  expect(machine).toBeDefined();
 
   const transition = TransitionDecl.create({
     from: "開始",

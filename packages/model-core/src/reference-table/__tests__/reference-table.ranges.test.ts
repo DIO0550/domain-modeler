@@ -82,3 +82,17 @@ test("参照表に無い名前は空の範囲を返す", () => {
 test("プリミティブ型名は置換範囲に含めない", () => {
   expect(rangesFromSource("data 名前 = string", "string")).toEqual([]);
 });
+
+test.each([
+  "constructor",
+  "toString",
+  "valueOf",
+  "__proto__",
+])("Object.prototype と同名の識別子 %s も例外を投げず参照表に登録する", (name: string) => {
+  const source = `data ${name} = string\ndata 注文 = ${name}`;
+
+  expect(rangesFromSource(source, name)).toEqual([
+    SourceRange.onLine(1, 6, 6 + name.length),
+    SourceRange.onLine(2, 11, 11 + name.length),
+  ]);
+});

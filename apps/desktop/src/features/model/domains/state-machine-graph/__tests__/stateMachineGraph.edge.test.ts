@@ -69,3 +69,15 @@ state-machine 返金 =
 
   expect(graph.diagnostics).toEqual([]);
 });
+
+test("Object.prototype と同名の状態や未定義遷移先があっても例外を投げずグラフを構築する", () => {
+  const graph = graphOf(`state-machine 注文 =
+  initial: constructor
+  state: constructor
+  transition: constructor -> toString on 確定`);
+
+  expect(graph.nodes.map((node) => node.name)).toEqual([
+    "constructor",
+    "toString",
+  ]);
+});

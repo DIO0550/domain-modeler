@@ -25,7 +25,8 @@ export const StickyType = {
    * @returns 既知の付箋種別の場合は `true`。
    */
   is: (value: unknown): value is StickyType =>
-    typeof value === "string" && value in STICKY_TYPES,
+    typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(STICKY_TYPES, value),
 } as const;
 
 export type StickyId = Brand<string, "StickyId">;
@@ -58,7 +59,8 @@ export const Anchor = {
    * @returns 既知のアンカーの場合は `true`。
    */
   is: (value: unknown): value is Anchor =>
-    typeof value === "string" && value in ANCHORS,
+    typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(ANCHORS, value),
 } as const;
 
 export interface Size {

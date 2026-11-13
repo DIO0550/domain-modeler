@@ -15,13 +15,9 @@ state-machine 返金 =
 
 test("マシン切替で要素選択と倍率を一緒に戻す", () => {
   const view = views.render(source);
-  const firstNode = view.latest.current?.graph?.nodes[0];
+  const firstNode = view.latest.current?.graph?.nodes[0]!;
 
   expect(firstNode).toBeDefined();
-
-  if (firstNode === undefined) {
-    return;
-  }
 
   act(() => {
     view.latest.current?.selectElement({ kind: "node", id: firstNode.id });
@@ -49,13 +45,9 @@ test("パレットとグラフ選択は排他的で、全文更新からグラ�
     initialFrom: { some: false },
   });
 
-  const node = view.latest.current?.graph?.nodes[0];
+  const node = view.latest.current?.graph?.nodes[0]!;
 
   expect(node).toBeDefined();
-
-  if (node === undefined) {
-    return;
-  }
 
   act(() => view.latest.current?.selectElement({ kind: "node", id: node.id }));
 

@@ -7,6 +7,15 @@ import { TypeTerm } from "../type-term";
 export type ReferenceTable = Readonly<Record<string, readonly SourceRange[]>>;
 
 /**
+ * 参照表に名前が載っているか判定する。
+ * @param table 参照表。
+ * @param name 識別子。
+ * @returns 載っている場合は `true`。
+ */
+const hasName = (table: ReferenceTable, name: string): boolean =>
+  Object.prototype.hasOwnProperty.call(table, name);
+
+/**
  * 識別子の出現を参照表へ追記する。
  * @param table 参照表。
  * @param name 識別子。
@@ -17,19 +26,14 @@ const append = (
   table: ReferenceTable,
   name: string,
   range: SourceRange,
-): ReferenceTable => ({
-  ...table,
-  [name]: [...(table[name] ?? []), range],
-});
+): ReferenceTable => {
+  const existing = hasName(table, name) ? (table[name] ?? []) : [];
 
-/**
- * 参照表に名前が載っているか判定する。
- * @param table 参照表。
- * @param name 識別子。
- * @returns 載っている場合は `true`。
- */
-const hasName = (table: ReferenceTable, name: string): boolean =>
-  Object.prototype.hasOwnProperty.call(table, name);
+  return {
+    ...table,
+    [name]: [...existing, range],
+  };
+};
 
 /** 参照表を生成する関数群。 */
 export const ReferenceTable = {
