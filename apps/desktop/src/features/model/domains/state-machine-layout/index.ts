@@ -21,6 +21,11 @@ const COLUMN = 260;
 const ROW = 150;
 const MARGIN = 100;
 
+const hasOwnPosition = (
+  nodes: Readonly<Record<string, StateMachinePosition>>,
+  id: string,
+): boolean => Object.prototype.hasOwnProperty.call(nodes, id);
+
 /** 状態遷移の自動配置とノード寸法。 */
 export const StateMachineLayout = {
   nodeSize: NODE_SIZE,
@@ -178,8 +183,10 @@ export const StateMachineLayout = {
     },
   ): StateMachineLayout {
     const edges = graph.edges.map((edge, index) => {
-      const from = nodes[edge.from];
-      const to = nodes[edge.to];
+      const from = hasOwnPosition(nodes, edge.from)
+        ? nodes[edge.from]
+        : undefined;
+      const to = hasOwnPosition(nodes, edge.to) ? nodes[edge.to] : undefined;
 
       if (from === undefined || to === undefined) {
         return { id: edge.id, path: "", label: { x: 0, y: 0 } };
@@ -219,7 +226,7 @@ export const StateMachineLayout = {
     });
     const points = Object.values(nodes);
     const nodeLefts = graph.nodes.flatMap((node) => {
-      const point = nodes[node.id];
+      const point = hasOwnPosition(nodes, node.id) ? nodes[node.id] : undefined;
 
       if (point === undefined) {
         return [];
