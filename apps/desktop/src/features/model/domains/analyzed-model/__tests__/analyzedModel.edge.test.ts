@@ -185,3 +185,29 @@ data 注文 = 商品ID`,
     },
   });
 });
+
+test.each(["__proto__", "constructor", "toString"])(
+  "Object.prototype と同名の識別子 %s を解析・ジャンプ・リネームできる",
+  (name) => {
+    const source = `data ${name} = string\ndata 注文 = ${name}`;
+    const analyzed = AnalyzedModel.create(source);
+
+    expect(analyzed.diagnostics).toEqual([]);
+    expect(AnalyzedModel.caretOfDefinition(analyzed, name)).toEqual(
+      Option.some({ offset: 0, line: 1 }),
+    );
+    expect(
+      AnalyzedModel.rename(analyzed, {
+        decl: namedDeclAt(analyzed, 0),
+        nextName: "代替識別子",
+      }),
+    ).toMatchObject({
+      ok: true,
+      value: {
+        edit: {
+          replacement: "代替識別子 = string\ndata 注文 = 代替識別子",
+        },
+      },
+    });
+  },
+);

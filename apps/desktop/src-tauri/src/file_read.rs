@@ -52,15 +52,40 @@ pub enum FileReadResult {
 ///
 /// * `path` - 読み取るファイルのパス。
 pub fn read_utf8_file(path: &str) -> FileReadResult {
-    match fs::read(crate::ipc_path::decode(path)) {
+    let decoded = crate::ipc_path::decode(path);
+
+    read_utf8_path(&decoded, path)
+}
+
+/// IPC から渡された文書パスのファイルを UTF-8 文字列として読む。
+///
+/// `.dcanvas` / `.dmodel` 以外の拡張子は拒否する。
+pub fn read_document_file(path: &str) -> FileReadResult {
+    let decoded = crate::ipc_path::decode(path);
+
+    if !crate::file_dialog::is_document_path(&decoded) {
+        return FileReadResult::Err {
+            error: FileReadError::ReadFailed {
+                path: path.to_string(),
+                message: "対応していない拡張子です(.dcanvas / .dmodel のみ読み込めます)"
+                    .to_string(),
+            },
+        };
+    }
+
+    read_utf8_path(&decoded, path)
+}
+
+fn read_utf8_path(decoded: &std::path::Path, reported_path: &str) -> FileReadResult {
+    match fs::read(decoded) {
         Err(err) if err.kind() == ErrorKind::NotFound => FileReadResult::Err {
             error: FileReadError::NotFound {
-                path: path.to_string(),
+                path: reported_path.to_string(),
             },
         },
         Err(err) => FileReadResult::Err {
             error: FileReadError::ReadFailed {
-                path: path.to_string(),
+                path: reported_path.to_string(),
                 message: err.to_string(),
             },
         },
@@ -68,7 +93,7 @@ pub fn read_utf8_file(path: &str) -> FileReadResult {
             Ok(value) => FileReadResult::Ok { value },
             Err(_) => FileReadResult::Err {
                 error: FileReadError::InvalidUtf8 {
-                    path: path.to_string(),
+                    path: reported_path.to_string(),
                 },
             },
         },

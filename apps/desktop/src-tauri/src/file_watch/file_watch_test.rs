@@ -342,6 +342,23 @@ fn ファイル名の無いパスは監視失敗が値として返る() {
     assert_ne!(json["error"]["message"], "");
 }
 
+#[test]
+fn 対応外拡張子のパスは監視開始を拒否する() {
+    let workspace = TempWorkspace::create();
+    let secret = workspace.path("secret.txt");
+
+    fs::write(&secret, "secret").expect("fixture should be written");
+
+    let secret_str = secret.to_str().expect("path is utf-8");
+    let registry = FileWatchRegistry::new();
+    let json =
+        serde_json::to_value(registry.start(secret_str, |_| {})).expect("result should serialize");
+
+    assert_eq!(json["type"], "err");
+    assert_eq!(json["error"]["kind"], "watchFailed");
+    assert_eq!(json["error"]["path"], secret_str);
+}
+
 fn start_collecting(registry: &FileWatchRegistry, path: &str) -> Receiver<FileWatchEvent> {
     let (tx, rx) = mpsc::channel();
     let result = registry.start(path, move |event| {

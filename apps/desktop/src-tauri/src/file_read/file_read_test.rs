@@ -99,3 +99,30 @@ fn 存在しないファイルの失敗はjsonの値としてシリアライズ�
     assert_eq!(json["error"]["kind"], "notFound");
     assert_eq!(json["error"]["path"], "/no/such/domain-modeler-file.dmodel");
 }
+
+#[test]
+fn 文書読み込みはdcanvasとdmodel以外の拡張子を拒否する() {
+    let workspace = TempWorkspace::create();
+    let secret = workspace.path("secret.txt");
+
+    fs::write(&secret, "sensitive").expect("fixture should be written");
+
+    let secret_str = secret.to_str().expect("path is utf-8");
+    let result = super::read_document_file(secret_str);
+    let json = serde_json::to_value(&result).expect("result should serialize");
+
+    assert_eq!(json["type"], "err");
+    assert_eq!(json["error"]["kind"], "readFailed");
+    assert_eq!(json["error"]["path"], secret_str);
+
+    let canvas = workspace.path("board.dcanvas");
+
+    fs::write(&canvas, "{}").expect("fixture should be written");
+
+    assert_eq!(
+        super::read_document_file(canvas.to_str().expect("path is utf-8")),
+        FileReadResult::Ok {
+            value: "{}".to_string()
+        }
+    );
+}

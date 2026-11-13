@@ -82,7 +82,9 @@ export const StateMachinePlacement = {
 
     for (const state of states) {
       const id = StateMachineGraph.stateSelection(state.name).id;
-      const point = positions[id];
+      const point = Object.prototype.hasOwnProperty.call(positions, id)
+        ? positions[id]
+        : undefined;
 
       if (point === undefined) {
         continue;
