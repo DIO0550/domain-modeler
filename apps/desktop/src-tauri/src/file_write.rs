@@ -61,6 +61,38 @@ pub fn write_utf8_file(path: &str, contents: &str) -> FileWriteResult {
     FileWriteResult::Ok
 }
 
+/// IPC から渡された文書パスへ UTF-8 文字列をアトミックに書く。
+///
+/// `.dcanvas` / `.dmodel` 以外の拡張子は拒否する。
+pub fn write_document_file(path: &str, contents: &str) -> FileWriteResult {
+    let target_path = crate::ipc_path::decode(path);
+
+    if !crate::file_dialog::is_document_path(&target_path) {
+        return write_failed(
+            path,
+            "保存先には .dcanvas または .dmodel ファイルを指定してください",
+        );
+    }
+
+    write_utf8_file(path, contents)
+}
+
+/// IPC から渡された文書パスへ UTF-8 文書を排他的に新規作成する。
+///
+/// `.dcanvas` / `.dmodel` 以外の拡張子は拒否し、既存ファイルやリンクは置換しない。
+pub fn create_document_file(path: &str, contents: &str) -> FileWriteResult {
+    let target_path = crate::ipc_path::decode(path);
+
+    if !crate::file_dialog::is_document_path(&target_path) {
+        return write_failed(
+            path,
+            "保存先には新規 .dcanvas または .dmodel ファイルを指定してください",
+        );
+    }
+
+    create_utf8_file(path, contents)
+}
+
 /// 新規 .dmodel を作成する。既存ファイルやシンボリックリンクは置換しない。
 /// 完全な内容を用意してから、対象パスを排他的に作成する。
 pub fn create_dmodel_file(path: &str, contents: &str) -> FileWriteResult {

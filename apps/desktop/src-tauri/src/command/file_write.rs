@@ -1,4 +1,4 @@
-use crate::file_write::{write_utf8_file, FileWriteError, FileWriteResult};
+use crate::file_write::{write_document_file, FileWriteError, FileWriteResult};
 
 /// パスと UTF-8 文字列を受けてアトミックに書き込む。
 ///
@@ -11,7 +11,7 @@ use crate::file_write::{write_utf8_file, FileWriteError, FileWriteResult};
 /// * `contents` - 書き込む UTF-8 文字列。
 #[tauri::command]
 pub async fn write_file(path: String, contents: String) -> FileWriteResult {
-    run_blocking_file_write(path, move |path| write_utf8_file(path, &contents)).await
+    run_blocking_file_write(path, move |path| write_document_file(path, &contents)).await
 }
 
 /// 既存ファイルを上書きせず、生成したモデルを新規保存する。
@@ -27,7 +27,7 @@ pub async fn create_dmodel_file(path: String, contents: String) -> FileWriteResu
 #[tauri::command]
 pub async fn create_file(path: String, contents: String) -> FileWriteResult {
     run_blocking_file_write(path, move |path| {
-        crate::file_write::create_utf8_file(path, &contents)
+        crate::file_write::create_document_file(path, &contents)
     })
     .await
 }

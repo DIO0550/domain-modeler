@@ -19,3 +19,23 @@ test("予約語は型参照項として解析しない", () => {
     },
   });
 });
+
+test("大量の後置修飾があってもコールスタック上限に達せず解析できる", () => {
+  const modifiers = Array.from({ length: 12000 }, () => "list").join(" ");
+  const tokens = Tokenizer.tokenize(`注文明細 ${modifiers}`);
+  const chunk: DeclChunk = {
+    kind: "data",
+    tokens,
+    range: DeclChunk.rangeOf(tokens),
+  };
+
+  expect(TypeTermParse.parse(ChunkCursor.create(tokens), chunk)).toMatchObject({
+    ok: true,
+    value: {
+      value: {
+        name: "注文明細",
+        isPrimitive: false,
+      },
+    },
+  });
+});

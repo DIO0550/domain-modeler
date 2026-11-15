@@ -283,6 +283,13 @@ impl WatchTarget {
     fn resolve(path: &str) -> Result<Self, String> {
         let decoded_path = crate::ipc_path::decode(path);
         let path_ref = decoded_path.as_path();
+
+        if !crate::file_dialog::is_document_path(path_ref) {
+            return Err(
+                "監視対象には .dcanvas または .dmodel ファイルを指定してください".to_string(),
+            );
+        }
+
         let file_name = path_ref
             .file_name()
             .ok_or_else(|| "path has no file name".to_string())?;

@@ -107,7 +107,9 @@ const rangesForRename = (
   target: NamedDeclValue,
 ): readonly SourceRangeValue[] => {
   const allRanges = ReferenceTable.rangesOf(model.references, target.name);
-  const defined = model.definitions[target.name];
+  const defined = DefinitionTable.has(model.definitions, target.name)
+    ? model.definitions[target.name]
+    : undefined;
   const isCanonical =
     defined !== undefined &&
     SourceRange.equals(defined.nameRange, target.nameRange);

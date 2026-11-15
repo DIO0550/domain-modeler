@@ -342,3 +342,24 @@ fn 生成モデルはシンボリックリンク先も変更しない() {
     assert_eq!(fs::read_to_string(original).unwrap(), "original");
     assert!(link.is_symlink());
 }
+
+#[test]
+fn 文書書き込みと新規作成はdcanvasとdmodel以外の拡張子を拒否する() {
+    let workspace = TempWorkspace::create();
+    let target = workspace.path("script.sh");
+    let target_str = target.to_str().unwrap();
+
+    assert!(matches!(
+        super::create_document_file(target_str, "echo pwned"),
+        FileWriteResult::Err { .. }
+    ));
+    assert!(!target.exists());
+
+    fs::write(&target, "keep").unwrap();
+
+    assert!(matches!(
+        super::write_document_file(target_str, "overwrite"),
+        FileWriteResult::Err { .. }
+    ));
+    assert_eq!(fs::read_to_string(&target).unwrap(), "keep");
+}
