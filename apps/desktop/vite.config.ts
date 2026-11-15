@@ -45,7 +45,7 @@ export default defineConfig(() => ({
   test: {
     include: [
       "src/**/*.{test,spec}.{ts,tsx}",
-      "../../packages/**/*.{test,spec}.{ts,tsx}",
+      "../../packages/*/src/**/*.{test,spec}.{ts,tsx}",
     ],
     environment: "happy-dom",
     coverage: {
@@ -58,8 +58,9 @@ export default defineConfig(() => ({
       allowExternal: true,
       reporter: ["text", "json-summary", "json"],
       reportOnFailure: true,
-      include: ["src/**/*.{ts,tsx}", "../../packages/**/src/**/*.{ts,tsx}"],
+      include: ["src/**/*.{ts,tsx}", "../../packages/*/src/**/*.{ts,tsx}"],
       exclude: [
+        "**/__tests__/**",
         "src/**/*.test.{ts,tsx}",
         "src/**/*.stories.{ts,tsx}",
         "src/**/*.d.ts",
