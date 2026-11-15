@@ -1,4 +1,4 @@
-import{n as e}from"./rolldown-runtime-sJBDdmOt.js";import{n as t}from"./iframe-L9XTDX8b.js";import{t as n}from"./jsx-runtime-MKhVqBIO.js";import{r,t as i}from"./model-editor-DPATTaCW.js";function a({value:e}){let[t,n]=(0,o.useState)(e);return(0,s.jsx)(`div`,{className:`model-editor-story`,children:(0,s.jsx)(i,{value:t,onChange:n})})}var o,s,c,l,u,d,f,p,m;function h(){return(h=e((()=>{o=t(),r(),s=n(),c={component:i,title:`Model/ModelEditor`,render:e=>(0,s.jsx)(a,{value:e.value}),argTypes:{onChange:{control:!1}}},l={args:{value:`// 注文モデル
+import{n as e}from"./rolldown-runtime-sJBDdmOt.js";import{n as t}from"./iframe-BWSOLnN3.js";import{t as n}from"./jsx-runtime-MKhVqBIO.js";import{r,t as i}from"./model-editor-DiZo_AZv.js";function a({value:e}){let[t,n]=(0,o.useState)(e);return(0,s.jsx)(`div`,{className:`model-editor-story`,children:(0,s.jsx)(i,{value:t,onChange:n})})}var o,s,c,l,u,d,f,p,m;function h(){return(h=e((()=>{o=t(),r(),s=n(),c={component:i,title:`Model/ModelEditor`,render:e=>(0,s.jsx)(a,{value:e.value}),argTypes:{onChange:{control:!1}}},l={args:{value:`// 注文モデル
 data OrderId = string
 data Quantity = int
 
